@@ -770,7 +770,7 @@ func redirectToHTTPSHandler(httpsPort string) http.Handler {
 	})
 }
 
-func serveFiles(appState *AppState) http.HandlerFunc {
+func fileServerHandler(appState *AppState) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		// ctx := req.Context()
 		requestIP, ok := GetRequestIP(req)
@@ -797,11 +797,11 @@ func serveFiles(appState *AppState) http.HandlerFunc {
 			return
 		}
 
-		log.Info("File request from " + requestIP + " for " + fileRequested)
+		log.Debug("File request from " + requestIP + " for " + fileRequested)
 
 		resolvedPath, err := filepath.EvalSymlinks(fullPath)
 		if err != nil || !strings.HasPrefix(resolvedPath, basePath) {
-			log.Warning("Attempt to access file outside base path: " + requestIP + " (" + resolvedPath + ")")
+			log.Warning("File request error from " + requestIP + " (" + resolvedPath + "): Error resolving symlink: " + err.Error())
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
@@ -840,14 +840,14 @@ func serveFiles(appState *AppState) http.HandlerFunc {
 		// Serve the file
 		_, err = io.Copy(w, f)
 		if err != nil {
-			log.Error("Error sending file: " + err.Error())
+			log.Error("Error sending file (" + resolvedPath + "): " + err.Error())
 			return
 		}
 		log.Info("Served file: " + resolvedPath + " to " + requestIP)
 	}
 }
 
-func serveHTML(appState *AppState) http.HandlerFunc {
+func webServerHandler(appState *AppState) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		// ctx := req.Context()
 		requestIP, ok := GetRequestIP(req)
@@ -874,12 +874,11 @@ func serveHTML(appState *AppState) http.HandlerFunc {
 			return
 		}
 
-		log.Info("File request from " + requestIP + " for " + fileRequested)
+		log.Debug("File request from " + requestIP + " for " + fileRequested)
 
 		resolvedPath, err := filepath.EvalSymlinks(fullPath)
 		if err != nil || !strings.HasPrefix(resolvedPath, basePath) {
-			log.Warning("Error resolving symlink: " + err.Error())
-			log.Warning("Attempt to access file outside base path: " + requestIP + " (" + fullPath + ":" + resolvedPath + ")")
+			log.Warning("File request error from " + requestIP + " (" + resolvedPath + "): Error resolving symlink: " + err.Error())
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
@@ -919,15 +918,14 @@ func serveHTML(appState *AppState) http.HandlerFunc {
 			// Parse the template
 			htmlTemp, err := template.ParseFiles(resolvedPath)
 			if err != nil {
-				log.Warning("Cannot parse template file: " + err.Error())
+				log.Warning("Cannot parse template file (" + resolvedPath + "): " + err.Error())
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-
 			// Execute the template
 			err = htmlTemp.Execute(w, nil)
 			if err != nil {
-				log.Error("Error executing template: " + err.Error())
+				log.Error("Error executing template for " + resolvedPath + ": " + err.Error())
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
@@ -936,7 +934,7 @@ func serveHTML(appState *AppState) http.HandlerFunc {
 			// Serve the CSS file
 			_, err = io.Copy(w, f)
 			if err != nil {
-				log.Error("Error sending file: " + err.Error())
+				log.Error("Error sending file (" + resolvedPath + "): " + err.Error())
 				return
 			}
 		} else if strings.HasSuffix(fileRequested, ".js") {
@@ -944,7 +942,7 @@ func serveHTML(appState *AppState) http.HandlerFunc {
 			// Serve the JS file
 			_, err = io.Copy(w, f)
 			if err != nil {
-				log.Error("Error sending file: " + err.Error())
+				log.Error("Error sending file (" + resolvedPath + "): " + err.Error())
 				return
 			}
 		} else if strings.HasSuffix(fileRequested, ".ico") {
@@ -952,7 +950,7 @@ func serveHTML(appState *AppState) http.HandlerFunc {
 			// Serve the favicon
 			_, err = io.Copy(w, f)
 			if err != nil {
-				log.Error("Error sending file: " + err.Error())
+				log.Error("Error sending file (" + resolvedPath + "): " + err.Error())
 				return
 			}
 		} else {
@@ -961,7 +959,7 @@ func serveHTML(appState *AppState) http.HandlerFunc {
 			return
 		}
 
-		log.Info("Served file: " + resolvedPath + " to " + requestIP)
+		log.Debug("Served file: " + resolvedPath + " to " + requestIP)
 	}
 }
 
@@ -1301,7 +1299,7 @@ func main() {
 	}
 
 	httpMux := http.NewServeMux()
-	httpMux.Handle("/client/", fileServerMuxChain.then(serveFiles(appState)))
+	httpMux.Handle("/client/", fileServerMuxChain.then(fileServerHandler(appState)))
 	httpMux.Handle("/client", fileServerMuxChain.thenFunc(rejectRequest))
 	httpMux.Handle("/", httpRedirectToHttps.then(redirectToHTTPSHandler("31411")))
 
@@ -1380,17 +1378,17 @@ func main() {
 	httpsMux.Handle("GET /api/job_queue/client/queued_job", httpsApiAuth.thenFunc(getClientQueuedJobs))
 	httpsMux.Handle("GET /api/job_queue/client/job_available", httpsApiAuth.thenFunc(getClientAvailableJobs))
 
-	httpsMux.Handle("GET /login.html", httpsNoAuth.then(serveHTML(appState)))
+	httpsMux.Handle("GET /login.html", httpsNoAuth.then(webServerHandler(appState)))
 	httpsMux.Handle("POST /login.html", httpsNoAuth.thenFunc(verifyCookieLogin))
-	httpsMux.Handle("/js/login.js", httpsNoAuth.then(serveHTML(appState)))
-	httpsMux.Handle("/css/desktop.css", httpsNoAuth.then(serveHTML(appState)))
-	httpsMux.Handle("/favicon.ico", httpsNoAuth.then(serveHTML(appState)))
+	httpsMux.Handle("/js/login.js", httpsNoAuth.then(webServerHandler(appState)))
+	httpsMux.Handle("/css/desktop.css", httpsNoAuth.then(webServerHandler(appState)))
+	httpsMux.Handle("/favicon.ico", httpsNoAuth.then(webServerHandler(appState)))
 
 	httpsMux.Handle("GET /logout", httpsCookieAuth.then(logoutHandler(appState)))
 
-	httpsMux.Handle("/js/", httpsCookieAuth.then(serveHTML(appState)))
-	httpsMux.Handle("/css/", httpsCookieAuth.then(serveHTML(appState)))
-	httpsMux.Handle("/", httpsCookieAuth.then(serveHTML(appState)))
+	httpsMux.Handle("/js/", httpsCookieAuth.then(webServerHandler(appState)))
+	httpsMux.Handle("/css/", httpsCookieAuth.then(webServerHandler(appState)))
+	httpsMux.Handle("/", httpsCookieAuth.then(webServerHandler(appState)))
 	// httpsMux.HandleFunc("/dbstats/", GetInfoHandler)
 
 	log.Info("Starting web server")
