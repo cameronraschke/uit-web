@@ -33,8 +33,8 @@ func startAuthMapCleanup(interval time.Duration) {
 				// basicExpiry := authSession.Basic.Expiry.Sub(time.Now())
 				bearerExpiry := time.Until(authSession.Bearer.Expiry)
 
-				// Auth cache entry expires once countdown reaches zero
-				if bearerExpiry.Seconds() <= 0 {
+				if time.Now().After(authSession.Basic.Expiry) &&
+					time.Now().After(authSession.Bearer.Expiry) {
 					authMap.Delete(sessionID)
 					atomic.AddInt64(&authMapEntryCount, -1)
 					sessionCount := countAuthSessions(&authMap)
