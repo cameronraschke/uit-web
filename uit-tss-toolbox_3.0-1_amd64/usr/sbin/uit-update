@@ -9,13 +9,30 @@ read -p "Download from GitHub? [Y/n]: " gitBool
 
 if [[ -z $gitBool || $gitBool == "y" || $gitBool == "Y" ]]; then
   rm -r /tmp/uit-toolbox/
-  git clone https://github.com/cameronraschke/UIT-TSS-TOOLBOX /tmp/uit-toolbox/
+  echo "Downloading from GitHub..."
+  git clone 'https://github.com/cameronraschke/uit-web' /tmp/uit-toolbox/
+  i=10
+  while [ ! -d /tmp/uit-toolbox/uit-web/ ] && [ $i -gt 0 ]; do
+    echo "Download failed, retrying..."
+    sleep 3
+    rm -r /tmp/uit-toolbox/
+    git clone 'https://github.com/cameronraschke/uit-web' /tmp/uit-toolbox/
+    ((i--))
+  done
+  if [[ ! -d /tmp/uit-toolbox/uit-web/ ]]; then
+    echo "Download failed after multiple attempts. Exiting..."
+    exit 1
+  fi
+  echo "Download complete."
+else 
+  echo "Exiting..."
+  exit 1
 fi
 
-if [[ -d /tmp/uit-toolbox/uit-tss-toolbox_2.0-1_amd64 ]]; then
+if [[ -d /tmp/uit-toolbox/uit-web/ ]]; then
   dpkg --remove uit-toolbox
 fi
 
-chmod 755 /tmp/uit-toolbox/uit-tss-toolbox_2.0-1_amd64/DEBIAN/postinst
-dpkg-deb --build /tmp/uit-toolbox/uit-tss-toolbox_2.0-1_amd64/ /tmp/uit-toolbox/uit-tss-toolbox_2.0-1_amd64.deb
-dpkg --install /tmp/uit-toolbox/uit-tss-toolbox_2.0-1_amd64.deb
+chmod 755 /tmp/uit-toolbox/uit-web/uit-tss-toolbox_3.0-1_amd64/DEBIAN/postinst
+dpkg-deb --build /tmp/uit-toolbox/uit-web/uit-tss-toolbox_3.0-1_amd64/ /tmp/uit-toolbox/uit-web/uit-tss-toolbox_3.0-1_amd64.deb
+dpkg --install /tmp/uit-toolbox/uit-web/uit-tss-toolbox_3.0-1_amd64.deb
