@@ -231,7 +231,7 @@ chmod 777 /tmp/uit-toolbox-live-iso/config/hooks/live/0100-uit-toolbox-client-se
 
 mkdir -p /tmp/uit-toolbox-live-iso/config/includes.chroot/root/
 wget https://soundboardguy.com/wp-content/uploads/2022/01/Oven-Timer-Ding.mp3 \
---output-document=/tmp/uit-toolbox-live-iso/config/includes.chroot/root/oven.mp3
+  --output-document=/tmp/uit-toolbox-live-iso/config/includes.chroot/root/oven.mp3
 
 mkdir -p /tmp/uit-toolbox-live-iso/config/includes.chroot/root
 touch /tmp/uit-toolbox-live-iso/config/includes.chroot/root/.bash_profile
@@ -262,6 +262,11 @@ echo "${GREEN}Done.${RESET}"
 
 echo ""
 echo "${BOLD}Installing the client package${RESET}"
+wget 'http://mickey.uit:8080/client/pkg/go-latest.linux-amd64.tar.gz' --output-document=/root/go-latest.linux-amd64.tar.gz
+if [[ -d /usr/local/go ]]; then
+  rm -rf /usr/local/go
+fi
+tar -C /usr/local -xzf /root/go-latest.linux-amd64.tar.gz &>/dev/null
 if [[ $(dpkg-query -l | grep --quiet uit-toolbox-client; echo $?) == 0 ]]; then
 	dpkg --purge uit-toolbox-client 
 fi

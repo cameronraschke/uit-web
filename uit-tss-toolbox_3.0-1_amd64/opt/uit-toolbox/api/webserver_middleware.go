@@ -8,7 +8,9 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -16,10 +18,16 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/text/unicode/norm"
+	"golang.org/x/time/rate"
 )
 
 type ctxClientIP struct{}
 type ctxURLRequest struct{}
+type ctxFileRequest struct {
+	FullPath     string
+	ResolvedPath string
+	FileName     string
+}
 
 func limitRequestSizeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -236,7 +244,7 @@ func checkValidURLMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func rateLimitMiddleware(app *AppState) func(http.Handler) http.Handler {
+func rateLimitMiddleware(appState *AppState, rateType string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			requestIP, ok := GetRequestIP(req)
@@ -246,21 +254,153 @@ func rateLimitMiddleware(app *AppState) func(http.Handler) http.Handler {
 				return
 			}
 
-			if app.blockedIPs.IsBlocked(requestIP) {
+			if appState.blockedIPs.IsBlocked(requestIP) {
 				log.Debug("Blocked IP attempted request: " + requestIP)
 				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 				return
 			}
 
-			limiter := app.ipRequests.Get(requestIP)
+			var limiter *rate.Limiter
+			switch rateType {
+			case "webserver":
+				limiter = appState.webServerLimiter.Get(requestIP)
+			case "file":
+				limiter = appState.fileLimiter.Get(requestIP)
+			case "api":
+				limiter = appState.apiLimiter.Get(requestIP)
+			case "auth":
+				limiter = appState.authLimiter.Get(requestIP)
+			default:
+				limiter = appState.webServerLimiter.Get(requestIP)
+			}
 			if !limiter.Allow() {
-				app.blockedIPs.Block(requestIP)
+				appState.blockedIPs.Block(requestIP)
 				log.Debug("Client has exceeded rate limit: " + requestIP)
 				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 				return
 			}
 
 			next.ServeHTTP(w, req)
+		})
+	}
+}
+
+func allowedFilesMiddleware(appState *AppState) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			requestIP, ok := GetRequestIP(req)
+			if !ok {
+				log.Warning("no IP address stored in context")
+				http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+				return
+			}
+			requestURL, ok := GetRequestURL(req)
+			if !ok {
+				log.Warning("no URL stored in context")
+				http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+				return
+			}
+
+			var basePath string
+			if strings.HasPrefix(requestURL, "/client/") {
+				basePath = "/srv/uit-toolbox/"
+			} else {
+				basePath = "/var/www/html/uit-web/"
+			}
+
+			fullPath := path.Join(basePath, requestURL)
+			_, fileRequested := path.Split(fullPath)
+
+			if len(appState.allowedFiles) > 0 && !appState.allowedFiles[fileRequested] {
+				log.Warning("File not in whitelist: " + fileRequested)
+				http.Error(w, formatHttpError("Forbidden"), http.StatusForbidden)
+				return
+			}
+
+			resolvedPath, err := filepath.EvalSymlinks(fullPath)
+			if err != nil || !strings.HasPrefix(resolvedPath, basePath) {
+				log.Warning("File request error from " + requestIP + " (" + resolvedPath + "): Error resolving symlink: " + err.Error())
+				http.Error(w, formatHttpError("Forbidden"), http.StatusForbidden)
+				return
+			}
+
+			if resolvedPath != fullPath {
+				log.Warning("Resolved path does not match full path (" + requestIP + "): " + resolvedPath + " -> " + fullPath)
+				http.Error(w, formatHttpError("Forbidden"), http.StatusForbidden)
+				return
+			}
+
+			metadata, err := os.Lstat(fullPath)
+			if err != nil {
+				log.Error("Cannot get metadata from file: " + fullPath + " (" + err.Error() + ")")
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			if metadata == nil {
+				log.Error("Metadata is nil for file: " + fullPath)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			if metadata.Name() != fileRequested || !appState.allowedFiles[metadata.Name()] {
+				log.Warning("Filename mismatch: " + metadata.Name() + " != " + fileRequested)
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+			if metadata.Size() <= 0 {
+				log.Warning("Attempt to access empty file: " + fileRequested)
+				http.Error(w, "Empty file", http.StatusNoContent)
+				return
+			}
+			if metadata.IsDir() {
+				log.Warning("Attempt to access directory as file: " + fileRequested)
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+
+			fileMode := metadata.Mode()
+			if fileMode&os.ModeSymlink != 0 {
+				log.Warning("Attempt to access symbolic link: " + fileRequested)
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+			if fileMode&os.ModeDevice != 0 {
+				log.Warning("Attempt to access device file: " + fileRequested)
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+			if fileMode&os.ModeNamedPipe != 0 {
+				log.Warning("Attempt to access named pipe: " + fileRequested)
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+			if fileMode&os.ModeSocket != 0 {
+				log.Warning("Attempt to access socket file: " + fileRequested)
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+			if fileMode&os.ModeCharDevice != 0 {
+				log.Warning("Attempt to access character device file: " + fileRequested)
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+			if fileMode&os.ModeIrregular != 0 {
+				log.Warning("Attempt to access irregular file: " + fileRequested)
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+			if !fileMode.IsRegular() {
+				log.Warning("Attempt to access non-regular file: " + fileRequested)
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+
+			fileRequest := ctxFileRequest{
+				FullPath:     fullPath,
+				ResolvedPath: resolvedPath,
+				FileName:     fileRequested,
+			}
+			ctxWithFile := context.WithValue(req.Context(), ctxFileRequest{}, fileRequest)
+			next.ServeHTTP(w, req.WithContext(ctxWithFile))
 		})
 	}
 }
@@ -380,8 +520,8 @@ func checkHeadersMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Host header
-		host := req.Host
-		if strings.TrimSpace(host) == "" || strings.ContainsAny(host, " <>\"'%;()&+") || len(host) > 255 {
+		host := strings.TrimSpace(req.Host)
+		if host == "" || strings.ContainsAny(host, " <>\"'%;()&+") || len(host) > 255 {
 			log.Warning("Invalid Host header: " + host + " (" + requestIP + ": " + req.Method + " " + requestURL + ")")
 			http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
 			return
@@ -459,11 +599,9 @@ func setHeadersMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")
 		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; frame-ancestors 'self'")
 		w.Header().Set("Strict-Transport-Security", "max-age=86400; includeSubDomains")
 		w.Header().Set("X-Accel-Buffering", "no")
 		w.Header().Set("Referrer-Policy", "no-referrer")
@@ -638,7 +776,17 @@ func httpCookieAuth(next http.Handler) http.Handler {
 				Bearer: bearer,
 			}
 			sessionID := requestIP + ":" + requestBasicToken
-			authMap.Store(sessionID, authSession)
+			newSessionHash, err := generateSecureSessionID()
+			if err != nil {
+				log.Error("Failed to generate secure session ID: " + err.Error())
+				http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+				return
+			}
+			newSessionID := requestIP + ":" + newSessionHash
+			if sessionID != newSessionID {
+				authMap.Delete(sessionID)
+			}
+			authMap.Store(newSessionID, authSession)
 			log.Debug("Auth session extended: " + requestIP)
 			next.ServeHTTP(w, req)
 			return

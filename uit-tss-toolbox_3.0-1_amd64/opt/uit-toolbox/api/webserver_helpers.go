@@ -38,7 +38,7 @@ var (
 	rateLimit            float64
 	rateLimitBurst       int
 	rateLimitBanDuration time.Duration
-	ipRequests           *LimiterMap
+	webServerLimiter     *LimiterMap
 	blockedIPs           *BlockedMap
 )
 
@@ -103,7 +103,7 @@ func (bm *BlockedMap) Block(ip string) {
 }
 
 func GetLimiter(requestIP string) *rate.Limiter {
-	return ipRequests.Get(requestIP)
+	return webServerLimiter.Get(requestIP)
 }
 
 func IsBlocked(requestIP string) bool {
@@ -116,10 +116,10 @@ func BlockIP(requestIP string) {
 
 func (as *AppState) Cleanup() {
 	ttl := time.Now().Add(-10 * time.Minute)
-	as.ipRequests.m.Range(func(key, value any) bool {
+	as.webServerLimiter.m.Range(func(key, value any) bool {
 		entry, ok := value.(*limiterEntry)
 		if !ok || entry.lastSeen.Before(ttl) {
-			as.ipRequests.m.Delete(key)
+			as.webServerLimiter.m.Delete(key)
 		}
 		return true
 	})
@@ -233,13 +233,24 @@ func generateCSRFToken() (string, error) {
 }
 
 func GetRequestIP(r *http.Request) (string, bool) {
-	ip, ok := r.Context().Value(ctxClientIP{}).(string)
-	return ip, ok
+	if ip, ok := r.Context().Value(ctxClientIP{}).(string); ok {
+		return ip, true
+	}
+	return "", false
 }
 
 func GetRequestURL(r *http.Request) (string, bool) {
-	ip, ok := r.Context().Value(ctxURLRequest{}).(string)
-	return ip, ok
+	if url, ok := r.Context().Value(ctxURLRequest{}).(string); ok {
+		return url, true
+	}
+	return "", false
+}
+
+func GetRequestedFile(req *http.Request) (string, string, string, bool) {
+	if fileRequest, ok := req.Context().Value(ctxFileRequest{}).(ctxFileRequest); ok {
+		return fileRequest.FullPath, fileRequest.ResolvedPath, fileRequest.FileName, true
+	}
+	return "", "", "", false
 }
 
 func ParseHeaders(header http.Header) HttpHeaders {
@@ -258,4 +269,13 @@ func ParseHeaders(header http.Header) HttpHeaders {
 	}
 	headers.Authorization = authHeader
 	return headers
+}
+
+func generateSecureSessionID() (string, error) {
+	b := make([]byte, 32)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(b), nil
 }

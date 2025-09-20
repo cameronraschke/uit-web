@@ -101,12 +101,18 @@ done
 
 # Client package - create .deb
 (cd /srv/uit-toolbox/client/src/uit-client/
-chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64/DEBIAN/
-chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64/DEBIAN/control
-chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64/DEBIAN/postinst
-dpkg-deb --build --root-owner-group /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64 
-mv -v /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64.deb /srv/uit-toolbox/client/pkg/uit-toolbox-client.deb
+  chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64/DEBIAN/
+  chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64/DEBIAN/control
+  chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64/DEBIAN/postinst
+  dpkg-deb --build --root-owner-group /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64 
+  mv -v /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64.deb /srv/uit-toolbox/client/pkg/uit-toolbox-client.deb
 )
+
+if [[ ! -f /srv/uit-toolbox/client/pkg/go-latest.linux-amd64.tar.gz ]]; then
+  echo "Downloading Golang..."
+  wget 'https://go.dev/dl/go1.25.1.linux-amd64.tar.gz' \
+    --output-document=/srv/uit-toolbox/client/pkg/go-latest.linux-amd64.tar.gz
+fi
 
 if [[ -f /etc/uit-toolbox.env ]]; then
   rm /etc/uit-toolbox.env

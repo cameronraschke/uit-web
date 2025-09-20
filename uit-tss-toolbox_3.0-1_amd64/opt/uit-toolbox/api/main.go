@@ -5,8 +5,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path"
-	"path/filepath"
 
 	// "net/http/httputil"
 
@@ -61,9 +59,12 @@ type AppConfig struct {
 }
 
 type AppState struct {
-	ipRequests   *LimiterMap
-	blockedIPs   *BlockedMap
-	allowedFiles map[string]bool
+	webServerLimiter *LimiterMap
+	fileLimiter      *LimiterMap
+	apiLimiter       *LimiterMap
+	authLimiter      *LimiterMap
+	blockedIPs       *BlockedMap
+	allowedFiles     map[string]bool
 }
 
 // Mux handlers
@@ -637,7 +638,8 @@ func verifyCookieLogin(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check if the Basic token exists in the database
-	sqlCode := `SELECT username as token FROM logins WHERE CONCAT(username, ':', password) = $1`
+	// sqlCode := `SELECT username as token FROM logins WHERE CONCAT(username, ':', password) = $1`
+	sqlCode := `SELECT ENCODE(SHA256(CONCAT(username, ':', password)::bytea), 'hex') as token FROM logins WHERE ENCODE(SHA256(CONCAT(username, ':', password)::bytea), 'hex') = $1`
 	rows, err := db.QueryContext(ctx, sqlCode, requestBasicToken)
 	if err != nil {
 		log.Error("Cannot query database for API Auth: " + err.Error())
@@ -748,31 +750,9 @@ func verifyCookieLogin(w http.ResponseWriter, req *http.Request) {
 	w.Write(jsonData)
 }
 
-func redirectToHTTPSHandler(httpsPort string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		requestURL, ok := GetRequestURL(req)
-		if !ok {
-			log.Warning("no URL stored in context")
-			http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
-			return
-		}
-
-		host := req.Host
-		if colon := strings.LastIndex(host, ":"); colon != -1 {
-			host = host[:colon]
-		}
-		httpsURL := "https://" + host
-		if httpsPort != "443" && httpsPort != "" {
-			httpsURL += ":" + httpsPort
-		}
-		httpsURL += host + requestURL
-		http.Redirect(w, req, httpsURL, http.StatusMovedPermanently)
-	})
-}
-
 func fileServerHandler(appState *AppState) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		// ctx := req.Context()
+		ctx := req.Context()
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
 			log.Warning("no IP address stored in context")
@@ -785,71 +765,95 @@ func fileServerHandler(appState *AppState) http.HandlerFunc {
 			http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
 			return
 		}
-
-		basePath := "/srv/uit-toolbox/"
-
-		fullPath := path.Join(basePath, requestURL)
-		_, fileRequested := path.Split(fullPath)
-
-		if len(appState.allowedFiles) > 0 && !appState.allowedFiles[fileRequested] {
-			log.Warning("File not in whitelist: " + fileRequested)
-			http.Error(w, "Forbidden", http.StatusForbidden)
+		fullPath, resolvedPath, requestedFile, ok := GetRequestedFile(req)
+		if !ok {
+			log.Warning("no requested file stored in context")
+			http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
 			return
 		}
 
-		log.Debug("File request from " + requestIP + " for " + fileRequested)
-
-		resolvedPath, err := filepath.EvalSymlinks(fullPath)
-		if err != nil || !strings.HasPrefix(resolvedPath, basePath) {
-			log.Warning("File request error from " + requestIP + " (" + resolvedPath + "): Error resolving symlink: " + err.Error())
-			http.Error(w, "Forbidden", http.StatusForbidden)
+		if resolvedPath != fullPath {
+			log.Warning("Resolved path does not match full path (" + requestIP + "): " + resolvedPath + " -> " + fullPath)
+			http.Error(w, formatHttpError("Forbidden"), http.StatusForbidden)
 			return
 		}
 
+		log.Debug("File request from " + requestIP + " for " + requestURL)
+
+		// Previous path and file validation done in middleware
 		// Open the file
-		f, err := os.Open(resolvedPath)
+		f, err := os.Open(fullPath)
 		if err != nil {
-			log.Warning("File not found: " + resolvedPath + " (" + err.Error() + ")")
+			log.Warning("File not found: " + fullPath + " (" + err.Error() + ")")
 			http.Error(w, "File not found", http.StatusNotFound)
 			return
 		}
 		defer f.Close()
 
-		// Get file info for headers
-		stat, err := f.Stat()
+		err = f.SetDeadline(time.Now().Add(30 * time.Second))
 		if err != nil {
-			log.Error("Cannot stat file: " + resolvedPath + " (" + err.Error() + ")")
+			log.Error("Cannot set file read deadline: " + fullPath + " (" + err.Error() + ")")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		if stat.IsDir() {
-			log.Warning("Attempt to access directory as file: " + resolvedPath)
-			http.Error(w, "Not a file", http.StatusForbidden)
+
+		metadata, err := f.Stat()
+		if err != nil {
+			log.Error("Cannot stat file: " + fullPath + " (" + err.Error() + ")")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
+		}
+
+		maxFileSize := int64(10) << 30 // 10 GiB
+		if metadata.Size() > maxFileSize {
+			log.Warning("File too large: " + fullPath + " (" + fmt.Sprintf("%d", metadata.Size()) + " bytes)")
+			http.Error(w, "File too large", http.StatusRequestEntityTooLarge)
+			return
+		}
+
+		// Get file info for headers
+		if strings.HasSuffix(fullPath, ".deb") {
+			w.Header().Set("Content-Type", "application/vnd.debian.binary-package")
+		} else if strings.HasSuffix(fullPath, ".gz") {
+			w.Header().Set("Content-Type", "application/gzip")
+		} else if strings.HasSuffix(fullPath, ".img") {
+			w.Header().Set("Content-Type", "application/vnd.efi.img")
+		} else if strings.HasSuffix(fullPath, ".iso") {
+			w.Header().Set("Content-Type", "application/vnd.efi.iso")
+		} else if strings.HasSuffix(fullPath, ".squashfs") {
+			w.Header().Set("Content-Type", "application/octet-stream")
+		} else if strings.HasSuffix(fullPath, ".crt") {
+			w.Header().Set("Content-Type", "application/x-x509-ca-cert")
+		} else if strings.HasSuffix(fullPath, ".pem") {
+			w.Header().Set("Content-Type", "application/pem-certificate-chain")
+		} else {
+			w.Header().Set("Content-Type", "application/octet-stream")
 		}
 
 		// Set headers
-		w.Header().Set("Content-Type", "application/octet-stream")
-		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
-		w.Header().Set("Pragma", "no-cache")
-		w.Header().Set("Expires", "0")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Content-Length", fmt.Sprintf("%d", stat.Size()))
-		w.Header().Set("Content-Disposition", "attachment; filename=\""+stat.Name()+"\"")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'")
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", metadata.Size()))
+		w.Header().Set("Content-Disposition", "attachment; filename=\""+metadata.Name()+"\"")
+		w.Header().Set("Accept-Ranges", "bytes")
+		w.Header().Set("Last-Modified", metadata.ModTime().UTC().Format(http.TimeFormat))
+		w.Header().Set("ETag", fmt.Sprintf(`"%x-%x"`, metadata.ModTime().Unix(), metadata.Size()))
+		w.Header().Set("Cache-Control", "private, max-age=300")
 
 		// Serve the file
-		_, err = io.Copy(w, f)
-		if err != nil {
-			log.Error("Error sending file (" + resolvedPath + "): " + err.Error())
+		http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), f)
+
+		if ctx.Err() != nil {
+			log.Warning("Request cancelled while serving file: " + requestedFile + " to " + requestIP + " (" + ctx.Err().Error() + ")")
 			return
 		}
-		log.Info("Served file: " + resolvedPath + " to " + requestIP)
+
+		log.Info("Served file: " + requestedFile + " to " + requestIP)
 	}
 }
 
 func webServerHandler(appState *AppState) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		// ctx := req.Context()
+		ctx := req.Context()
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
 			log.Warning("no IP address stored in context")
@@ -862,58 +866,54 @@ func webServerHandler(appState *AppState) http.HandlerFunc {
 			http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
 			return
 		}
-
-		basePath := "/var/www/html/uit-web/"
-
-		fullPath := path.Join(basePath, requestURL)
-		_, fileRequested := path.Split(fullPath)
-
-		if len(appState.allowedFiles) > 0 && !appState.allowedFiles[fileRequested] {
-			log.Warning("File not in whitelist: " + fileRequested)
-			http.Error(w, "Forbidden", http.StatusForbidden)
+		fullPath, resolvedPath, requestedFile, ok := GetRequestedFile(req)
+		if !ok {
+			log.Warning("no requested file stored in context")
+			http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
 			return
 		}
 
-		log.Debug("File request from " + requestIP + " for " + fileRequested)
-
-		resolvedPath, err := filepath.EvalSymlinks(fullPath)
-		if err != nil || !strings.HasPrefix(resolvedPath, basePath) {
-			log.Warning("File request error from " + requestIP + " (" + resolvedPath + "): Error resolving symlink: " + err.Error())
-			http.Error(w, "Forbidden", http.StatusForbidden)
+		if resolvedPath != fullPath {
+			log.Warning("Resolved path does not match full path (" + requestIP + "): " + resolvedPath + " -> " + fullPath)
+			http.Error(w, formatHttpError("Forbidden"), http.StatusForbidden)
 			return
 		}
 
+		log.Debug("File request from " + requestIP + " for " + requestURL)
+
+		// Previous path and file validation done in middleware
 		// Open the file
-		f, err := os.Open(resolvedPath)
+		f, err := os.Open(fullPath)
 		if err != nil {
-			log.Warning("File not found: " + resolvedPath + " (" + err.Error() + ")")
+			log.Warning("File not found: " + fullPath + " (" + err.Error() + ")")
 			http.Error(w, "File not found", http.StatusNotFound)
 			return
 		}
 		defer f.Close()
 
-		// Get file info for headers
-		stat, err := f.Stat()
+		err = f.SetDeadline(time.Now().Add(30 * time.Second))
 		if err != nil {
-			log.Error("Cannot stat file: " + resolvedPath + " (" + err.Error() + ")")
+			log.Error("Cannot set file read deadline: " + fullPath + " (" + err.Error() + ")")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		if stat.IsDir() {
-			log.Warning("Attempt to access directory as file: " + resolvedPath)
-			http.Error(w, "Not a file", http.StatusForbidden)
+
+		metadata, err := f.Stat()
+		if err != nil {
+			log.Error("Cannot stat file: " + fullPath + " (" + err.Error() + ")")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
-		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
-		w.Header().Set("Pragma", "no-cache")
-		w.Header().Set("Expires", "0")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Content-Disposition", "inline; filename=\""+stat.Name()+"\"")
-		w.Header().Set("Content-Length", fmt.Sprintf("%d", stat.Size()))
+		maxFileSize := int64(128) << 20 // 128 MiB
+		if metadata.Size() > maxFileSize {
+			log.Warning("File too large: " + fullPath + " (" + fmt.Sprintf("%d", metadata.Size()) + " bytes)")
+			http.Error(w, "File too large", http.StatusRequestEntityTooLarge)
+			return
+		}
 
 		// Set headers
-		if strings.HasSuffix(fileRequested, ".html") {
+		if strings.HasSuffix(requestedFile, ".html") {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			// Parse the template
 			htmlTemp, err := template.ParseFiles(resolvedPath)
@@ -929,37 +929,36 @@ func webServerHandler(appState *AppState) http.HandlerFunc {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-		} else if strings.HasSuffix(fileRequested, ".css") {
+			return
+		} else if strings.HasSuffix(requestedFile, ".css") {
 			w.Header().Set("Content-Type", "text/css; charset=utf-8")
-			// Serve the CSS file
-			_, err = io.Copy(w, f)
-			if err != nil {
-				log.Error("Error sending file (" + resolvedPath + "): " + err.Error())
-				return
-			}
-		} else if strings.HasSuffix(fileRequested, ".js") {
+		} else if strings.HasSuffix(requestedFile, ".js") {
 			w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-			// Serve the JS file
-			_, err = io.Copy(w, f)
-			if err != nil {
-				log.Error("Error sending file (" + resolvedPath + "): " + err.Error())
-				return
-			}
-		} else if strings.HasSuffix(fileRequested, ".ico") {
+		} else if strings.HasSuffix(requestedFile, ".ico") {
 			w.Header().Set("Content-Type", "image/x-icon")
-			// Serve the favicon
-			_, err = io.Copy(w, f)
-			if err != nil {
-				log.Error("Error sending file (" + resolvedPath + "): " + err.Error())
-				return
-			}
 		} else {
-			log.Warning("Unknown file type requested: " + fileRequested)
+			log.Warning("Unknown file type requested: " + requestedFile)
 			http.Error(w, "Unsupported Media Type", http.StatusUnsupportedMediaType)
 			return
 		}
 
-		log.Debug("Served file: " + resolvedPath + " to " + requestIP)
+		// Set headers
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'")
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", metadata.Size()))
+		w.Header().Set("Content-Disposition", "inline; filename=\""+metadata.Name()+"\"")
+		w.Header().Set("Last-Modified", metadata.ModTime().UTC().Format(http.TimeFormat))
+		w.Header().Set("ETag", fmt.Sprintf(`"%x-%x"`, metadata.ModTime().Unix(), metadata.Size()))
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+
+		// Serve the file
+		http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), f)
+
+		if ctx.Err() != nil {
+			log.Warning("Request cancelled while serving file: " + requestedFile + " to " + requestIP + " (" + ctx.Err().Error() + ")")
+			return
+		}
+
+		log.Info("Served file: " + requestedFile + " to " + requestIP)
 	}
 }
 
@@ -1215,36 +1214,40 @@ func main() {
 	appConfig := configureEnvironment()
 
 	appState := &AppState{
-		ipRequests: &LimiterMap{rate: rateLimit, burst: rateLimitBurst},
-		blockedIPs: &BlockedMap{banPeriod: rateLimitBanDuration},
+		webServerLimiter: &LimiterMap{rate: rateLimit, burst: rateLimitBurst},
+		fileLimiter:      &LimiterMap{rate: rateLimit, burst: rateLimitBurst},
+		apiLimiter:       &LimiterMap{rate: rateLimit, burst: rateLimitBurst},
+		authLimiter:      &LimiterMap{rate: rateLimit, burst: rateLimitBurst},
+		blockedIPs:       &BlockedMap{banPeriod: rateLimitBanDuration},
 		allowedFiles: map[string]bool{
-			"filesystem.squashfs":    true,
-			"initrd.img":             true,
-			"vmlinuz":                true,
-			"uit-ca.crt":             true,
-			"uit-web.crt":            true,
-			"uit-toolbox-client.deb": true,
-			"desktop.css":            true,
-			"favicon.ico":            true,
-			"header.html":            true,
-			"footer.html":            true,
-			"index.html":             true,
-			"login.html":             true,
-			"auth-webworker.js":      true,
-			"footer.js":              true,
-			"header.js":              true,
-			"init.js":                true,
-			"include.js":             true,
-			"login.js":               true,
-			"logout.js":              true,
-			"inventory.html":         true,
-			"inventory.js":           true,
-			"checkouts.html":         true,
-			"checkouts.js":           true,
-			"job_queue.html":         true,
-			"job_queue.js":           true,
-			"reports.html":           true,
-			"reports.js":             true,
+			"filesystem.squashfs":          true,
+			"initrd.img":                   true,
+			"vmlinuz":                      true,
+			"uit-ca.crt":                   true,
+			"uit-web.crt":                  true,
+			"uit-toolbox-client.deb":       true,
+			"desktop.css":                  true,
+			"favicon.ico":                  true,
+			"header.html":                  true,
+			"footer.html":                  true,
+			"index.html":                   true,
+			"login.html":                   true,
+			"auth-webworker.js":            true,
+			"footer.js":                    true,
+			"header.js":                    true,
+			"init.js":                      true,
+			"include.js":                   true,
+			"login.js":                     true,
+			"logout.js":                    true,
+			"inventory.html":               true,
+			"inventory.js":                 true,
+			"checkouts.html":               true,
+			"checkouts.js":                 true,
+			"job_queue.html":               true,
+			"job_queue.js":                 true,
+			"reports.html":                 true,
+			"reports.js":                   true,
+			"go-latest.linux-amd64.tar.gz": true,
 		},
 	}
 
@@ -1280,29 +1283,28 @@ func main() {
 	db.SetConnMaxIdleTime(1 * time.Minute)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
-	fileServerMuxChain := muxChain{
-		limitRequestSizeMiddleware,
-		timeoutMiddleware,
-		storeClientIPMiddleware,
-		checkValidURLMiddleware,
-		allowIPRangeMiddleware(appConfig.UIT_LAN_ALLOWED_IP),
-		rateLimitMiddleware(appState),
-	}
-
-	httpRedirectToHttps := muxChain{
+	fileServerBaseChain := muxChain{
 		limitRequestSizeMiddleware,
 		timeoutMiddleware,
 		storeClientIPMiddleware,
 		checkValidURLMiddleware,
 		allowIPRangeMiddleware(appConfig.UIT_ALL_ALLOWED_IP),
-		rateLimitMiddleware(appState),
+		rateLimitMiddleware(appState, "file"),
+		httpMethodMiddleware,
+		checkHeadersMiddleware,
+		setHeadersMiddleware,
 	}
 
-	httpMux := http.NewServeMux()
-	httpMux.Handle("/client/", fileServerMuxChain.then(fileServerHandler(appState)))
-	httpMux.Handle("/client", fileServerMuxChain.thenFunc(rejectRequest))
-	httpMux.Handle("/", httpRedirectToHttps.then(redirectToHTTPSHandler("31411")))
+	fileServerMuxChain := muxChain{
+		allowedFilesMiddleware(appState),
+	}
 
+	fileServerFullChain := append(fileServerBaseChain, fileServerMuxChain...)
+
+	httpMux := http.NewServeMux()
+	httpMux.Handle("/client/", fileServerFullChain.then(fileServerHandler(appState)))
+	httpMux.Handle("/client", fileServerFullChain.thenFunc(rejectRequest))
+	httpMux.Handle("/", fileServerBaseChain.thenFunc(rejectRequest))
 	httpServer := &http.Server{
 		Addr:         appConfig.UIT_LAN_IP_ADDRESS + ":8080",
 		Handler:      httpMux,
@@ -1326,69 +1328,54 @@ func main() {
 	//   }
 	// }()
 
-	// Route to correct function
-	httpsNoAuth := muxChain{
+	// https handlers and middleware chains
+	httpsBaseChain := muxChain{
 		limitRequestSizeMiddleware,
 		timeoutMiddleware,
 		storeClientIPMiddleware,
 		checkValidURLMiddleware,
 		allowIPRangeMiddleware(appConfig.UIT_ALL_ALLOWED_IP),
-		rateLimitMiddleware(appState),
+		rateLimitMiddleware(appState, "web"),
 		tlsMiddleware,
 		httpMethodMiddleware,
 		checkHeadersMiddleware,
 		setHeadersMiddleware,
 	}
 
-	httpsApiAuth := muxChain{
-		limitRequestSizeMiddleware,
-		timeoutMiddleware,
-		storeClientIPMiddleware,
-		checkValidURLMiddleware,
-		allowIPRangeMiddleware(appConfig.UIT_ALL_ALLOWED_IP),
-		rateLimitMiddleware(appState),
-		tlsMiddleware,
-		httpMethodMiddleware,
-		checkHeadersMiddleware,
-		setHeadersMiddleware,
+	// No allowedFilesMiddleware here, as API calls do not serve files
+	httpsBaseAPIChain := muxChain{
 		apiAuth,
 	}
 
-	httpsCookieAuth := muxChain{
-		limitRequestSizeMiddleware,
-		timeoutMiddleware,
-		storeClientIPMiddleware,
-		checkValidURLMiddleware,
-		allowIPRangeMiddleware(appConfig.UIT_ALL_ALLOWED_IP),
-		rateLimitMiddleware(appState),
-		tlsMiddleware,
-		httpMethodMiddleware,
-		checkHeadersMiddleware,
-		setHeadersMiddleware,
+	httpsBaseCookieAuthChain := muxChain{
+		allowedFilesMiddleware(appState),
 		httpCookieAuth,
 	}
 
+	httpsFullCookieAuthChain := append(httpsBaseChain, httpsBaseCookieAuthChain...)
+	httpsFullAPIChain := append(httpsBaseChain, httpsBaseAPIChain...)
+
 	httpsMux := http.NewServeMux()
-	httpsMux.Handle("GET /api/server_time", httpsApiAuth.thenFunc(getServerTime))
-	httpsMux.Handle("GET /api/lookup", httpsApiAuth.thenFunc(getClientLookup))
-	httpsMux.Handle("GET /api/client/hardware", httpsApiAuth.thenFunc(getHardwareData))
-	httpsMux.Handle("GET /api/client/bios", httpsApiAuth.thenFunc(getBiosData))
-	httpsMux.Handle("GET /api/client/os", httpsApiAuth.thenFunc(getOSData))
-	httpsMux.Handle("GET /api/job_queue/overview", httpsApiAuth.thenFunc(getJobQueueOverview))
-	httpsMux.Handle("GET /api/job_queue/client/queued_job", httpsApiAuth.thenFunc(getClientQueuedJobs))
-	httpsMux.Handle("GET /api/job_queue/client/job_available", httpsApiAuth.thenFunc(getClientAvailableJobs))
+	httpsMux.Handle("GET /api/server_time", httpsFullAPIChain.thenFunc(getServerTime))
+	httpsMux.Handle("GET /api/lookup", httpsFullAPIChain.thenFunc(getClientLookup))
+	httpsMux.Handle("GET /api/client/hardware", httpsFullAPIChain.thenFunc(getHardwareData))
+	httpsMux.Handle("GET /api/client/bios", httpsFullAPIChain.thenFunc(getBiosData))
+	httpsMux.Handle("GET /api/client/os", httpsFullAPIChain.thenFunc(getOSData))
+	httpsMux.Handle("GET /api/job_queue/overview", httpsFullAPIChain.thenFunc(getJobQueueOverview))
+	httpsMux.Handle("GET /api/job_queue/client/queued_job", httpsFullAPIChain.thenFunc(getClientQueuedJobs))
+	httpsMux.Handle("GET /api/job_queue/client/job_available", httpsFullAPIChain.thenFunc(getClientAvailableJobs))
 
-	httpsMux.Handle("GET /login.html", httpsNoAuth.then(webServerHandler(appState)))
-	httpsMux.Handle("POST /login.html", httpsNoAuth.thenFunc(verifyCookieLogin))
-	httpsMux.Handle("/js/login.js", httpsNoAuth.then(webServerHandler(appState)))
-	httpsMux.Handle("/css/desktop.css", httpsNoAuth.then(webServerHandler(appState)))
-	httpsMux.Handle("/favicon.ico", httpsNoAuth.then(webServerHandler(appState)))
+	httpsMux.Handle("GET /login.html", httpsBaseChain.then(webServerHandler(appState)))
+	httpsMux.Handle("POST /login.html", httpsBaseChain.thenFunc(verifyCookieLogin))
+	httpsMux.Handle("/js/login.js", httpsBaseChain.then(webServerHandler(appState)))
+	httpsMux.Handle("/css/desktop.css", httpsBaseChain.then(webServerHandler(appState)))
+	httpsMux.Handle("/favicon.ico", httpsBaseChain.then(webServerHandler(appState)))
 
-	httpsMux.Handle("GET /logout", httpsCookieAuth.then(logoutHandler(appState)))
+	httpsMux.Handle("GET /logout", httpsFullCookieAuthChain.then(logoutHandler(appState)))
 
-	httpsMux.Handle("/js/", httpsCookieAuth.then(webServerHandler(appState)))
-	httpsMux.Handle("/css/", httpsCookieAuth.then(webServerHandler(appState)))
-	httpsMux.Handle("/", httpsCookieAuth.then(webServerHandler(appState)))
+	httpsMux.Handle("/js/", httpsFullCookieAuthChain.then(webServerHandler(appState)))
+	httpsMux.Handle("/css/", httpsFullCookieAuthChain.then(webServerHandler(appState)))
+	httpsMux.Handle("/", httpsFullCookieAuthChain.then(webServerHandler(appState)))
 	// httpsMux.HandleFunc("/dbstats/", GetInfoHandler)
 
 	log.Info("Starting web server")
