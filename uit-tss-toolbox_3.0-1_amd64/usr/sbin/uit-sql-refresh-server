@@ -1,0 +1,189 @@
+#!/usr/bin/php
+<?php
+/* "uit-sql-refresh-server" uses PHP to refresh the serverstats table in the mysql database. The
+serverstats table is a table that contains the highest level of statistics in our database. 
+This script iterates through every date starting at 2023-01-09 (our first database entry) until the 
+current date and updates all of the entries accordingly. */
+
+# Connect to database and include custom functions
+require('/var/www/html/uit-web/php/include.php');
+
+$timer = new scriptTimer();
+
+echo "Updating serverstats" . PHP_EOL;
+$timer->start();
+
+# Set $startDate to the oldest date entry in the DB.
+$startDate = '2023-01-09';
+$endDate = $date;
+
+// New DB connection
+$db = new db();
+
+
+# Iterate through all the dates between $startDate and $date.
+$db->Pselect("CALL iterateDate(:startDate, :endDate)", array(':startDate' => $startDate, ':endDate' => $endDate));
+
+foreach ($db->get() as $key => $iteratedDate) {
+
+  # Start the timer that counts how much time each date takes to process.
+  echo PHP_EOL;
+  $timer->startMarker();
+
+  $db->Pselect("SELECT :iteratedDate AS 'date', t1.client_count, 
+    (t2.erase_job_count + t3.clone_job_count) AS 'total_job_count',
+    t2.erase_job_count, t2.avg_erase_time,
+    t3.clone_job_count, t3.avg_clone_time,
+    t4.last_image_update,
+    t5.disk_health, t6.battery_health, t7.total_os_installed
+  FROM tbl_results
+  INNER JOIN 
+    (SELECT :iteratedDate AS 'date', 
+      COUNT(tagnumber) AS 'client_count' 
+    FROM 
+      (SELECT tagnumber 
+      FROM locations 
+      WHERE department IN 
+        (SELECT department FROM static_departments 
+        WHERE department_bool = 1) 
+          AND tagnumber IS NOT NULL 
+          AND DATE(time) <= :iteratedDate 
+        GROUP BY tagnumber
+        ) s1
+      ) t1 ON tbl_results.date = t1.date
+  INNER JOIN 
+    (SELECT :iteratedDate AS 'date', 
+      COUNT(erase_rows) AS 'erase_job_count', 
+      ROUND(AVG(erase_time / 60), 0) AS 'avg_erase_time' 
+    FROM 
+      (SELECT ROW_NUMBER() OVER (PARTITION BY jobstats.tagnumber ORDER BY jobstats.time DESC) AS 'erase_rows', 
+        jobstats.erase_time 
+      FROM jobstats 
+      LEFT JOIN locations ON jobstats.tagnumber = locations.tagnumber
+      INNER JOIN (SELECT MAX(time) AS 'time' FROM locations GROUP BY tagnumber) ss1 ON locations.time = ss1.time
+      WHERE jobstats.erase_completed = 1 
+        AND jobstats.erase_time IS NOT NULL 
+        AND jobstats.date <= :iteratedDate 
+        AND locations.department IN (SELECT department FROM static_departments WHERE department_bool = 1)
+      ) s1 
+    WHERE s1.erase_rows < 3) t2 
+    ON tbl_results.date = t2.date
+  INNER JOIN 
+    (SELECT :iteratedDate AS 'date', 
+      COUNT(clone_rows) AS 'clone_job_count', 
+      ROUND(AVG(clone_time / 60), 0) AS 'avg_clone_time' 
+    FROM 
+      (SELECT ROW_NUMBER() OVER (PARTITION BY jobstats.tagnumber ORDER BY jobstats.time DESC) AS 'clone_rows', 
+        jobstats.clone_time 
+      FROM jobstats 
+      LEFT JOIN locations ON jobstats.tagnumber = locations.tagnumber
+      INNER JOIN (SELECT MAX(time) AS 'time' FROM locations GROUP BY tagnumber) ss2 ON locations.time = ss2.time
+      WHERE jobstats.clone_completed = 1 
+        AND jobstats.clone_time IS NOT NULL 
+        AND jobstats.date <= :iteratedDate 
+        AND locations.department IN 
+          (SELECT department FROM static_departments WHERE department_bool = 1)
+      ) s2 
+    WHERE s2.clone_rows < 3
+  ) t3 ON tbl_results.date = t3.date
+  LEFT JOIN (
+    SELECT :iteratedDate AS 'date', COUNT(s7.tagnumber) AS 'total_os_installed' FROM 
+    (
+      SELECT tagnumber, clone_completed, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS 'row_count' 
+        FROM jobstats 
+        WHERE DATE(jobstats.time) <= :iteratedDate 
+          AND (erase_completed = 1 OR clone_completed = 1) 
+          AND tagnumber IS NOT NULL 
+          AND system_serial IS NOT NULL
+    ) s7
+    INNER JOIN (SELECT tagnumber, department FROM locations WHERE time IN (SELECT MAX(time) FROM locations WHERE DATE(time) <= :iteratedDate GROUP BY tagnumber)) ss7 ON s7.tagnumber = ss7.tagnumber
+    WHERE s7.row_count = 1 AND s7.clone_completed = 1 AND NOT ss7.department = 'property'
+  ) t7 ON tbl_results.date = t7.date
+  INNER JOIN 
+    (SELECT :iteratedDate AS 'date', 
+      DATE(jobstats.time) AS 'last_image_update' 
+    FROM jobstats 
+    LEFT JOIN locations ON jobstats.tagnumber = locations.tagnumber
+    INNER JOIN (SELECT MAX(time) AS 'time' FROM locations GROUP BY tagnumber) s4 ON locations.time = s4.time
+    WHERE jobstats.clone_completed = 1 AND jobstats.clone_master = 1 
+      AND locations.department IN 
+        (SELECT department FROM static_departments WHERE department_bool = 1) 
+      AND DATE(jobstats.time) <= :iteratedDate 
+    ORDER BY jobstats.time DESC 
+    LIMIT 1) t4 ON tbl_results.date = t4.date
+  LEFT JOIN (
+      SELECT
+        :iteratedDate AS 'date',
+        ROUND(AVG((CASE
+          WHEN static_disk_stats.disk_type = 'hdd' AND static_disk_stats.disk_tbw IS NOT NULL AND static_disk_stats.disk_mtbf IS NOT NULL THEN ROUND(100 - (((((jobstats.disk_reads + jobstats.disk_writes) / static_disk_stats.disk_tbw) + (jobstats.disk_power_on_hours / static_disk_stats.disk_mtbf)) / 2) * 100), 2)
+          WHEN static_disk_stats.disk_type = 'hdd' AND static_disk_stats.disk_tbw IS NOT NULL AND static_disk_stats.disk_mtbf IS NULL THEN ROUND(100 - (((jobstats.disk_reads + jobstats.disk_writes) / static_disk_stats.disk_tbw) * 100), 2)
+          WHEN static_disk_stats.disk_type = 'hdd' AND static_disk_stats.disk_tbw IS NULL AND static_disk_stats.disk_mtbf IS NOT NULL THEN ROUND(100 - ((jobstats.disk_power_on_hours / static_disk_stats.disk_mtbf) * 100), 2)
+          WHEN static_disk_stats.disk_type = 'ssd' OR static_disk_stats.disk_type = 'nvme' THEN ROUND(100 - (((((jobstats.disk_writes / static_disk_stats.disk_tbw) + (jobstats.disk_power_on_hours / static_disk_stats.disk_mtbf)) / 2) * 100)), 2)
+          ELSE NULL
+        END
+        )), 2) AS 'disk_health'
+      FROM jobstats
+    LEFT JOIN static_disk_stats ON jobstats.disk_model = static_disk_stats.disk_model
+    INNER JOIN (SELECT MAX(time) AS 'time' FROM jobstats WHERE disk_model IS NOT NULL AND DATE(time) <= :iteratedDate GROUP BY tagnumber) s3 ON jobstats.time = s3.time
+    WHERE DATE(jobstats.time) <= :iteratedDate
+    ) t5 ON tbl_results.date <= t5.date
+  LEFT JOIN (SELECT
+    :iteratedDate AS 'date',
+      ROUND(AVG((CASE
+        WHEN jobstats.battery_health IS NOT NULL AND jobstats.battery_charge_cycles IS NOT NULL THEN ROUND(((jobstats.battery_health + (100 - ((jobstats.battery_charge_cycles / static_battery_stats.battery_charge_cycles) * 100))) / 2), 0)
+        WHEN jobstats.battery_health IS NOT NULL AND jobstats.battery_charge_cycles IS NULL THEN ROUND((jobstats.battery_health), 0)
+        WHEN jobstats.battery_health IS NULL AND jobstats.battery_charge_cycles IS NOT NULL THEN ROUND((100 - (((jobstats.battery_charge_cycles / static_battery_stats.battery_charge_cycles) * 100))), 0)
+      END
+      )), 2) AS 'battery_health'
+    FROM jobstats
+    LEFT JOIN static_battery_stats ON jobstats.battery_model = static_battery_stats.battery_model
+    INNER JOIN (SELECT MAX(time) AS 'time' FROM jobstats WHERE battery_model IS NOT NULL AND DATE(time) <= :iteratedDate GROUP BY tagnumber) s4 ON jobstats.time = s4.time
+    WHERE DATE(jobstats.time) <= :iteratedDate) t6 ON tbl_results.date = t6.date", array(':iteratedDate' => $iteratedDate["date"]));
+
+    foreach ($db->get() as $key => $value) {
+
+    # If the current date does not exist in the serverstats table, then create an entry for the current date.
+    $db->Pselect("SELECT date FROM serverstats WHERE date = :date", array(':date' => $value["date"]));
+    if (arrFilter($db->get()) === 1) {
+        echo "Inserting new serverstats entry for " . $value["date"] . PHP_EOL;
+        $db->insertSS($value["date"]);
+    }
+
+    # Client count
+    $db->updateSS("client_count", $value["client_count"], $value["date"]);
+
+    # Update the average time taken to clone a computer.
+    $db->updateSS("avg_clone_time", $value["avg_clone_time"], $value["date"]);
+
+
+    # Update the average erase time
+    $db->updateSS("avg_erase_time", $value["avg_erase_time"], $value["date"]);
+
+
+    # Update the number of erase jobs, clone jobs, and total jobs
+    $db->updateSS("erase_job_count", $value["erase_job_count"], $value["date"]);
+    $db->updateSS("clone_job_count", $value["erase_job_count"], $value["date"]);
+    $db->updateSS("total_job_count", $value["total_job_count"], $value["date"]);
+
+
+    # Update date of last image update
+    $db->updateSS("last_image_update", $value["last_image_update"], $value["date"]);
+
+    # Update overall disk health
+    $db->updateSS("disk_health", $value["disk_health"], $value["date"]);
+
+    # Update overall battery health
+    $db->updateSS("battery_health", $value["battery_health"], $value["date"]);
+
+    // Update how many OS's are installed at a given time period
+    $db->updateSS("total_os_installed", $value["total_os_installed"], $value["date"]);
+
+    # End the marker timer
+    echo "Time taken to update " . $value["date"] . ": " . $timer->endMarker() . "s" . PHP_EOL;
+}
+}
+
+# Stop the timer
+echo "(Updated) serverstats: " . $timer->end() . " seconds" . PHP_EOL;
+
+?>

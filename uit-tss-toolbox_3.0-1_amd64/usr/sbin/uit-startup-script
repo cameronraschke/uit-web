@@ -1,0 +1,7 @@
+#!/bin/bash
+
+systemctl restart dnsmasq chrony mysql nginx apache2 nfs-kernel-server
+
+uit-firewall
+
+mount -o loop /opt/uit-toolbox/debian-live/uit-toolbox-client-amd64.hybrid.iso /srv/uit-toolbox/client/iso/

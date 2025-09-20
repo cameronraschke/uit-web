@@ -1,0 +1,292 @@
+#!/bin/bash
+
+if [[ "$EUID" > 0 ]]
+  then echo "Please run as root"
+  exit 1
+fi
+
+function confirmDelete {
+    read -p "Are you sure you want to continue [y/n]: " CONFIRM
+    if [[ $CONFIRM == "y" ]]; then
+        return
+    elif [[ $CONFIRM == "n" ]]; then
+        exit 1
+    else
+        confirmDelete
+    fi
+}
+confirmDelete
+
+if [[ -f /tmp/debian-live.deb ]]; then
+	rm /tmp/debian-live.deb
+fi
+
+apt purge live-build -y
+wget http://ftp.us.debian.org/debian/pool/main/l/live-build/live-build_20250505_all.deb \
+	--output-document=/tmp/debian-live.deb
+apt install /tmp/debian-live.deb -y
+
+apt install dosfstools -y
+
+apt install debian-archive-keyring -y
+
+if [[ ! -d /tmp/uit-toolbox-live-iso/ ]]; then
+	mkdir /tmp/uit-toolbox-live-iso/
+fi
+
+( cd /tmp/uit-toolbox-live-iso/ && \
+
+		lb clean && \
+
+		lb config \
+			--apt apt \
+			--apt-options "--yes"\
+			--apt-recommends true \
+			--apt-secure true \
+			--apt-source-archives true \
+			--architecture amd64 \
+			--archive-areas 'main contrib non-free non-free-firmware' \
+			--binary-filesystem fat32 \
+			--binary-images iso-hybrid \
+			--bootappend-live "fetch=10.0.0.1:8080/client/iso/live/filesystem.squashfs \
+ 				boot=live toram username=root hostname=uit-toolbox-client \
+				timezone=America/Chicago locales=en_US.UTF-8" \
+			--bootloaders "grub-efi syslinux" \
+			--chroot-filesystem squashfs \
+			--color \
+			--compression gzip \
+			--clean \
+			--debian-installer live \
+			--debian-installer-distribution bookworm \
+			--distribution bookworm \
+			--debootstrap-options "--arch=amd64 --variant=minbase" \
+			--hdd-label uit-toolbox-client \
+			--hdd-size auto \
+			--image-name uit-toolbox-client \
+			--initramfs live-boot \
+			--initsystem systemd \
+			--iso-application uit-toolbox-client \
+			--iso-preparer "Cameron Raschke caraschke@uh.edu" \
+			--iso-publisher "Cameron Raschke caraschke@uh.edu" \
+			--iso-volume uit-toolbox-client \
+			--memtest none \
+			--mode debian \
+			--system live \
+			--uefi-secure-boot enable \
+			--updates true \
+			--zsync true)
+
+mkdir -p /tmp/uit-toolbox-live-iso/config/bootloaders
+cp -r /usr/share/live/build/bootloaders/isolinux /tmp/uit-toolbox-live-iso/config/bootloaders
+cp -r /usr/share/live/build/bootloaders/grub-pc /tmp/uit-toolbox-live-iso/config/bootloaders
+
+cat <<'EOF' > /tmp/uit-toolbox-live-iso/config/bootloaders/isolinux/isolinux.cfg
+UI vesamenu.c32
+MENU TITLE Boot Menu
+DEFAULT linux
+        TIMEOUT 10
+        MENU RESOLUTION 640 480
+        SAY Now booting into UIT-Toolbox Client by Cameron Raschke
+label linux
+        menu label UIT-Toolbox Client by Cameron Raschke
+        menu default
+        linux /live/vmlinuz
+        initrd /live/initrd.img
+        append @APPEND_LIVE@
+EOF
+
+rm -r /tmp/uit-toolbox-live-iso/config/bootloaders/grub-pc/*
+cat <<'EOF' > /tmp/uit-toolbox-live-iso/config/bootloaders/grub-pc/grub.cfg
+insmod part_gpt
+insmod part_msdos
+insmod fat
+insmod iso9660
+insmod gfxterm
+
+set gfxmode=800x600
+terminal_output gfxterm
+
+set default="0"
+set timeout=0
+set timeout_style=hidden
+
+menuentry "UIT-Toolbox Client by Cameron Raschke" {
+    	linux @KERNEL_LIVE@ @APPEND_LIVE@
+    	initrd @INITRD_LIVE@
+}
+EOF
+
+cat <<'EOF' > /tmp/uit-toolbox-live-iso/config/package-lists/live.list.chroot
+live-boot
+live-config
+live-config-systemd
+systemd-sysv
+openssl
+less
+iproute2
+curl
+wget
+openssh-client
+nano
+vim
+clonezilla
+cifs-utils
+passwd
+locales
+firmware-linux-free
+firmware-linux
+firmware-linux-nonfree
+apt-utils
+parted
+partclone
+partimage
+gparted
+ethtool
+isc-dhcp-client
+net-tools
+gzip
+lzip
+zstd
+lzop
+lzma
+bzip2
+xz-utils
+lz4
+sudo
+chntpw
+libasound2
+libasound2-plugins
+alsa-utils
+sox
+libsox-fmt-all
+ca-certificates
+sshpass
+kbd
+procps
+dosfstools
+efibootmgr
+efivar
+ntfs-3g
+libfsntfs-dev
+libfsntfs-utils
+iptables
+hdparm
+util-linux
+nvme-cli
+coreutils
+pv
+default-mysql-client
+dmidecode
+sshfs
+php
+php-cli
+php-mysql
+php-pgsql
+httpfs2
+nfs-common
+smartmontools
+upower
+iputils-ping
+iputils-arping
+iputils-tracepath
+gpg
+php-bcmath
+usbutils
+bc
+chrony
+netcat-traditional
+iperf3
+fbgrab
+php-gd
+ffmpeg
+fbset
+EOF
+
+mkdir -p /tmp/uit-toolbox-live-iso/config/includes.chroot/root/
+cat <<'EOF' > /tmp/uit-toolbox-live-iso/config/hooks/live/0100-uit-toolbox-client-setup.hook.chroot
+
+sysctl --quiet --write "net.ipv6.conf.all.disable_ipv6=1"
+sysctl --quiet --write "net.ipv6.conf.default.disable_ipv6=1"
+sysctl --quiet --write "net.ipv4.conf.default.rp_filter=2"
+sysctl --quiet --write "net.ipv4.conf.all.rp_filter=2"
+sysctl --quiet --write "net.ipv4.ip_forward=0"
+sysctl --quiet --write "net.ipv6.conf.all.forwarding=1"
+sysctl --quiet --write "net.ipv6.conf.default.forwarding=1"
+sysctl --quiet --load
+
+sysctl --quiet --write "kernel.printk=2 4 1 2"
+sysctl --quiet --write "kernel.kptr_restrict=1"
+sysctl --quiet --write "vm.mmap_min_addr=65536"
+sysctl --quiet --load
+
+echo "uit-toolbox-client" > /etc/hostname
+echo -e "\nWelcome to UIT-Toolbox Client by Cameron Raschke.\n" > /etc/motd
+echo -e "\nWelcome to UIT-Toolbox Client by Cameron Raschke.\n" > /etc/issue.net
+echo -e "Banner /etc/issue.net" >> /etc/ssh/sshd_config
+
+update-smart-drivedb
+EOF
+
+chmod 777 /tmp/uit-toolbox-live-iso/config/hooks/live/0100-uit-toolbox-client-setup.hook.chroot
+
+mkdir -p /tmp/uit-toolbox-live-iso/config/includes.chroot/root/
+wget https://soundboardguy.com/wp-content/uploads/2022/01/Oven-Timer-Ding.mp3 \
+--output-document=/tmp/uit-toolbox-live-iso/config/includes.chroot/root/oven.mp3
+
+mkdir -p /tmp/uit-toolbox-live-iso/config/includes.chroot/root
+touch /tmp/uit-toolbox-live-iso/config/includes.chroot/root/.bash_profile
+cat <<'EOF' > /tmp/uit-toolbox-live-iso/config/includes.chroot/root/.bash_profile
+#!/bin/bash
+
+RED=$(tput setaf 1)
+GREEN=$(tput setaf 2)
+BLUE=$(tput setaf 4)
+BOLD=$(tput bold)
+DIM=$(tput dim)
+RESET=$(tput sgr0)
+
+tput reset
+echo ""
+echo -n "${RESET}UIT-Toolbox Client by ${BOLD}Cameron Raschke${RESET} ${DIM}(caraschke@uh.edu)${RESET}${BOLD}. "
+echo "${BOLD}${RED}Go coogs!!${RESET}"
+echo ""
+
+echo ""
+echo "${BOLD}Configuring Kernel....${RESET}"
+sysctl --quiet --write "kernel.printk=2 4 1 2"
+sysctl --quiet --write "kernel.kptr_restrict=1"
+sysctl --quiet --write "vm.mmap_min_addr=65536"
+sysctl --quiet --load
+echo "${GREEN}Done.${RESET}"
+
+
+echo ""
+echo "${BOLD}Installing the client package${RESET}"
+if [[ $(dpkg-query -l | grep --quiet uit-toolbox-client; echo $?) == 0 ]]; then
+	dpkg --purge uit-toolbox-client 
+fi
+
+if [[ -f /root/uit-toolbox-client.deb ]]; then
+	rm /root/uit-toolbox-client.deb
+fi
+
+curl 'http://mickey.uit:8080/client/pkg/uit-toolbox-client.deb' --output /root/uit-toolbox-client.deb &>/dev/null
+while [[ ! -f /root/uit-toolbox-client.deb ]]; do
+	curl 'http://mickey.uit:8080/client/pkg/uit-toolbox-client.deb' --output /root/uit-toolbox-client.deb &>/dev/null
+	sleep 1
+done
+dpkg --install /root/uit-toolbox-client.deb &>/dev/null
+echo "${GREEN}Done.${RESET}"
+
+rm /root/uit-toolbox-client.deb
+
+/usr/sbin/uit-toolbox-client
+EOF
+
+(cd /tmp/uit-toolbox-live-iso/
+lb build)
+
+rsync -Pav /tmp/uit-toolbox-live-iso/ /opt/uit-toolbox/debian-live/
+
+umount /srv/uit-toolbox/client/iso
+mount /opt/uit-toolbox/debian-live/uit-toolbox-client-amd64.hybrid.iso /srv/uit-toolbox/client/iso

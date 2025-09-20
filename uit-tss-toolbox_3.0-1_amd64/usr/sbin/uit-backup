@@ -1,0 +1,6 @@
+#!/bin/bash
+
+DTIME=$(date '+%F-%H%M%S')
+sudo -u postgres pg_dump uitdb > /opt/uit-toolbox/sql-backups/pg_backup-$(date '+%F-%H%M%S').sql
+
+#rsync -a --delete /srv/nfs/uit-toolbox/images/ /opt/uit-toolbox/image-backups/

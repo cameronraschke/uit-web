@@ -1,0 +1,64 @@
+#!/bin/bash
+wanif='UIT_WAN_IF'
+wan='UIT_WAN_ALLOWED_IP'
+lanif='UIT_LAN_IF'
+lan='UIT_LAN_ALLOWED_IP'
+printer='UIT_PRINTER_IP'
+
+# Disable IP forwarding and IPv6
+sysctl -w net.ipv4.ip_forward=0
+sysctl -w net.ipv6.conf.all.disable_ipv6=1
+sysctl -w net.ipv6.conf.default.disable_ipv6=1
+sysctl -p
+
+
+# Clear Current Rules
+iptables --table raw --flush
+iptables --table raw --delete-chain
+iptables --table nat --flush
+iptables --table nat --delete-chain
+iptables --table mangle --flush
+iptables --table mangle --delete-chain
+iptables --table filter --flush
+iptables --table filter --delete-chain
+
+
+# Loopback Traffic
+iptables --table filter --append INPUT --in-interface lo --jump ACCEPT
+iptables --table filter --append OUTPUT --out-interface lo --jump ACCEPT
+
+# INPUT Traffic WAN
+iptables --table filter --append INPUT --in-interface "${wanif}" --source "${wan}" --match conntrack --ctstate NEW,RELATED,ESTABLISHED --protocol tcp --match multiport --destination-ports 22,1411,31411 --jump ACCEPT
+iptables --table filter --append INPUT --in-interface "${wanif}" --source "${printer}" --match conntrack --ctstate NEW,RELATED,ESTABLISHED --jump ACCEPT
+iptables --table filter --append INPUT --in-interface "${wanif}" --match conntrack --ctstate NEW,RELATED,ESTABLISHED --protocol udp --match multiport --destination-ports 68,5353 --jump ACCEPT
+iptables --table filter --append INPUT --in-interface "${wanif}" --match conntrack --ctstate RELATED,ESTABLISHED --protocol udp --match multiport --source-ports 53,123 --jump ACCEPT
+iptables --table filter --append INPUT --in-interface "${wanif}" --match conntrack --ctstate RELATED,ESTABLISHED --protocol tcp --match multiport --source-ports 80,443 --jump ACCEPT
+iptables --table filter --append INPUT --in-interface "${wanif}" --protocol icmp --jump ACCEPT
+
+# INPUT Traffic LAN
+iptables --table filter --append INPUT --in-interface "${lanif}" --jump ACCEPT
+iptables --table filter --append OUTPUT --out-interface "${lanif}" --jump ACCEPT
+
+# OUTPUT Traffic WAN
+iptables --table raw --append OUTPUT ! --out-interface "${lanif}" --protocol udp --match multiport --source-ports 67 --jump DROP
+iptables --table filter --append OUTPUT --out-interface "${wanif}" --jump ACCEPT
+
+# OUTPUT Traffic LAN
+iptables --table filter --append OUTPUT --out-interface "${lanif}" --jump ACCEPT
+
+# Default Policy
+iptables --table filter --new-chain inputdrop
+iptables --table filter --append INPUT --jump inputdrop
+iptables --table filter --append inputdrop --in-interface "${wanif}" --protocol udp --match multiport --destination-ports 137:138,161,4502 --jump DROP
+iptables --table filter --append inputdrop --in-interface "${wanif}" --source "${wan}" --protocol udp --match multiport --destination-ports 51220,57621 --jump DROP
+iptables --table filter --append inputdrop --in-interface "${wanif}" --destination "172.27.53.255/32" --protocol udp --match multiport --destination-ports 21027 --jump DROP
+iptables --table filter --append inputdrop --in-interface "${wanif}" --destination "255.255.255.255" --jump DROP
+#iptables --table filter --append inputdrop --jump LOG --log-prefix "Input Drop: "
+iptables --table filter --append inputdrop --jump DROP
+
+#iptables --table filter --append INPUT --jump LOG --log-prefix "INPUT Drop: "
+iptables --table filter --policy INPUT DROP
+iptables --table filter --append FORWARD --jump LOG --log-prefix "FORWARD Drop: "
+iptables --table filter --policy FORWARD DROP
+iptables --table filter --append OUTPUT --jump LOG --log-prefix "OUTPUT Drop: "
+iptables --table filter --policy OUTPUT DROP

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/css/desktop.css" />
+    <script type="text/javascript" src="/js/init.js"></script>
+    <title>Home - ITSC Mgmt</title>
+  </head>
+  <body>
+    <div id="uit-header"></div>
+    <script type="text/javascript" src="/js/header.js"></script>
+    <div><h1>UIT - ITSC Inventory Management</h1></div>
+    <div id="main-content"><h2>Welcome to the ITSC Inventory Management System</h2></div>
+
+    <div class="flex-container home">
+      <div class="flex-box home notes-section">
+        <div id="notes">
+          <h2>Notes</h2>
+          <p>Note last updated: <span id="note-date"></span></p>
+          <form id="note-form" onsubmit="return false;">
+            <label for="note-text">Enter your notes below:</label><br />
+            <textarea id="note-text" form="note-form" rows="6" cols="100"></textarea>
+            <div><input type="button" value="Update Note" onclick="postNote()" /></div>
+          </form>
+        </div>
+      </div>
+
+      <div class="flex-box home inventory-summary-section">
+        <div id="inventory-summary">
+          <h2>Inventory Summary</h2>
+          <div id="inventory-summary-content">
+            <div>
+              <table id="inventory-summary-table">
+                <thead>
+                  <tr>
+                    <th>System Model</th>
+                    <th>Total Clients</th>
+                    <th>Checked Out</th>
+                    <th>Available for Checkout</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Loading...</td>
+                    <td>Loading...</td>
+                    <td>Loading...</td>
+                    <td>Loading...</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="1"><strong>Totals:</strong></td>
+                    <td colspan="1">
+                      <span id="total-clients">Loading...</span>
+                    </td>
+                    <td colspan="1">
+                      <span id="total-checked-out">Loading...</span>
+                    </td>
+                    <td colspan="1">
+                      <span id="total-available">Loading...</span>
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="uit-footer" class="flex-container footer"></div>
+    <script type="text/javascript" src="/js/footer.js"></script>
+  </body>
+</html>

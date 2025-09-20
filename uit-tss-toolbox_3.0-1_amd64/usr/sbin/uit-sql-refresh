@@ -1,0 +1,21 @@
+#!/bin/bash
+
+mark1=$(date +%s.%N)
+uit-sql-refresh-client
+mark2=$(date +%s.%N)
+curl 'https://localhost:1411/api/refresh-client.php?password=UIT_DB_CLIENT_PASSWD&tagnumber=refresh-all'
+mark3=$(date +%s.%N)
+uit-sql-refresh-server
+mark4=$(date +%s.%N)
+
+clientTime=$(printf %.2f $( echo "$mark2 - $mark1" | bc -l ))
+locationTime=$(printf %.2f $( echo "$mark3 - $mark2" | bc -l ))
+serverTime=$(printf %.2f $( echo "$mark4 - $mark3" | bc -l ))
+
+totalTime=$(printf %.2f $( echo "$mark4 - $mark1" | bc -l ))
+
+echo ""
+echo "Time to update clientstats table: ${clientTime}s"
+echo "Time to update real-time client data: ${locationTime}s"
+echo "Time to update serverstats: ${serverTime}s"
+echo "Total time taken: ${totalTime}s"

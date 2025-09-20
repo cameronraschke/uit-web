@@ -1,0 +1,14 @@
+#!/bin/bash
+
+DATE=$(date --iso)
+
+mkdir /tmp/uit-tmp-reports/ 2>/dev/null
+
+uit-sql-csv
+
+mkdir /home/cameron/reports/${DATE}/
+
+mv /tmp/uit-tmp-reports/* /home/cameron/reports/${DATE}/
+mysqldump --databases laptopDB > /home/cameron/reports/${DATE}/laptopDB-${DATE}.sql
+
+rm -r /tmp/uit-tmp-reports

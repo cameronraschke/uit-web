@@ -1,0 +1,28 @@
+#!/bin/bash
+# https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/8/html/securing_networks/creating-and-managing-tls-keys-and-certificates_securing-networks
+# https://www.gnutls.org/manual/html_node/certtool-Invocation.html
+
+
+if [[ "$EUID" > 0 ]]; then 
+  echo "Please run as root. Exiting..."
+  exit 0
+fi
+
+# Create/replace CA with --update-ca option
+if [[ $1 == "--update-ca" ]]; then
+    certtool --generate-privkey --sec-param High --key-type=ecdsa --outfile /usr/local/share/ca-certificates/uit-ca.key
+    certtool --generate-self-signed --load-privkey /usr/local/share/ca-certificates/uit-ca.key --template /etc/opt/uit-toolbox/server/conf.d/uit-ca.cfg --outfile /usr/local/share/ca-certificates/uit-ca.crt
+    update-ca-certificates
+    chown root:root /usr/local/share/ca-certificates/uit-ca.key
+    chmod 600 /usr/local/share/ca-certificates/uit-ca.key
+fi
+
+# Always creates new cert from CA
+certtool --generate-privkey --outfile /usr/local/share/ca-certificates/uit-web.key
+certtool --generate-request --load-privkey /usr/local/share/ca-certificates/uit-web.key --template /etc/opt/uit-toolbox/server/conf.d/uit-web.cfg --outfile /etc/opt/uit-toolbox/server/conf.d/uit-web.crq
+certtool --generate-certificate --load-request /etc/opt/uit-toolbox/server/conf.d/uit-web.crq --template /etc/opt/uit-toolbox/server/conf.d/uit-web.cfg --load-ca-certificate /usr/local/share/ca-certificates/uit-ca.crt --load-ca-privkey /usr/local/share/ca-certificates/uit-ca.key --outfile /usr/local/share/ca-certificates/uit-web.crt
+update-ca-certificates
+chmod 640 /usr/local/share/ca-certificates/uit-web.key
+chown root:www-data /usr/local/share/ca-certificates/uit-web.key
+
+certtool --certificate-info --infile /usr/local/share/ca-certificates/uit-web.crt

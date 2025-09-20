@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [[ "$EUID" > 0 ]]; then 
+  echo "Please run as root. Exiting..."
+  exit 0
+fi
+
+read -p "Download from GitHub? [Y/n]: " gitBool
+
+if [[ -z $gitBool || $gitBool == "y" || $gitBool == "Y" ]]; then
+  rm -r /tmp/uit-toolbox/
+  git clone https://github.com/cameronraschke/UIT-TSS-TOOLBOX /tmp/uit-toolbox/
+fi
+
+if [[ -d /tmp/uit-toolbox/uit-tss-toolbox_2.0-1_amd64 ]]; then
+  dpkg --remove uit-toolbox
+fi
+
+chmod 755 /tmp/uit-toolbox/uit-tss-toolbox_2.0-1_amd64/DEBIAN/postinst
+dpkg-deb --build /tmp/uit-toolbox/uit-tss-toolbox_2.0-1_amd64/ /tmp/uit-toolbox/uit-tss-toolbox_2.0-1_amd64.deb
+dpkg --install /tmp/uit-toolbox/uit-tss-toolbox_2.0-1_amd64.deb

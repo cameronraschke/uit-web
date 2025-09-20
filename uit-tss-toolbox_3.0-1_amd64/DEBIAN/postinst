@@ -1,0 +1,246 @@
+#!/bin/bash
+# User and group setup
+if [[ $(groups cameron | grep 'uit'; echo $?) == "1" ]]; then
+  groupadd uit
+  usermod --append --groups uit cameron
+fi
+if [[ $(id -u uitweb &>/dev/null; echo $?) == "1" ]]; then
+    sudo useradd --system --no-create-home --shell /usr/sbin/nologin uitweb
+fi
+
+## General config setup
+mkdir -p /etc/uit-toolbox/certs.d/
+mkdir -p /etc/uit-toolbox/clients.d/
+mkdir -p /etc/uit-toolbox/server/postgresql.d/
+cp /etc/uit-toolbox/clients.d/uit-config.conf /srv/uit-toolbox/client/configs/uit-config.conf
+
+## Client config and package setup
+# Web folders
+mkdir -p /srv/uit-toolbox/client/certs/
+mkdir -p /srv/uit-toolbox/client/configs/
+mkdir -p /srv/uit-toolbox/client/iso/
+mkdir -p /srv/uit-toolbox/client/pkg/
+mkdir -p /srv/uit-toolbox/client/src/
+# NFS folders
+mkdir -p /srv/nfs/uit-toolbox/images
+
+# Client package - download .deb
+while [ ! -f /srv/uit-toolbox/client/src/ ]; do
+    git clone 'https://github.com/cameronraschke/uit-client' /srv/uit-toolbox/client/src/
+done
+
+## Server config
+unset configArr
+declare -A configArr
+
+# Get config value from file
+getConfigValue() {
+    local key="$1"
+    local trim_spaces="${2:-true}"
+    local value
+    value=$(grep "^${key}=" /etc/uit-toolbox/uit-toolbox.conf | cut -d'=' -f2-)
+    if [[ "$trim_spaces" == "true" ]]; then
+        value=$(echo "$value" | tr -d '[:space:]')
+    fi
+    echo "$value"
+}
+
+# Load config values (values that need spaces preserved are marked with 'false')
+configArr[UIT_DB_ADMIN_PASSWD]=$(getConfigValue "UIT_DB_ADMIN_PASSWD")
+configArr[UIT_DB_CLIENT_PASSWD]=$(getConfigValue "UIT_DB_CLIENT_PASSWD")
+configArr[UIT_WEB_USER_DEFAULT_PASSWD]=$(getConfigValue "UIT_WEB_USER_DEFAULT_PASSWD")
+configArr[UIT_WEBMASTER_NAME]=$(getConfigValue "UIT_WEBMASTER_NAME" false)
+configArr[UIT_WEBMASTER_EMAIL]=$(getConfigValue "UIT_WEBMASTER_EMAIL")
+configArr[UIT_WEB_USERS]=$(getConfigValue "UIT_WEB_USERS" false)
+configArr[UIT_WAN_IF]=$(getConfigValue "UIT_WAN_IF")
+configArr[UIT_WAN_IP_ADDRESS]=$(getConfigValue "UIT_WAN_IP_ADDRESS")
+configArr[UIT_LAN_IF]=$(getConfigValue "UIT_LAN_IF")
+configArr[UIT_LAN_IP_ADDRESS]=$(getConfigValue "UIT_LAN_IP_ADDRESS")
+configArr[UIT_WAN_ALLOWED_IP]=$(getConfigValue "UIT_WAN_ALLOWED_IP" false)
+configArr[UIT_LAN_ALLOWED_IP]=$(getConfigValue "UIT_LAN_ALLOWED_IP" false)
+configArr[UIT_PRINTER_IP]=$(getConfigValue "UIT_PRINTER_IP")
+configArr[UIT_WEB_SVC_PASSWD]=$(openssl rand 30 | hexdump | tr -d '\n' | sed 's/[[:space:]]//g' | head -n1 | md5sum | awk '{print $1}')
+configArr[UIT_HTTP_PORT]=$(getConfigValue "UIT_HTTP_PORT")
+configArr[UIT_HTTPS_PORT]=$(getConfigValue "UIT_HTTPS_PORT")
+configArr[UIT_TLS_CERT_FILE]=$(getConfigValue "UIT_TLS_CERT_FILE")
+configArr[UIT_TLS_KEY_FILE]=$(getConfigValue "UIT_TLS_KEY_FILE")
+configArr[UIT_RATE_LIMIT_BURST]=$(getConfigValue "UIT_RATE_LIMIT_BURST")
+configArr[UIT_RATE_LIMIT_INTERVAL]=$(getConfigValue "UIT_RATE_LIMIT_INTERVAL")
+configArr[UIT_RATE_LIMIT_BAN_DURATION]=$(getConfigValue "UIT_RATE_LIMIT_BAN_DURATION")
+configArr[UIT_API_LOG_LEVEL]=$(getConfigValue "UIT_API_LOG_LEVEL")
+
+function checkNullConfigVals() {
+for checkVal in ${!configArr[@]}; do
+  if [[ -z ${configArr[$checkVal]} ]]; then
+    echo "[Error] Missing/NULL parameter ${checkVal} in /etc/uit-toolbox/uit-toolbox.conf"
+    echo ""
+    read -p "Value for ${checkVal} is missing. Continue? [y/N] " userInput
+    if [[ -z $userInput || $userInput == "n" || $userInput == "N" ]]; then
+      echo "Exiting..."
+      exit 1
+      elif [[ $userInput == "y" || $userInput == "Y" ]]; then
+        :
+      else checkNullConfigVals
+    fi
+  fi
+done
+}
+checkNullConfigVals
+
+for i in ${!configArr[@]}; do
+  for file in $(find /usr/sbin/ -type f -name 'uit-*'; find /var/www/html/uit-web \( -path "/var/www/html/uit-web/transcode" -o  -path "/var/www/html/uit-web/images" \) -prune -o -type f -print; find /etc/dnsmasq.d/uit-dhcp.conf -type f ; find /srv/uit-toolbox/client/src/ -type f; find /etc/uit-toolbox/certs.d/ -type f -name '*.cfg'; find /etc/chrony/conf.d/ -type f -name *.conf; find /etc/dnsmasq.d/ -type f -name *.conf); do
+    if [[ -f $file ]]; then
+      sanitizedValue=${configArr[$i]//\//\\/}
+      sed --in-place "s/${i}/${sanitizedValue}/g" ${file}
+      else
+      echo "File ${file} does not exist. Exiting..."
+      exit 1
+    fi
+  done
+done
+
+# Client package - create .deb
+(cd /srv/uit-toolbox/client/src/uit-client/
+chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64/DEBIAN/
+chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64/DEBIAN/control
+chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64/DEBIAN/postinst
+dpkg-deb --build --root-owner-group /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64 
+mv -v /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64.deb /srv/uit-toolbox/client/pkg/uit-toolbox-client.deb
+)
+
+if [[ -f /etc/uit-toolbox.env ]]; then
+  rm /etc/uit-toolbox.env
+fi
+for key in "${!configArr[@]}"; do 
+  printf "%s\n" "$key=\"${configArr[$key]}\"" >> /etc/uit-toolbox.env
+done
+sudo chown uitweb:uitweb /etc/uit-toolbox.env
+sudo chmod 400 /etc/uit-toolbox.env
+
+# Web server setup
+if [[ ! -f /var/www/html/uit-web/favicon.ico ]]; then
+    wget 'https://uh.edu/favicon.ico' --output-document /var/www/html/uit-web/favicon.ico
+fi
+if [[ ! -f  /var/www/html/uit-web/images/uh-logo.png ]]; then
+    wget 'http://www.sa.uh.edu/brand/_img/uh-wide-full-color-rgb.png' --output-document=/var/www/html/uit-web/images/uh-logo.png
+fi
+if [[ -d /home/cameron/laptop-pictures ]]; then
+  rsync -Pav --delete /home/cameron/laptop-pictures/ /var/www/html/uit-web/images/
+fi
+if [[ -d /srv/uit-toolbox/client/certs ]]; then
+    rm /srv/uit-toolbox/client/certs/*
+  else
+    mkdir -p /srv/uit-toolbox/client/certs/
+fi
+if [[ ! -f /usr/local/share/ca-certificates/uit-ca.crt ]]; then
+    uit-update-certs --update-ca
+  elif [[ ! -f /usr/local/share/ca-certificates/uit-web.crt ]]; then
+    uit-update-certs
+fi
+
+cp /usr/local/share/ca-certificates/uit-ca.crt /srv/uit-toolbox/client/certs/uit-ca.crt
+cp /usr/local/share/ca-certificates/uit-web.crt /srv/uit-toolbox/client/certs/uit-web.crt
+cp /usr/local/share/ca-certificates/uit-web.key /srv/uit-toolbox/client/certs/uit-web.key
+
+
+# Update SQL tables & procedures
+echo "Updating SQL tables & procedures..."
+sudo -u postgres psql uitdb < /etc/opt/uit-toolbox/server/postgresql/postgresql-tables.sql
+sudo -u postgres psql uitdb < /etc/opt/uit-toolbox/server/postgresql/postgresql-procedures.sql
+
+## Uncomment on first-time setup
+#sudo -u postgres psql --command="CREATE DATABASE uitdb;"
+#sudo -u postgres psql --command="CALL sqlCreateUsers();" uitdb
+sudo -u postgres psql --command="CALL sqlPermissions();" uitdb
+
+# Set passwords for various services
+echo "Updating SQL Passwords..."
+# PSQL
+echo "  --PSQL Passwords"
+# PostgreSQL Users
+sudo -u postgres psql --command="ALTER USER cameron WITH PASSWORD '${configArr[UIT_DB_ADMIN_PASSWD]}';"
+sudo -u postgres psql --command="ALTER USER uitclient WITH PASSWORD '${configArr[UIT_DB_CLIENT_PASSWD]}';"
+sudo -u postgres psql --command="ALTER USER uitweb WITH PASSWORD '${configArr[UIT_WEB_SVC_PASSWD]}';"
+
+
+echo "  --Website Passwords"
+sudo -u postgres psql --command="DELETE FROM logins;" uitdb
+for webUser in ${configArr[UIT_WEB_USERS]}; do
+sudo -u postgres psql --command="INSERT INTO logins (username, name, password) VALUES (${webUser}, ENCODE(SHA256('${configArr[UIT_WEB_USER_DEFAULT_PASSWD]}'::bytea), 'hex'));" uitdb
+done
+sudo -u postgres psql --command="UPDATE logins SET username = ENCODE(SHA256(username::bytea), 'hex');" uitdb
+
+
+# Update SQL Permissions
+echo "Updating PSQL Permissions..."
+sudo -u postgres psql --command="CALL sqlPermissions();" uitdb
+
+## Misc setup
+mkdir -p /opt/uit-toolbox/sql-backups
+echo -e "\n" >> /etc/cron.d/uit-cron
+
+## File permissions
+chown root:uit /etc/uit-toolbox/ -R
+find /etc/uit-toolbox/ -type d -exec chmod 750 {} \;
+find /etc/uit-toolbox/ -type f -exec chmod 640 {} \;
+
+find /srv/uit-toolbox/client/ -type d ! -path "/srv/uit-toolbox/client/iso" ! -path "/srv/uit-toolbox/client/iso/*" -exec chown uitweb:uit {} \;
+find /srv/uit-toolbox/ -type d -not -path "*/iso*" -exec chmod 755 {} \;
+find /srv/uit-toolbox/ -type f -not -path "*/iso/*" -exec chmod 664 {} \;
+chmod 640 /srv/uit-toolbox/client/certs/uit-ca.crt
+chmod 640 /srv/uit-toolbox/client/certs/uit-web.crt
+chmod 400 /srv/uit-toolbox/client/certs/uit-web.key
+
+chmod 750 /usr/sbin/uit-*
+chown root:uit /usr/sbin/uit-*
+
+find /srv/nfs/ -type d -exec chmod 755 {} \;
+chown nobody:nogroup /srv/nfs/uit-toolbox/images -R
+
+chown root:uit /opt/uit-toolbox/sql-backups -R
+find /opt/uit-toolbox/sql-backups -type d -exec chmod 770 {} \;
+find /opt/uit-toolbox/sql-backups -type f -exec chmod 660 {} \;
+
+
+
+if [[ ! -d /var/www/html/uit-web/transcode ]]; then
+    mkdir /var/www/html/uit-web/transcode
+fi
+chown uitweb:uit /var/www/html/uit-web -R
+find /var/www/html/uit-web -type d -exec chmod 750 {} \;
+find /var/www/html/uit-web -type f -exec chmod 660 {} \;
+
+(cd /opt/uit-toolbox/api/
+    /usr/local/go/bin/go build .
+    chown uitweb:uit /opt/uit-toolbox/api -R
+    find /opt/uit-toolbox/api -type d -exec chmod 770 {} \;
+    find /opt/uit-toolbox/api -type f -exec chmod 660 {} \;
+    chmod 750 /opt/uit-toolbox/api/api
+)
+
+# Create systemd service
+touch /etc/systemd/system/uit-web.service
+chmod 644 /etc/systemd/system/uit-web.service
+
+cat <<EOF > /etc/systemd/system/uit-web.service
+[Unit]
+Description=UIT Web Server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/uit-toolbox/api/api
+WorkingDirectory=/opt/uit-toolbox/api
+User=uitweb
+Group=uitweb
+UMask=227
+Restart=on-failure
+EnvironmentFile=/etc/uit-toolbox.env
+MemoryMax=4G
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl restart uit-web

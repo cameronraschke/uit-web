@@ -1,0 +1,8 @@
+Package: uit-toolbox
+#Pre-Depends: chrony, cups-client, cups, debian-archive-keyring, dnsmasq, dosfstools, efibootmgr, git, gnutls-bin, gzip, iftop, iotop, iperf3, lpr, nfs-kernel-server, php, php-bcmath, php-cli, php-curl, php-gd, pv, rsync, smartmontools, sysstat, wkhtmltopdf, ffmpeg, golang
+Version: 3.0-1
+Section: Utilities
+Priority: optional
+Architecture: amd64
+Maintainer: Cameron Raschke <caraschke@uh.edu>
+Description: Software for inventory management, remote job management, disk cloning, and securely erasing disks.

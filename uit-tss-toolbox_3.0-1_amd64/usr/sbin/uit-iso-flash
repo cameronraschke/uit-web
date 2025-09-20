@@ -1,0 +1,113 @@
+#!/bin/bash
+
+if [[ "$EUID" > 0 ]]
+  then echo "Please run as root"
+  exit 1
+fi
+
+SSD_REGEX='sd.*'
+NVME_REGEX='nvme.*'
+SCSI_REGEX='hd.*'
+RED=$(tput setaf 1)
+GREEN=$(tput setaf 2)
+BLUE=$(tput setaf 4)
+BOLD=$(tput bold)
+DIM=$(tput dim)
+RESET=$(tput sgr0)
+cloneElapsed="0"
+shredElapsed="0"
+ACTION="burn an ISO to"
+
+if [[ ! -f /opt/uit-toolbox/debian-live/uit-toolbox-client-amd64.hybrid.iso ]]; then
+        echo ""
+        echo "${BOLD}${RED}ISO file does not exist. Please run uit-iso-configure.${RESET}"
+		exit
+fi
+
+echo ""
+echo -n "${RESET}UIT-TOOLBOX Client by ${BOLD}Cameron Raschke${RESET} ${DIM}(caraschke@uh.edu)${RESET}${BOLD}. "
+echo "${BOLD}${RED}Go coogs!!${RESET}"
+echo ""
+
+function diskSelect {
+    DISKNAMES=$(for i in /sys/block/*; do
+        if udevadm info --query=property --path=${i} | grep -q ^ID_BUS=usb; then
+            i=$(echo ${i} | grep -o 'sd.*');
+            echo ${i};
+        fi; done)
+
+	CLIENTDISK=""
+	diskNums="0"
+	local DISKCONF=""
+	local a="0"
+	local n="0"
+	local DISKARR=()
+
+	for i in ${DISKNAMES}; do
+        diskNums=$(( diskNums + 1 ))
+		DISKARR+=( "$i" )
+	done
+
+	if [[ $diskNums -le "1" ]]; then
+	    for i in ${!DISKARR[@]}; do
+		    CLIENTDISK=${DISKARR[$i]}
+		done
+		echo "The disk ${BOLD}${CLIENTDISK}${RESET} has been automatically selected because it is the only detected disk."
+		read -n 1 -p "Press ${BOLD}${BLUE}[1]${RESET} to confirm" DISKCONF
+	        if [[ $DISKCONF -ne "1" ]]; then
+	            echo "${BOLD}${RED}Reselecting disk.${RESET}"
+	            diskSelect
+            fi
+    elif [[ $diskNums -gt "1" ]]; then
+		echo "Which disk do you want to ${BOLD}flash${RESET}?"
+		lsblk
+		echo ""
+		while read -r line; do
+			a=$(( $a + 1 ))
+			echo "${BOLD}${BLUE}[${a}]${RESET} $line"
+		done < <(echo "${BOLD}${DISKNAMES}${RESET}")
+		echo ""
+		read -n 1 -p "Select a disk ${BOLD}${BLUE}[1-$a]${RESET}: " CLIENTDISK
+		for i in ${!DISKARR[@]}; do
+			n=$(( $n + 1 ))
+			if [[ $n == $CLIENTDISK ]]; then
+				CLIENTDISK=${DISKARR[$i]}
+			fi
+		done
+		echo ""
+		echo ""
+	fi
+	
+	if [[ ! $CLIENTDISK =~ ${SSD_REGEX} ]]; then
+	    echo ""
+	    echo "${BOLD}${RED}Invalid selection: ${CLIENTDISK}${RESET}"
+		sleep 0.5
+	    diskSelect
+	fi	
+}
+
+function execute {
+        if [[ $CLIENTDISK =~ sd.* ]]; then
+                echo "Unmounting ${BOLD}${CLIENTDISK}${RESET}"
+                umount /dev/${CLIENTDISK} &>/dev/null
+                echo "Making FAT32 filesystem on ${BOLD}${CLIENTDISK}${RESET}"
+                mkfs.vfat -I -F 32 /dev/${CLIENTDISK} &>/dev/null
+				echo "Mounting ${BOLD}${CLIENTDISK}${RESET}"
+				mkdir -p /mnt/usb/
+				echo "Writing files to ${BOLD}${CLIENTDISK}${RESET}, this may take a while..."
+				mount /dev/${CLIENTDISK} /mnt/usb/
+				rsync -a --exclude="filesystem.squashfs" /srv/uit-toolbox/client/iso/ /mnt/usb/ 2>/dev/null
+				rsync -a /home/cameron/bios-update/ /mnt/usb/ 2>/dev/null
+				umount /dev/${CLIENTDISK}
+                echo "Creating new label on disk ${CLIENTDISK}: UITTOOLBX"
+                fatlabel /dev/${CLIENTDISK} "UITTOOLBX" &>/dev/null
+                #fatlabel /dev/${CLIENTDISK}1 "UITTOOLBX" &>/dev/null
+        else
+                echo ""
+                echo "Invalid block device or no USB drive found. Exiting...."
+                exit 1
+        fi
+}
+
+diskSelect
+execute
