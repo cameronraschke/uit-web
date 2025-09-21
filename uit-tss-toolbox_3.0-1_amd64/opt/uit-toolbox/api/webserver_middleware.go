@@ -766,27 +766,25 @@ func httpCookieAuth(next http.Handler) http.Handler {
 				HttpOnly: true,
 				SameSite: http.SameSiteStrictMode,
 			})
-			basicExpiry := time.Now().Add(20 * time.Minute)
-			bearerExpiry := time.Now().Add(10 * time.Minute)
-			basic := BasicToken{Token: requestBasicToken, Expiry: basicExpiry, NotBefore: time.Now(), TTL: time.Until(basicExpiry).Seconds(), IP: requestIP, Valid: true}
-			bearer := BearerToken{Token: requestBasicToken, Expiry: bearerExpiry, NotBefore: time.Now(), TTL: time.Until(bearerExpiry).Seconds(), IP: requestIP, Valid: true}
 
-			authSession := AuthSession{
-				Basic:  basic,
-				Bearer: bearer,
-			}
-			sessionID := requestIP + ":" + requestBasicToken
-			newSessionHash, err := generateSecureSessionID()
+			bearerToken, csrfToken, err := GenerateAuthTokens()
 			if err != nil {
 				log.Error("Failed to generate secure session ID: " + err.Error())
 				http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
 				return
 			}
-			newSessionID := requestIP + ":" + newSessionHash
+
+			basicExpiry := time.Now().Add(20 * time.Minute)
+			bearerExpiry := time.Now().Add(10 * time.Minute)
+			basic := BasicToken{Token: requestBasicToken, Expiry: basicExpiry, NotBefore: time.Now(), TTL: time.Until(basicExpiry).Seconds(), IP: requestIP, Valid: true}
+			bearer := BearerToken{Token: requestBasicToken, Expiry: bearerExpiry, NotBefore: time.Now(), TTL: time.Until(bearerExpiry).Seconds(), IP: requestIP, Valid: true}
+			sessionID := requestIP + ":" + requestBasicToken
+
+			newSessionID := requestIP + ":" + bearerToken
 			if sessionID != newSessionID {
 				authMap.Delete(sessionID)
 			}
-			authMap.Store(newSessionID, authSession)
+			CreateOrUpdateAuthSession(&authMap, newSessionID, basic, bearer, csrfToken)
 			log.Debug("Auth session extended: " + requestIP)
 			next.ServeHTTP(w, req)
 			return

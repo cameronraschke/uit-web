@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -270,22 +269,7 @@ func ParseHeaders(header http.Header) HttpHeaders {
 	return headers
 }
 
-func generateSessionID() (string, error) {
-	buffer := make([]byte, 64)
-	_, err := rand.Read(buffer)
-	if err != nil {
-		return "", err
-	}
-	for i := 0; i < 3; i++ {
-		buffer, err = bcrypt.GenerateFromPassword(buffer, bcrypt.DefaultCost)
-		if err != nil {
-			return "", errors.New("failed to generate session ID: " + err.Error())
-		}
-	}
-	return base64.StdEncoding.EncodeToString(buffer), nil
-}
-
-func createOrUpdateAuthSession(authMap *sync.Map, sessionID string, basic BasicToken, bearer BearerToken, csrfToken string) (AuthSession, bool, error) {
+func CreateOrUpdateAuthSession(authMap *sync.Map, sessionID string, basic BasicToken, bearer BearerToken, csrfToken string) (AuthSession, bool, error) {
 	newSession := AuthSession{
 		Basic:  basic,
 		Bearer: bearer,
@@ -302,50 +286,54 @@ func createOrUpdateAuthSession(authMap *sync.Map, sessionID string, basic BasicT
 	return value.(AuthSession), exists, nil
 }
 
-func checkAuthCredentials(ctx context.Context, username, password string) error {
-	// Use context with timeout for each request
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+func CheckAuthCredentials(ctx context.Context, username, password string) (bool, error) {
+	// hashedUsername := sha256.Sum256([]byte(username))
+	// hashedUsernameString := hex.EncodeToString(hashedUsername[:])
+	// hashedPassword := sha256.Sum256([]byte(password))
+	// hashedPasswordString := hex.EncodeToString(hashedPassword[:])
 
-	hashedUsername := sha256.Sum256([]byte(username))
-	hashedUsernameString := hex.EncodeToString(hashedUsername[:])
-	hashedPassword := sha256.Sum256([]byte(password))
-	hashedPasswordString := hex.EncodeToString(hashedPassword[:])
+	var tmpToken = username + ":" + password
+	authToken := sha256.Sum256([]byte(tmpToken))
+	authTokenString := hex.EncodeToString(authToken[:])
 
-	var authToken = hashedUsernameString + ":" + hashedPasswordString
-
-	// Each request gets its own connection from the pool
-	var newHashedPassword string
-	sqlCode := `SELECT ENCODE(SHA256(CONCAT(username, ':', password)::bytea), 'hex') as token FROM logins WHERE ENCODE(SHA256(CONCAT(username, ':', password)::bytea), 'hex') = ENCODE(SHA256($1::bytea), 'hex')`
-	rows, err := db.QueryContext(ctx, sqlCode, authToken)
+	sqlCode := `SELECT ENCODE(SHA256(CONCAT(username, ':', password)::bytea), 'hex') as token FROM logins WHERE ENCODE(SHA256(CONCAT(username, ':', password)::bytea), 'hex') = $1`
+	rows, err := db.QueryContext(ctx, sqlCode, authTokenString)
+	for rows.Next() {
+		var dbToken string
+		if err := rows.Scan(&dbToken); err != nil {
+			return false, errors.New("cannot scan database row for API Auth: " + err.Error())
+		}
+		if dbToken == authTokenString {
+			err := bcrypt.CompareHashAndPassword([]byte(dbToken), []byte(authTokenString))
+			if err != nil {
+				return false, errors.New("invalid credentials - bcrypt mismatch")
+			}
+			return true, nil
+		}
+	}
+	if err == sql.ErrNoRows {
+		buffer1 := make([]byte, 32)
+		_, _ = rand.Read(buffer1)
+		buffer2 := make([]byte, 32)
+		_, _ = rand.Read(buffer2)
+		pass1, _ := bcrypt.GenerateFromPassword(buffer1, bcrypt.DefaultCost)
+		pass2, _ := bcrypt.GenerateFromPassword(buffer2, bcrypt.DefaultCost)
+		bcrypt.CompareHashAndPassword(pass1, pass2)
+		return false, errors.New("invalid credentials")
+	}
 	if err != nil {
-		return errors.New("cannot query database for API Auth: " + err.Error())
+		return false, errors.New("cannot query database for API Auth: " + err.Error())
 	}
 	defer rows.Close()
 
 	if !rows.Next() {
-		return errors.New("no matching auth token found")
+		return false, errors.New("no matching auth token found")
 	}
 
-	err = db.QueryRowContext(queryCtx, sqlCode, authToken).Scan(&newHashedPassword)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			buffer1 := make([]byte, 32)
-			_, _ = rand.Read(buffer1)
-			buffer2 := make([]byte, 32)
-			_, _ = rand.Read(buffer2)
-			pass1, _ := bcrypt.GenerateFromPassword(buffer1, bcrypt.DefaultCost)
-			pass2, _ := bcrypt.GenerateFromPassword(buffer2, bcrypt.DefaultCost)
-			bcrypt.CompareHashAndPassword(pass1, pass2)
-			return errors.New("invalid credentials")
-		}
-		return errors.New("database error: " + err.Error())
-	}
-
-	return bcrypt.CompareHashAndPassword([]byte(newHashedPassword), []byte(authToken))
+	return false, errors.New("unknown error during authentication")
 }
 
-func validateAuthFormInput(username, password string) error {
+func ValidateAuthFormInput(username, password string) error {
 	username = strings.TrimSpace(username)
 	if len(username) < 3 || len(username) > 20 {
 		return errors.New("invalid username length")
@@ -357,51 +345,49 @@ func validateAuthFormInput(username, password string) error {
 
 	authStr := username + ":" + password
 
-	for _, r := range username {
-		if unicode.IsControl(r) && r != '\t' && r != '\n' && r != '\r' {
-			return errors.New("username contains invalid characters")
-		}
-	}
-
-	// ASCII
-	allowedAuthChars := "U+0020-U+007E"
+	// ASCII characters except space
+	allowedAuthChars := "U+0021-U+007E"
 
 	for _, char := range authStr {
-		if char < 32 || char == 127 {
-			log.Warning("Control/non-printable character in auth string: " + authStr)
-			return errors.New("auth string contains invalid characters")
-		}
-		if char > 127 || char > unicode.MaxASCII || char > unicode.MaxLatin1 {
-			log.Warning("Non-ASCII character in auth string: " + authStr)
-			return errors.New("auth string contains invalid characters")
+		if char <= 31 || char >= 127 || char > unicode.MaxASCII || char > unicode.MaxLatin1 {
+			return errors.New(`auth string contains an invalid control character (beyond ASCII/Latin1): ` + fmt.Sprintf("U+%04X", char))
 		}
 		if unicode.IsControl(char) {
-			log.Warning("Control character in auth string: " + authStr)
-			return errors.New("auth string contains invalid characters")
+			return errors.New(`auth string contains an invalid control character: ` + fmt.Sprintf("U+%04X", char))
+		}
+		if unicode.IsSpace(char) {
+			return errors.New(`auth string contains a whitespace character: ` + fmt.Sprintf("U+%04X", char))
 		}
 		if !strings.ContainsRune(allowedAuthChars, char) {
-			log.Warning("Disallowed character in auth string: " + authStr)
-			return errors.New("auth string contains invalid characters")
+			return errors.New(`auth string contains a disallowed character: ` + fmt.Sprintf("U+%04X", char))
 		}
 	}
 
 	return nil
 }
 
-func generateTokensConcurrent() (string, string, error) {
-	bearerBytes := make([]byte, 32)
-	csrfBytes := make([]byte, 32)
+func GenerateAuthTokens() (string, string, error) {
+	bearerBuffer := make([]byte, 32)
+	csrfBuffer := make([]byte, 32)
 
-	if _, err := rand.Read(bearerBytes); err != nil {
-		return "", "", fmt.Errorf("failed to generate bearer token: %w", err)
+	if _, err := rand.Read(bearerBuffer); err != nil {
+		return "", "", errors.New("failed to generate buffer for bearer token: " + err.Error())
+	}
+	bearerToken, err := bcrypt.GenerateFromPassword(bearerBuffer, bcrypt.DefaultCost)
+	if err != nil {
+		return "", "", errors.New("failed to generate bearer token: " + err.Error())
 	}
 
-	if _, err := rand.Read(csrfBytes); err != nil {
-		return "", "", fmt.Errorf("failed to generate CSRF token: %w", err)
+	if _, err := rand.Read(csrfBuffer); err != nil {
+		return "", "", errors.New("failed to generate buffer for CSRF token: " + err.Error())
+	}
+	csrfToken, err := bcrypt.GenerateFromPassword(csrfBuffer, bcrypt.DefaultCost)
+	if err != nil {
+		return "", "", errors.New("failed to generate CSRF token: " + err.Error())
 	}
 
-	bearerToken := hex.EncodeToString(bearerBytes)
-	csrfToken := hex.EncodeToString(csrfBytes)
+	bearerTokenString := hex.EncodeToString(bearerToken)
+	csrfTokenString := hex.EncodeToString(csrfToken)
 
-	return bearerToken, csrfToken, nil
+	return bearerTokenString, csrfTokenString, nil
 }

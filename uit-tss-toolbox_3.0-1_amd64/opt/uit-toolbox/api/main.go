@@ -8,13 +8,12 @@ import (
 
 	// "net/http/httputil"
 
-	"encoding/json"
 	"time"
 
 	// "unicode/utf8"
 	"strings"
 	// "crypto/sha256"
-	"crypto/rand"
+
 	"crypto/tls"
 	"database/sql"
 	"html/template"
@@ -342,165 +341,6 @@ func postAPI(w http.ResponseWriter, req *http.Request) {
 	default:
 		log.Warning("No POST type defined: " + queryType)
 		return
-	}
-}
-
-func getNewBearerToken(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	var basicToken string
-
-	requestIP, ok := GetRequestIP(req)
-	if !ok {
-		log.Warning("no IP address stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
-		return
-	}
-
-	headers := ParseHeaders(req.Header)
-	if headers.Authorization.Basic != nil {
-		basicToken = *headers.Authorization.Basic
-	}
-
-	if strings.TrimSpace(basicToken) == "" {
-		log.Warning("Empty value for Basic Authorization header")
-		http.Error(w, formatHttpError("Empty Basic Authorization header"), http.StatusUnauthorized)
-		return
-	}
-
-	// Check if DB connection is valid
-	if db == nil {
-		log.Error("Connection to database failed while attempting API Auth")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
-		return
-	}
-
-	// Check if the Basic token exists in the database
-	sqlCode := `SELECT username as token FROM logins WHERE ENCODE(SHA256(CONCAT(username, ':', password)::bytea), 'hex') = ENCODE(SHA256($1)::bytea), 'hex')`
-	rows, err := db.QueryContext(ctx, sqlCode, basicToken)
-	if err != nil {
-		log.Error("Cannot query database for API Auth: " + err.Error())
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var dbToken string
-
-		if err := rows.Scan(&dbToken); err != nil {
-			log.Error("Error scanning token: " + err.Error())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		if ctx.Err() != nil {
-			log.Error("Context error: " + ctx.Err().Error())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		if strings.TrimSpace(dbToken) == "" {
-			log.Info("DB token has 0 length")
-			http.Error(w, formatHttpError("Internal server error"), http.StatusUnauthorized)
-			return
-		}
-
-		if dbToken != basicToken {
-			log.Info("Incorrect credentials provided for token refresh: " + req.RemoteAddr)
-			http.Error(w, formatHttpError("Forbidden"), http.StatusUnauthorized)
-			return
-		}
-
-		// hash := sha256.New()
-		// hash.Write([]byte(dbToken))
-		// bearerToken := fmt.Sprintf("%x", hash.Sum(nil))
-		hash := make([]byte, 32)
-		_, err := rand.Read(hash)
-		if err != nil {
-			log.Error("Cannot generate token: " + err.Error())
-			http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
-			return
-		}
-		bearerToken := fmt.Sprintf("%x", hash)
-		if strings.TrimSpace(bearerToken) == "" {
-			log.Error("Failed to generate bearer token")
-			http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
-			return
-		}
-
-		sessionID := fmt.Sprintf("%s:%s", requestIP, basicToken)
-
-		// Set expiry time
-		basicTTL := 60 * time.Minute
-		bearerTTL := 60 * time.Second
-		basicExpiry := time.Now().Add(basicTTL)
-		bearerExpiry := time.Now().Add(bearerTTL)
-
-		basic := BasicToken{Token: basicToken, Expiry: basicExpiry, NotBefore: time.Now(), TTL: time.Until(basicExpiry).Seconds(), IP: requestIP, Valid: true}
-		bearer := BearerToken{Token: bearerToken, Expiry: bearerExpiry, NotBefore: time.Now(), TTL: time.Until(bearerExpiry).Seconds(), IP: requestIP, Valid: true}
-		csrfToken, err := generateCSRFToken()
-		if err != nil {
-			log.Error("Cannot generate CSRF token: " + err.Error())
-			http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
-			return
-		}
-		authSession, exists, err := createOrUpdateAuthSession(&authMap, sessionID, basic, bearer, csrfToken)
-		if err != nil {
-			log.Error("Error creating or updating auth session: " + err.Error())
-			http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
-			return
-		}
-
-		http.SetCookie(w, &http.Cookie{
-			Name:     "uit_basic_token",
-			Value:    basicToken,
-			Path:     "/",
-			Expires:  time.Now().Add(20 * time.Minute),
-			MaxAge:   20 * 60,
-			Secure:   true,
-			HttpOnly: true,
-			SameSite: http.SameSiteStrictMode,
-		})
-
-		http.SetCookie(w, &http.Cookie{
-			Name:     "csrf_token",
-			Value:    csrfToken,
-			Path:     "/",
-			Secure:   true,
-			HttpOnly: false,
-			SameSite: http.SameSiteStrictMode,
-		})
-
-		if authSession.Bearer.Token != bearerToken || authSession.Bearer.TTL <= 0 ||
-			!authSession.Bearer.Valid || authSession.Bearer.IP != requestIP ||
-			time.Now().After(authSession.Bearer.Expiry) || time.Now().Before(authSession.Bearer.NotBefore) {
-			log.Error("Error while creating new bearer token: " + requestIP)
-			authMap.Delete(sessionID)
-			atomic.AddInt64(&authMapEntryCount, -1)
-			http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
-			return
-		}
-
-		sessionCount := countAuthSessions(&authMap)
-		if exists {
-			log.Info("Auth session exists: " + requestIP + " (Sessions: " + strconv.Itoa(int(sessionCount)) + " TTL: " + fmt.Sprintf("%.2f", authSession.Bearer.TTL) + "s)")
-		} else {
-			atomic.AddInt64(&authMapEntryCount, 1)
-			log.Info("New auth session created: " + requestIP + " (Sessions: " + strconv.Itoa(int(sessionCount)) + " TTL: " + fmt.Sprintf("%.2f", authSession.Bearer.TTL) + "s)")
-		}
-
-		returnedJsonStruct := returnedJsonToken{
-			Token: authSession.Bearer.Token,
-			TTL:   authSession.Bearer.TTL,
-			Valid: authSession.Bearer.Valid,
-		}
-
-		jsonData, err := json.Marshal(returnedJsonStruct)
-		if err != nil {
-			log.Error("Cannot marshal Token to JSON: " + err.Error())
-			http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
-			return
-		}
-
-		w.Write(jsonData)
 	}
 }
 
@@ -1193,7 +1033,7 @@ func main() {
 	httpsMux.Handle("GET /api/job_queue/client/job_available", httpsFullAPIChain.thenFunc(getClientAvailableJobs))
 
 	httpsMux.Handle("GET /login.html", httpsBaseAuthChain.then(webServerHandler(appState)))
-	httpsMux.Handle("POST /login.html", httpsBaseAuthChain.thenFunc(authFormEndpoint(appState)))
+	httpsMux.Handle("POST /login.html", httpsBaseAuthChain.thenFunc(webAuthEndpoint))
 	httpsMux.Handle("/js/login.js", httpsBaseChain.then(webServerHandler(appState)))
 	httpsMux.Handle("/css/desktop.css", httpsBaseChain.then(webServerHandler(appState)))
 	httpsMux.Handle("/favicon.ico", httpsBaseChain.then(webServerHandler(appState)))
