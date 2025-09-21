@@ -22,6 +22,7 @@ type returnedJsonToken struct {
 }
 
 func webAuthEndpoint(w http.ResponseWriter, req *http.Request) {
+	log := config.GetLogger()
 	ctx := req.Context()
 	requestIP, ok := middleware.GetRequestIP(req)
 	if !ok {
@@ -29,7 +30,7 @@ func webAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
 		return
 	}
-	requestURL, ok := GetRequestURL(req)
+	requestURL, ok := middleware.GetRequestURL(req)
 	if !ok {
 		log.Warning("no URL stored in context")
 		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
@@ -81,21 +82,21 @@ func webAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Validate input data
-	if err := ValidateAuthFormInput(authData.Username, authData.Password); err != nil {
+	if err := middleware.ValidateAuthFormInput(authData.Username, authData.Password); err != nil {
 		log.Warning("Invalid auth input: " + err.Error() + " (" + requestIP + ")")
 		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
 	// Authenticate with bcrypt
-	authenticated, err := CheckAuthCredentials(ctx, authData.Username, authData.Password)
+	authenticated, err := middleware.CheckAuthCredentials(ctx, authData.Username, authData.Password)
 	if err != nil || !authenticated {
 		log.Info("Authentication failed for " + requestIP + ": " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Unauthorized"), http.StatusUnauthorized)
 		return
 	}
 
-	bearerValue, csrfValue, err := GenerateAuthTokens()
+	bearerValue, csrfValue, err := middleware.GenerateAuthTokens()
 	if err != nil {
 		log.Error("Failed to generate tokens: " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
@@ -110,7 +111,7 @@ func webAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	sessionID := fmt.Sprintf("%s:%s", requestIP, bearer.Token)
 
-	_, existed, err := CreateOrUpdateAuthSession(&authMap, sessionID, basic, bearer, csrfToken)
+	_, existed, err := middleware.CreateOrUpdateAuthSession(&authMap, sessionID, basic, bearer, csrfToken)
 	if err != nil {
 		log.Error("Failed to create or update auth session: " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)

@@ -4,11 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"log"
-	"maps"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"uit-toolbox/logger"
 
@@ -39,19 +39,24 @@ type AppConfig struct {
 }
 
 type LimiterEntry struct {
-	limiter  *rate.Limiter
-	lastSeen time.Time
+	Limiter  *rate.Limiter
+	LastSeen time.Time
 }
 
 type LimiterMap struct {
-	m     sync.Map
-	rate  float64
-	burst int
+	M     sync.Map
+	Rate  float64
+	Burst int
 }
 
 type BlockedMap struct {
-	m         sync.Map
-	banPeriod time.Duration
+	M         sync.Map
+	BanPeriod time.Duration
+}
+
+type FileList struct {
+	Filename string `json:"filename"`
+	Allowed  bool   `json:"allowed"`
 }
 
 type AppState struct {
@@ -64,7 +69,7 @@ type AppState struct {
 	APILimiter        *LimiterMap
 	AuthLimiter       *LimiterMap
 	BlockedIPs        *BlockedMap
-	AllowedFiles      map[string]bool
+	AllowedFiles      sync.Map
 }
 
 type AuthHeader struct {
@@ -82,6 +87,30 @@ type RateLimiter struct {
 	MapLastUpdated time.Time
 	BannedUntil    time.Time
 	Banned         bool
+}
+
+type BasicToken struct {
+	Token     string    `json:"token"`
+	Expiry    time.Time `json:"expiry"`
+	NotBefore time.Time `json:"not_before"`
+	TTL       float64   `json:"ttl"`
+	IP        string    `json:"ip"`
+	Valid     bool      `json:"valid"`
+}
+
+type BearerToken struct {
+	Token     string    `json:"token"`
+	Expiry    time.Time `json:"expiry"`
+	NotBefore time.Time `json:"not_before"`
+	TTL       float64   `json:"ttl"`
+	IP        string    `json:"ip"`
+	Valid     bool      `json:"valid"`
+}
+
+type AuthSession struct {
+	Basic  BasicToken
+	Bearer BearerToken
+	CSRF   string
 }
 
 var (
@@ -276,43 +305,49 @@ func InitApp(appConfig AppConfig) (*AppState, error) {
 	appState := &AppState{
 		DB:                dbConn,
 		AuthMap:           sync.Map{},
-		AuthMapEntryCount: 0,
+		AuthMapEntryCount: int64(0),
 		Log:               logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_API_LOG_LEVEL"))),
-		WebServerLimiter:  &LimiterMap{rate: appConfig.UIT_RATE_LIMIT_INTERVAL, burst: appConfig.UIT_RATE_LIMIT_BURST},
-		FileLimiter:       &LimiterMap{rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 4, burst: appConfig.UIT_RATE_LIMIT_BURST / 4},
-		APILimiter:        &LimiterMap{rate: appConfig.UIT_RATE_LIMIT_INTERVAL, burst: appConfig.UIT_RATE_LIMIT_BURST},
-		AuthLimiter:       &LimiterMap{rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 10, burst: appConfig.UIT_RATE_LIMIT_BURST / 10},
-		BlockedIPs:        &BlockedMap{banPeriod: appConfig.UIT_RATE_LIMIT_BAN_DURATION},
-		AllowedFiles: map[string]bool{
-			"filesystem.squashfs":          true,
-			"initrd.img":                   true,
-			"vmlinuz":                      true,
-			"uit-ca.crt":                   true,
-			"uit-web.crt":                  true,
-			"uit-toolbox-client.deb":       true,
-			"desktop.css":                  true,
-			"favicon.ico":                  true,
-			"header.html":                  true,
-			"footer.html":                  true,
-			"index.html":                   true,
-			"login.html":                   true,
-			"auth-webworker.js":            true,
-			"footer.js":                    true,
-			"header.js":                    true,
-			"init.js":                      true,
-			"include.js":                   true,
-			"login.js":                     true,
-			"logout.js":                    true,
-			"inventory.html":               true,
-			"inventory.js":                 true,
-			"checkouts.html":               true,
-			"checkouts.js":                 true,
-			"job_queue.html":               true,
-			"job_queue.js":                 true,
-			"reports.html":                 true,
-			"reports.js":                   true,
-			"go-latest.linux-amd64.tar.gz": true,
-		},
+		WebServerLimiter:  &LimiterMap{Rate: appConfig.UIT_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_RATE_LIMIT_BURST},
+		FileLimiter:       &LimiterMap{Rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 4, Burst: appConfig.UIT_RATE_LIMIT_BURST / 4},
+		APILimiter:        &LimiterMap{Rate: appConfig.UIT_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_RATE_LIMIT_BURST},
+		AuthLimiter:       &LimiterMap{Rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 10, Burst: appConfig.UIT_RATE_LIMIT_BURST / 10},
+		BlockedIPs:        &BlockedMap{BanPeriod: appConfig.UIT_RATE_LIMIT_BAN_DURATION},
+		AllowedFiles:      sync.Map{},
+	}
+
+	allowedFiles := []FileList{
+		{Filename: "filesystem.squashfs", Allowed: true},
+		{Filename: "initrd.img", Allowed: true},
+		{Filename: "vmlinuz", Allowed: true},
+		{Filename: "uit-ca.crt", Allowed: true},
+		{Filename: "uit-web.crt", Allowed: true},
+		{Filename: "uit-toolbox-client.deb", Allowed: true},
+		{Filename: "desktop.css", Allowed: true},
+		{Filename: "favicon.ico", Allowed: true},
+		{Filename: "header.html", Allowed: true},
+		{Filename: "footer.html", Allowed: true},
+		{Filename: "index.html", Allowed: true},
+		{Filename: "login.html", Allowed: true},
+		{Filename: "auth-webworker.js", Allowed: true},
+		{Filename: "footer.js", Allowed: true},
+		{Filename: "header.js", Allowed: true},
+		{Filename: "init.js", Allowed: true},
+		{Filename: "include.js", Allowed: true},
+		{Filename: "login.js", Allowed: true},
+		{Filename: "logout.js", Allowed: true},
+		{Filename: "inventory.html", Allowed: true},
+		{Filename: "inventory.js", Allowed: true},
+		{Filename: "checkouts.html", Allowed: true},
+		{Filename: "checkouts.js", Allowed: true},
+		{Filename: "job_queue.html", Allowed: true},
+		{Filename: "job_queue.js", Allowed: true},
+		{Filename: "reports.html", Allowed: true},
+		{Filename: "reports.js", Allowed: true},
+		{Filename: "go-latest.linux-amd64.tar.gz", Allowed: true},
+	}
+
+	for _, file := range allowedFiles {
+		appState.AllowedFiles.Store(file.Filename, file.Allowed)
 	}
 
 	appStateInstance = appState
@@ -341,7 +376,14 @@ func GetAllowedFiles() map[string]bool {
 	defer appStateMutex.RUnlock()
 	if appStateInstance != nil {
 		result := make(map[string]bool)
-		maps.Copy(result, appStateInstance.AllowedFiles)
+		appStateInstance.AllowedFiles.Range(func(key, value any) bool {
+			keyStr, keyExists := key.(string)
+			valueBool, valueExists := value.(bool)
+			if keyExists && valueExists {
+				result[keyStr] = valueBool
+			}
+			return true
+		})
 		return result
 	}
 	return nil
@@ -350,24 +392,131 @@ func GetAllowedFiles() map[string]bool {
 func IsFileAllowed(filename string) bool {
 	appStateMutex.RLock()
 	defer appStateMutex.RUnlock()
-	if appStateInstance != nil && appStateInstance.AllowedFiles != nil {
-		return appStateInstance.AllowedFiles[filename]
+	if appStateInstance == nil {
+		return false
 	}
-	return false
+	v, ok := appStateInstance.AllowedFiles.Load(filename)
+	if !ok {
+		return false
+	}
+	allowed, ok := v.(bool)
+	return ok && allowed
 }
 
 func AddAllowedFile(filename string) {
 	appStateMutex.Lock()
 	defer appStateMutex.Unlock()
-	if appStateInstance != nil && appStateInstance.AllowedFiles != nil {
-		appStateInstance.AllowedFiles[filename] = true
+	if appStateInstance == nil {
+		return
 	}
+	appStateInstance.AllowedFiles.Store(filename, true)
 }
 
 func RemoveAllowedFile(filename string) {
 	appStateMutex.Lock()
 	defer appStateMutex.Unlock()
-	if appStateInstance != nil && appStateInstance.AllowedFiles != nil {
-		delete(appStateInstance.AllowedFiles, filename)
+	if appStateInstance == nil {
+		return
 	}
+	appStateInstance.AllowedFiles.Delete(filename)
+}
+
+func GetAuthMap() map[string]AuthSession {
+	appStateMutex.RLock()
+	defer appStateMutex.RUnlock()
+	if appStateInstance != nil {
+		result := make(map[string]AuthSession)
+		appStateInstance.AuthMap.Range(func(key, value any) bool {
+			keyStr, keyExists := key.(string)
+			authSession, valueExists := value.(AuthSession)
+
+			if keyExists && valueExists {
+				result[keyStr] = authSession
+			}
+			return true
+		})
+
+		return result
+	}
+	return map[string]AuthSession{}
+}
+
+func CreateAuthSession(sessionID string, authSession AuthSession) {
+	appStateMutex.Lock()
+	defer appStateMutex.Unlock()
+	if appStateInstance == nil {
+		return
+	}
+	_, exists := appStateInstance.AuthMap.LoadOrStore(sessionID, authSession)
+	if !exists {
+		atomic.AddInt64(&appStateInstance.AuthMapEntryCount, 1)
+	} else {
+		appStateInstance.AuthMap.Store(sessionID, authSession)
+	}
+}
+
+func DeleteAuthSession(sessionID string) {
+	appStateMutex.Lock()
+	defer appStateMutex.Unlock()
+	if appStateInstance == nil {
+		return
+	}
+	if _, exists := appStateInstance.AuthMap.Load(sessionID); exists {
+		appStateInstance.AuthMap.Delete(sessionID)
+		newVal := atomic.AddInt64(&appStateInstance.AuthMapEntryCount, -1)
+		if newVal < 0 {
+			atomic.StoreInt64(&appStateInstance.AuthMapEntryCount, 0)
+		}
+	}
+}
+
+func GetAuthSessionCount() int64 {
+	// No need to lock mutex for atomic read
+	if appStateInstance == nil {
+		return 0
+	}
+	return atomic.LoadInt64(&appStateInstance.AuthMapEntryCount)
+}
+
+func RefreshAndGetAuthSessionCount() int64 {
+	if appStateInstance == nil {
+		return 0
+	}
+	var entries int64
+	appStateInstance.AuthMap.Range(func(_, _ any) bool {
+		entries++
+		return true
+	})
+	atomic.StoreInt64(&appStateInstance.AuthMapEntryCount, entries)
+	return entries
+}
+
+func CheckAuthSession(sessionID string, ipAddress string, basicToken string, bearerToken string, csrfToken string) (bool, error) {
+	appStateMutex.RLock()
+	defer appStateMutex.RUnlock()
+	if appStateInstance == nil {
+		return false, errors.New("app state is not initialized")
+	}
+	v, exists := appStateInstance.AuthMap.Load(sessionID)
+	if !exists {
+		return false, nil
+	}
+	authSession, exists := v.(AuthSession)
+	if !exists {
+		return false, errors.New("invalid auth session type")
+	}
+
+	if authSession.Basic.IP != ipAddress || authSession.Bearer.IP != ipAddress {
+		return false, errors.New("IP address mismatch for session ID: " + sessionID)
+	}
+
+	if strings.TrimSpace(ipAddress) == "" || strings.TrimSpace(basicToken) == "" || strings.TrimSpace(bearerToken) == "" {
+		return false, errors.New("empty IP address or token for session ID: " + sessionID)
+	}
+
+	if authSession.Basic.Token != basicToken || authSession.Bearer.Token != bearerToken {
+		return false, nil
+	}
+
+	return true, nil
 }
