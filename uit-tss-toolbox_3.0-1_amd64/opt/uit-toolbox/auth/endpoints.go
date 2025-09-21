@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"encoding/base64"
@@ -10,35 +10,42 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+	middleware "uit-toolbox/middleware"
 	"unicode/utf8"
 )
 
+type returnedJsonToken struct {
+	Token string  `json:"token"`
+	TTL   float64 `json:"ttl"`
+	Valid bool    `json:"valid"`
+}
+
 func webAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	requestIP, ok := GetRequestIP(req)
+	requestIP, ok := middleware.GetRequestIP(req)
 	if !ok {
 		log.Warning("no IP address stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
 		return
 	}
 	requestURL, ok := GetRequestURL(req)
 	if !ok {
 		log.Warning("no URL stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
 		return
 	}
 
 	// Sanitize login POST request
 	if req.Method != http.MethodPost || !(strings.HasSuffix(requestURL, "/login.html") || strings.HasSuffix(requestURL, "/login")) {
 		log.Warning("Invalid method or URL for auth form sanitization: " + requestIP + " ( " + requestURL + ")")
-		http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
+		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Warning("Cannot read request body: " + err.Error() + " (" + requestIP + ")")
-		http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
+		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 	defer req.Body.Close()
@@ -46,20 +53,20 @@ func webAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	base64String := strings.TrimSpace(string(body))
 	if base64String == "" {
 		log.Warning("No base64 string provided in auth form: " + requestIP)
-		http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
+		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
 	decodedBytes, err := base64.StdEncoding.DecodeString(base64String)
 	if err != nil {
 		log.Warning("Invalid base64 encoding: " + err.Error() + " (" + requestIP + ")")
-		http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
+		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
 	if !utf8.Valid(decodedBytes) {
 		log.Warning("Invalid UTF-8 in decoded data: " + requestIP)
-		http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
+		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 	var authData struct {
@@ -68,14 +75,14 @@ func webAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 	if err := json.Unmarshal(decodedBytes, &authData); err != nil {
 		log.Warning("Invalid JSON structure: " + err.Error() + " (" + requestIP + ")")
-		http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
+		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
 	// Validate input data
 	if err := ValidateAuthFormInput(authData.Username, authData.Password); err != nil {
 		log.Warning("Invalid auth input: " + err.Error() + " (" + requestIP + ")")
-		http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
+		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
@@ -83,14 +90,14 @@ func webAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	authenticated, err := CheckAuthCredentials(ctx, authData.Username, authData.Password)
 	if err != nil || !authenticated {
 		log.Info("Authentication failed for " + requestIP + ": " + err.Error())
-		http.Error(w, formatHttpError("Unauthorized"), http.StatusUnauthorized)
+		http.Error(w, middleware.FormatHttpError("Unauthorized"), http.StatusUnauthorized)
 		return
 	}
 
 	bearerValue, csrfValue, err := GenerateAuthTokens()
 	if err != nil {
 		log.Error("Failed to generate tokens: " + err.Error())
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
 		return
 	}
 
@@ -105,11 +112,11 @@ func webAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	_, existed, err := CreateOrUpdateAuthSession(&authMap, sessionID, basic, bearer, csrfToken)
 	if err != nil {
 		log.Error("Failed to create or update auth session: " + err.Error())
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
 		return
 	}
 
-	sessionCount := countAuthSessions(&authMap)
+	sessionCount := CountAuthSessions(&authMap)
 	if existed {
 		log.Info("Auth session exists: " + requestIP + " (Sessions: " + strconv.Itoa(int(sessionCount)) + " TTL: " + fmt.Sprintf("%.2f", bearer.TTL) + "s)")
 	} else {
@@ -147,7 +154,7 @@ func webAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	jsonData, err := json.Marshal(returnedJsonStruct)
 	if err != nil {
 		log.Error("Cannot marshal Token to JSON: " + err.Error())
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
 		return
 	}
 

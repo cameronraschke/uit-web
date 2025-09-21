@@ -1,4 +1,4 @@
-package main
+package get
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	log "uit-toolbox/logger"
 )
 
 // Helper functions
@@ -28,7 +30,7 @@ type serverTime struct {
 	Time string `json:"server_time"`
 }
 
-func getServerTime(w http.ResponseWriter, r *http.Request) {
+func GetServerTime(w http.ResponseWriter, r *http.Request) {
 	requestIP, ok := GetRequestIP(r)
 	if !ok {
 		log.Warning("no IP address stored in context")
@@ -58,7 +60,7 @@ type clientLookup struct {
 	SystemSerial string `json:"system_serial"`
 }
 
-func dbSelClientLookup(ctx context.Context, db *sql.DB, tagnumber int, serial string) (string, error) {
+func DBSelClientLookup(ctx context.Context, db *sql.DB, tagnumber int, serial string) (string, error) {
 	var sqlQuery string
 	var results []*clientLookup
 
@@ -104,7 +106,7 @@ func dbSelClientLookup(ctx context.Context, db *sql.DB, tagnumber int, serial st
 	return jsonStr, nil
 }
 
-func getClientLookup(w http.ResponseWriter, r *http.Request) {
+func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requestIP, ok := GetRequestIP(r)
 	if !ok {
@@ -131,7 +133,7 @@ func getClientLookup(w http.ResponseWriter, r *http.Request) {
 	if err != nil || tagnumber <= 0 {
 		tagnumber = 0
 	}
-	jsonStr, err := dbSelClientLookup(ctx, db, tagnumber, systemSerial)
+	jsonStr, err := DBSelClientLookup(ctx, db, tagnumber, systemSerial)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
@@ -154,7 +156,7 @@ type hardwareData struct {
 	SystemManufacturer      string `json:"system_manufacturer"`
 }
 
-func dbSelHardwareData(ctx context.Context, db *sql.DB, tagnumber int) (string, error) {
+func DBSelHardwareData(ctx context.Context, db *sql.DB, tagnumber int) (string, error) {
 	var sqlQuery string
 	var results []*hardwareData
 
@@ -214,7 +216,7 @@ func dbSelHardwareData(ctx context.Context, db *sql.DB, tagnumber int) (string, 
 	return jsonStr, nil
 }
 
-func getHardwareData(w http.ResponseWriter, r *http.Request) {
+func GetHardwareData(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requestIP, ok := GetRequestIP(r)
 	if !ok {
@@ -240,7 +242,7 @@ func getHardwareData(w http.ResponseWriter, r *http.Request) {
 	if err != nil || tagnumber <= 0 {
 		tagnumber = 0
 	}
-	jsonStr, err := dbSelHardwareData(ctx, db, tagnumber)
+	jsonStr, err := DBSelHardwareData(ctx, db, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
@@ -257,7 +259,7 @@ type biosData struct {
 	TpmVersion  string `json:"tpm_version"`
 }
 
-func dbSelBiosData(ctx context.Context, db *sql.DB, tagnumber int) (string, error) {
+func DBSelBiosData(ctx context.Context, db *sql.DB, tagnumber int) (string, error) {
 	var sqlQuery string
 	var results []*biosData
 
@@ -306,7 +308,7 @@ func dbSelBiosData(ctx context.Context, db *sql.DB, tagnumber int) (string, erro
 	return jsonStr, nil
 }
 
-func getBiosData(w http.ResponseWriter, r *http.Request) {
+func GetBiosData(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requestIP, ok := GetRequestIP(r)
 	if !ok {
@@ -332,7 +334,7 @@ func getBiosData(w http.ResponseWriter, r *http.Request) {
 	if err != nil || tagnumber <= 0 {
 		tagnumber = 0
 	}
-	jsonStr, err := dbSelBiosData(ctx, db, tagnumber)
+	jsonStr, err := DBSelBiosData(ctx, db, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
@@ -350,7 +352,7 @@ type osData struct {
 	BootTime        time.Duration `json:"boot_time"`
 }
 
-func dbSelOsData(ctx context.Context, db *sql.DB, tagnumber int) (string, error) {
+func DBSelOsData(ctx context.Context, db *sql.DB, tagnumber int) (string, error) {
 	var sqlQuery string
 	var results []*osData
 
@@ -404,7 +406,7 @@ func dbSelOsData(ctx context.Context, db *sql.DB, tagnumber int) (string, error)
 	return jsonStr, nil
 }
 
-func getOSData(w http.ResponseWriter, r *http.Request) {
+func GetOSData(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requestIP, ok := GetRequestIP(r)
 	if !ok {
@@ -430,7 +432,7 @@ func getOSData(w http.ResponseWriter, r *http.Request) {
 	if err != nil || tagnumber <= 0 {
 		tagnumber = 0
 	}
-	jsonStr, err := dbSelOsData(ctx, db, tagnumber)
+	jsonStr, err := DBSelOsData(ctx, db, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
@@ -446,7 +448,7 @@ type activeJobs struct {
 	QueuePosition int    `json:"queue_position"`
 }
 
-func dbSelQueuedJobData(ctx context.Context, db *sql.DB, tagnumber int) (string, error) {
+func DBSelQueuedJobData(ctx context.Context, db *sql.DB, tagnumber int) (string, error) {
 	var sqlQuery string
 	var results []*activeJobs
 
@@ -496,7 +498,7 @@ func dbSelQueuedJobData(ctx context.Context, db *sql.DB, tagnumber int) (string,
 	return jsonStr, nil
 }
 
-func getClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
+func GetClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requestIP, ok := GetRequestIP(r)
 	if !ok {
@@ -522,7 +524,7 @@ func getClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
 	if err != nil || tagnumber <= 0 {
 		tagnumber = 0
 	}
-	jsonStr, err := dbSelQueuedJobData(ctx, db, tagnumber)
+	jsonStr, err := DBSelQueuedJobData(ctx, db, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
@@ -536,7 +538,7 @@ type availableJobs struct {
 	JobAvailable bool `json:"job_available"`
 }
 
-func dbSelAvailableJobs(ctx context.Context, db *sql.DB, tagnumber int) (string, error) {
+func DBSelAvailableJobs(ctx context.Context, db *sql.DB, tagnumber int) (string, error) {
 	var sqlQuery string
 	var results []*availableJobs
 
@@ -586,7 +588,7 @@ func dbSelAvailableJobs(ctx context.Context, db *sql.DB, tagnumber int) (string,
 	return jsonStr, nil
 }
 
-func getClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
+func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requestIP, ok := GetRequestIP(r)
 	if !ok {
@@ -612,7 +614,7 @@ func getClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
 	if err != nil || tagnumber <= 0 {
 		tagnumber = 0
 	}
-	jsonStr, err := dbSelAvailableJobs(ctx, db, tagnumber)
+	jsonStr, err := DBSelAvailableJobs(ctx, db, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
@@ -629,7 +631,7 @@ type JobQueueOverview struct {
 	TotalActiveBlockingJobs int `json:"total_active_blocking_jobs"`
 }
 
-func dbSelJobQueueOverview(ctx context.Context, db *sql.DB) (string, error) {
+func DBSelJobQueueOverview(ctx context.Context, db *sql.DB) (string, error) {
 	var sqlQuery string
 	var results []*JobQueueOverview
 
@@ -674,7 +676,7 @@ func dbSelJobQueueOverview(ctx context.Context, db *sql.DB) (string, error) {
 	return jsonStr, nil
 }
 
-func getJobQueueOverview(w http.ResponseWriter, r *http.Request) {
+func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	requestIP, ok := GetRequestIP(r)
 	if !ok {
@@ -700,7 +702,7 @@ func getJobQueueOverview(w http.ResponseWriter, r *http.Request) {
 	if err != nil || tagnumber <= 0 {
 		tagnumber = 0
 	}
-	jsonStr, err := dbSelJobQueueOverview(ctx, db)
+	jsonStr, err := DBSelJobQueueOverview(ctx, db)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)

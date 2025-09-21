@@ -1,4 +1,4 @@
-package main
+package middleware
 
 import (
 	"bufio"
@@ -18,6 +18,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	log "uit-toolbox/logger"
 	"unicode"
 	"unicode/utf8"
 
@@ -25,31 +26,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-type limiterEntry struct {
-	limiter  *rate.Limiter
-	lastSeen time.Time
-}
-
-type LimiterMap struct {
-	m     sync.Map
-	rate  float64
-	burst int
-}
-
-type BlockedMap struct {
-	m         sync.Map
-	banPeriod time.Duration
-}
-
-var (
-	rateLimit            float64
-	rateLimitBurst       int
-	rateLimitBanDuration time.Duration
-	webServerLimiter     *LimiterMap
-	blockedIPs           *BlockedMap
-)
-
-func countAuthSessions(m *sync.Map) int {
+func CountAuthSessions(m *sync.Map) int {
 	authSessionCount := 0
 	m.Range(func(_, _ any) bool {
 		authSessionCount++
@@ -58,24 +35,23 @@ func countAuthSessions(m *sync.Map) int {
 	return authSessionCount
 }
 
-func formatHttpError(errorString string) (jsonErrStr string) {
+func FormatHttpError(errorString string) (jsonErrStr string) {
 	jsonStr := httpErrorCodes{Message: errorString}
 	jsonErr, err := json.Marshal(jsonStr)
 	if err != nil {
-		log.Error("Cannot parse JSON: " + err.Error())
-		return
+		return ""
 	}
 	return string(jsonErr)
 }
 
 func (lm *LimiterMap) Get(ip string) *rate.Limiter {
 	curTime := time.Now()
-	newEntry := &limiterEntry{
+	newEntry := &LimiterEntry{
 		limiter:  rate.NewLimiter(rate.Limit(lm.rate), lm.burst),
 		lastSeen: curTime,
 	}
 	queriedLimiter, exists := lm.m.LoadOrStore(ip, newEntry)
-	entry := queriedLimiter.(*limiterEntry)
+	entry := queriedLimiter.(*LimiterEntry)
 	entry.lastSeen = curTime
 	if !exists {
 		log.Debug("Created new limiter for IP: " + ip + " rate=" + fmt.Sprint(lm.rate) + " burst=" + fmt.Sprint(lm.burst))
@@ -110,7 +86,7 @@ func (bm *BlockedMap) Block(ip string) {
 }
 
 func GetLimiter(requestIP string) *rate.Limiter {
-	return webServerLimiter.Get(requestIP)
+	return WebServerLimiter.Get(requestIP)
 }
 
 func IsBlocked(requestIP string) bool {
@@ -123,10 +99,10 @@ func BlockIP(requestIP string) {
 
 func (as *AppState) Cleanup() {
 	ttl := time.Now().Add(-10 * time.Minute)
-	as.webServerLimiter.m.Range(func(key, value any) bool {
-		entry, ok := value.(*limiterEntry)
+	as.WebServerLimiter.m.Range(func(key, value any) bool {
+		entry, ok := value.(*LimiterEntry)
 		if !ok || entry.lastSeen.Before(ttl) {
-			as.webServerLimiter.m.Delete(key)
+			as.WebServerLimiter.m.Delete(key)
 		}
 		return true
 	})

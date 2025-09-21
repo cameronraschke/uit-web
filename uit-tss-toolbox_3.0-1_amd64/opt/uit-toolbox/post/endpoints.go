@@ -13,12 +13,10 @@ import (
 	_ "image/png"
 	"log"
 	"net/http"
-
-	// "net/http/httputil"
 	"strconv"
 	"time"
 
-	"uit-toolbox/api/database"
+	db "uit-toolbox/database"
 
 	"github.com/google/uuid"
 )

@@ -37,7 +37,7 @@ func startAuthMapCleanup(interval time.Duration) {
 					time.Now().After(authSession.Bearer.Expiry) {
 					authMap.Delete(sessionID)
 					atomic.AddInt64(&authMapEntryCount, -1)
-					sessionCount := countAuthSessions(&authMap)
+					sessionCount := CountAuthSessions(&authMap)
 					log.Info("(Cleanup) Auth session expired: " + sessionIP + " (TTL: " + fmt.Sprintf("%.2f", bearerExpiry.Seconds()) + ", " + strconv.Itoa(int(sessionCount)) + " session(s))")
 				}
 				return true
@@ -50,7 +50,7 @@ func printAuthMapCount(interval time.Duration) {
 	go func() {
 		for {
 			time.Sleep(interval)
-			sessionCount := countAuthSessions(&authMap)
+			sessionCount := CountAuthSessions(&authMap)
 			log.Info("Current auth sessions: " + strconv.Itoa(int(sessionCount)))
 		}
 	}()

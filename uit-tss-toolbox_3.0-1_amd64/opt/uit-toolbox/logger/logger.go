@@ -96,13 +96,11 @@ func (consoleLogger *ConsoleLogger) log(logLevel LogLevel, message string) {
 	}
 }
 
-func (consoleLogger *ConsoleLogger) Auth(message string)  { consoleLogger.log(Auth, message) }
-func (consoleLogger *ConsoleLogger) Debug(message string) { consoleLogger.log(Debug, message) }
-func (consoleLogger *ConsoleLogger) Info(message string)  { consoleLogger.log(Info, message) }
-func (consoleLogger *ConsoleLogger) Warning(message string) {
-	consoleLogger.log(Warning, message)
-}
-func (consoleLogger *ConsoleLogger) Error(message string) { consoleLogger.log(Error, message) }
+func (consoleLogger *ConsoleLogger) Auth(message string)    { consoleLogger.log(Auth, message) }
+func (consoleLogger *ConsoleLogger) Debug(message string)   { consoleLogger.log(Debug, message) }
+func (consoleLogger *ConsoleLogger) Info(message string)    { consoleLogger.log(Info, message) }
+func (consoleLogger *ConsoleLogger) Warning(message string) { consoleLogger.log(Warning, message) }
+func (consoleLogger *ConsoleLogger) Error(message string)   { consoleLogger.log(Error, message) }
 
 func CreateLogger(loggerType string, logLevel LogLevel) Logger {
 	switch strings.ToLower(loggerType) {
