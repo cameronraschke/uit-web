@@ -18,22 +18,14 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	log "uit-toolbox/logger"
 	"unicode"
 	"unicode/utf8"
+
+	config "uit-toolbox/config"
 
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/time/rate"
 )
-
-func CountAuthSessions(m *sync.Map) int {
-	authSessionCount := 0
-	m.Range(func(_, _ any) bool {
-		authSessionCount++
-		return true
-	})
-	return authSessionCount
-}
 
 func FormatHttpError(errorString string) (jsonErrStr string) {
 	jsonStr := httpErrorCodes{Message: errorString}
@@ -45,6 +37,7 @@ func FormatHttpError(errorString string) (jsonErrStr string) {
 }
 
 func (lm *LimiterMap) Get(ip string) *rate.Limiter {
+	log := config.GetLogger()
 	curTime := time.Now()
 	newEntry := &LimiterEntry{
 		limiter:  rate.NewLimiter(rate.Limit(lm.rate), lm.burst),

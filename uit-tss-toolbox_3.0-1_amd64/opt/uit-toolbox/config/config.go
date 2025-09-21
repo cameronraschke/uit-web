@@ -3,13 +3,14 @@ package config
 import (
 	"database/sql"
 	"errors"
+	"log"
+	"maps"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-	db "uit-toolbox/database"
-	log "uit-toolbox/logger"
+	"uit-toolbox/logger"
 
 	"golang.org/x/time/rate"
 )
@@ -57,7 +58,7 @@ type AppState struct {
 	DB                *sql.DB
 	AuthMap           sync.Map
 	AuthMapEntryCount int64
-	Log               log.Logger
+	Log               logger.Logger
 	WebServerLimiter  *LimiterMap
 	FileLimiter       *LimiterMap
 	APILimiter        *LimiterMap
@@ -71,35 +72,17 @@ type AuthHeader struct {
 	Bearer *string
 }
 
-type BasicToken struct {
-	Token     string    `json:"token"`
-	Expiry    time.Time `json:"expiry"`
-	NotBefore time.Time `json:"not_before"`
-	TTL       float64   `json:"ttl"`
-	IP        string    `json:"ip"`
-	Valid     bool      `json:"valid"`
-}
-
-type BearerToken struct {
-	Token     string    `json:"token"`
-	Expiry    time.Time `json:"expiry"`
-	NotBefore time.Time `json:"not_before"`
-	TTL       float64   `json:"ttl"`
-	IP        string    `json:"ip"`
-	Valid     bool      `json:"valid"`
-}
-
-type AuthSession struct {
-	Basic  BasicToken
-	Bearer BearerToken
-	CSRF   string
-}
-
 type httpErrorCodes struct {
 	Message string `json:"message"`
 }
 
-type ctxURLRequest struct{}
+type RateLimiter struct {
+	Requests       int
+	LastSeen       time.Time
+	MapLastUpdated time.Time
+	BannedUntil    time.Time
+	Banned         bool
+}
 
 var (
 	rateLimit            float64
@@ -107,6 +90,9 @@ var (
 	rateLimitBanDuration time.Duration
 	WebServerLimiter     *LimiterMap
 	blockedIPs           *BlockedMap
+	appStateInstance     *AppState
+	appStateOnce         sync.Once
+	appStateMutex        sync.RWMutex
 )
 
 func LoadConfig() (AppConfig, error) {
@@ -273,19 +259,30 @@ func LoadConfig() (AppConfig, error) {
 }
 
 func InitApp(appConfig AppConfig) (*AppState, error) {
-	dbConn, err := db.NewDBConnection(appConfig)
-	if err != nil {
-		log.Error("Failed to initialize database connection: " + err.Error())
-		return nil, err
+	var dbConn *sql.DB
+	var dbErr error
+	appStateOnce.Do(func() {
+		dbConn, dbErr = NewDBConnection(appConfig)
+	})
+
+	if dbErr != nil {
+		log.Printf("%s", "Failed to initialize database connection: "+dbErr.Error())
+		return nil, dbErr
 	}
 
+	appStateMutex.Lock()
+	defer appStateMutex.Unlock()
+
 	appState := &AppState{
-		db:               dbConn,
-		WebServerLimiter: &LimiterMap{rate: appConfig.UIT_RATE_LIMIT_INTERVAL, burst: appConfig.UIT_RATE_LIMIT_BURST},
-		fileLimiter:      &LimiterMap{rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 4, burst: appConfig.UIT_RATE_LIMIT_BURST / 4},
-		apiLimiter:       &LimiterMap{rate: appConfig.UIT_RATE_LIMIT_INTERVAL, burst: appConfig.UIT_RATE_LIMIT_BURST},
-		authLimiter:      &LimiterMap{rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 10, burst: appConfig.UIT_RATE_LIMIT_BURST / 10},
-		blockedIPs:       &BlockedMap{banPeriod: appConfig.UIT_RATE_LIMIT_BAN_DURATION},
+		DB:                dbConn,
+		AuthMap:           sync.Map{},
+		AuthMapEntryCount: 0,
+		Log:               logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_API_LOG_LEVEL"))),
+		WebServerLimiter:  &LimiterMap{rate: appConfig.UIT_RATE_LIMIT_INTERVAL, burst: appConfig.UIT_RATE_LIMIT_BURST},
+		FileLimiter:       &LimiterMap{rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 4, burst: appConfig.UIT_RATE_LIMIT_BURST / 4},
+		APILimiter:        &LimiterMap{rate: appConfig.UIT_RATE_LIMIT_INTERVAL, burst: appConfig.UIT_RATE_LIMIT_BURST},
+		AuthLimiter:       &LimiterMap{rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 10, burst: appConfig.UIT_RATE_LIMIT_BURST / 10},
+		BlockedIPs:        &BlockedMap{banPeriod: appConfig.UIT_RATE_LIMIT_BAN_DURATION},
 		AllowedFiles: map[string]bool{
 			"filesystem.squashfs":          true,
 			"initrd.img":                   true,
@@ -318,5 +315,59 @@ func InitApp(appConfig AppConfig) (*AppState, error) {
 		},
 	}
 
+	appStateInstance = appState
 	return appState, nil
+}
+
+func GetLogger() logger.Logger {
+	appStateMutex.RLock()
+	defer appStateMutex.RUnlock()
+	if appStateInstance != nil {
+		return appStateInstance.Log
+	}
+	return nil
+}
+
+func SetDatabaseConn(db *sql.DB) {
+	appStateMutex.Lock()
+	defer appStateMutex.Unlock()
+	if appStateInstance != nil {
+		appStateInstance.DB = db
+	}
+}
+
+func GetAllowedFiles() map[string]bool {
+	appStateMutex.RLock()
+	defer appStateMutex.RUnlock()
+	if appStateInstance != nil {
+		result := make(map[string]bool)
+		maps.Copy(result, appStateInstance.AllowedFiles)
+		return result
+	}
+	return nil
+}
+
+func IsFileAllowed(filename string) bool {
+	appStateMutex.RLock()
+	defer appStateMutex.RUnlock()
+	if appStateInstance != nil && appStateInstance.AllowedFiles != nil {
+		return appStateInstance.AllowedFiles[filename]
+	}
+	return false
+}
+
+func AddAllowedFile(filename string) {
+	appStateMutex.Lock()
+	defer appStateMutex.Unlock()
+	if appStateInstance != nil && appStateInstance.AllowedFiles != nil {
+		appStateInstance.AllowedFiles[filename] = true
+	}
+}
+
+func RemoveAllowedFile(filename string) {
+	appStateMutex.Lock()
+	defer appStateMutex.Unlock()
+	if appStateInstance != nil && appStateInstance.AllowedFiles != nil {
+		delete(appStateInstance.AllowedFiles, filename)
+	}
 }

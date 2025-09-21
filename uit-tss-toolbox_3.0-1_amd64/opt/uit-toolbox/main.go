@@ -463,29 +463,16 @@ func main() {
 
 	// https handlers and middleware chains
 	httpsBaseChain := muxChain{
-		middleware.LimitRequestSizeMiddleware,
-		middleware.TimeoutMiddleware,
-		middleware.StoreClientIPMiddleware,
-		middleware.CheckValidURLMiddleware,
-		middleware.AllowIPRangeMiddleware(appConfig.UIT_ALL_ALLOWED_IP),
-		middleware.RateLimitMiddleware(appState, "web"),
-		middleware.TLSMiddleware,
-		middleware.HTTPMethodMiddleware,
-		middleware.CheckHeadersMiddleware,
-		middleware.SetHeadersMiddleware,
-	}
-
-	httpsBaseAuthChain := muxChain{
-		middleware.LimitRequestSizeMiddleware,
-		middleware.TimeoutMiddleware,
-		middleware.StoreClientIPMiddleware,
-		middleware.CheckValidURLMiddleware,
-		middleware.AllowIPRangeMiddleware(appConfig.UIT_ALL_ALLOWED_IP),
-		middleware.RateLimitMiddleware(appState, "auth"),
-		middleware.TLSMiddleware,
-		middleware.HTTPMethodMiddleware,
-		middleware.CheckHeadersMiddleware,
-		middleware.SetHeadersMiddleware,
+		mw.LimitRequestSize(),
+		mw.Timeout(),
+		mw.StoreClientIP(),
+		mw.CheckValidURL(),
+		mw.AllowIPRange(appConfig.UIT_ALL_ALLOWED_IP),
+		mw.RateLimit("web"),
+		mw.TLS(),
+		mw.HTTPMethod(),
+		mw.CheckHeaders(),
+		mw.SetHeaders(),
 	}
 
 	// No allowedFilesMiddleware here, as API calls do not serve files
@@ -511,8 +498,8 @@ func main() {
 	httpsMux.Handle("GET /api/job_queue/client/queued_job", httpsFullAPIChain.thenFunc(get.GetClientQueuedJobs))
 	httpsMux.Handle("GET /api/job_queue/client/job_available", httpsFullAPIChain.thenFunc(get.GetClientAvailableJobs))
 
-	httpsMux.Handle("GET /login.html", httpsBaseAuthChain.then(webServerHandler(appState)))
-	httpsMux.Handle("POST /login.html", httpsBaseAuthChain.thenFunc(auth.WebAuthEndpoint))
+	httpsMux.Handle("GET /login.html", httpsBaseChain.then(webServerHandler(appState)))
+	httpsMux.Handle("POST /login.html", httpsBaseChain.thenFunc(auth.WebAuthEndpoint))
 	httpsMux.Handle("/js/login.js", httpsBaseChain.then(webServerHandler(appState)))
 	httpsMux.Handle("/css/desktop.css", httpsBaseChain.then(webServerHandler(appState)))
 	httpsMux.Handle("/favicon.ico", httpsBaseChain.then(webServerHandler(appState)))
