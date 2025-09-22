@@ -1,13 +1,13 @@
 package webserver
 
-type ctxClientIP struct{}
-type ctxURLRequest struct{}
-type ctxFileRequest struct {
+type CTXClientIP struct{}
+type CTXURLRequest struct{}
+type CTXFileRequest struct {
 	FullPath     string
 	ResolvedPath string
 	FileName     string
 }
 
-type httpErrorCodes struct {
+type HTTPErrorCodes struct {
 	Message string `json:"message"`
 }

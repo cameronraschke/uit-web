@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -18,11 +19,8 @@ import (
 type AppConfig struct {
 	UIT_WAN_IF                  string
 	UIT_WAN_IP_ADDRESS          string
-	UIT_WAN_ALLOWED_IP          []string
 	UIT_LAN_IF                  string
 	UIT_LAN_IP_ADDRESS          string
-	UIT_LAN_ALLOWED_IP          []string
-	UIT_ALL_ALLOWED_IP          []string
 	UIT_WEB_DB_DBNAME           string
 	UIT_WEB_DB_HOST             string
 	UIT_WEB_DB_PORT             string
@@ -75,6 +73,9 @@ type AppState struct {
 	AuthLimiter       *LimiterMap
 	BlockedIPs        *BlockedMap
 	AllowedFiles      sync.Map
+	AllowedWANIPs     sync.Map
+	AllowedLANIPs     sync.Map
+	AllowedIPs        sync.Map
 }
 
 type AuthHeader struct {
@@ -137,11 +138,11 @@ func LoadConfig() (AppConfig, error) {
 	}
 
 	envWanAllowedIPs := strings.Split(envWanAllowedIPStr, ",")
-	wanAllowedIP := make([]string, 0, len(envWanAllowedIPs))
+	wanAllowedIP := make(map[string]bool)
 	for _, cidr := range envWanAllowedIPs {
 		cidr = strings.TrimSpace(cidr)
 		if cidr != "" {
-			wanAllowedIP = append(wanAllowedIP, cidr)
+			wanAllowedIP[cidr] = true
 		}
 	}
 
@@ -160,21 +161,21 @@ func LoadConfig() (AppConfig, error) {
 	}
 
 	envLanAllowedIPs := strings.Split(envAllowedLanIPStr, ",")
-	lanAllowedIP := make([]string, 0, len(envLanAllowedIPs))
+	lanAllowedIP := make(map[string]bool)
 	for _, cidr := range envLanAllowedIPs {
 		cidr = strings.TrimSpace(cidr)
 		if cidr != "" {
-			lanAllowedIP = append(lanAllowedIP, cidr)
+			lanAllowedIP[cidr] = true
 		}
 	}
 
 	envAllAllowedIPStr := envAllowedLanIPStr + "," + envWanAllowedIPStr
 	envAllAllowedIPs := strings.Split(envAllAllowedIPStr, ",")
-	allAllowedIPs := make([]string, 0, len(envAllAllowedIPs))
+	allAllowedIPs := make(map[string]bool)
 	for _, cidr := range envAllAllowedIPs {
 		cidr = strings.TrimSpace(cidr)
 		if cidr != "" {
-			allAllowedIPs = append(allAllowedIPs, cidr)
+			allAllowedIPs[cidr] = true
 		}
 	}
 
@@ -285,32 +286,28 @@ func LoadConfig() (AppConfig, error) {
 	}
 	rateLimitBanDuration := time.Duration(banSeconds) * time.Second
 
-	appConfig = AppConfig{
-		UIT_WAN_IF:                  wanIf,
-		UIT_WAN_IP_ADDRESS:          wanIP,
-		UIT_WAN_ALLOWED_IP:          wanAllowedIP,
-		UIT_LAN_IF:                  lanIf,
-		UIT_LAN_IP_ADDRESS:          lanIP,
-		UIT_LAN_ALLOWED_IP:          lanAllowedIP,
-		UIT_ALL_ALLOWED_IP:          allAllowedIPs,
-		UIT_WEB_DB_DBNAME:           dbName,
-		UIT_WEB_DB_HOST:             dbHost,
-		UIT_WEB_DB_PORT:             dbPort,
-		UIT_WEB_DB_USERNAME:         dbUser,
-		UIT_WEB_DB_PASSWD:           uitWebDbPasswd,
-		UIT_DB_CLIENT_PASSWD:        dbClientPasswd,
-		UIT_WEB_USER_DEFAULT_PASSWD: webUserDefaultPasswd,
-		UIT_WEBMASTER_NAME:          webmasterName,
-		UIT_WEBMASTER_EMAIL:         webmasterEmail,
-		UIT_PRINTER_IP:              printerIP,
-		UIT_HTTP_PORT:               httpPort,
-		UIT_HTTPS_PORT:              httpsPort,
-		UIT_TLS_CERT_FILE:           tlsCertFile,
-		UIT_TLS_KEY_FILE:            tlsKeyFile,
-		UIT_RATE_LIMIT_BURST:        parsedBurst,
-		UIT_RATE_LIMIT_INTERVAL:     parsedInterval,
-		UIT_RATE_LIMIT_BAN_DURATION: rateLimitBanDuration,
-	}
+	appConfig.UIT_WAN_IF = wanIf
+	appConfig.UIT_WAN_IP_ADDRESS = wanIP
+	appConfig.UIT_LAN_IF = lanIf
+	appConfig.UIT_LAN_IP_ADDRESS = lanIP
+	appConfig.UIT_WEB_DB_DBNAME = dbName
+	appConfig.UIT_WEB_DB_HOST = dbHost
+	appConfig.UIT_WEB_DB_PORT = dbPort
+	appConfig.UIT_WEB_DB_USERNAME = dbUser
+	appConfig.UIT_WEB_DB_PASSWD = uitWebDbPasswd
+	appConfig.UIT_DB_CLIENT_PASSWD = dbClientPasswd
+	appConfig.UIT_WEB_USER_DEFAULT_PASSWD = webUserDefaultPasswd
+	appConfig.UIT_WEBMASTER_NAME = webmasterName
+	appConfig.UIT_WEBMASTER_EMAIL = webmasterEmail
+	appConfig.UIT_PRINTER_IP = printerIP
+	appConfig.UIT_HTTP_PORT = httpPort
+	appConfig.UIT_HTTPS_PORT = httpsPort
+	appConfig.UIT_TLS_CERT_FILE = tlsCertFile
+	appConfig.UIT_TLS_KEY_FILE = tlsKeyFile
+	appConfig.UIT_RATE_LIMIT_BURST = parsedBurst
+	appConfig.UIT_RATE_LIMIT_INTERVAL = parsedInterval
+	appConfig.UIT_RATE_LIMIT_BAN_DURATION = rateLimitBanDuration
+
 	return appConfig, nil
 }
 
@@ -388,10 +385,10 @@ func GetAppState() *AppState {
 func GetLogger() logger.Logger {
 	appStateMutex.RLock()
 	defer appStateMutex.RUnlock()
-	if appStateInstance != nil {
-		return appStateInstance.Log
+	if appStateInstance == nil {
+		return nil
 	}
-	return nil
+	return appStateInstance.Log
 }
 
 func GetDatabaseCredentials() (string, string, string, string, string) {
@@ -403,30 +400,27 @@ func GetDatabaseCredentials() (string, string, string, string, string) {
 }
 
 func GetDatabaseConn() *sql.DB {
-	appStateMutex.RLock()
-	defer appStateMutex.RUnlock()
-	if appStateInstance != nil {
-		return appStateInstance.DBConn.Load()
+	appState := GetAppState()
+	if appState == nil {
+		return nil
 	}
-	return nil
+	return appState.DBConn.Load()
 }
 
 func SetDatabaseConn(newDbConn *sql.DB) {
-	appStateMutex.Lock()
-	defer appStateMutex.Unlock()
-	if appStateInstance != nil {
-		appStateInstance.DBConn.Store(newDbConn)
+	appState := GetAppState()
+	if appState != nil {
+		appState.DBConn.Store(newDbConn)
 	}
 }
 
 func SwapDatabaseConn(newDbConn *sql.DB) (oldDbConn *sql.DB) {
-	appStateMutex.Lock()
-	defer appStateMutex.Unlock()
-	if appStateInstance == nil {
+	appState := GetAppState()
+	if appState == nil {
 		return nil
 	}
-	oldDbConn = appStateInstance.DBConn.Load()
-	appStateInstance.DBConn.Store(newDbConn)
+	oldDbConn = appState.DBConn.Load()
+	appState.DBConn.Store(newDbConn)
 	return oldDbConn
 }
 
@@ -583,4 +577,52 @@ func CheckAuthSession(sessionID string, ipAddress string, basicToken string, bea
 
 	sessionValid = true
 	return sessionValid, sessionExists, nil
+}
+
+func IsIPAllowed(source string, ipAddress string) bool {
+	appState := GetAppState()
+	if appState == nil {
+		return false
+	}
+	ip := net.ParseIP(ipAddress)
+	if ip == nil {
+		return false
+	}
+	allowed := false
+	appState.AllowedIPs.Range(func(k, v any) bool {
+		cidr, ok := k.(string)
+		if !ok || strings.TrimSpace(cidr) == "" {
+			return true
+		}
+		_, ipNet, err := net.ParseCIDR(cidr)
+		if err != nil {
+			return true
+		}
+		if ipNet.Contains(ip) {
+			allowed = true
+			return false
+		}
+		return true
+	})
+	return allowed
+}
+
+func IsIPBlocked(ipAddress string) bool {
+	appState := GetAppState()
+	if appState == nil {
+		return false
+	}
+	value, ok := appState.BlockedIPs.M.Load(ipAddress)
+	if !ok {
+		return false
+	}
+	blockedEntry, ok := value.(LimiterEntry)
+	if !ok {
+		return false
+	}
+	if time.Now().Before(blockedEntry.LastSeen.Add(appState.BlockedIPs.BanPeriod)) {
+		return true
+	}
+	appState.BlockedIPs.M.Delete(ipAddress)
+	return false
 }

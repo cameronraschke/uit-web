@@ -18,46 +18,39 @@ import (
 	"unicode/utf8"
 
 	config "uit-toolbox/config"
+	webserver "uit-toolbox/webserver"
 
 	"golang.org/x/text/unicode/norm"
 	"golang.org/x/time/rate"
 )
 
-func LimitRequestSizeMiddleware(appState *config.AppState) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			log := appState.Log
-			maxSize := int64(64 << 20)
-			if req.ContentLength > maxSize {
-				//req.RemoteAddr used here because the ip has not been assigned to the context yet
-				log.Warning("Request content length exceeds limit: " + fmt.Sprintf("%.2fMB", float64(req.ContentLength)/1e6) + " " + req.RemoteAddr)
-				http.Error(w, FormatHttpError("Request too large"), http.StatusRequestEntityTooLarge)
-				return
-			}
-			req.Body = http.MaxBytesReader(w, req.Body, maxSize)
-			next.ServeHTTP(w, req)
-		})
-	}
+func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := config.GetLogger()
+		maxSize := int64(64 << 20)
+		if req.ContentLength > maxSize {
+			//req.RemoteAddr used here because the ip has not been assigned to the context yet
+			log.Warning("Request content length exceeds limit: " + fmt.Sprintf("%.2fMB", float64(req.ContentLength)/1e6) + " " + req.RemoteAddr)
+			http.Error(w, FormatHttpError("Request too large"), http.StatusRequestEntityTooLarge)
+			return
+		}
+		req.Body = http.MaxBytesReader(w, req.Body, maxSize)
+		next.ServeHTTP(w, req)
+	})
 }
 
-func TimeoutMiddleware(appState *config.AppState) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			ctx, cancel := context.WithTimeout(req.Context(), 10*time.Second)
-			defer cancel()
-			req = req.WithContext(ctx)
-			next.ServeHTTP(w, req)
-		})
-	}
+func TimeoutMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		ctx, cancel := context.WithTimeout(req.Context(), 10*time.Second)
+		defer cancel()
+		req = req.WithContext(ctx)
+		next.ServeHTTP(w, req)
+	})
 }
 
 func StoreClientIPMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log := config.GetLogger()
-		// xffHeader := strings.Split(r.Header.Get("X-Forwarded-For"), ",")[0]
-		// xripHeader := strings.TrimSpace(r.Header.Get("X-Real-IP"))
-		// xffExists := xffHeader != ""
-		// xripExists := xripHeader != ""
 
 		ip, port, err := net.SplitHostPort(req.RemoteAddr)
 		if err != nil {
@@ -78,7 +71,7 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(req.Context(), server.ctxClientIP{}, ip)
+		ctx := context.WithValue(req.Context(), webserver.CTXClientIP{}, ip)
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }

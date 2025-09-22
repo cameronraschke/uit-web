@@ -16,7 +16,6 @@ import (
 	config "uit-toolbox/config"
 	"uit-toolbox/database"
 	get "uit-toolbox/get"
-	logger "uit-toolbox/logger"
 	middleware "uit-toolbox/middleware"
 
 	_ "net/http/pprof"
@@ -385,9 +384,7 @@ func rejectRequest(w http.ResponseWriter, req *http.Request) {
 
 func main() {
 	debug.PrintStack()
-
-	log := logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_API_LOG_LEVEL")))
-
+	log := config.GetLogger()
 	log.Info("Server time: " + time.Now().Format("01-02-2006 15:04:05"))
 	log.Info("UIT API Starting...")
 
@@ -403,11 +400,13 @@ func main() {
 	appState, err := config.InitApp()
 	if err != nil {
 		log.Error("Failed to initialize application: " + err.Error())
-		return
+		os.Exit(1)
 	}
 
+	// Get DB credentials
 	dbName, dbHost, dbPort, dbUsername, dbPassword := config.GetDatabaseCredentials()
 
+	// Create DB connection
 	dbConn, err := database.NewDBConnection(dbName, dbHost, dbPort, dbUsername, dbPassword)
 	if err != nil {
 		log.Error("Failed to connect to database: " + err.Error())
@@ -417,18 +416,16 @@ func main() {
 	config.SetDatabaseConn(dbConn)
 	defer dbConn.Close()
 
-	mw := NewMiddlewareFactory(appState, appConfig)
-
 	fileServerBaseChain := muxChain{
-		mw.LimitRequestSize(),
-		mw.Timeout(),
-		mw.StoreClientIP(),
-		mw.CheckValidURL(),
-		mw.AllowIPRange(appConfig.UIT_ALL_ALLOWED_IP),
-		mw.RateLimit("file"),
-		mw.HTTPMethod(),
-		mw.CheckHeaders(),
-		mw.SetHeaders(),
+		middleware.LimitRequestSizeMiddleware,
+		middleware.TimeoutMiddleware,
+		middleware.StoreClientIPMiddleware,
+		middleware.CheckValidURLMiddleware,
+		middleware.AllowIPRangeMiddleware,
+		middleware.RateLimitMiddleware("file"),
+		middleware.HTTPMethodMiddleware,
+		middleware.CheckHeadersMiddleware,
+		middleware.SetHeadersMiddleware,
 	}
 
 	fileServerMuxChain := muxChain{

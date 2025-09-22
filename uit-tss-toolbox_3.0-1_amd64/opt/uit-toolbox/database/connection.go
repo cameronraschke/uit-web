@@ -1,42 +1,50 @@
 package database
 
 import (
+	"context"
 	"database/sql"
+	"fmt"
 	"log"
-	"os"
+	"net"
+	"net/url"
 	"time"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func NewDBConnection(dbName string, dbHost string, dbPort string, dbUsername string, dbPassword string) (*sql.DB, error) {
-	var db *sql.DB
-	// Connect to db with pgx
 	log.Println("Attempting connection to database...")
-	dbConnScheme := "postgres"
-	dbConnHost := dbHost
-	dbConnPort := dbPort
-	dbConnUser := dbUsername
-	dbConnDBName := dbName
-	dbConnPass := dbPassword
-	dbConnString := dbConnScheme + "://" + dbConnUser + ":" + dbConnPass + "@" + dbConnHost + ":" + dbConnPort + "/" + dbConnDBName + "?sslmode=disable"
-	var dbConnErr error
-	db, dbConnErr = sql.Open("pgx", dbConnString)
-	if dbConnErr != nil {
-		log.Println("Unable to connect to database: \n" + dbConnErr.Error())
-		os.Exit(1)
+	dbConnURL := url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(dbUsername, dbPassword),
+		Host:   net.JoinHostPort(dbHost, dbPort),
+		Path:   dbName,
 	}
-	defer db.Close()
+	dbConnQuery := dbConnURL.Query()
+	dbConnQuery.Set("sslmode", "disable")
+	dbConnURL.RawQuery = dbConnQuery.Encode()
+
+	// Open the database connection
+	dbConn, err := sql.Open("pgx", dbConnURL.String())
+	if err != nil {
+		return nil, fmt.Errorf("open db: %w", err)
+	}
+
+	// Set defaults for dbConn connection
+	dbConn.SetMaxOpenConns(30)
+	dbConn.SetMaxIdleConns(10)
+	dbConn.SetConnMaxIdleTime(1 * time.Minute)
+	dbConn.SetConnMaxLifetime(5 * time.Minute)
 
 	// Check if the database connection is valid
-	if err := db.Ping(); err != nil {
-		log.Printf("%s %s", "Cannot ping database:", err.Error())
-		return nil, err
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := dbConn.PingContext(ctx); err != nil {
+		_ = dbConn.Close()
+		return nil, fmt.Errorf("ping db: %w", err)
 	}
+
 	log.Println("Connected to database successfully")
 
-	// Set defaults for db connection
-	db.SetMaxOpenConns(30)
-	db.SetMaxIdleConns(10)
-	db.SetConnMaxIdleTime(1 * time.Minute)
-	db.SetConnMaxLifetime(5 * time.Minute)
-	return db, nil
+	return dbConn, nil
 }
