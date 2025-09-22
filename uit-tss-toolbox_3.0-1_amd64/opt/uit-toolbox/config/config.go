@@ -62,7 +62,7 @@ type FileList struct {
 type AppState struct {
 	DB                *sql.DB
 	AuthMap           sync.Map
-	AuthMapEntryCount int64
+	AuthMapEntryCount atomic.Int64
 	Log               logger.Logger
 	WebServerLimiter  *LimiterMap
 	FileLimiter       *LimiterMap
@@ -75,10 +75,6 @@ type AppState struct {
 type AuthHeader struct {
 	Basic  *string
 	Bearer *string
-}
-
-type httpErrorCodes struct {
-	Message string `json:"message"`
 }
 
 type RateLimiter struct {
@@ -117,8 +113,6 @@ var (
 	rateLimit            float64
 	rateLimitBurst       int
 	rateLimitBanDuration time.Duration
-	WebServerLimiter     *LimiterMap
-	blockedIPs           *BlockedMap
 	appStateInstance     *AppState
 	appStateOnce         sync.Once
 	appStateMutex        sync.RWMutex
@@ -305,13 +299,13 @@ func InitApp(appConfig AppConfig) (*AppState, error) {
 	appState := &AppState{
 		DB:                dbConn,
 		AuthMap:           sync.Map{},
-		AuthMapEntryCount: int64(0),
+		AuthMapEntryCount: atomic.Int64{},
 		Log:               logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_API_LOG_LEVEL"))),
-		WebServerLimiter:  &LimiterMap{Rate: appConfig.UIT_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_RATE_LIMIT_BURST},
-		FileLimiter:       &LimiterMap{Rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 4, Burst: appConfig.UIT_RATE_LIMIT_BURST / 4},
-		APILimiter:        &LimiterMap{Rate: appConfig.UIT_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_RATE_LIMIT_BURST},
-		AuthLimiter:       &LimiterMap{Rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 10, Burst: appConfig.UIT_RATE_LIMIT_BURST / 10},
-		BlockedIPs:        &BlockedMap{BanPeriod: appConfig.UIT_RATE_LIMIT_BAN_DURATION},
+		WebServerLimiter:  &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_RATE_LIMIT_BURST},
+		FileLimiter:       &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 4, Burst: appConfig.UIT_RATE_LIMIT_BURST / 4},
+		APILimiter:        &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_RATE_LIMIT_BURST},
+		AuthLimiter:       &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 10, Burst: appConfig.UIT_RATE_LIMIT_BURST / 10},
+		BlockedIPs:        &BlockedMap{M: sync.Map{}, BanPeriod: appConfig.UIT_RATE_LIMIT_BAN_DURATION},
 		AllowedFiles:      sync.Map{},
 	}
 
@@ -350,8 +344,31 @@ func InitApp(appConfig AppConfig) (*AppState, error) {
 		appState.AllowedFiles.Store(file.Filename, file.Allowed)
 	}
 
-	appStateInstance = appState
+	SetAppState(appState)
 	return appState, nil
+}
+
+func SetAppState(newState *AppState) {
+	appStateMutex.Lock()
+	defer appStateMutex.Unlock()
+	appStateInstance = newState
+}
+
+func GetAppState() *AppState {
+	appStateMutex.RLock()
+	as := appStateInstance
+	appStateMutex.RUnlock()
+	return as
+}
+
+func WithAppState(fn func(appState *AppState)) {
+	appStateMutex.RLock()
+	appState := appStateInstance
+	appStateMutex.RUnlock()
+	if appState == nil {
+		return
+	}
+	fn(appState)
 }
 
 func GetLogger() logger.Logger {
@@ -372,21 +389,22 @@ func SetDatabaseConn(db *sql.DB) {
 }
 
 func GetAllowedFiles() map[string]bool {
-	appStateMutex.RLock()
-	defer appStateMutex.RUnlock()
-	if appStateInstance != nil {
-		result := make(map[string]bool)
-		appStateInstance.AllowedFiles.Range(func(key, value any) bool {
-			keyStr, keyExists := key.(string)
-			valueBool, valueExists := value.(bool)
+	appState := GetAppState()
+	if appState == nil {
+		return nil
+	}
+	result := make(map[string]bool)
+	WithAppState(func(appState *AppState) {
+		appState.AllowedFiles.Range(func(k, v any) bool {
+			key, keyExists := k.(string)
+			value, valueExists := v.(bool)
 			if keyExists && valueExists {
-				result[keyStr] = valueBool
+				result[key] = value
 			}
 			return true
 		})
-		return result
-	}
-	return nil
+	})
+	return result
 }
 
 func IsFileAllowed(filename string) bool {
@@ -403,120 +421,128 @@ func IsFileAllowed(filename string) bool {
 	return ok && allowed
 }
 
-func AddAllowedFile(filename string) {
-	appStateMutex.Lock()
-	defer appStateMutex.Unlock()
-	if appStateInstance == nil {
-		return
+func AddAllowedFile(filename string) error {
+	appState := GetAppState()
+	if appState == nil {
+		return errors.New("app state is not initialized")
 	}
-	appStateInstance.AllowedFiles.Store(filename, true)
+	appState.AllowedFiles.Store(filename, true)
+	return nil
 }
 
 func RemoveAllowedFile(filename string) {
-	appStateMutex.Lock()
-	defer appStateMutex.Unlock()
-	if appStateInstance == nil {
+	appState := GetAppState()
+	if appState == nil {
 		return
 	}
-	appStateInstance.AllowedFiles.Delete(filename)
+	appState.AllowedFiles.Delete(filename)
 }
 
 func GetAuthMap() map[string]AuthSession {
-	appStateMutex.RLock()
-	defer appStateMutex.RUnlock()
-	if appStateInstance != nil {
-		result := make(map[string]AuthSession)
-		appStateInstance.AuthMap.Range(func(key, value any) bool {
-			keyStr, keyExists := key.(string)
-			authSession, valueExists := value.(AuthSession)
-
+	appState := GetAppState()
+	if appState == nil {
+		return nil
+	}
+	result := make(map[string]AuthSession)
+	WithAppState(func(appState *AppState) {
+		appState.AuthMap.Range(func(k, v any) bool {
+			key, keyExists := k.(string)
+			value, valueExists := v.(AuthSession)
 			if keyExists && valueExists {
-				result[keyStr] = authSession
+				result[key] = value
 			}
 			return true
 		})
-
-		return result
-	}
-	return map[string]AuthSession{}
+	})
+	return result
 }
 
-func CreateAuthSession(sessionID string, authSession AuthSession) {
-	appStateMutex.Lock()
-	defer appStateMutex.Unlock()
-	if appStateInstance == nil {
-		return
+func CreateAuthSession(sessionID string, authSession AuthSession) error {
+	appState := GetAppState()
+	if appState == nil {
+		return errors.New("app state is not initialized")
 	}
-	_, exists := appStateInstance.AuthMap.LoadOrStore(sessionID, authSession)
+	_, exists := appState.AuthMap.LoadOrStore(sessionID, authSession)
 	if !exists {
-		atomic.AddInt64(&appStateInstance.AuthMapEntryCount, 1)
+		appState.AuthMapEntryCount.Add(1)
 	} else {
-		appStateInstance.AuthMap.Store(sessionID, authSession)
+		appState.AuthMap.Store(sessionID, authSession)
 	}
+	return nil
 }
 
 func DeleteAuthSession(sessionID string) {
-	appStateMutex.Lock()
-	defer appStateMutex.Unlock()
-	if appStateInstance == nil {
+	appState := GetAppState()
+	if appState == nil {
 		return
 	}
-	if _, exists := appStateInstance.AuthMap.Load(sessionID); exists {
-		appStateInstance.AuthMap.Delete(sessionID)
-		newVal := atomic.AddInt64(&appStateInstance.AuthMapEntryCount, -1)
+	if _, exists := appState.AuthMap.LoadAndDelete(sessionID); exists {
+		newVal := appState.AuthMapEntryCount.Add(-1)
 		if newVal < 0 {
-			atomic.StoreInt64(&appStateInstance.AuthMapEntryCount, 0)
+			appState.AuthMapEntryCount.Store(0)
 		}
 	}
 }
 
 func GetAuthSessionCount() int64 {
-	// No need to lock mutex for atomic read
-	if appStateInstance == nil {
+	appState := GetAppState()
+	if appState == nil {
 		return 0
 	}
-	return atomic.LoadInt64(&appStateInstance.AuthMapEntryCount)
+	return appState.AuthMapEntryCount.Load()
 }
 
 func RefreshAndGetAuthSessionCount() int64 {
-	if appStateInstance == nil {
+	appState := GetAppState()
+	if appState == nil {
 		return 0
 	}
 	var entries int64
-	appStateInstance.AuthMap.Range(func(_, _ any) bool {
+	appState.AuthMap.Range(func(_, _ any) bool {
 		entries++
 		return true
 	})
-	atomic.StoreInt64(&appStateInstance.AuthMapEntryCount, entries)
+	appState.AuthMapEntryCount.Store(entries)
 	return entries
 }
 
-func CheckAuthSession(sessionID string, ipAddress string, basicToken string, bearerToken string, csrfToken string) (bool, error) {
-	appStateMutex.RLock()
-	defer appStateMutex.RUnlock()
-	if appStateInstance == nil {
-		return false, errors.New("app state is not initialized")
+func CheckAuthSession(sessionID string, ipAddress string, basicToken string, bearerToken string, csrfToken string) (bool, bool, error) {
+	sessionValid := false
+	sessionExists := false
+
+	appState := GetAppState()
+	if appState == nil {
+		return sessionValid, sessionExists, errors.New("app state is not initialized")
 	}
-	v, exists := appStateInstance.AuthMap.Load(sessionID)
+
+	v, exists := appState.AuthMap.Load(sessionID)
 	if !exists {
-		return false, nil
+		return sessionValid, sessionExists, nil
+	} else {
+		sessionExists = true
 	}
+
 	authSession, exists := v.(AuthSession)
 	if !exists {
-		return false, errors.New("invalid auth session type")
+		return sessionValid, sessionExists, errors.New("invalid auth session type")
 	}
 
 	if authSession.Basic.IP != ipAddress || authSession.Bearer.IP != ipAddress {
-		return false, errors.New("IP address mismatch for session ID: " + sessionID)
+		return sessionValid, sessionExists, errors.New("IP address mismatch for session ID: " + sessionID)
 	}
 
 	if strings.TrimSpace(ipAddress) == "" || strings.TrimSpace(basicToken) == "" || strings.TrimSpace(bearerToken) == "" {
-		return false, errors.New("empty IP address or token for session ID: " + sessionID)
+		return sessionValid, sessionExists, errors.New("empty IP address or token for session ID: " + sessionID)
 	}
 
 	if authSession.Basic.Token != basicToken || authSession.Bearer.Token != bearerToken {
-		return false, nil
+		return sessionValid, sessionExists, nil
 	}
 
-	return true, nil
+	if authSession.Basic.Expiry.Before(time.Now()) || authSession.Bearer.Expiry.Before(time.Now()) {
+		return sessionValid, sessionExists, nil
+	}
+
+	sessionValid = true
+	return sessionValid, sessionExists, nil
 }

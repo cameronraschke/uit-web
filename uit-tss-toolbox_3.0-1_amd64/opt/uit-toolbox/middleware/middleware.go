@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -77,7 +78,7 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(req.Context(), ctxClientIP{}, ip)
+		ctx := context.WithValue(req.Context(), server.ctxClientIP{}, ip)
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }

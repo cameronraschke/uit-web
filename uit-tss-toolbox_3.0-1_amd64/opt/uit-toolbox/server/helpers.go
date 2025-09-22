@@ -7,3 +7,7 @@ type ctxFileRequest struct {
 	ResolvedPath string
 	FileName     string
 }
+
+type httpErrorCodes struct {
+	Message string `json:"message"`
+}

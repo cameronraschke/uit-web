@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 	config "uit-toolbox/config"
 	middleware "uit-toolbox/middleware"
@@ -21,7 +20,7 @@ type returnedJsonToken struct {
 	Valid bool    `json:"valid"`
 }
 
-func webAuthEndpoint(w http.ResponseWriter, req *http.Request) {
+func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	log := config.GetLogger()
 	ctx := req.Context()
 	requestIP, ok := middleware.GetRequestIP(req)
@@ -105,24 +104,37 @@ func webAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	basicExpiry := time.Now().Add(20 * time.Minute)
 	bearerExpiry := time.Now().Add(20 * time.Minute)
-	basic := BasicToken{Token: authData.Username + ":" + authData.Password, Expiry: basicExpiry, NotBefore: time.Now(), TTL: time.Until(basicExpiry).Seconds(), IP: requestIP, Valid: true}
-	bearer := BearerToken{Token: bearerValue, Expiry: bearerExpiry, NotBefore: time.Now(), TTL: time.Until(bearerExpiry).Seconds(), IP: requestIP, Valid: true}
+	basic := config.BasicToken{Token: authData.Username + ":" + authData.Password, Expiry: basicExpiry, NotBefore: time.Now(), TTL: time.Until(basicExpiry).Seconds(), IP: requestIP, Valid: true}
+	bearer := config.BearerToken{Token: bearerValue, Expiry: bearerExpiry, NotBefore: time.Now(), TTL: time.Until(bearerExpiry).Seconds(), IP: requestIP, Valid: true}
 	csrfToken := csrfValue
 
 	sessionID := fmt.Sprintf("%s:%s", requestIP, bearer.Token)
+	authSession := config.AuthSession{Basic: basic, Bearer: bearer, CSRF: csrfToken}
 
-	_, existed, err := middleware.CreateOrUpdateAuthSession(&authMap, sessionID, basic, bearer, csrfToken)
+	if err := config.CreateAuthSession(sessionID, authSession); err != nil {
+		log.Error("Failed to create auth session: " + err.Error())
+		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
+		return
+	}
+
+	sessionValid, sessionExists, err := config.CheckAuthSession(sessionID, requestIP, basic.Token, bearer.Token, csrfToken)
 	if err != nil {
 		log.Error("Failed to create or update auth session: " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
 		return
 	}
+	if !sessionValid {
+		log.Warning("Auth session invalid after creation/update: " + requestIP)
+		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
+		return
+	}
 
-	sessionCount := CountAuthSessions(&authMap)
-	if existed {
+	sessionCount := config.GetAuthSessionCount()
+	if sessionExists {
 		log.Info("Auth session exists: " + requestIP + " (Sessions: " + strconv.Itoa(int(sessionCount)) + " TTL: " + fmt.Sprintf("%.2f", bearer.TTL) + "s)")
 	} else {
-		atomic.AddInt64(&authMapEntryCount, 1)
+		config.DeleteAuthSession(sessionID)
+		sessionCount = config.GetAuthSessionCount()
 		log.Info("New auth session created: " + requestIP + " (Sessions: " + strconv.Itoa(int(sessionCount)) + " TTL: " + fmt.Sprintf("%.2f", bearer.TTL) + "s)")
 	}
 
