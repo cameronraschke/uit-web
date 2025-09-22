@@ -14,12 +14,10 @@ import (
 	"time"
 	auth "uit-toolbox/auth"
 	config "uit-toolbox/config"
-	db "uit-toolbox/database"
+	"uit-toolbox/database"
 	get "uit-toolbox/get"
 	logger "uit-toolbox/logger"
 	middleware "uit-toolbox/middleware"
-	post "uit-toolbox/post"
-	server "uit-toolbox/server"
 
 	_ "net/http/pprof"
 
@@ -401,18 +399,23 @@ func main() {
 		}
 	}()
 
-	// Load configuration
-	appConfig, err := config.LoadConfig()
-	if err != nil {
-		log.Error("Failed to load configuration: " + err.Error())
-		return
-	}
-
-	appState, err := config.InitApp(appConfig)
+	// Initialize application
+	appState, err := config.InitApp()
 	if err != nil {
 		log.Error("Failed to initialize application: " + err.Error())
 		return
 	}
+
+	dbName, dbHost, dbPort, dbUsername, dbPassword := config.GetDatabaseCredentials()
+
+	dbConn, err := database.NewDBConnection(dbName, dbHost, dbPort, dbUsername, dbPassword)
+	if err != nil {
+		log.Error("Failed to connect to database: " + err.Error())
+		return
+	}
+
+	config.SetDatabaseConn(dbConn)
+	defer dbConn.Close()
 
 	mw := NewMiddlewareFactory(appState, appConfig)
 

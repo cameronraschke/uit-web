@@ -59,7 +59,7 @@ configArr[UIT_LAN_IP_ADDRESS]=$(getConfigValue "UIT_LAN_IP_ADDRESS")
 configArr[UIT_WAN_ALLOWED_IP]=$(getConfigValue "UIT_WAN_ALLOWED_IP" false)
 configArr[UIT_LAN_ALLOWED_IP]=$(getConfigValue "UIT_LAN_ALLOWED_IP" false)
 configArr[UIT_PRINTER_IP]=$(getConfigValue "UIT_PRINTER_IP")
-configArr[UIT_WEB_SVC_PASSWD]=$(openssl rand 30 | hexdump | tr -d '\n' | sed 's/[[:space:]]//g' | head -n1 | md5sum | awk '{print $1}')
+configArr[UIT_WEB_DB_PASSWD]=$(openssl rand 30 | hexdump | tr -d '\n' | sed 's/[[:space:]]//g' | head -n1 | md5sum | awk '{print $1}')
 configArr[UIT_HTTP_PORT]=$(getConfigValue "UIT_HTTP_PORT")
 configArr[UIT_HTTPS_PORT]=$(getConfigValue "UIT_HTTPS_PORT")
 configArr[UIT_TLS_CERT_FILE]=$(getConfigValue "UIT_TLS_CERT_FILE")
@@ -166,7 +166,7 @@ echo "  --PSQL Passwords"
 # PostgreSQL Users
 sudo -u postgres psql --command="ALTER USER cameron WITH PASSWORD '${configArr[UIT_DB_ADMIN_PASSWD]}';"
 sudo -u postgres psql --command="ALTER USER uitclient WITH PASSWORD '${configArr[UIT_DB_CLIENT_PASSWD]}';"
-sudo -u postgres psql --command="ALTER USER uitweb WITH PASSWORD '${configArr[UIT_WEB_SVC_PASSWD]}';"
+sudo -u postgres psql --command="ALTER USER uitweb WITH PASSWORD '${configArr[UIT_WEB_DB_PASSWD]}';"
 
 
 echo "  --Website Passwords"

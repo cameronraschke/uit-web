@@ -1,4 +1,4 @@
-package config
+package database
 
 import (
 	"database/sql"
@@ -7,16 +7,16 @@ import (
 	"time"
 )
 
-func NewDBConnection(appConfig AppConfig) (*sql.DB, error) {
+func NewDBConnection(dbName string, dbHost string, dbPort string, dbUsername string, dbPassword string) (*sql.DB, error) {
 	var db *sql.DB
 	// Connect to db with pgx
 	log.Println("Attempting connection to database...")
 	dbConnScheme := "postgres"
-	dbConnHost := "127.0.0.1"
-	dbConnPort := "5432"
-	dbConnUser := "uitweb"
-	dbConnDBName := "uitdb"
-	dbConnPass := appConfig.UIT_WEB_SVC_PASSWD
+	dbConnHost := dbHost
+	dbConnPort := dbPort
+	dbConnUser := dbUsername
+	dbConnDBName := dbName
+	dbConnPass := dbPassword
 	dbConnString := dbConnScheme + "://" + dbConnUser + ":" + dbConnPass + "@" + dbConnHost + ":" + dbConnPort + "/" + dbConnDBName + "?sslmode=disable"
 	var dbConnErr error
 	db, dbConnErr = sql.Open("pgx", dbConnString)

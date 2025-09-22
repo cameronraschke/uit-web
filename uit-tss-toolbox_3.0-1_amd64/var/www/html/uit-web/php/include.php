@@ -124,7 +124,7 @@ class scriptTimer {
 
 class PostgreSQLConn {
     private static $user = "uitweb";
-    private static $pass = "UIT_WEB_SVC_PASSWD";
+    private static $pass = "UIT_WEB_DB_PASSWD";
     private static $host = "localhost";
     private static $dbName = "uitdb";
     private static $options = array(PDO::ATTR_PERSISTENT => true, PDO::ATTR_ERRMODE => true, PDO::ERRMODE_EXCEPTION => true);

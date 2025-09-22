@@ -3,7 +3,7 @@ package config
 import (
 	"database/sql"
 	"errors"
-	"log"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -23,7 +23,11 @@ type AppConfig struct {
 	UIT_LAN_IP_ADDRESS          string
 	UIT_LAN_ALLOWED_IP          []string
 	UIT_ALL_ALLOWED_IP          []string
-	UIT_WEB_SVC_PASSWD          string
+	UIT_WEB_DB_DBNAME           string
+	UIT_WEB_DB_HOST             string
+	UIT_WEB_DB_PORT             string
+	UIT_WEB_DB_USERNAME         string
+	UIT_WEB_DB_PASSWD           string
 	UIT_DB_CLIENT_PASSWD        string
 	UIT_WEB_USER_DEFAULT_PASSWD string
 	UIT_WEBMASTER_NAME          string
@@ -60,7 +64,8 @@ type FileList struct {
 }
 
 type AppState struct {
-	DB                *sql.DB
+	AppConfig         AppConfig
+	DBConn            atomic.Pointer[sql.DB]
 	AuthMap           sync.Map
 	AuthMapEntryCount atomic.Int64
 	Log               logger.Logger
@@ -110,27 +115,25 @@ type AuthSession struct {
 }
 
 var (
-	rateLimit            float64
-	rateLimitBurst       int
-	rateLimitBanDuration time.Duration
-	appStateInstance     *AppState
-	appStateOnce         sync.Once
-	appStateMutex        sync.RWMutex
+	appStateInstance *AppState
+	appStateMutex    sync.RWMutex
 )
 
 func LoadConfig() (AppConfig, error) {
+	var appConfig AppConfig
+
 	// WAN interface, IP, and allowed IPs
 	wanIf, ok := os.LookupEnv("UIT_WAN_IF")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_WAN_IF: not found")
+		return appConfig, errors.New("error getting UIT_WAN_IF: not found")
 	}
 	wanIP, ok := os.LookupEnv("UIT_WAN_IP_ADDRESS")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_WAN_IP_ADDRESS: not found")
+		return appConfig, errors.New("error getting UIT_WAN_IP_ADDRESS: not found")
 	}
 	envWanAllowedIPStr, ok := os.LookupEnv("UIT_WAN_ALLOWED_IP")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_WAN_ALLOWED_IP: not found")
+		return appConfig, errors.New("error getting UIT_WAN_ALLOWED_IP: not found")
 	}
 
 	envWanAllowedIPs := strings.Split(envWanAllowedIPStr, ",")
@@ -145,15 +148,15 @@ func LoadConfig() (AppConfig, error) {
 	// LAN interface, IP, and allowed IPs
 	lanIf, ok := os.LookupEnv("UIT_LAN_IF")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_LAN_IF: not found")
+		return appConfig, errors.New("error getting UIT_LAN_IF: not found")
 	}
 	lanIP, ok := os.LookupEnv("UIT_LAN_IP_ADDRESS")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_LAN_IP_ADDRESS: not found")
+		return appConfig, errors.New("error getting UIT_LAN_IP_ADDRESS: not found")
 	}
 	envAllowedLanIPStr, ok := os.LookupEnv("UIT_LAN_ALLOWED_IP")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_LAN_ALLOWED_IP: not found")
+		return appConfig, errors.New("error getting UIT_LAN_ALLOWED_IP: not found")
 	}
 
 	envLanAllowedIPs := strings.Split(envAllowedLanIPStr, ",")
@@ -176,88 +179,113 @@ func LoadConfig() (AppConfig, error) {
 	}
 
 	// Database credentials
-	uitWebSvcPasswd, ok := os.LookupEnv("UIT_WEB_SVC_PASSWD")
+	dbName, ok := os.LookupEnv("UIT_WEB_DB_DBNAME")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_WEB_SVC_PASSWD: not found")
+		return appConfig, errors.New("error getting UIT_WEB_DB_DBNAME: not found")
 	}
-	uitWebSvcPasswd = strings.TrimSpace(uitWebSvcPasswd)
+	dbHost, ok := os.LookupEnv("UIT_WEB_DB_HOST")
+	if !ok {
+		return appConfig, errors.New("error getting UIT_WEB_DB_HOST: not found")
+	}
+	dbPort, ok := os.LookupEnv("UIT_WEB_DB_PORT")
+	if !ok {
+		return appConfig, errors.New("error getting UIT_WEB_DB_PORT: not found")
+	}
+	dbUser, ok := os.LookupEnv("UIT_WEB_DB_USERNAME")
+	if !ok {
+		return appConfig, errors.New("error getting UIT_WEB_DB_USERNAME: not found")
+	}
+	uitWebDbPasswd, ok := os.LookupEnv("UIT_WEB_DB_PASSWD")
+	if !ok {
+		return appConfig, errors.New("error getting UIT_WEB_DB_PASSWD: not found")
+	}
+	uitWebDbPasswd = strings.TrimSpace(uitWebDbPasswd)
 
 	dbClientPasswd, ok := os.LookupEnv("UIT_DB_CLIENT_PASSWD")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_DB_CLIENT_PASSWD: not found")
+		return appConfig, errors.New("error getting UIT_DB_CLIENT_PASSWD: not found")
 	}
 	webUserDefaultPasswd, ok := os.LookupEnv("UIT_WEB_USER_DEFAULT_PASSWD")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_WEB_USER_DEFAULT_PASSWD: not found")
+		return appConfig, errors.New("error getting UIT_WEB_USER_DEFAULT_PASSWD: not found")
 	}
 
 	// Website config
 	webmasterName, ok := os.LookupEnv("UIT_WEBMASTER_NAME")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_WEBMASTER_NAME: not found")
+		return appConfig, errors.New("error getting UIT_WEBMASTER_NAME: not found")
 	}
 	webmasterEmail, ok := os.LookupEnv("UIT_WEBMASTER_EMAIL")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_WEBMASTER_EMAIL: not found")
+		return appConfig, errors.New("error getting UIT_WEBMASTER_EMAIL: not found")
 	}
 
 	// Printer IP
 	printerIP, ok := os.LookupEnv("UIT_PRINTER_IP")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_PRINTER_IP: not found")
+		return appConfig, errors.New("error getting UIT_PRINTER_IP: not found")
 	}
 
 	// Webserver config
 	httpPort, ok := os.LookupEnv("UIT_HTTP_PORT")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_HTTP_PORT: not found")
+		return appConfig, errors.New("error getting UIT_HTTP_PORT: not found")
 	}
 	httpsPort, ok := os.LookupEnv("UIT_HTTPS_PORT")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_HTTPS_PORT: not found")
+		return appConfig, errors.New("error getting UIT_HTTPS_PORT: not found")
 	}
 	tlsCertFile, ok := os.LookupEnv("UIT_TLS_CERT_FILE")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_TLS_CERT_FILE: not found")
+		return appConfig, errors.New("error getting UIT_TLS_CERT_FILE: not found")
 	}
 	tlsKeyFile, ok := os.LookupEnv("UIT_TLS_KEY_FILE")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_TLS_KEY_FILE: not found")
+		return appConfig, errors.New("error getting UIT_TLS_KEY_FILE: not found")
 	}
 
 	// Rate limiting config
+	//Burst
 	rateLimitBurstStr, ok := os.LookupEnv("UIT_RATE_LIMIT_BURST")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_RATE_LIMIT_BURST: not found")
+		return appConfig, errors.New("error getting UIT_RATE_LIMIT_BURST: not found")
 	}
-	var rateLimitBurstErr error
-	rateLimitBurst, rateLimitBurstErr = strconv.Atoi(rateLimitBurstStr)
-	if rateLimitBurstErr != nil || rateLimitBurst <= 0 {
-		rateLimitBurst = 100
-		return AppConfig{}, errors.New("error converting UIT_RATE_LIMIT_BURST to integer: " + rateLimitBurstErr.Error())
+	parsedBurst, err := strconv.Atoi(rateLimitBurstStr)
+	if err != nil {
+		return appConfig, fmt.Errorf("invalid UIT_RATE_LIMIT_BURST: %w", err)
 	}
+	if parsedBurst <= 0 {
+		return appConfig, errors.New("UIT_RATE_LIMIT_BURST must be > 0")
+	}
+
+	// Interval
 	rateLimitIntervalStr, ok := os.LookupEnv("UIT_RATE_LIMIT_INTERVAL")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_RATE_LIMIT_INTERVAL: not found")
+		return appConfig, errors.New("error getting UIT_RATE_LIMIT_INTERVAL: not found")
 	}
-	var rateLimitErr error
-	rateLimit, rateLimitErr = strconv.ParseFloat(rateLimitIntervalStr, 64)
-	if rateLimitErr != nil || rateLimit <= 0 {
-		rateLimit = 1
-		return AppConfig{}, errors.New("error converting UIT_RATE_LIMIT_INTERVAL to float: " + rateLimitErr.Error())
+	parsedInterval, err := strconv.ParseFloat(rateLimitIntervalStr, 64)
+	if err != nil {
+		return appConfig, fmt.Errorf("invalid UIT_RATE_LIMIT_INTERVAL: %w", err)
 	}
+	if parsedInterval <= 0 {
+		return appConfig, errors.New("UIT_RATE_LIMIT_INTERVAL must be > 0")
+	}
+
+	// Ban duration
 	rateLimitBanDurationStr, ok := os.LookupEnv("UIT_RATE_LIMIT_BAN_DURATION")
 	if !ok {
-		return AppConfig{}, errors.New("error getting UIT_RATE_LIMIT_BAN_DURATION: not found")
+		return appConfig, errors.New("error getting UIT_RATE_LIMIT_BAN_DURATION: not found")
 	}
-	banDurationInt, err := strconv.ParseInt(rateLimitBanDurationStr, 10, 64)
-	if err != nil || banDurationInt <= 0 {
-		banDurationInt = 30
-		return AppConfig{}, errors.New("error converting UIT_RATE_LIMIT_BAN_DURATION to integer: " + err.Error())
+	banSeconds, err := strconv.ParseInt(rateLimitBanDurationStr, 10, 64)
+	if err != nil {
+		return appConfig, fmt.Errorf("invalid UIT_RATE_LIMIT_BAN_DURATION: %w", err)
 	}
-	rateLimitBanDuration = time.Duration(banDurationInt) * time.Second
+	if banSeconds <= 0 {
+		return appConfig, errors.New("UIT_RATE_LIMIT_BAN_DURATION must be > 0")
+	}
+	rateLimitBanDuration := time.Duration(banSeconds) * time.Second
 
-	return AppConfig{
+	appConfig = AppConfig{
 		UIT_WAN_IF:                  wanIf,
 		UIT_WAN_IP_ADDRESS:          wanIP,
 		UIT_WAN_ALLOWED_IP:          wanAllowedIP,
@@ -265,7 +293,11 @@ func LoadConfig() (AppConfig, error) {
 		UIT_LAN_IP_ADDRESS:          lanIP,
 		UIT_LAN_ALLOWED_IP:          lanAllowedIP,
 		UIT_ALL_ALLOWED_IP:          allAllowedIPs,
-		UIT_WEB_SVC_PASSWD:          uitWebSvcPasswd,
+		UIT_WEB_DB_DBNAME:           dbName,
+		UIT_WEB_DB_HOST:             dbHost,
+		UIT_WEB_DB_PORT:             dbPort,
+		UIT_WEB_DB_USERNAME:         dbUser,
+		UIT_WEB_DB_PASSWD:           uitWebDbPasswd,
 		UIT_DB_CLIENT_PASSWD:        dbClientPasswd,
 		UIT_WEB_USER_DEFAULT_PASSWD: webUserDefaultPasswd,
 		UIT_WEBMASTER_NAME:          webmasterName,
@@ -275,29 +307,22 @@ func LoadConfig() (AppConfig, error) {
 		UIT_HTTPS_PORT:              httpsPort,
 		UIT_TLS_CERT_FILE:           tlsCertFile,
 		UIT_TLS_KEY_FILE:            tlsKeyFile,
-		UIT_RATE_LIMIT_BURST:        rateLimitBurst,
-		UIT_RATE_LIMIT_INTERVAL:     rateLimit,
+		UIT_RATE_LIMIT_BURST:        parsedBurst,
+		UIT_RATE_LIMIT_INTERVAL:     parsedInterval,
 		UIT_RATE_LIMIT_BAN_DURATION: rateLimitBanDuration,
-	}, nil
+	}
+	return appConfig, nil
 }
 
-func InitApp(appConfig AppConfig) (*AppState, error) {
-	var dbConn *sql.DB
-	var dbErr error
-	appStateOnce.Do(func() {
-		dbConn, dbErr = NewDBConnection(appConfig)
-	})
-
-	if dbErr != nil {
-		log.Printf("%s", "Failed to initialize database connection: "+dbErr.Error())
-		return nil, dbErr
+func InitApp() (*AppState, error) {
+	appConfig, err := LoadConfig()
+	if err != nil {
+		return nil, errors.New("failed to load app config: " + err.Error())
 	}
 
-	appStateMutex.Lock()
-	defer appStateMutex.Unlock()
-
 	appState := &AppState{
-		DB:                dbConn,
+		AppConfig:         appConfig,
+		DBConn:            atomic.Pointer[sql.DB]{},
 		AuthMap:           sync.Map{},
 		AuthMapEntryCount: atomic.Int64{},
 		Log:               logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_API_LOG_LEVEL"))),
@@ -356,19 +381,8 @@ func SetAppState(newState *AppState) {
 
 func GetAppState() *AppState {
 	appStateMutex.RLock()
-	as := appStateInstance
-	appStateMutex.RUnlock()
-	return as
-}
-
-func WithAppState(fn func(appState *AppState)) {
-	appStateMutex.RLock()
-	appState := appStateInstance
-	appStateMutex.RUnlock()
-	if appState == nil {
-		return
-	}
-	fn(appState)
+	defer appStateMutex.RUnlock()
+	return appStateInstance
 }
 
 func GetLogger() logger.Logger {
@@ -380,12 +394,40 @@ func GetLogger() logger.Logger {
 	return nil
 }
 
-func SetDatabaseConn(db *sql.DB) {
+func GetDatabaseCredentials() (string, string, string, string, string) {
+	appState := GetAppState()
+	if appState == nil {
+		return "", "", "", "", ""
+	}
+	return appState.AppConfig.UIT_WEB_DB_DBNAME, appState.AppConfig.UIT_WEB_DB_HOST, appState.AppConfig.UIT_WEB_DB_PORT, appState.AppConfig.UIT_WEB_DB_USERNAME, appState.AppConfig.UIT_WEB_DB_PASSWD
+}
+
+func GetDatabaseConn() *sql.DB {
+	appStateMutex.RLock()
+	defer appStateMutex.RUnlock()
+	if appStateInstance != nil {
+		return appStateInstance.DBConn.Load()
+	}
+	return nil
+}
+
+func SetDatabaseConn(newDbConn *sql.DB) {
 	appStateMutex.Lock()
 	defer appStateMutex.Unlock()
 	if appStateInstance != nil {
-		appStateInstance.DB = db
+		appStateInstance.DBConn.Store(newDbConn)
 	}
+}
+
+func SwapDatabaseConn(newDbConn *sql.DB) (oldDbConn *sql.DB) {
+	appStateMutex.Lock()
+	defer appStateMutex.Unlock()
+	if appStateInstance == nil {
+		return nil
+	}
+	oldDbConn = appStateInstance.DBConn.Load()
+	appStateInstance.DBConn.Store(newDbConn)
+	return oldDbConn
 }
 
 func GetAllowedFiles() map[string]bool {
@@ -393,31 +435,28 @@ func GetAllowedFiles() map[string]bool {
 	if appState == nil {
 		return nil
 	}
-	result := make(map[string]bool)
-	WithAppState(func(appState *AppState) {
-		appState.AllowedFiles.Range(func(k, v any) bool {
-			key, keyExists := k.(string)
-			value, valueExists := v.(bool)
-			if keyExists && valueExists {
-				result[key] = value
-			}
-			return true
-		})
+	allowedFilesMap := make(map[string]bool)
+	appState.AllowedFiles.Range(func(k, v any) bool {
+		key, keyExists := k.(string)
+		value, valueExists := v.(bool)
+		if keyExists && valueExists {
+			allowedFilesMap[key] = value
+		}
+		return true
 	})
-	return result
+	return allowedFilesMap
 }
 
 func IsFileAllowed(filename string) bool {
-	appStateMutex.RLock()
-	defer appStateMutex.RUnlock()
-	if appStateInstance == nil {
+	appState := GetAppState()
+	if appState == nil {
 		return false
 	}
-	v, ok := appStateInstance.AllowedFiles.Load(filename)
+	value, ok := appState.AllowedFiles.Load(filename)
 	if !ok {
 		return false
 	}
-	allowed, ok := v.(bool)
+	allowed, ok := value.(bool)
 	return ok && allowed
 }
 
@@ -438,23 +477,21 @@ func RemoveAllowedFile(filename string) {
 	appState.AllowedFiles.Delete(filename)
 }
 
-func GetAuthMap() map[string]AuthSession {
+func GetAuthSessions() map[string]AuthSession {
 	appState := GetAppState()
 	if appState == nil {
 		return nil
 	}
-	result := make(map[string]AuthSession)
-	WithAppState(func(appState *AppState) {
-		appState.AuthMap.Range(func(k, v any) bool {
-			key, keyExists := k.(string)
-			value, valueExists := v.(AuthSession)
-			if keyExists && valueExists {
-				result[key] = value
-			}
-			return true
-		})
+	authSessionsMap := make(map[string]AuthSession)
+	appState.AuthMap.Range(func(k, v any) bool {
+		key, keyExists := k.(string)
+		value, valueExists := v.(AuthSession)
+		if keyExists && valueExists {
+			authSessionsMap[key] = value
+		}
+		return true
 	})
-	return result
+	return authSessionsMap
 }
 
 func CreateAuthSession(sessionID string, authSession AuthSession) error {
@@ -462,8 +499,8 @@ func CreateAuthSession(sessionID string, authSession AuthSession) error {
 	if appState == nil {
 		return errors.New("app state is not initialized")
 	}
-	_, exists := appState.AuthMap.LoadOrStore(sessionID, authSession)
-	if !exists {
+	_, ok := appState.AuthMap.LoadOrStore(sessionID, authSession)
+	if !ok {
 		appState.AuthMapEntryCount.Add(1)
 	} else {
 		appState.AuthMap.Store(sessionID, authSession)
@@ -476,7 +513,7 @@ func DeleteAuthSession(sessionID string) {
 	if appState == nil {
 		return
 	}
-	if _, exists := appState.AuthMap.LoadAndDelete(sessionID); exists {
+	if _, ok := appState.AuthMap.LoadAndDelete(sessionID); ok {
 		newVal := appState.AuthMapEntryCount.Add(-1)
 		if newVal < 0 {
 			appState.AuthMapEntryCount.Store(0)
@@ -515,17 +552,18 @@ func CheckAuthSession(sessionID string, ipAddress string, basicToken string, bea
 		return sessionValid, sessionExists, errors.New("app state is not initialized")
 	}
 
-	v, exists := appState.AuthMap.Load(sessionID)
-	if !exists {
+	value, ok := appState.AuthMap.Load(sessionID)
+	if !ok {
 		return sessionValid, sessionExists, nil
-	} else {
-		sessionExists = true
 	}
+	sessionExists = true
 
-	authSession, exists := v.(AuthSession)
-	if !exists {
+	authSession, ok := value.(AuthSession)
+	if !ok {
 		return sessionValid, sessionExists, errors.New("invalid auth session type")
 	}
+
+	curTime := time.Now()
 
 	if authSession.Basic.IP != ipAddress || authSession.Bearer.IP != ipAddress {
 		return sessionValid, sessionExists, errors.New("IP address mismatch for session ID: " + sessionID)
@@ -539,7 +577,7 @@ func CheckAuthSession(sessionID string, ipAddress string, basicToken string, bea
 		return sessionValid, sessionExists, nil
 	}
 
-	if authSession.Basic.Expiry.Before(time.Now()) || authSession.Bearer.Expiry.Before(time.Now()) {
+	if authSession.Basic.Expiry.Before(curTime) || authSession.Bearer.Expiry.Before(curTime) {
 		return sessionValid, sessionExists, nil
 	}
 
