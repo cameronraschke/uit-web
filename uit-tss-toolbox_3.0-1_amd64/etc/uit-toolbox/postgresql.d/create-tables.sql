@@ -342,13 +342,14 @@ CREATE TABLE IF NOT EXISTS client_images (
     filesize DECIMAL(5,2) DEFAULT NULL,
     image TEXT DEFAULT NULL,
     thumbnail TEXT DEFAULT NULL,
-    md5_hash VARCHAR(32) DEFAULT NULL,
+    sha256_hash BYTEA DEFAULT NULL,
     mime_type VARCHAR(24) DEFAULT NULL,
     exif_timestamp TIMESTAMP(3) DEFAULT NULL,
     resolution VARCHAR(24) DEFAULT NULL,
     note VARCHAR(256) DEFAULT NULL,
     hidden BOOLEAN DEFAULT FALSE,
-    primary_image BOOLEAN DEFAULT FALSE
+    primary_image BOOLEAN DEFAULT FALSE,
+    filepath TEXT DEFAULT NULL
 );
 
 -- CREATE OR REPLACE FUNCTION live_images_function

@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+
+DB="uitdb"
+rootDir='./inventory-images'
+mkdir -p "$rootDir"
+
+export PAGER=
+
+# Common psql flags: unaligned (-A), tuples-only (-t), quiet (-q), no .psqlrc (-X)
+psql_base=(psql -X -q -A -t -d "$DB")
+
+# Collect tag numbers (distinct) into an array
+mapfile -t tagArr < <("${psql_base[@]}" -c "SELECT DISTINCT tagnumber FROM client_images;")
+for tag in "${tagArr[@]}"; do
+  # UUIDs for this tag
+  mapfile -t uuidArr < <("${psql_base[@]}" -c "SELECT uuid FROM client_images WHERE tagnumber = '${tag}';")
+  for uuid in "${uuidArr[@]}"; do
+    # Timestamp string for file naming
+    mapfile -t tsArr < <("${psql_base[@]}" -c "SELECT TO_CHAR(time, 'YYYY-MM-DD-HH24MISS') FROM client_images WHERE uuid = '${uuid}';")
+    for ts in "${tsArr[@]}"; do
+      tagDir="${rootDir}/${tag}"
+      mkdir -p "$tagDir"
+
+      newFile="${tagDir}/${ts}-${uuid}.jpeg"
+      thumbFile="${tagDir}/${ts}-${uuid}-thumbnail.jpeg"
+
+      # Fetch image as hex to avoid the leading "\\x" from bytea; convert hex -> binary
+      hexImage="$([ -n "${uuid}" ] && "${psql_base[@]}" -c "SELECT encode(decode(image, 'base64'), 'hex') FROM client_images WHERE uuid='${uuid}';" || true)"
+      if [[ -n "$hexImage" ]]; then
+        printf '%s' "$hexImage" | xxd -r -p > "$newFile"
+        # Update filepath and sha256, and clear the image column
+        hash=$(sha256sum --binary "$newFile" | awk '{print $1}')
+        "${psql_base[@]}" -c "UPDATE client_images SET filepath='${newFile}', sha256_hash='${hash}', image = NULL WHERE uuid='${uuid}';"
+        echo "Created file $newFile (hash: $hash)"
+      fi
+
+      # Optional: export thumbnail if present
+      hexThumb="$([ -n "${uuid}" ] && "${psql_base[@]}" -c "SELECT encode(decode(thumbnail, 'base64'), 'hex') FROM client_images WHERE uuid='${uuid}';" || true)"
+      if [[ -n "$hexThumb" ]]; then
+        printf '%s' "$hexThumb" | xxd -r -p > "$thumbFile"
+        "${psql_base[@]}" -c "UPDATE client_images SET thumbnail = NULL WHERE uuid='${uuid}';"
+        echo "Created file $thumbFile"
+      fi
+    done
+  done
+done

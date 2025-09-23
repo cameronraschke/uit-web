@@ -5,10 +5,12 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
-type LogLevel int
+type LogLevel int32
 
 const (
 	Auth LogLevel = iota
@@ -19,7 +21,7 @@ const (
 )
 
 // WIP
-type loggerType int
+type loggerType int32
 
 const (
 	Console loggerType = iota
@@ -74,15 +76,16 @@ type Logger interface {
 }
 
 type ConsoleLogger struct {
-	Level LogLevel
+	Level   atomic.Int32
+	writeMu sync.Mutex
 }
 
 func (consoleLogger *ConsoleLogger) SetLoggerLevel(logLevel LogLevel) {
-	consoleLogger.Level = logLevel
+	consoleLogger.Level.Store(int32(logLevel))
 }
 
 func (consoleLogger *ConsoleLogger) log(logLevel LogLevel, message string) {
-	if logLevel >= consoleLogger.Level {
+	if int32(logLevel) >= consoleLogger.Level.Load() {
 		var output io.Writer = os.Stdout
 		if logLevel >= Warning {
 			output = os.Stderr
@@ -92,7 +95,9 @@ func (consoleLogger *ConsoleLogger) log(logLevel LogLevel, message string) {
 			fmt.Fprintf(os.Stderr, "Unknown log level: %s\n", logLevel.getLogLevel())
 			return
 		}
+		consoleLogger.writeMu.Lock()
 		fmt.Fprintf(output, "%s [%s] %s\n", TimePrefix(), logLevel.getLogLevel(), message)
+		consoleLogger.writeMu.Unlock()
 	}
 }
 
@@ -105,8 +110,12 @@ func (consoleLogger *ConsoleLogger) Error(message string)   { consoleLogger.log(
 func CreateLogger(loggerType string, logLevel LogLevel) Logger {
 	switch strings.ToLower(loggerType) {
 	case "console":
-		return &ConsoleLogger{Level: logLevel}
+		cl := &ConsoleLogger{}
+		cl.SetLoggerLevel(logLevel)
+		return cl
 	default:
-		return &ConsoleLogger{Level: Warning}
+		cl := &ConsoleLogger{}
+		cl.SetLoggerLevel(Warning)
+		return cl
 	}
 }

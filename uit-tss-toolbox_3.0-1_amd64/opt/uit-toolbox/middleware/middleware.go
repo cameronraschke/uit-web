@@ -76,36 +76,30 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func AllowIPRangeMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := config.GetLogger()
-		requestIP, ok := GetRequestIP(req)
-		if !ok {
-			log.Warning("no IP address stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
-			return
-		}
-		parsedRequestIP := net.ParseIP(requestIP)
-		if parsedRequestIP == nil {
-			log.Warning("cannot parse request IP")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
-			return
-		}
-		allowed := false
-		for _, cidr := range acceptedCIDRs {
-			_, ipNet, err := net.ParseCIDR(cidr)
-			if err == nil && ipNet.Contains(parsedRequestIP) {
-				allowed = true
-				break
+func AllowIPRangeMiddleware(source string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			log := config.GetLogger()
+			if strings.TrimSpace(source) == "" {
+				log.Warning("No source specified for AllowIPRangeMiddleware")
+				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+				return
 			}
-		}
-		if !allowed {
-			log.Warning("IP address not in allowed range: " + requestIP)
-			http.Error(w, "Forbidden", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, req)
-	})
+			requestIP, ok := GetRequestIP(req)
+			if !ok {
+				log.Warning("no IP address stored in context")
+				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+				return
+			}
+			allowed := config.IsIPAllowed(source, requestIP)
+			if !allowed {
+				log.Warning("IP address not in allowed range: " + requestIP)
+				http.Error(w, "Forbidden", http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, req)
+		})
+	}
 }
 
 func CheckValidURLMiddleware(next http.Handler) http.Handler {
@@ -126,10 +120,27 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		}
 
 		// URL query
-		if strings.ContainsAny(req.URL.RawQuery, "<>\"'%;()+") {
-			log.Warning("Invalid characters in query parameters: " + "( " + requestIP + ": " + req.Method + " " + req.URL.RequestURI() + ")")
-			http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
-			return
+		queryValues := req.URL.Query()
+		disallowedQueryChars := "~%$#\\<>:\"'`|?*\x00\r\n"
+		for k, v := range queryValues {
+			if len(k) > 128 || len(v) > 512 {
+				log.Warning("Request URL query key length exceeds limit: " + fmt.Sprintf("%d", len(k)) + " (" + requestIP + ": " + req.Method + " " + req.URL.RequestURI() + ")")
+				http.Error(w, FormatHttpError("Request URI too long"), http.StatusRequestURITooLong)
+				return
+			}
+			if strings.ContainsAny(k, disallowedQueryChars) {
+				log.Warning("Invalid characters in query key: " + "( " + requestIP + ": " + req.Method + " " + req.URL.RequestURI() + ")")
+				http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
+				return
+			}
+			for _, value := range v {
+				if strings.ContainsAny(value, disallowedQueryChars) {
+					log.Warning("Invalid characters in query value: " + "( " + requestIP + ": " + req.Method + " " + req.URL.RequestURI() + ")")
+					http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
+					return
+				}
+			}
+
 		}
 
 		// Check URL path
@@ -229,9 +240,19 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 
 		var ctx context.Context
 		if strings.TrimSpace(req.URL.RawQuery) == "" {
-			ctx = context.WithValue(req.Context(), ctxURLRequest{}, fullPath)
+			ctx = context.WithValue(req.Context(), webserver.CTXURLRequest{}, fullPath)
 		} else {
-			ctx = context.WithValue(req.Context(), ctxURLRequest{}, fullPath+"?"+req.URL.RawQuery)
+			parsedQuery, err := url.ParseQuery(req.URL.RawQuery)
+			if err != nil {
+				log.Warning("Failed to parse URL query: " + requestIP)
+				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+				return
+			}
+			newURL := url.URL{
+				Path:     fullPath,
+				RawQuery: parsedQuery.Encode(),
+			}
+			ctx = context.WithValue(req.Context(), webserver.CTXURLRequest{}, newURL.RequestURI())
 		}
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
@@ -240,6 +261,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 func RateLimitMiddleware(appState *config.AppState, rateType string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			log := config.GetLogger()
 			requestIP, ok := GetRequestIP(req)
 			if !ok {
 				log.Warning("no IP address stored in context")
@@ -247,7 +269,7 @@ func RateLimitMiddleware(appState *config.AppState, rateType string) func(http.H
 				return
 			}
 
-			if appState.BlockedIPs.IsBlocked(requestIP) {
+			if config.IsIPBlocked(requestIP) {
 				log.Debug("Blocked IP attempted request: " + requestIP)
 				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 				return

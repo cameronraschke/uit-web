@@ -421,7 +421,7 @@ func main() {
 		middleware.TimeoutMiddleware,
 		middleware.StoreClientIPMiddleware,
 		middleware.CheckValidURLMiddleware,
-		middleware.AllowIPRangeMiddleware,
+		middleware.AllowIPRangeMiddleware("lan"),
 		middleware.RateLimitMiddleware("file"),
 		middleware.HTTPMethodMiddleware,
 		middleware.CheckHeadersMiddleware,

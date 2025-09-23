@@ -378,24 +378,95 @@ func InitApp() (*AppState, error) {
 	}
 	appState.AllowedFiles.Store(allowed)
 
-	// for _, file := range allowedFiles {
-	// 	appState.AllowedFiles.Store(file.Filename, file.Allowed)
-	// }
-
 	for _, wanIP := range appConfig.UIT_WAN_ALLOWED_IP {
-		appState.AllowedWANIPs.Store(wanIP, true)
+		// Convert to CIDR notation
+		wanIP = strings.TrimSpace(wanIP)
+		if wanIP == "" {
+			continue
+		}
+		var ipNet *net.IPNet
+		if strings.Contains(wanIP, "/") {
+			_, parsedNet, err := net.ParseCIDR(wanIP)
+			if err != nil {
+				continue
+			}
+			ipNet = parsedNet
+		} else {
+			ip := net.ParseIP(wanIP)
+			if ip == nil {
+				continue
+			}
+			if ip4 := ip.To4(); ip4 != nil {
+				ipNet = &net.IPNet{IP: ip4, Mask: net.CIDRMask(32, 32)}
+			} else {
+				ip16 := ip.To16()
+				ipNet = &net.IPNet{IP: ip16, Mask: net.CIDRMask(128, 128)}
+			}
+		}
+		appState.AllowedWANIPs.Store(ipNet, true)
 	}
+
 	for _, lanIP := range appConfig.UIT_LAN_ALLOWED_IP {
-		appState.AllowedLANIPs.Store(lanIP, true)
+		// Convert to CIDR notation
+		lanIP = strings.TrimSpace(lanIP)
+		if lanIP == "" {
+			continue
+		}
+		var ipNet *net.IPNet
+		if strings.Contains(lanIP, "/") {
+			_, parsedNet, err := net.ParseCIDR(lanIP)
+			if err != nil {
+				continue
+			}
+			ipNet = parsedNet
+		} else {
+			ip := net.ParseIP(lanIP)
+			if ip == nil {
+				continue
+			}
+			if ip4 := ip.To4(); ip4 != nil {
+				ipNet = &net.IPNet{IP: ip4, Mask: net.CIDRMask(32, 32)}
+			} else {
+				ip16 := ip.To16()
+				ipNet = &net.IPNet{IP: ip16, Mask: net.CIDRMask(128, 128)}
+			}
+		}
+		appState.AllowedLANIPs.Store(ipNet, true)
 	}
+
 	for _, allIP := range appConfig.UIT_ALL_ALLOWED_IP {
-		appState.AllowedIPs.Store(allIP, true)
+		// Convert to CIDR notation
+		allIP = strings.TrimSpace(allIP)
+		if allIP == "" {
+			continue
+		}
+		var ipNet *net.IPNet
+		if strings.Contains(allIP, "/") {
+			_, parsedNet, err := net.ParseCIDR(allIP)
+			if err != nil {
+				continue
+			}
+			ipNet = parsedNet
+		} else {
+			ip := net.ParseIP(allIP)
+			if ip == nil {
+				continue
+			}
+			if ip4 := ip.To4(); ip4 != nil {
+				ipNet = &net.IPNet{IP: ip4, Mask: net.CIDRMask(32, 32)}
+			} else {
+				ip16 := ip.To16()
+				ipNet = &net.IPNet{IP: ip16, Mask: net.CIDRMask(128, 128)}
+			}
+		}
+		appState.AllowedIPs.Store(ipNet, true)
 	}
 
 	SetAppState(appState)
 	return appState, nil
 }
 
+// App state management
 func SetAppState(newState *AppState) {
 	appStateMutex.Lock()
 	defer appStateMutex.Unlock()
@@ -408,6 +479,7 @@ func GetAppState() *AppState {
 	return appStateInstance
 }
 
+// Logger access
 func GetLogger() logger.Logger {
 	appStateMutex.RLock()
 	defer appStateMutex.RUnlock()
@@ -417,6 +489,7 @@ func GetLogger() logger.Logger {
 	return appStateInstance.Log
 }
 
+// Database managment
 func GetDatabaseCredentials() (string, string, string, string, string) {
 	appState := GetAppState()
 	if appState == nil {
@@ -445,11 +518,10 @@ func SwapDatabaseConn(newDbConn *sql.DB) (oldDbConn *sql.DB) {
 	if appState == nil {
 		return nil
 	}
-	oldDbConn = appState.DBConn.Load()
-	appState.DBConn.Store(newDbConn)
-	return oldDbConn
+	return appState.DBConn.Swap(newDbConn)
 }
 
+// Allowed file checks
 func GetAllowedFiles() map[string]bool {
 	appState := GetAppState()
 	if appState == nil {
@@ -525,114 +597,7 @@ func RemoveAllowedFile(filename string) {
 	appState.AllowedFiles.Store(newMap)
 }
 
-func GetAuthSessions() map[string]AuthSession {
-	appState := GetAppState()
-	if appState == nil {
-		return nil
-	}
-	authSessionsMap := make(map[string]AuthSession)
-	appState.AuthMap.Range(func(k, v any) bool {
-		key, keyExists := k.(string)
-		value, valueExists := v.(AuthSession)
-		if keyExists && valueExists {
-			authSessionsMap[key] = value
-		}
-		return true
-	})
-	return authSessionsMap
-}
-
-func CreateAuthSession(sessionID string, authSession AuthSession) error {
-	appState := GetAppState()
-	if appState == nil {
-		return errors.New("app state is not initialized")
-	}
-	_, ok := appState.AuthMap.LoadOrStore(sessionID, authSession)
-	if !ok {
-		appState.AuthMapEntryCount.Add(1)
-	} else {
-		appState.AuthMap.Store(sessionID, authSession)
-	}
-	return nil
-}
-
-func DeleteAuthSession(sessionID string) {
-	appState := GetAppState()
-	if appState == nil {
-		return
-	}
-	if _, ok := appState.AuthMap.LoadAndDelete(sessionID); ok {
-		newVal := appState.AuthMapEntryCount.Add(-1)
-		if newVal < 0 {
-			appState.AuthMapEntryCount.Store(0)
-		}
-	}
-}
-
-func GetAuthSessionCount() int64 {
-	appState := GetAppState()
-	if appState == nil {
-		return 0
-	}
-	return appState.AuthMapEntryCount.Load()
-}
-
-func RefreshAndGetAuthSessionCount() int64 {
-	appState := GetAppState()
-	if appState == nil {
-		return 0
-	}
-	var entries int64
-	appState.AuthMap.Range(func(_, _ any) bool {
-		entries++
-		return true
-	})
-	appState.AuthMapEntryCount.Store(entries)
-	return entries
-}
-
-func CheckAuthSessionExists(sessionID string, ipAddress string, basicToken string, bearerToken string, csrfToken string) (bool, bool, error) {
-	sessionValid := false
-	sessionExists := false
-
-	appState := GetAppState()
-	if appState == nil {
-		return sessionValid, sessionExists, errors.New("app state is not initialized")
-	}
-
-	value, ok := appState.AuthMap.Load(sessionID)
-	if !ok {
-		return sessionValid, sessionExists, nil
-	}
-	sessionExists = true
-
-	authSession, ok := value.(AuthSession)
-	if !ok {
-		return sessionValid, sessionExists, errors.New("invalid auth session type")
-	}
-
-	curTime := time.Now()
-
-	if authSession.Basic.IP != ipAddress || authSession.Bearer.IP != ipAddress {
-		return sessionValid, sessionExists, errors.New("IP address mismatch for session ID: " + sessionID)
-	}
-
-	if strings.TrimSpace(ipAddress) == "" || strings.TrimSpace(basicToken) == "" || strings.TrimSpace(bearerToken) == "" {
-		return sessionValid, sessionExists, errors.New("empty IP address or token for session ID: " + sessionID)
-	}
-
-	if authSession.Basic.Token != basicToken || authSession.Bearer.Token != bearerToken {
-		return sessionValid, sessionExists, nil
-	}
-
-	if authSession.Basic.Expiry.Before(curTime) || authSession.Bearer.Expiry.Before(curTime) {
-		return sessionValid, sessionExists, nil
-	}
-
-	sessionValid = true
-	return sessionValid, sessionExists, nil
-}
-
+// IP address checks
 func IsIPAllowed(source string, ipAddress string) bool {
 	appState := GetAppState()
 	if appState == nil {
@@ -643,21 +608,44 @@ func IsIPAllowed(source string, ipAddress string) bool {
 		return false
 	}
 	allowed := false
-	appState.AllowedIPs.Range(func(k, v any) bool {
-		cidr, ok := k.(string)
-		if !ok || strings.TrimSpace(cidr) == "" {
+	switch source {
+	case "wan":
+		appState.AllowedWANIPs.Range(func(k, v any) bool {
+			cidr, ok := k.(*net.IPNet)
+			if !ok || cidr == nil {
+				return true
+			}
+			if cidr.Contains(ip) {
+				allowed = true
+				return false
+			}
 			return true
-		}
-		_, ipNet, err := net.ParseCIDR(cidr)
-		if err != nil {
+		})
+	case "lan":
+		appState.AllowedLANIPs.Range(func(k, v any) bool {
+			cidr, ok := k.(*net.IPNet)
+			if !ok || cidr == nil {
+				return true
+			}
+			if cidr.Contains(ip) {
+				allowed = true
+				return false
+			}
 			return true
-		}
-		if ipNet.Contains(ip) {
-			allowed = true
-			return false
-		}
-		return true
-	})
+		})
+	case "any":
+		appState.AllowedIPs.Range(func(k, v any) bool {
+			cidr, ok := k.(*net.IPNet)
+			if !ok || cidr == nil {
+				return true
+			}
+			if cidr.Contains(ip) {
+				allowed = true
+				return false
+			}
+			return true
+		})
+	}
 	return allowed
 }
 
