@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -21,7 +22,6 @@ import (
 	webserver "uit-toolbox/webserver"
 
 	"golang.org/x/text/unicode/norm"
-	"golang.org/x/time/rate"
 )
 
 func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
@@ -275,22 +275,9 @@ func RateLimitMiddleware(appState *config.AppState, rateType string) func(http.H
 				return
 			}
 
-			var limiter *rate.Limiter
-			switch rateType {
-			case "webserver":
-				limiter = appState.WebServerLimiter.Get(requestIP)
-			case "file":
-				limiter = appState.fileLimiter.Get(requestIP)
-			case "api":
-				limiter = appState.apiLimiter.Get(requestIP)
-			case "auth":
-				limiter = appState.authLimiter.Get(requestIP)
-			default:
-				limiter = appState.WebServerLimiter.Get(requestIP)
-			}
-			if !limiter.Allow() {
-				appState.BlockedIPs.Block(requestIP)
-				log.Debug("Client has exceeded rate limit: " + requestIP)
+			limited, retryAfter := config.IsClientRateLimited(rateType, requestIP)
+			if limited {
+				log.Debug("Client is rate limited: " + requestIP + " (retry after " + retryAfter.String() + ")")
 				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 				return
 			}
@@ -303,6 +290,7 @@ func RateLimitMiddleware(appState *config.AppState, rateType string) func(http.H
 func AllowedFilesMiddleware(appState *config.AppState) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			log := config.GetLogger()
 			requestIP, ok := GetRequestIP(req)
 			if !ok {
 				log.Warning("no IP address stored in context")
@@ -326,7 +314,7 @@ func AllowedFilesMiddleware(appState *config.AppState) func(http.Handler) http.H
 			fullPath := path.Join(basePath, requestURL)
 			_, fileRequested := path.Split(fullPath)
 
-			if len(appState.AllowedFiles) > 0 && !appState.AllowedFiles[fileRequested] {
+			if !config.IsFileAllowed(fileRequested) {
 				log.Warning("File not in whitelist: " + fileRequested)
 				http.Error(w, FormatHttpError("Forbidden"), http.StatusForbidden)
 				return
@@ -356,7 +344,7 @@ func AllowedFilesMiddleware(appState *config.AppState) func(http.Handler) http.H
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			if metadata.Name() != fileRequested || !appState.AllowedFiles[metadata.Name()] {
+			if metadata.Name() != fileRequested || !config.IsFileAllowed(metadata.Name()) {
 				log.Warning("Filename mismatch: " + metadata.Name() + " != " + fileRequested)
 				http.Error(w, "Forbidden", http.StatusForbidden)
 				return
@@ -409,12 +397,12 @@ func AllowedFilesMiddleware(appState *config.AppState) func(http.Handler) http.H
 				return
 			}
 
-			fileRequest := ctxFileRequest{
+			fileRequest := webserver.CTXFileRequest{
 				FullPath:     fullPath,
 				ResolvedPath: resolvedPath,
 				FileName:     fileRequested,
 			}
-			ctxWithFile := context.WithValue(req.Context(), ctxFileRequest{}, fileRequest)
+			ctxWithFile := context.WithValue(req.Context(), webserver.CTXFileRequest{}, fileRequest)
 			next.ServeHTTP(w, req.WithContext(ctxWithFile))
 		})
 	}
@@ -422,6 +410,7 @@ func AllowedFilesMiddleware(appState *config.AppState) func(http.Handler) http.H
 
 func TLSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := config.GetLogger()
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
 			log.Warning("no IP address stored in context")
@@ -463,6 +452,7 @@ func TLSMiddleware(next http.Handler) http.Handler {
 
 func HTTPMethodMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := config.GetLogger()
 		// Get IP address
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
@@ -506,6 +496,7 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 
 func CheckHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := config.GetLogger()
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
 			log.Warning("no IP address stored in context")
@@ -573,6 +564,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 
 func SetHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := config.GetLogger()
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
 			log.Warning("no IP address stored in context")
@@ -586,9 +578,13 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Get env vars
-		env := configureEnvironment()
-		webServerIP := env.UIT_WAN_IP_ADDRESS
+		// Get web server IP for CORS
+		_, webServerIP, err := config.GetWebServerIP()
+		if err != nil || strings.TrimSpace(webServerIP) == "" {
+			log.Error("Cannot get web server IP for CORS: " + err.Error())
+			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			return
+		}
 		// Check CORS policy
 		cors := http.NewCrossOriginProtection()
 		cors.AddTrustedOrigin("https://" + webServerIP + ":1411")
@@ -634,6 +630,9 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 
 func APIAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := config.GetLogger()
+
+		// Request variables
 		var requestBasicToken string
 		var requestBearerToken string
 		var sessionCount int = 0
@@ -652,24 +651,6 @@ func APIAuth(next http.Handler) http.Handler {
 			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
 			return
 		}
-
-		// Delete expired tokens & malformed entries out of authMap
-		authMap.Range(func(k, v any) bool {
-			sessionID := k.(string)
-			authSession := v.(AuthSession)
-			sessionIP := strings.SplitN(sessionID, ":", 2)[0]
-
-			// basicExpiry := authSession.Basic.Expiry.Sub(time.Now())
-			bearerExpiry := time.Until(authSession.Bearer.Expiry)
-
-			// Auth cache entry expires once countdown reaches zero
-			if bearerExpiry.Seconds() <= 0 {
-				authMap.Delete(sessionID)
-				sessionCount = CountAuthSessions(&authMap)
-				log.Info("Auth session expired: " + sessionIP + " (TTL: " + fmt.Sprintf("%.2f", bearerExpiry.Seconds()) + ", " + strconv.Itoa(int(sessionCount)) + " session(s))")
-			}
-			return true
-		})
 
 		queryType := strings.TrimSpace(req.URL.Query().Get("type"))
 		// if strings.TrimSpace(queryType) == "" {
@@ -692,7 +673,7 @@ func APIAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		basicValid, bearerValid, _, bearerTTL, matchedSession := checkAuthSession(&authMap, requestIP, requestBasicToken, requestBearerToken)
+		basicValid, bearerValid, _, bearerTTL, matchedSession := CheckAuthSessionExists(sessionID, requestIP, requestBasicToken, requestBearerToken)
 
 		if (basicValid && bearerValid) || bearerValid {
 			if strings.TrimSpace(queryType) == "check-token" {

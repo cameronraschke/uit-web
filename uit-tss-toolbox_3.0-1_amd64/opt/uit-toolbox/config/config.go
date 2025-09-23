@@ -81,6 +81,7 @@ type AppState struct {
 	AllowedWANIPs     sync.Map
 	AllowedLANIPs     sync.Map
 	AllowedIPs        sync.Map
+	SessionSecret     []byte
 }
 
 type AuthHeader struct {
@@ -114,10 +115,20 @@ type BearerToken struct {
 	Valid     bool      `json:"valid"`
 }
 
+type CSRFToken struct {
+	Token     string    `json:"token"`
+	Expiry    time.Time `json:"expiry"`
+	NotBefore time.Time `json:"not_before"`
+	TTL       float64   `json:"ttl"`
+	IP        string    `json:"ip"`
+	Valid     bool      `json:"valid"`
+}
+
 type AuthSession struct {
-	Basic  BasicToken
-	Bearer BearerToken
-	CSRF   string
+	SessionID string
+	Basic     BasicToken
+	Bearer    BearerToken
+	CSRF      CSRFToken
 }
 
 var (
@@ -462,6 +473,13 @@ func InitApp() (*AppState, error) {
 		appState.AllowedIPs.Store(ipNet, true)
 	}
 
+	// Generate server-side secret for HMAC
+	sessionSecret, err := GenerateSessionToken(64)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate session secret: %w", err)
+	}
+	appState.SessionSecret = []byte(sessionSecret)
+
 	SetAppState(appState)
 	return appState, nil
 }
@@ -667,4 +685,42 @@ func IsIPBlocked(ipAddress string) bool {
 	}
 	appState.BlockedIPs.M.Delete(ipAddress)
 	return false
+}
+
+func GetServerIPAddressByInterface(ifName string) (string, error) {
+	if ifName == "" {
+		return "", errors.New("interface name is empty")
+	}
+	iface, err := net.InterfaceByName(ifName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get interface %s: %w", ifName, err)
+	}
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return "", fmt.Errorf("failed to get addresses for interface %s: %w", ifName, err)
+	}
+	for _, addr := range addrs {
+		var ip net.IP
+		switch v := addr.(type) {
+		case *net.IPNet:
+			ip = v.IP
+		case *net.IPAddr:
+			ip = v.IP
+		}
+		if ip != nil {
+			return ip.String(), nil
+		}
+	}
+	return "", fmt.Errorf("no valid IP address found for interface %s", ifName)
+}
+
+// Webserver config
+func GetWebServerIP() (string, string, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return "", "", errors.New("app state is not initialized")
+	}
+	lanIP := appState.AppConfig.UIT_LAN_IP_ADDRESS
+	wanIP := appState.AppConfig.UIT_WAN_IP_ADDRESS
+	return lanIP, wanIP, nil
 }
