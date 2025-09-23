@@ -1,6 +1,6 @@
 #!/bin/bash
 
-systemctl restart dnsmasq chrony mysql nginx apache2 nfs-kernel-server
+systemctl restart dnsmasq chrony nfs-kernel-server
 
 uit-firewall
 
