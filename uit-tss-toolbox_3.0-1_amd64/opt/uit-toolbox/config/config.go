@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"maps"
 	"net"
 	"os"
 	"strconv"
@@ -21,6 +22,9 @@ type AppConfig struct {
 	UIT_WAN_IP_ADDRESS          string
 	UIT_LAN_IF                  string
 	UIT_LAN_IP_ADDRESS          string
+	UIT_WAN_ALLOWED_IP          []string
+	UIT_LAN_ALLOWED_IP          []string
+	UIT_ALL_ALLOWED_IP          []string
 	UIT_WEB_DB_DBNAME           string
 	UIT_WEB_DB_HOST             string
 	UIT_WEB_DB_PORT             string
@@ -72,7 +76,8 @@ type AppState struct {
 	APILimiter        *LimiterMap
 	AuthLimiter       *LimiterMap
 	BlockedIPs        *BlockedMap
-	AllowedFiles      sync.Map
+	AllowedFiles      atomic.Value
+	AllowedFilesMu    sync.Mutex
 	AllowedWANIPs     sync.Map
 	AllowedLANIPs     sync.Map
 	AllowedIPs        sync.Map
@@ -138,11 +143,11 @@ func LoadConfig() (AppConfig, error) {
 	}
 
 	envWanAllowedIPs := strings.Split(envWanAllowedIPStr, ",")
-	wanAllowedIP := make(map[string]bool)
+	wanAllowedIP := make([]string, 0, len(envWanAllowedIPs))
 	for _, cidr := range envWanAllowedIPs {
 		cidr = strings.TrimSpace(cidr)
 		if cidr != "" {
-			wanAllowedIP[cidr] = true
+			wanAllowedIP = append(wanAllowedIP, cidr)
 		}
 	}
 
@@ -161,21 +166,21 @@ func LoadConfig() (AppConfig, error) {
 	}
 
 	envLanAllowedIPs := strings.Split(envAllowedLanIPStr, ",")
-	lanAllowedIP := make(map[string]bool)
+	lanAllowedIP := make([]string, 0, len(envLanAllowedIPs))
 	for _, cidr := range envLanAllowedIPs {
 		cidr = strings.TrimSpace(cidr)
 		if cidr != "" {
-			lanAllowedIP[cidr] = true
+			lanAllowedIP = append(lanAllowedIP, cidr)
 		}
 	}
 
 	envAllAllowedIPStr := envAllowedLanIPStr + "," + envWanAllowedIPStr
 	envAllAllowedIPs := strings.Split(envAllAllowedIPStr, ",")
-	allAllowedIPs := make(map[string]bool)
+	allAllowedIPs := make([]string, 0, len(envAllAllowedIPs))
 	for _, cidr := range envAllAllowedIPs {
 		cidr = strings.TrimSpace(cidr)
 		if cidr != "" {
-			allAllowedIPs[cidr] = true
+			allAllowedIPs = append(allAllowedIPs, cidr)
 		}
 	}
 
@@ -290,6 +295,9 @@ func LoadConfig() (AppConfig, error) {
 	appConfig.UIT_WAN_IP_ADDRESS = wanIP
 	appConfig.UIT_LAN_IF = lanIf
 	appConfig.UIT_LAN_IP_ADDRESS = lanIP
+	appConfig.UIT_WAN_ALLOWED_IP = wanAllowedIP
+	appConfig.UIT_LAN_ALLOWED_IP = lanAllowedIP
+	appConfig.UIT_ALL_ALLOWED_IP = allAllowedIPs
 	appConfig.UIT_WEB_DB_DBNAME = dbName
 	appConfig.UIT_WEB_DB_HOST = dbHost
 	appConfig.UIT_WEB_DB_PORT = dbPort
@@ -328,7 +336,9 @@ func InitApp() (*AppState, error) {
 		APILimiter:        &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_RATE_LIMIT_BURST},
 		AuthLimiter:       &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 10, Burst: appConfig.UIT_RATE_LIMIT_BURST / 10},
 		BlockedIPs:        &BlockedMap{M: sync.Map{}, BanPeriod: appConfig.UIT_RATE_LIMIT_BAN_DURATION},
-		AllowedFiles:      sync.Map{},
+		AllowedWANIPs:     sync.Map{},
+		AllowedLANIPs:     sync.Map{},
+		AllowedIPs:        sync.Map{},
 	}
 
 	allowedFiles := []FileList{
@@ -362,8 +372,24 @@ func InitApp() (*AppState, error) {
 		{Filename: "go-latest.linux-amd64.tar.gz", Allowed: true},
 	}
 
+	allowed := make(map[string]bool, len(allowedFiles))
 	for _, file := range allowedFiles {
-		appState.AllowedFiles.Store(file.Filename, file.Allowed)
+		allowed[file.Filename] = file.Allowed
+	}
+	appState.AllowedFiles.Store(allowed)
+
+	// for _, file := range allowedFiles {
+	// 	appState.AllowedFiles.Store(file.Filename, file.Allowed)
+	// }
+
+	for _, wanIP := range appConfig.UIT_WAN_ALLOWED_IP {
+		appState.AllowedWANIPs.Store(wanIP, true)
+	}
+	for _, lanIP := range appConfig.UIT_LAN_ALLOWED_IP {
+		appState.AllowedLANIPs.Store(lanIP, true)
+	}
+	for _, allIP := range appConfig.UIT_ALL_ALLOWED_IP {
+		appState.AllowedIPs.Store(allIP, true)
 	}
 
 	SetAppState(appState)
@@ -429,28 +455,24 @@ func GetAllowedFiles() map[string]bool {
 	if appState == nil {
 		return nil
 	}
-	allowedFilesMap := make(map[string]bool)
-	appState.AllowedFiles.Range(func(k, v any) bool {
-		key, keyExists := k.(string)
-		value, valueExists := v.(bool)
-		if keyExists && valueExists {
-			allowedFilesMap[key] = value
-		}
-		return true
-	})
-	return allowedFilesMap
+	allowedFiles, _ := appState.AllowedFiles.Load().(map[string]bool)
+	if allowedFiles == nil {
+		return nil
+	}
+
+	return maps.Clone(allowedFiles)
 }
 
 func IsFileAllowed(filename string) bool {
 	appState := GetAppState()
-	if appState == nil {
+	if appState == nil || filename == "" {
 		return false
 	}
-	value, ok := appState.AllowedFiles.Load(filename)
-	if !ok {
+	cur, _ := appState.AllowedFiles.Load().(map[string]bool)
+	if cur == nil {
 		return false
 	}
-	allowed, ok := value.(bool)
+	allowed, ok := cur[filename]
 	return ok && allowed
 }
 
@@ -459,7 +481,22 @@ func AddAllowedFile(filename string) error {
 	if appState == nil {
 		return errors.New("app state is not initialized")
 	}
-	appState.AllowedFiles.Store(filename, true)
+
+	appState.AllowedFilesMu.Lock()
+	defer appState.AllowedFilesMu.Unlock()
+
+	oldMap, _ := appState.AllowedFiles.Load().(map[string]bool)
+	if oldMap == nil {
+		oldMap = map[string]bool{}
+	}
+	if oldMap[filename] {
+		return nil
+	}
+
+	newMap := make(map[string]bool, len(oldMap)+1)
+	maps.Copy(newMap, oldMap)
+	newMap[filename] = true
+	appState.AllowedFiles.Store(newMap)
 	return nil
 }
 
@@ -468,7 +505,24 @@ func RemoveAllowedFile(filename string) {
 	if appState == nil {
 		return
 	}
-	appState.AllowedFiles.Delete(filename)
+
+	appState.AllowedFilesMu.Lock()
+	defer appState.AllowedFilesMu.Unlock()
+
+	oldMap, _ := appState.AllowedFiles.Load().(map[string]bool)
+	if oldMap == nil {
+		return
+	}
+	if _, exists := oldMap[filename]; !exists {
+		return
+	}
+	newMap := make(map[string]bool, len(oldMap)-1)
+	for k, v := range oldMap {
+		if k != filename {
+			newMap[k] = v
+		}
+	}
+	appState.AllowedFiles.Store(newMap)
 }
 
 func GetAuthSessions() map[string]AuthSession {
@@ -537,7 +591,7 @@ func RefreshAndGetAuthSessionCount() int64 {
 	return entries
 }
 
-func CheckAuthSession(sessionID string, ipAddress string, basicToken string, bearerToken string, csrfToken string) (bool, bool, error) {
+func CheckAuthSessionExists(sessionID string, ipAddress string, basicToken string, bearerToken string, csrfToken string) (bool, bool, error) {
 	sessionValid := false
 	sessionExists := false
 
