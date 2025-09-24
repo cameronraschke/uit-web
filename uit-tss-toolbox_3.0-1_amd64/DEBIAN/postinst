@@ -8,12 +8,6 @@ if [[ $(id -u uitweb &>/dev/null; echo $?) == "1" ]]; then
     sudo useradd --system --no-create-home --shell /usr/sbin/nologin uitweb
 fi
 
-## General config setup
-mkdir -p /etc/uit-toolbox/certs.d/
-mkdir -p /etc/uit-toolbox/clients.d/
-mkdir -p /etc/uit-toolbox/server/postgresql.d/
-cp /etc/uit-toolbox/clients.d/uit-config.conf /srv/uit-toolbox/client/configs/uit-config.conf
-
 ## Client config and package setup
 # Web folders
 mkdir -p /srv/uit-toolbox/client/certs/
@@ -23,6 +17,12 @@ mkdir -p /srv/uit-toolbox/client/pkg/
 mkdir -p /srv/uit-toolbox/client/src/
 # NFS folders
 mkdir -p /srv/nfs/uit-toolbox/images
+
+## General config setup
+mkdir -p /etc/uit-toolbox/certs.d/
+mkdir -p /etc/uit-toolbox/clients.d/
+mkdir -p /etc/uit-toolbox/server/postgresql.d/
+cp /etc/uit-toolbox/clients.d/uit-config.conf /srv/uit-toolbox/client/configs/uit-config.conf
 
 # Client package - download .deb
 while [ ! -d /srv/uit-toolbox/client/src/ ]; do
@@ -51,7 +51,6 @@ configArr[UIT_DB_CLIENT_PASSWD]=$(getConfigValue "UIT_DB_CLIENT_PASSWD")
 configArr[UIT_WEB_USER_DEFAULT_PASSWD]=$(getConfigValue "UIT_WEB_USER_DEFAULT_PASSWD")
 configArr[UIT_WEBMASTER_NAME]=$(getConfigValue "UIT_WEBMASTER_NAME" false)
 configArr[UIT_WEBMASTER_EMAIL]=$(getConfigValue "UIT_WEBMASTER_EMAIL")
-configArr[UIT_WEB_USERS]=$(getConfigValue "UIT_WEB_USERS" false)
 configArr[UIT_WAN_IF]=$(getConfigValue "UIT_WAN_IF")
 configArr[UIT_WAN_IP_ADDRESS]=$(getConfigValue "UIT_WAN_IP_ADDRESS")
 configArr[UIT_LAN_IF]=$(getConfigValue "UIT_LAN_IF")
@@ -151,8 +150,8 @@ cp /usr/local/share/ca-certificates/uit-web.key /srv/uit-toolbox/client/certs/ui
 
 # Update SQL tables & procedures
 echo "Updating SQL tables & procedures..."
-sudo -u postgres psql uitdb < /etc/opt/uit-toolbox/server/postgresql/postgresql-tables.sql
-sudo -u postgres psql uitdb < /etc/opt/uit-toolbox/server/postgresql/postgresql-procedures.sql
+sudo -u postgres psql uitdb < /etc/opt/uit-toolbox/postgresql.d/postgresql-tables.sql
+sudo -u postgres psql uitdb < /etc/opt/uit-toolbox/postgresql.d/postgresql-procedures.sql
 
 ## Uncomment on first-time setup
 #sudo -u postgres psql --command="CREATE DATABASE uitdb;"
