@@ -84,17 +84,10 @@ type AppState struct {
 	SessionSecret     []byte
 }
 
-type AuthHeader struct {
-	Basic  *string
-	Bearer *string
-}
-
-type RateLimiter struct {
-	Requests       int
-	LastSeen       time.Time
-	MapLastUpdated time.Time
-	BannedUntil    time.Time
-	Banned         bool
+type AuthHTTPHeader struct {
+	CSRFToken   *string
+	BasicToken  *string
+	BearerToken *string
 }
 
 type BasicToken struct {
