@@ -25,7 +25,7 @@ mkdir -p /srv/uit-toolbox/client/src/
 mkdir -p /srv/nfs/uit-toolbox/images
 
 # Client package - download .deb
-while [ ! -f /srv/uit-toolbox/client/src/ ]; do
+while [ ! -d /srv/uit-toolbox/client/src/ ]; do
     git clone 'https://github.com/cameronraschke/uit-client' /srv/uit-toolbox/client/src/
 done
 
