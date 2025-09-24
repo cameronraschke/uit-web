@@ -168,15 +168,6 @@ sudo -u postgres psql --command="ALTER USER cameron WITH PASSWORD '${configArr[U
 sudo -u postgres psql --command="ALTER USER uitclient WITH PASSWORD '${configArr[UIT_DB_CLIENT_PASSWD]}';"
 sudo -u postgres psql --command="ALTER USER uitweb WITH PASSWORD '${configArr[UIT_WEB_DB_PASSWD]}';"
 
-
-echo "  --Website Passwords"
-sudo -u postgres psql --command="DELETE FROM logins;" uitdb
-for webUser in ${configArr[UIT_WEB_USERS]}; do
-sudo -u postgres psql --command="INSERT INTO logins (username, name, password) VALUES (${webUser}, ENCODE(SHA256('${configArr[UIT_WEB_USER_DEFAULT_PASSWD]}'::bytea), 'hex'));" uitdb
-done
-sudo -u postgres psql --command="UPDATE logins SET username = ENCODE(SHA256(username::bytea), 'hex');" uitdb
-
-
 # Update SQL Permissions
 echo "Updating PSQL Permissions..."
 sudo -u postgres psql --command="CALL sqlPermissions();" uitdb
