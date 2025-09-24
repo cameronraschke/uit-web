@@ -14,7 +14,7 @@ mkdir -p /srv/uit-toolbox/client/certs/
 mkdir -p /srv/uit-toolbox/client/configs/
 mkdir -p /srv/uit-toolbox/client/iso/
 mkdir -p /srv/uit-toolbox/client/pkg/
-mkdir -p /srv/uit-toolbox/client/src/uit-client/
+mkdir -p /srv/uit-toolbox/client/src/
 # NFS folders
 mkdir -p /srv/nfs/uit-toolbox/images
 
@@ -99,12 +99,12 @@ for i in ${!configArr[@]}; do
 done
 
 # Client package - create .deb
-(cd /srv/uit-toolbox/client/src/uit-client/
-  chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64/DEBIAN/
-  chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64/DEBIAN/control
-  chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64/DEBIAN/postinst
-  dpkg-deb --build --root-owner-group /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64 
-  mv -v /srv/uit-toolbox/client/src/uit-client/uit-toolbox-client_2.0-1_amd64.deb /srv/uit-toolbox/client/pkg/uit-toolbox-client.deb
+(cd /srv/uit-toolbox/client/src/
+  chmod 755 /srv/uit-toolbox/client/src/uit-toolbox-client_2.0-1_amd64/DEBIAN/
+  chmod 755 /srv/uit-toolbox/client/src/uit-toolbox-client_2.0-1_amd64/DEBIAN/control
+  chmod 755 /srv/uit-toolbox/client/src/uit-toolbox-client_2.0-1_amd64/DEBIAN/postinst
+  dpkg-deb --build --root-owner-group /srv/uit-toolbox/client/src/uit-toolbox-client_2.0-1_amd64 
+  mv -v /srv/uit-toolbox/client/src/uit-toolbox-client_2.0-1_amd64.deb /srv/uit-toolbox/client/pkg/uit-toolbox-client.deb
 )
 
 if [[ ! -f /srv/uit-toolbox/client/pkg/go-latest.linux-amd64.tar.gz ]]; then
