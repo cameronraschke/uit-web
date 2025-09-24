@@ -14,7 +14,7 @@ mkdir -p /srv/uit-toolbox/client/certs/
 mkdir -p /srv/uit-toolbox/client/configs/
 mkdir -p /srv/uit-toolbox/client/iso/
 mkdir -p /srv/uit-toolbox/client/pkg/
-mkdir -p /srv/uit-toolbox/client/src/
+mkdir -p /srv/uit-toolbox/client/src/uit-client/
 # NFS folders
 mkdir -p /srv/nfs/uit-toolbox/images
 
@@ -150,8 +150,8 @@ cp /usr/local/share/ca-certificates/uit-web.key /srv/uit-toolbox/client/certs/ui
 
 # Update SQL tables & procedures
 echo "Updating SQL tables & procedures..."
-sudo -u postgres psql uitdb < /etc/uit-toolbox/postgresql.d/postgresql-tables.sql
-sudo -u postgres psql uitdb < /etc/uit-toolbox/postgresql.d/postgresql-procedures.sql
+sudo -u postgres psql uitdb < /etc/uit-toolbox/postgresql.d/create-tables.sql
+sudo -u postgres psql uitdb < /etc/uit-toolbox/postgresql.d/create-procedures.sql
 
 ## Uncomment on first-time setup
 #sudo -u postgres psql --command="CREATE DATABASE uitdb;"
