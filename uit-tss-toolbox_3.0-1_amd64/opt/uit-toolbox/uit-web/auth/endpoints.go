@@ -14,7 +14,7 @@ import (
 	"unicode/utf8"
 )
 
-type returnedJsonToken struct {
+type ReturnedJsonToken struct {
 	Token string  `json:"token"`
 	TTL   float64 `json:"ttl"`
 	Valid bool    `json:"valid"`

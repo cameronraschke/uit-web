@@ -3,9 +3,7 @@ package middleware
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -628,14 +626,16 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func APIAuth(next http.Handler) http.Handler {
+func APIAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log := config.GetLogger()
 
 		// Request variables
 		var requestBasicToken string
 		var requestBearerToken string
-		var sessionCount int = 0
+		var requestCSRFToken string
+		var sessionID string
+		var sessionCount int64 = 0
 
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
@@ -659,40 +659,63 @@ func APIAuth(next http.Handler) http.Handler {
 		// 	return
 		// }
 
-		headers := ParseHeaders(req.Header)
-		if headers.Authorization.Basic != nil {
-			requestBasicToken = *headers.Authorization.Basic
+		authHeaders := req.Header.Values("Authorization")
+		if len(authHeaders) == 0 {
+			log.Warning("No Authorization header provided: " + requestIP + " ( " + requestURL + ")")
+			http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
+			return
 		}
-		if headers.Authorization.Bearer != nil {
-			requestBearerToken = *headers.Authorization.Bearer
+		for _, header := range authHeaders {
+			// Get position (index) of space in auth header
+			spaceIndex := strings.IndexByte(header, ' ')
+			if spaceIndex <= 0 || spaceIndex == len(header)-1 {
+				continue
+			}
+			headerType := header[:spaceIndex]
+			token := strings.TrimSpace(header[spaceIndex+1:])
+			if token == "" {
+				continue
+			}
+			switch strings.ToLower(headerType) {
+			case "basic":
+				if requestBasicToken == "" {
+					requestBasicToken = token
+				}
+			case "bearer":
+				if requestBearerToken == "" {
+					requestBearerToken = token
+				}
+			}
+			if requestBasicToken != "" && requestBearerToken != "" {
+				break
+			}
 		}
-
-		if strings.TrimSpace(requestBearerToken) == "" && strings.TrimSpace(requestBasicToken) == "" {
+		if strings.TrimSpace(requestBearerToken) == "" || strings.TrimSpace(requestBasicToken) == "" {
 			log.Warning("Empty value for Authorization header: " + requestIP + " ( " + requestURL + ")")
 			http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
 			return
 		}
 
-		basicValid, bearerValid, _, bearerTTL, matchedSession := CheckAuthSessionExists(sessionID, requestIP, requestBasicToken, requestBearerToken)
+		// No consequences for having missing CSRF (yet)
+		requestCSRFToken = strings.TrimSpace(req.Header.Get("X-CSRF-Token"))
 
-		if (basicValid && bearerValid) || bearerValid {
-			if strings.TrimSpace(queryType) == "check-token" {
-				jsonData, err := json.Marshal(returnedJsonToken{
-					Token: matchedSession.Bearer.Token,
-					TTL:   bearerTTL,
-					Valid: true,
-				})
-				if err != nil {
-					log.Error("Cannot marshal Token to JSON: " + err.Error())
-					return
-				}
-				w.Write(jsonData)
-				return
-			} else if strings.TrimSpace(queryType) != "" {
-				next.ServeHTTP(w, req)
-			}
-		} else if (basicValid && !bearerValid) || (!basicValid && !bearerValid) {
-			sessionCount = CountAuthSessions(&authMap)
+		sessionID = strings.TrimSpace(req.Header.Get("X-Session-ID"))
+		if strings.TrimSpace(sessionID) == "" {
+			log.Warning("No session ID provided: " + requestIP + " ( " + requestURL + ")")
+			http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
+			return
+		}
+
+		sessionValid, sessionExists, err := config.CheckAuthSessionExists(sessionID, requestIP, requestBasicToken, requestBearerToken, requestCSRFToken)
+		if err != nil {
+			log.Error("Error checking auth session: " + err.Error())
+			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			return
+		}
+		if sessionValid && sessionExists {
+			next.ServeHTTP(w, req)
+		} else if sessionExists && !sessionValid {
+			sessionCount = config.GetAuthSessionCount()
 			log.Debug("Auth cache miss: " + requestIP + " (Sessions: " + strconv.Itoa(int(sessionCount)) + ") " + requestURL)
 			if queryType == "new-token" && strings.TrimSpace(requestBasicToken) != "" {
 				next.ServeHTTP(w, req)
@@ -708,8 +731,9 @@ func APIAuth(next http.Handler) http.Handler {
 	})
 }
 
-func HTTPCookieAuth(next http.Handler) http.Handler {
+func HTTPCookieAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := config.GetLogger()
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
 			log.Warning("no IP address stored in context")
@@ -723,38 +747,62 @@ func HTTPCookieAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		basicCookie, errBasic := req.Cookie("uit_basic_token")
+		uitSessionIDCookie, sessionErr := req.Cookie("uit_session_id")
+		uitBasicCookie, basicErr := req.Cookie("uit_basic_token")
+		uitBearerCookie, bearerErr := req.Cookie("uit_bearer_token")
+		uitCSRFCookie, csrfErr := req.Cookie("uit_csrf_token")
 
-		if errBasic != nil || strings.TrimSpace(basicCookie.Value) == "" {
-			log.Warning("Missing basic auth cookie")
+		if sessionErr != nil || basicErr != nil || bearerErr != nil || csrfErr != nil {
+			if sessionErr != nil && sessionErr != http.ErrNoCookie {
+				log.Error("Error retrieving UIT cookies: " + requestIP + " (" + requestURL + ")")
+			}
 			http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
 			return
 		}
 
-		requestBasicToken := basicCookie.Value
+		config.ClearExpiredAuthSessions()
 
-		// Clean up expired tokens
-		var sessionCount int
-		authMap.Range(func(k, v any) bool {
-			sessionID := k.(string)
-			authSession := v.(AuthSession)
-			sessionIP := strings.SplitN(sessionID, ":", 2)[0]
-			bearerExpiry := time.Until(authSession.Bearer.Expiry)
-			if bearerExpiry.Seconds() <= 0 {
-				authMap.Delete(sessionID)
-				sessionCount = CountAuthSessions(&authMap)
-				log.Info("Auth session expired: " + sessionIP + " (TTL: " + fmt.Sprintf("%.2f", bearerExpiry.Seconds()) + ", " + strconv.Itoa(int(sessionCount)) + " session(s))")
-			}
-			return true
-		})
+		sessionValid, sessionExists, err := config.CheckAuthSessionExists(uitSessionIDCookie.Value, requestIP, uitBasicCookie.Value, uitBearerCookie.Value, uitCSRFCookie.Value)
+		if err != nil {
+			log.Error("Error checking auth session: " + err.Error())
+			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			return
+		}
 
-		// Check session using the cookie value as bearer token
-		basicValid, _, _, _, _ := checkAuthSession(&authMap, requestIP, requestBasicToken, "")
-
-		if basicValid && !strings.HasSuffix(requestURL, "/logout") {
+		if sessionValid && sessionExists && !strings.HasSuffix(requestURL, "/logout") {
+			http.SetCookie(w, &http.Cookie{
+				Name:     "uit_session_id",
+				Value:    uitSessionIDCookie.Value,
+				Path:     "/",
+				Expires:  time.Now().Add(20 * time.Minute),
+				MaxAge:   20 * 60,
+				Secure:   true,
+				HttpOnly: true,
+				SameSite: http.SameSiteStrictMode,
+			})
 			http.SetCookie(w, &http.Cookie{
 				Name:     "uit_basic_token",
-				Value:    requestBasicToken,
+				Value:    uitBasicCookie.Value,
+				Path:     "/",
+				Expires:  time.Now().Add(20 * time.Minute),
+				MaxAge:   20 * 60,
+				Secure:   true,
+				HttpOnly: true,
+				SameSite: http.SameSiteStrictMode,
+			})
+			http.SetCookie(w, &http.Cookie{
+				Name:     "uit_bearer_token",
+				Value:    uitBearerCookie.Value,
+				Path:     "/",
+				Expires:  time.Now().Add(20 * time.Minute),
+				MaxAge:   20 * 60,
+				Secure:   true,
+				HttpOnly: true,
+				SameSite: http.SameSiteStrictMode,
+			})
+			http.SetCookie(w, &http.Cookie{
+				Name:     "uit_csrf_token",
+				Value:    uitCSRFCookie.Value,
 				Path:     "/",
 				Expires:  time.Now().Add(20 * time.Minute),
 				MaxAge:   20 * 60,
@@ -763,30 +811,26 @@ func HTTPCookieAuth(next http.Handler) http.Handler {
 				SameSite: http.SameSiteStrictMode,
 			})
 
-			bearerToken, csrfToken, err := GenerateAuthTokens()
+			success, err := config.ExtendAuthSession(uitSessionIDCookie.Value)
 			if err != nil {
-				log.Error("Failed to generate secure session ID: " + err.Error())
+				log.Error("Error extending auth session: " + err.Error())
 				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
 				return
 			}
-
-			basicExpiry := time.Now().Add(20 * time.Minute)
-			bearerExpiry := time.Now().Add(10 * time.Minute)
-			basic := BasicToken{Token: requestBasicToken, Expiry: basicExpiry, NotBefore: time.Now(), TTL: time.Until(basicExpiry).Seconds(), IP: requestIP, Valid: true}
-			bearer := BearerToken{Token: requestBasicToken, Expiry: bearerExpiry, NotBefore: time.Now(), TTL: time.Until(bearerExpiry).Seconds(), IP: requestIP, Valid: true}
-			sessionID := requestIP + ":" + requestBasicToken
-
-			newSessionID := requestIP + ":" + bearerToken
-			if sessionID != newSessionID {
-				authMap.Delete(sessionID)
+			if success {
+				log.Debug("Auth session extended: " + requestIP)
+				next.ServeHTTP(w, req)
+			} else {
+				log.Debug("Auth session not found or expired: " + requestIP)
 			}
-			CreateOrUpdateAuthSession(&authMap, newSessionID, basic, bearer, csrfToken)
-			log.Debug("Auth session extended: " + requestIP)
-			next.ServeHTTP(w, req)
+		} else if sessionExists && strings.HasSuffix(requestURL, "/logout") {
+			log.Debug("Logging out user: " + requestIP)
+			config.DeleteAuthSession(uitSessionIDCookie.Value)
+			sessionCount := config.RefreshAndGetAuthSessionCount()
+			log.Info("(Cleanup) Auth session expired: " + requestIP + " (" + strconv.Itoa(int(sessionCount)) + " session(s))")
 			return
 		} else {
-			sessionCount = CountAuthSessions(&authMap)
-			log.Debug("Auth cookie cache miss: " + requestIP + " (Sessions: " + strconv.Itoa(int(sessionCount)) + ") " + requestURL)
+			log.Info("No valid authentication found for request: " + requestIP + " ( " + requestURL + ")")
 			http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
 			return
 		}

@@ -15,20 +15,17 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 	"unicode"
 	"unicode/utf8"
 
 	config "uit-toolbox/config"
+	webserver "uit-toolbox/webserver"
 
 	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/time/rate"
 )
 
 func FormatHttpError(errorString string) (jsonErrStr string) {
-	jsonStr := httpErrorCodes{Message: errorString}
+	jsonStr := webserver.HTTPErrorCodes{Message: errorString}
 	jsonErr, err := json.Marshal(jsonStr)
 	if err != nil {
 		return ""
@@ -36,93 +33,8 @@ func FormatHttpError(errorString string) (jsonErrStr string) {
 	return string(jsonErr)
 }
 
-func (lm *LimiterMap) Get(ip string) *rate.Limiter {
-	log := config.GetLogger()
-	curTime := time.Now()
-	newEntry := &LimiterEntry{
-		limiter:  rate.NewLimiter(rate.Limit(lm.rate), lm.burst),
-		lastSeen: curTime,
-	}
-	queriedLimiter, exists := lm.m.LoadOrStore(ip, newEntry)
-	entry := queriedLimiter.(*LimiterEntry)
-	entry.lastSeen = curTime
-	if !exists {
-		log.Debug("Created new limiter for IP: " + ip + " rate=" + fmt.Sprint(lm.rate) + " burst=" + fmt.Sprint(lm.burst))
-	}
-
-	return entry.limiter
-}
-
-func (lm *LimiterMap) Delete(ip string) {
-	lm.m.Delete(ip)
-}
-
-func (bm *BlockedMap) IsBlocked(ip string) bool {
-	blockTime, ok := bm.m.Load(ip)
-	if !ok {
-		return false
-	}
-	unblockTime, ok := blockTime.(time.Time)
-	if !ok {
-		bm.m.Delete(ip)
-		return false
-	}
-	if time.Now().After(unblockTime) {
-		bm.m.Delete(ip)
-		return false
-	}
-	return true
-}
-
-func (bm *BlockedMap) Block(ip string) {
-	bm.m.Store(ip, time.Now().Add(bm.banPeriod))
-}
-
-func GetLimiter(requestIP string) *rate.Limiter {
-	return WebServerLimiter.Get(requestIP)
-}
-
-func IsBlocked(requestIP string) bool {
-	return blockedIPs.IsBlocked(requestIP)
-}
-
-func BlockIP(requestIP string) {
-	blockedIPs.Block(requestIP)
-}
-
-func (as *AppState) Cleanup() {
-	ttl := time.Now().Add(-10 * time.Minute)
-	as.WebServerLimiter.m.Range(func(key, value any) bool {
-		entry, ok := value.(*LimiterEntry)
-		if !ok || entry.lastSeen.Before(ttl) {
-			as.WebServerLimiter.m.Delete(key)
-		}
-		return true
-	})
-
-	curTime := time.Now()
-	as.blockedIPs.m.Range(func(key, value any) bool {
-		unblockTime, ok := value.(time.Time)
-		if !ok || curTime.After(unblockTime) {
-			as.blockedIPs.m.Delete(key)
-		}
-		return true
-	})
-}
-
-func (as *AppState) GetAllBlockedIPs() string {
-	var blocked []string
-	as.blockedIPs.m.Range(func(key, value any) bool {
-		ip, ok := key.(string)
-		if ok {
-			blocked = append(blocked, ip)
-		}
-		return true
-	})
-	return strings.Join(blocked, ", ")
-}
-
 func checkValidIP(s string) (isValid bool, isLoopback bool, isLocal bool) {
+	log := config.GetLogger()
 	maxStringSize := int64(128)
 	maxCharSize := int(4)
 
@@ -200,72 +112,36 @@ func checkValidIP(s string) (isValid bool, isLoopback bool, isLocal bool) {
 }
 
 func GetRequestIP(r *http.Request) (string, bool) {
-	if ip, ok := r.Context().Value(ctxClientIP{}).(string); ok {
+	if ip, ok := r.Context().Value(webserver.CTXClientIP{}).(string); ok {
 		return ip, true
 	}
 	return "", false
 }
 
 func GetRequestURL(r *http.Request) (string, bool) {
-	if url, ok := r.Context().Value(ctxURLRequest{}).(string); ok {
+	if url, ok := r.Context().Value(webserver.CTXURLRequest{}).(string); ok {
 		return url, true
 	}
 	return "", false
 }
 
 func GetRequestedFile(req *http.Request) (string, string, string, bool) {
-	if fileRequest, ok := req.Context().Value(ctxFileRequest{}).(ctxFileRequest); ok {
+	if fileRequest, ok := req.Context().Value(webserver.CTXFileRequest{}).(webserver.CTXFileRequest); ok {
 		return fileRequest.FullPath, fileRequest.ResolvedPath, fileRequest.FileName, true
 	}
 	return "", "", "", false
 }
 
-func ParseHeaders(header http.Header) HttpHeaders {
-	var headers HttpHeaders
-	var authHeader AuthHeader
-	for _, value := range header.Values("Authorization") {
-		value = strings.TrimSpace(value)
-		if strings.HasPrefix(value, "Basic ") {
-			basic := strings.TrimSpace(strings.TrimPrefix(value, "Basic "))
-			authHeader.Basic = &basic
-		}
-		if strings.HasPrefix(value, "Bearer ") {
-			bearer := strings.TrimSpace(strings.TrimPrefix(value, "Bearer "))
-			authHeader.Bearer = &bearer
-		}
-	}
-	headers.Authorization = authHeader
-	return headers
-}
-
-func CreateOrUpdateAuthSession(authMap *sync.Map, sessionID string, basic BasicToken, bearer BearerToken, csrfToken string) (AuthSession, bool, error) {
-	newSession := AuthSession{
-		Basic:  basic,
-		Bearer: bearer,
-		CSRF:   csrfToken,
-	}
-
-	// Use LoadOrStore for atomic operation
-	value, exists := authMap.LoadOrStore(sessionID, newSession)
-
-	if !exists {
-		atomic.AddInt64(&authMapEntryCount, 1)
-	}
-
-	return value.(AuthSession), exists, nil
-}
-
 func CheckAuthCredentials(ctx context.Context, username, password string) (bool, error) {
-	// hashedUsername := sha256.Sum256([]byte(username))
-	// hashedUsernameString := hex.EncodeToString(hashedUsername[:])
-	// hashedPassword := sha256.Sum256([]byte(password))
-	// hashedPasswordString := hex.EncodeToString(hashedPassword[:])
-
+	db := config.GetDatabaseConn()
+	if db == nil {
+		return false, errors.New("database is not initialized")
+	}
 	var tmpToken = username + ":" + password
 	authToken := sha256.Sum256([]byte(tmpToken))
 	authTokenString := hex.EncodeToString(authToken[:])
 
-	sqlCode := `SELECT ENCODE(SHA256(CONCAT(username, ':', password)::bytea), 'hex') as token FROM logins WHERE ENCODE(SHA256(CONCAT(username, ':', password)::bytea), 'hex') = $1`
+	sqlCode := `SELECT ENCODE(SHA256(CONCAT(username, ':', password)::bytea), 'hex') FROM logins WHERE ENCODE(SHA256(CONCAT(username, ':', password)::bytea), 'hex') = $1`
 	rows, err := db.QueryContext(ctx, sqlCode, authTokenString)
 	for rows.Next() {
 		var dbToken string
@@ -333,30 +209,4 @@ func ValidateAuthFormInput(username, password string) error {
 	}
 
 	return nil
-}
-
-func GenerateAuthTokens() (string, string, error) {
-	bearerBuffer := make([]byte, 32)
-	csrfBuffer := make([]byte, 32)
-
-	if _, err := rand.Read(bearerBuffer); err != nil {
-		return "", "", errors.New("failed to generate buffer for bearer token: " + err.Error())
-	}
-	bearerToken, err := bcrypt.GenerateFromPassword(bearerBuffer, bcrypt.DefaultCost)
-	if err != nil {
-		return "", "", errors.New("failed to generate bearer token: " + err.Error())
-	}
-
-	if _, err := rand.Read(csrfBuffer); err != nil {
-		return "", "", errors.New("failed to generate buffer for CSRF token: " + err.Error())
-	}
-	csrfToken, err := bcrypt.GenerateFromPassword(csrfBuffer, bcrypt.DefaultCost)
-	if err != nil {
-		return "", "", errors.New("failed to generate CSRF token: " + err.Error())
-	}
-
-	bearerTokenString := hex.EncodeToString(bearerToken)
-	csrfTokenString := hex.EncodeToString(csrfToken)
-
-	return bearerTokenString, csrfTokenString, nil
 }

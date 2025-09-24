@@ -43,9 +43,9 @@ func CreateAuthSession(ipAddress string) (string, string, string, string, error)
 	curTime := time.Now()
 
 	const (
-		basicTTL  = 15 * time.Minute
-		bearerTTL = 15 * time.Minute
-		csrfTTL   = 15 * time.Minute
+		basicTTL  = 20 * time.Minute
+		bearerTTL = 20 * time.Minute
+		csrfTTL   = 20 * time.Minute
 	)
 
 	sessionID, err := GenerateSessionToken(32)
@@ -224,6 +224,31 @@ func CheckAuthSessionExists(sessionID string, ipAddress string, basicToken strin
 
 	sessionValid = true
 	return sessionValid, sessionExists, nil
+}
+
+func ExtendAuthSession(sessionID string) (bool, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return false, errors.New("app state is not initialized")
+	}
+	value, ok := appState.AuthMap.Load(sessionID)
+	if !ok {
+		return false, nil
+	}
+	authSession, ok := value.(AuthSession)
+	if !ok {
+		return false, errors.New("invalid auth session type")
+	}
+	curTime := time.Now()
+
+	if authSession.Basic.Expiry.Before(curTime) || authSession.Bearer.Expiry.Before(curTime) {
+		return false, nil
+	}
+	authSession.Basic.Expiry = curTime.Add(time.Duration(20 * time.Minute))
+	authSession.Bearer.Expiry = curTime.Add(time.Duration(20 * time.Minute))
+	authSession.CSRF.Expiry = curTime.Add(time.Duration(20 * time.Minute))
+	appState.AuthMap.Store(sessionID, authSession)
+	return true, nil
 }
 
 func GenerateSessionToken(tokenSize int) (string, error) {
