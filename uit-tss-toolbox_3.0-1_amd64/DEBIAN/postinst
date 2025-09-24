@@ -26,7 +26,9 @@ cp /etc/uit-toolbox/clients.d/uit-config.conf /srv/uit-toolbox/client/configs/ui
 
 # Client package - download .deb
 while [ ! -d /srv/uit-toolbox/client/src/uit-client_2.0-1_amd64/ ]; do
-    git clone 'https://github.com/cameronraschke/uit-client' /srv/uit-toolbox/client/src/
+  rm -rf /srv/uit-toolbox/client/src/
+  git clone 'https://github.com/cameronraschke/uit-client' /srv/uit-toolbox/client/src/
+  sleep 1
 done
 
 ## Server config
