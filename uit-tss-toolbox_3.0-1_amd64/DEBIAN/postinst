@@ -25,8 +25,9 @@ mkdir -p /etc/uit-toolbox/server/postgresql.d/
 cp /etc/uit-toolbox/clients.d/uit-config.conf /srv/uit-toolbox/client/configs/uit-config.conf
 
 # Client package - download .deb
+rm -rf /srv/uit-toolbox/client/src/*
 while [ ! -d /srv/uit-toolbox/client/src/uit-client_2.0-1_amd64/ ]; do
-  rm -rf /srv/uit-toolbox/client/src/
+  rm -rf /srv/uit-toolbox/client/src/*
   git clone 'https://github.com/cameronraschke/uit-client' /srv/uit-toolbox/client/src/
   sleep 1
 done
