@@ -150,8 +150,8 @@ cp /usr/local/share/ca-certificates/uit-web.key /srv/uit-toolbox/client/certs/ui
 
 # Update SQL tables & procedures
 echo "Updating SQL tables & procedures..."
-sudo -u postgres psql uitdb < /etc/opt/uit-toolbox/postgresql.d/postgresql-tables.sql
-sudo -u postgres psql uitdb < /etc/opt/uit-toolbox/postgresql.d/postgresql-procedures.sql
+sudo -u postgres psql uitdb < /etc/uit-toolbox/postgresql.d/postgresql-tables.sql
+sudo -u postgres psql uitdb < /etc/uit-toolbox/postgresql.d/postgresql-procedures.sql
 
 ## Uncomment on first-time setup
 #sudo -u postgres psql --command="CREATE DATABASE uitdb;"
@@ -206,12 +206,12 @@ chown uitweb:uit /var/www/html/uit-web -R
 find /var/www/html/uit-web -type d -exec chmod 750 {} \;
 find /var/www/html/uit-web -type f -exec chmod 660 {} \;
 
-(cd /opt/uit-toolbox/
+(cd /opt/uit-toolbox/uit-web/
     /usr/local/go/bin/go build .
-    chown uitweb:uit /opt/uit-toolbox/ -R
-    find /opt/uit-toolbox/ -type d -exec chmod 770 {} \;
-    find /opt/uit-toolbox/ -type f -exec chmod 660 {} \;
-    chmod 750 /opt/uit-toolbox/main
+    chown uitweb:uit /opt/uit-toolbox/uit-web/ -R
+    find /opt/uit-toolbox/uit-web/ -type d -exec chmod 770 {} \;
+    find /opt/uit-toolbox/uit-web/ -type f -exec chmod 660 {} \;
+    chmod 750 /opt/uit-toolbox/uit-web/main
 )
 
 # Create systemd service
@@ -225,8 +225,8 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/opt/uit-toolbox/main
-WorkingDirectory=/opt/uit-toolbox/main
+ExecStart=/opt/uit-toolbox/uit-web/main
+WorkingDirectory=/opt/uit-toolbox/uit-web/main
 User=uitweb
 Group=uitweb
 UMask=227
