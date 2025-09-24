@@ -25,10 +25,11 @@ mkdir -p /etc/uit-toolbox/server/postgresql.d/
 cp /etc/uit-toolbox/clients.d/uit-config.conf /srv/uit-toolbox/client/configs/uit-config.conf
 
 # Client package - download .deb
-rm -rf /srv/uit-toolbox/client/src/*
-while [ ! -d /srv/uit-toolbox/client/src/uit-client_2.0-1_amd64/ ]; do
-  rm -rf /srv/uit-toolbox/client/src/*
-  git clone 'https://github.com/cameronraschke/uit-client' /srv/uit-toolbox/client/src/
+rm -rf /srv/uit-toolbox/client/src/uit-client/
+mkdir -p /srv/uit-toolbox/client/src/uit-client/
+while [ ! -d /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/ ]; do
+  rm -rf /srv/uit-toolbox/client/src/uit-client/
+  git clone 'https://github.com/cameronraschke/uit-client' /srv/uit-toolbox/client/src/uit-client/
   sleep 1
 done
 
@@ -102,12 +103,12 @@ for i in ${!configArr[@]}; do
 done
 
 # Client package - create .deb
-(cd /srv/uit-toolbox/client/src/
-  chmod 755 /srv/uit-toolbox/client/src/uit-client_2.0-1_amd64/DEBIAN/
-  chmod 755 /srv/uit-toolbox/client/src/uit-client_2.0-1_amd64/DEBIAN/control
-  chmod 755 /srv/uit-toolbox/client/src/uit-client_2.0-1_amd64/DEBIAN/postinst
-  dpkg-deb --build --root-owner-group /srv/uit-toolbox/client/src/uit-client_2.0-1_amd64 
-  mv -v /srv/uit-toolbox/client/src/uit-client_2.0-1_amd64.deb /srv/uit-toolbox/client/pkg/uit-toolbox-client.deb
+(cd /srv/uit-toolbox/client/src/uit-client/
+  chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/DEBIAN/
+  chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/DEBIAN/control
+  chmod 755 /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/DEBIAN/postinst
+  dpkg-deb --build --root-owner-group /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64 
+  mv -v /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64.deb /srv/uit-toolbox/client/pkg/uit-toolbox-client.deb
 )
 
 if [[ ! -f /srv/uit-toolbox/client/pkg/go-latest.linux-amd64.tar.gz ]]; then
