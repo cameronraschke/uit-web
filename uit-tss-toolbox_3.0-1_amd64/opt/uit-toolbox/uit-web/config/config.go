@@ -127,6 +127,7 @@ type AuthSession struct {
 var (
 	appStateInstance *AppState
 	appStateMutex    sync.RWMutex
+	defaultLogger    logger.Logger = logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_API_LOG_LEVEL")))
 )
 
 func LoadConfig() (AppConfig, error) {
@@ -493,11 +494,13 @@ func GetAppState() *AppState {
 // Logger access
 func GetLogger() logger.Logger {
 	appStateMutex.RLock()
+	asi := appStateInstance
 	defer appStateMutex.RUnlock()
-	if appStateInstance == nil {
-		return nil
+	if asi == nil || asi.Log == nil {
+		fmt.Println("Logger not initialized, using default logger")
+		return defaultLogger
 	}
-	return appStateInstance.Log
+	return asi.Log
 }
 
 // Database managment

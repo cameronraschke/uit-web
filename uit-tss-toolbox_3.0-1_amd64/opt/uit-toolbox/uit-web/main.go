@@ -11,6 +11,7 @@ import (
 	config "uit-toolbox/config"
 	"uit-toolbox/database"
 	"uit-toolbox/endpoints"
+	"uit-toolbox/logger"
 	middleware "uit-toolbox/middleware"
 
 	_ "net/http/pprof"
@@ -31,25 +32,30 @@ func (chain muxChain) then(handle http.Handler) http.Handler {
 }
 
 func main() {
-	// Initialize application
-	appState, err := config.InitApp()
-	if appState != nil && err != nil {
-		fmt.Println("Failed to initialize application: " + err.Error())
-		os.Exit(1)
-	}
-
 	debug.PrintStack()
-	log := config.GetLogger()
-	log.Info("Server time: " + time.Now().Format("01-02-2006 15:04:05"))
-	log.Info("UIT API Starting...")
+
+	bootLog := logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_API_LOG_LEVEL")))
+	bootLog.Info("Server time: " + time.Now().Format("01-02-2006 15:04:05"))
+	bootLog.Info("UIT API Starting...")
 
 	// Recover from panics
 	defer func() {
 		if pan := recover(); pan != nil {
-			log.Error("Recovered. Error: \n" + fmt.Sprintf("%v", pan))
-			log.Error("Trace: \n" + string(debug.Stack()))
+			bootLog.Error("Recovered. Error: \n" + fmt.Sprintf("%v", pan))
+			bootLog.Error("Trace: \n" + string(debug.Stack()))
 		}
 	}()
+
+	// Initialize application
+	_, err := config.InitApp()
+	if err != nil {
+		fmt.Println("Failed to initialize application: " + err.Error())
+		os.Exit(1)
+	}
+
+	log := config.GetLogger()
+	log.Info("Server time: " + time.Now().Format("01-02-2006 15:04:05"))
+	log.Info("UIT API Starting...")
 
 	// Get DB credentials
 	dbName, dbHost, dbPort, dbUsername, dbPassword := config.GetDatabaseCredentials()
@@ -186,6 +192,7 @@ func main() {
 		IdleTimeout:    120 * time.Second,
 		MaxHeaderBytes: 1 << 20, // 1MB header size max
 	}
+	defer httpsServer.Close()
 
 	httpsServer.Protocols = new(http.Protocols)
 	httpsServer.Protocols.SetHTTP1(false)
@@ -210,9 +217,8 @@ func main() {
 	}()
 
 	// Start HTTPS server
-	if err := httpsServer.ListenAndServeTLS(webCertFile, webKeyFile); err != nil {
+	if err := httpsServer.ListenAndServeTLS(webCertFile, webKeyFile); err != nil && err != http.ErrServerClosed {
 		log.Error("Cannot start web server: " + err.Error())
 		os.Exit(1)
 	}
-	defer httpsServer.Close()
 }
