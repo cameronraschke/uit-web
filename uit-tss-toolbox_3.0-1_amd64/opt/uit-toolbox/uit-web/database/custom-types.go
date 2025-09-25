@@ -1,0 +1,57 @@
+package database
+
+import "time"
+
+type ClientLookup struct {
+	Tagnumber    int    `json:"tagnumber"`
+	SystemSerial string `json:"system_serial"`
+}
+
+type HardwareData struct {
+	Tagnumber               int    `json:"tagnumber"`
+	SystemSerial            string `json:"system_serial"`
+	EthernetMAC             string `json:"ethernet_mac"`
+	WifiMac                 string `json:"wifi_mac"`
+	SystemModel             string `json:"system_model"`
+	SystemUUID              string `json:"system_uuid"`
+	SystemSKU               string `json:"system_sku"`
+	ChassisType             string `json:"chassis_type"`
+	MotherboardManufacturer string `json:"motherboard_manufacturer"`
+	MotherboardSerial       string `json:"motherboard_serial"`
+	SystemManufacturer      string `json:"system_manufacturer"`
+}
+
+type BiosData struct {
+	Tagnumber   int    `json:"tagnumber"`
+	BiosVersion string `json:"bios_version"`
+	BiosUpdated bool   `json:"bios_updated"`
+	BiosDate    string `json:"bios_date"`
+	TpmVersion  string `json:"tpm_version"`
+}
+
+type OsData struct {
+	Tagnumber       int           `json:"tagnumber"`
+	OsInstalled     bool          `json:"os_installed"`
+	OsName          string        `json:"os_name"`
+	OsInstalledTime time.Time     `json:"os_installed_time"`
+	TPMversion      string        `json:"tpm_version"`
+	BootTime        time.Duration `json:"boot_time"`
+}
+
+type ActiveJobs struct {
+	Tagnumber     int    `json:"tagnumber"`
+	QueuedJob     string `json:"job_queued"`
+	JobActive     bool   `json:"job_active"`
+	QueuePosition int    `json:"queue_position"`
+}
+
+type AvailableJobs struct {
+	Tagnumber    int  `json:"tagnumber"`
+	JobAvailable bool `json:"job_available"`
+}
+
+type JobQueueOverview struct {
+	TotalQueuedJobs         int `json:"total_queued_jobs"`
+	TotalActiveJobs         int `json:"total_active_jobs"`
+	TotalActiveBlockingJobs int `json:"total_active_blocking_jobs"`
+}

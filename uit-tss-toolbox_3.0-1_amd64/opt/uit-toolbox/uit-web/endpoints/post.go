@@ -1,20 +1,16 @@
 package endpoints
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	_ "image/png"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 	config "uit-toolbox/config"
-	"uit-toolbox/database"
 	middleware "uit-toolbox/middleware"
 	"unicode/utf8"
 )
@@ -41,59 +37,17 @@ type RemoteTable struct {
 	NetworkSpeed      *int       `sql:"network_speed"`
 }
 
-type FormJobQueue struct {
-	Tagnumber string `json:"job_queued_tagnumber"`
-	JobQueued string `json:"job_queued_select"`
-}
-
-func UpdateRemoteJobQueued(ctx context.Context, req *http.Request, key string) error {
-	// Parse request body JSON
-	var j FormJobQueue
-	err := json.NewDecoder(req.Body).Decode(&j)
-	if err != nil {
-		return errors.New("Cannot parse request body JSON: " + err.Error())
-	}
-	defer req.Body.Close()
-
-	tag := j.Tagnumber
-	var tagnumber int
-	if len(tag) > 0 {
-		tagnumber, err = strconv.Atoi(tag)
-		if err != nil {
-			return errors.New("Tagnumber cannot be converted to integer: " + j.Tagnumber)
-		}
-	}
-	value := j.JobQueued
-
-	log.Println("Updating job_queued for tagnumber " + j.Tagnumber + " to value " + j.JobQueued)
-
-	// Commit to DB
-	if key == "job_queued" {
-		err := database.UpdateDB(ctx, "UPDATE remote SET job_queued = $1 WHERE tagnumber = $2", value, tagnumber)
-		if err != nil {
-			return errors.New("Database error: " + err.Error())
-		}
-		return nil
-	}
-
-	return errors.New("Unknown key: " + key)
-}
-
 func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
-	log := config.GetLogger()
-	ctx := req.Context()
-	requestIP, ok := middleware.GetRequestIP(req)
-	if !ok {
-		log.Warning("no IP address stored in context")
-		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
+	requestInfo, err := GetRequestInfo(req)
+	if err != nil {
+		fmt.Println("Cannot get request info error: " + err.Error())
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	requestURL, ok := middleware.GetRequestURL(req)
-	if !ok {
-		log.Warning("no URL stored in context")
-		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
-		return
-	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
 
 	// Sanitize login POST request
 	if req.Method != http.MethodPost || !(strings.HasSuffix(requestURL, "/login.html") || strings.HasSuffix(requestURL, "/login")) {
@@ -162,42 +116,12 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 
 	sessionCount := config.GetAuthSessionCount()
-	log.Info("New auth session created: " + requestIP + " (Sessions: " + strconv.Itoa(int(sessionCount)) + " TTL: " + fmt.Sprintf("%.2f", bearerToken) + "s)")
+	log.Info("New auth session created: " + requestIP + " (Sessions: " + strconv.Itoa(int(sessionCount)) + ")")
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "uit_basic_token",
-		Value:    basic.Token,
-		Path:     "/",
-		Expires:  time.Now().Add(20 * time.Minute),
-		MaxAge:   20 * 60,
-		Secure:   true,
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-	})
+	sessionIDCookie, basicTokenCookie, bearerTokenCookie, csrfTokenCookie := middleware.GetAuthCookiesForResponse(sessionID, basicToken, bearerToken, csrfToken, 20*time.Minute)
 
-	http.SetCookie(w, &http.Cookie{
-		Name:     "csrf_token",
-		Value:    csrfToken,
-		Path:     "/",
-		Expires:  time.Now().Add(20 * time.Minute),
-		Secure:   true,
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-	})
-
-	returnedJsonStruct := returnedJsonToken{
-		Token: bearer.Token,
-		TTL:   bearer.TTL,
-		Valid: bearer.Valid,
-	}
-
-	jsonData, err := json.Marshal(returnedJsonStruct)
-	if err != nil {
-		log.Error("Cannot marshal Token to JSON: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
-		return
-	}
-
-	w.Write(jsonData)
-
+	http.SetCookie(w, sessionIDCookie)
+	http.SetCookie(w, basicTokenCookie)
+	http.SetCookie(w, bearerTokenCookie)
+	http.SetCookie(w, csrfTokenCookie)
 }

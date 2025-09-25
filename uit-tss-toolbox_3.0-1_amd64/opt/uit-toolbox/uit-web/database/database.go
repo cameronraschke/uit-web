@@ -12,56 +12,56 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-type AvailableJobs struct {
-	Tagnumber   *int    `json:"tagnumber"`
-	Job         *string `json:"job"`
-	JobReadable *string `json:"job_readable"`
-	JobActive   *bool   `json:"job_active"`
-}
+// type AvailableJobs struct {
+// 	Tagnumber   *int    `json:"tagnumber"`
+// 	Job         *string `json:"job"`
+// 	JobReadable *string `json:"job_readable"`
+// 	JobActive   *bool   `json:"job_active"`
+// }
 
-func GetAvailableJobs(ctx context.Context, tagnumber int) (string, error) {
-	var sqlCode string
-	var rows *sql.Rows
-	var results []*AvailableJobs
-	var resultsJson string
-	var err error
+// func GetAvailableJobs(ctx context.Context, tagnumber int) (string, error) {
+// 	var sqlCode string
+// 	var rows *sql.Rows
+// 	var results []*AvailableJobs
+// 	var resultsJson string
+// 	var err error
 
-	db := config.GetDatabaseConn()
+// 	db := config.GetDatabaseConn()
 
-	sqlCode = "SELECT remote.tagnumber, static_job_names.job, static_job_names.job_readable, remote.job_active FROM static_job_names LEFT JOIN remote ON (static_job_names.job = remote.job_queued OR (remote.job_active = TRUE OR remote.job_active = FALSE OR remote.job_queued IS NOT NULL OR remote.job_queued IS NULL)) WHERE remote.tagnumber = $1 AND static_job_names.job_html_bool = TRUE ORDER BY static_job_names.job_rank ASC;"
+// 	sqlCode = "SELECT remote.tagnumber, static_job_names.job, static_job_names.job_readable, remote.job_active FROM static_job_names LEFT JOIN remote ON (static_job_names.job = remote.job_queued OR (remote.job_active = TRUE OR remote.job_active = FALSE OR remote.job_queued IS NOT NULL OR remote.job_queued IS NULL)) WHERE remote.tagnumber = $1 AND static_job_names.job_html_bool = TRUE ORDER BY static_job_names.job_rank ASC;"
 
-	rows, err = db.QueryContext(ctx, sqlCode, tagnumber)
-	if err != nil {
-		return "", errors.New("Timeout error: " + err.Error())
-	}
-	defer rows.Close()
+// 	rows, err = db.QueryContext(ctx, sqlCode, tagnumber)
+// 	if err != nil {
+// 		return "", errors.New("Timeout error: " + err.Error())
+// 	}
+// 	defer rows.Close()
 
-	for rows.Next() {
-		row := &AvailableJobs{}
-		if err = rows.Err(); err != nil {
-			return "", errors.New("Query error: " + err.Error())
-		}
-		if err = ctx.Err(); err != nil {
-			return "", errors.New("Context error: " + err.Error())
-		}
-		err = rows.Scan(
-			&row.Tagnumber,
-			&row.Job,
-			&row.JobReadable,
-			&row.JobActive,
-		)
-		if err != nil && err != sql.ErrNoRows {
-			return "", errors.New("Error scanning rows: " + err.Error())
-		}
-		results = append(results, row)
-	}
+// 	for rows.Next() {
+// 		row := &AvailableJobs{}
+// 		if err = rows.Err(); err != nil {
+// 			return "", errors.New("Query error: " + err.Error())
+// 		}
+// 		if err = ctx.Err(); err != nil {
+// 			return "", errors.New("Context error: " + err.Error())
+// 		}
+// 		err = rows.Scan(
+// 			&row.Tagnumber,
+// 			&row.Job,
+// 			&row.JobReadable,
+// 			&row.JobActive,
+// 		)
+// 		if err != nil && err != sql.ErrNoRows {
+// 			return "", errors.New("Error scanning rows: " + err.Error())
+// 		}
+// 		results = append(results, row)
+// 	}
 
-	resultsJson, err = CreateJson(results)
-	if err != nil {
-		return "", errors.New("JSON error: " + err.Error())
-	}
-	return resultsJson, nil
-}
+// 	resultsJson, err = CreateJson(results)
+// 	if err != nil {
+// 		return "", errors.New("JSON error: " + err.Error())
+// 	}
+// 	return resultsJson, nil
+// }
 
 type JobQueue struct {
 	Tagnumber           *int    `json:"tagnumber"`

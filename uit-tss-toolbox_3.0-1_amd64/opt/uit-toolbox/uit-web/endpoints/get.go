@@ -4,720 +4,309 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"io"
+	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
 	config "uit-toolbox/config"
+	"uit-toolbox/database"
 	middleware "uit-toolbox/middleware"
 )
 
 // Per-client functions
-
-type serverTime struct {
-	Time string `json:"server_time"`
-}
-
 func GetServerTime(w http.ResponseWriter, r *http.Request) {
-	log := config.GetLogger()
-	ctx := r.Context()
-	if ctx == nil {
-		log.Warning("no context found in request")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
-		return
-	}
-	requestIP, ok := middleware.GetRequestIP(r)
-	if !ok {
-		log.Warning("no IP address stored in context")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
-		return
-	}
-	requestURL, ok := middleware.GetRequestIP(r)
-	if !ok {
-		log.Warning("no URL stored in context")
+	_, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 
-	jsonData, err := jsonEncode(serverTime{
-		Time: time.Now().Format("2006-01-02 15:04:05.000"),
-	})
-	if err != nil || strings.TrimSpace(jsonData) == "" {
-		log.Error("Cannot parse JSON from " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
-		return
-	}
-	io.WriteString(w, jsonData)
-}
+	curTime := time.Now().Format("2006-01-02 15:04:05.000")
 
-type clientLookup struct {
-	Tagnumber    int    `json:"tagnumber"`
-	SystemSerial string `json:"system_serial"`
-}
-
-func DBSelClientLookup(ctx context.Context, tagnumber int, serial string) (string, error) {
+	writeJSON(w, http.StatusOK, ServerTime{Time: curTime})
 }
 
 func GetClientLookup(w http.ResponseWriter, r *http.Request) {
-	log := config.GetLogger()
-	ctx := r.Context()
-	if ctx == nil {
-		log.Warning("no context found in request")
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	requestIP, ok := middleware.GetRequestIP(r)
-	if !ok {
-		log.Warning("no IP address stored in context")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
-		return
-	}
-	requestURL, ok := middleware.GetRequestURL(r)
-	if !ok {
-		log.Warning("no URL stored in context")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
-		return
-	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
 
-	tag := strings.TrimSpace(r.URL.Query().Get("tagnumber"))
+	// No consequence for missing tag, acceptable if lookup by serial
+	tagnumber, _ := ConvertRequestTagnumber(r)
+
 	systemSerial := strings.TrimSpace(r.URL.Query().Get("system_serial"))
-	if tag == "" && systemSerial == "" {
+	if tagnumber == 0 && systemSerial == "" {
 		log.Warning("No tagnumber or system_serial provided in request from: " + requestIP + " (" + requestURL + ")")
 		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
-	var tagnumber, err = strconv.Atoi(tag)
-	if err != nil || tagnumber <= 0 {
-		tagnumber = 0
-	}
-	var sqlQuery string
-	var results []*clientLookup
-
 	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
+	}
 
-	if strings.TrimSpace(systemSerial) != "" {
-		sqlQuery = "SELECT tagnumber, system_serial FROM locations WHERE system_serial = $1 ORDER BY time DESC LIMIT 1;"
-	} else if tagnumber > 0 {
-		sqlQuery = "SELECT tagnumber, system_serial FROM locations WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1;"
+	repo := database.NewRepo(db)
+
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	var dbResult *database.ClientLookup
+	if tagnumber == 0 && strings.TrimSpace(systemSerial) != "" {
+		dbResult, err = repo.ClientLookupBySerial(ctx, systemSerial)
+	} else if strings.TrimSpace(systemSerial) == "" && tagnumber > 0 {
+		dbResult, err = repo.ClientLookupByTag(ctx, tagnumber)
 	} else {
 		log.Warning("no tagnumber or system_serial provided")
 		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
-
-	rows, err := db.QueryContext(ctx, sqlQuery, tagnumber)
 	if err != nil {
-		log.Warning("Context error: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		row := &clientLookup{}
-		if err := rows.Scan(
-			&row.Tagnumber,
-			&row.SystemSerial,
-		); err != nil {
-			log.Warning("Error scanning rows: " + err.Error())
-			http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, middleware.FormatHttpError("Not found"), http.StatusNotFound)
 			return
 		}
-		results = append(results, row)
-	}
-	if err := rows.Err(); err != nil {
-		log.Warning("Query error: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
-		return
-	}
-	if err := ctx.Err(); err != nil {
-		log.Warning("Context error: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
-		return
-	}
-	if len(results) == 0 {
-		log.Warning("no results found")
-		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
-		return
-	}
-
-	jsonStr, err := jsonEncode(results)
-	if err != nil {
-		log.Warning("Error encoding results to JSON: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
-		return
-	}
-	io.WriteString(w, jsonStr)
-}
-
-type hardwareData struct {
-	Tagnumber               int    `json:"tagnumber"`
-	SystemSerial            string `json:"system_serial"`
-	EthernetMAC             string `json:"ethernet_mac"`
-	WifiMac                 string `json:"wifi_mac"`
-	SystemModel             string `json:"system_model"`
-	SystemUUID              string `json:"system_uuid"`
-	SystemSKU               string `json:"system_sku"`
-	ChassisType             string `json:"chassis_type"`
-	MotherboardManufacturer string `json:"motherboard_manufacturer"`
-	MotherboardSerial       string `json:"motherboard_serial"`
-	SystemManufacturer      string `json:"system_manufacturer"`
-}
-
-func DBSelHardwareData(ctx context.Context, tagnumber int) (string, error) {
-	var sqlQuery string
-	var results []*hardwareData
-
-	if tagnumber <= 0 {
-		return "", errors.New("no tagnumber provided")
-	}
-
-	sqlQuery = `SELECT locations.tagnumber, locations.system_serial, jobstats.etheraddress, system_data.wifi_mac,
-	system_data.system_model, system_data.system_uuid, system_data.system_sku, system_data.chassis_type, 
-	system_data.motherboard_manufacturer, system_data.motherboard_serial, system_data.system_manufacturer
-	FROM locations
-	LEFT JOIN jobstats ON locations.tagnumber = jobstats.tagnumber AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
-	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
-	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-	AND locations.tagnumber = $1`
-
-	rows, err := db.QueryContext(ctx, sqlQuery, tagnumber)
-	if err != nil {
-		return "", errors.New("Context error: " + err.Error())
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		row := &hardwareData{}
-		if err := rows.Scan(
-			&row.Tagnumber,
-			&row.SystemSerial,
-			&row.EthernetMAC,
-			&row.WifiMac,
-			&row.SystemModel,
-			&row.SystemUUID,
-			&row.SystemSKU,
-			&row.ChassisType,
-			&row.MotherboardManufacturer,
-			&row.MotherboardSerial,
-			&row.SystemManufacturer,
-		); err != nil {
-			return "", errors.New("Error scanning rows: " + err.Error())
-		}
-		results = append(results, row)
-	}
-	if err := rows.Err(); err != nil {
-		return "", errors.New("Query error: " + err.Error())
-	}
-	if err := ctx.Err(); err != nil {
-		return "", errors.New("Context error: " + err.Error())
-	}
-	if len(results) == 0 {
-		return "", errors.New("no results found")
-	}
-
-	jsonStr, err := jsonEncode(results)
-	if err != nil {
-		return "", errors.New("Error encoding results to JSON: " + err.Error())
-	}
-
-	return jsonStr, nil
-}
-
-func GetHardwareData(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	requestIP, ok := middleware.GetRequestIP(r)
-	if !ok {
-		log.Warning("no IP address stored in context")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
-		return
-	}
-	requestURL, ok := middleware.GetRequestURL(r)
-	if !ok {
-		log.Warning("no URL stored in context")
+		log.Warning("DB error: " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 
-	tag := strings.TrimSpace(r.URL.Query().Get("tagnumber"))
-	if tag == "" {
-		log.Warning("No tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+	writeJSON(w, http.StatusOK, dbResult)
+}
+
+func GetHardwareIdentifiers(w http.ResponseWriter, r *http.Request) {
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
+	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
+
+	tagnumber, ok := ConvertRequestTagnumber(r)
+	if tagnumber == 0 || !ok {
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
 		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
-	var tagnumber, err = strconv.Atoi(tag)
-	if err != nil || tagnumber <= 0 {
-		tagnumber = 0
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
 	}
-	jsonStr, err := DBSelHardwareData(ctx, db, tagnumber)
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	hardwareData, err := repo.GetHardwareIdentifiers(ctx, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	io.WriteString(w, jsonStr)
-}
-
-type biosData struct {
-	Tagnumber   int    `json:"tagnumber"`
-	BiosVersion string `json:"bios_version"`
-	BiosUpdated bool   `json:"bios_updated"`
-	BiosDate    string `json:"bios_date"`
-	TpmVersion  string `json:"tpm_version"`
-}
-
-func DBSelBiosData(ctx context.Context, tagnumber int) (string, error) {
-	var sqlQuery string
-	var results []*biosData
-
-	if tagnumber <= 0 {
-		return "", errors.New("no tagnumber provided")
-	}
-
-	sqlQuery = `SELECT client_health.tagnumber, client_health.bios_version, client_health.bios_updated, 
-	client_health.bios_date, client_health.tpm_version 
-	FROM client_health WHERE client_health.tagnumber = $1`
-
-	rows, err := db.QueryContext(ctx, sqlQuery, tagnumber)
-	if err != nil {
-		return "", errors.New("Context error: " + err.Error())
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		row := &biosData{}
-		if err := rows.Scan(
-			&row.Tagnumber,
-			&row.BiosVersion,
-			&row.BiosUpdated,
-			&row.BiosDate,
-			&row.TpmVersion,
-		); err != nil {
-			return "", errors.New("Error scanning rows: " + err.Error())
-		}
-		results = append(results, row)
-	}
-	if err := rows.Err(); err != nil {
-		return "", errors.New("Query error: " + err.Error())
-	}
-	if err := ctx.Err(); err != nil {
-		return "", errors.New("Context error: " + err.Error())
-	}
-	if len(results) == 0 {
-		return "", errors.New("no results found")
-	}
-
-	jsonStr, err := jsonEncode(results)
-	if err != nil {
-		return "", errors.New("Error encoding results to JSON: " + err.Error())
-	}
-
-	return jsonStr, nil
+	writeJSON(w, http.StatusOK, hardwareData)
 }
 
 func GetBiosData(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	requestIP, ok := middleware.GetRequestIP(r)
-	if !ok {
-		log.Warning("no IP address stored in context")
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	requestURL, ok := middleware.GetRequestURL(r)
-	if !ok {
-		log.Warning("no URL stored in context")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
-		return
-	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
 
-	tag := strings.TrimSpace(r.URL.Query().Get("tagnumber"))
-	if tag == "" {
-		log.Warning("No tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+	tagnumber, ok := ConvertRequestTagnumber(r)
+	if tagnumber == 0 || !ok {
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
 		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
-	var tagnumber, err = strconv.Atoi(tag)
-	if err != nil || tagnumber <= 0 {
-		tagnumber = 0
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
 	}
-	jsonStr, err := DBSelBiosData(ctx, db, tagnumber)
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	biosData, err := repo.GetBiosData(ctx, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	io.WriteString(w, jsonStr)
-}
 
-type osData struct {
-	Tagnumber       int           `json:"tagnumber"`
-	OsInstalled     bool          `json:"os_installed"`
-	OsName          string        `json:"os_name"`
-	OsInstalledTime time.Time     `json:"os_installed_time"`
-	TPMversion      string        `json:"tpm_version"`
-	BootTime        time.Duration `json:"boot_time"`
-}
-
-func DBSelOsData(ctx context.Context, tagnumber int) (string, error) {
-	var sqlQuery string
-	var results []*osData
-
-	if tagnumber <= 0 {
-		return "", errors.New("no tagnumber provided")
-	}
-
-	sqlQuery = `SELECT locations.tagnumber, client_health.os_installed, client_health.os_name,
-	client_health.last_imaged_time, client_health.tpm_version, jobstats.boot_time
-	FROM locations
-	LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
-	LEFT JOIN jobstats ON locations.tagnumber = jobstats.tagnumber AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
-	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-	AND locations.tagnumber = $1`
-
-	rows, err := db.QueryContext(ctx, sqlQuery, tagnumber)
-	if err != nil {
-		return "", errors.New("Context error: " + err.Error())
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		row := &osData{}
-		if err := rows.Scan(
-			&row.Tagnumber,
-			&row.OsInstalled,
-			&row.OsName,
-			&row.OsInstalledTime,
-			&row.TPMversion,
-			&row.BootTime,
-		); err != nil {
-			return "", errors.New("Error scanning rows: " + err.Error())
-		}
-		results = append(results, row)
-	}
-	if err := rows.Err(); err != nil {
-		return "", errors.New("Query error: " + err.Error())
-	}
-	if err := ctx.Err(); err != nil {
-		return "", errors.New("Context error: " + err.Error())
-	}
-	if len(results) == 0 {
-		return "", errors.New("no results found")
-	}
-
-	jsonStr, err := jsonEncode(results)
-	if err != nil {
-		return "", errors.New("Error encoding results to JSON: " + err.Error())
-	}
-
-	return jsonStr, nil
+	writeJSON(w, http.StatusOK, biosData)
 }
 
 func GetOSData(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	requestIP, ok := middleware.GetRequestIP(r)
-	if !ok {
-		log.Warning("no IP address stored in context")
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	requestURL, ok := middleware.GetRequestURL(r)
-	if !ok {
-		log.Warning("no URL stored in context")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
-		return
-	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
 
-	tag := strings.TrimSpace(r.URL.Query().Get("tagnumber"))
-	if tag == "" {
-		log.Warning("No tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+	tagnumber, ok := ConvertRequestTagnumber(r)
+	if tagnumber == 0 || !ok {
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
 		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
-	var tagnumber, err = strconv.Atoi(tag)
-	if err != nil || tagnumber <= 0 {
-		tagnumber = 0
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
 	}
-	jsonStr, err := DBSelOsData(ctx, db, tagnumber)
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	osData, err := repo.GetOsData(ctx, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	io.WriteString(w, jsonStr)
-}
 
-type activeJobs struct {
-	Tagnumber     int    `json:"tagnumber"`
-	QueuedJob     string `json:"job_queued"`
-	JobActive     bool   `json:"job_active"`
-	QueuePosition int    `json:"queue_position"`
-}
-
-func DBSelQueuedJobData(ctx context.Context, tagnumber int) (string, error) {
-	var sqlQuery string
-	var results []*activeJobs
-
-	if tagnumber <= 0 {
-		return "", errors.New("no tagnumber provided")
-	}
-
-	sqlQuery = `SELECT remote.tagnumber, remote.job_queued, remote.job_active, t1.queue_position
-	FROM remote
-	LEFT JOIN (SELECT tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS queue_position FROM job_queue) AS t1 
-		ON remote.tagnumber = t1.tagnumber
-	WHERE remote.tagnumber = $1`
-
-	rows, err := db.QueryContext(ctx, sqlQuery, tagnumber)
-	if err != nil {
-		return "", errors.New("Context error: " + err.Error())
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		row := &activeJobs{}
-		if err := rows.Scan(
-			&row.Tagnumber,
-			&row.QueuedJob,
-			&row.JobActive,
-			&row.QueuePosition,
-		); err != nil {
-			return "", errors.New("Error scanning rows: " + err.Error())
-		}
-		results = append(results, row)
-	}
-	if err := rows.Err(); err != nil {
-		return "", errors.New("Query error: " + err.Error())
-	}
-	if err := ctx.Err(); err != nil {
-		return "", errors.New("Context error: " + err.Error())
-	}
-	if len(results) == 0 {
-		return "", errors.New("no results found")
-	}
-
-	jsonStr, err := jsonEncode(results)
-	if err != nil {
-		return "", errors.New("Error encoding results to JSON: " + err.Error())
-	}
-
-	return jsonStr, nil
+	writeJSON(w, http.StatusOK, osData)
 }
 
 func GetClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	requestIP, ok := middleware.GetRequestIP(r)
-	if !ok {
-		log.Warning("no IP address stored in context")
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	requestURL, ok := middleware.GetRequestURL(r)
-	if !ok {
-		log.Warning("no URL stored in context")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
-		return
-	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
 
-	tag := strings.TrimSpace(r.URL.Query().Get("tagnumber"))
-	if tag == "" {
-		log.Warning("No tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+	tagnumber, ok := ConvertRequestTagnumber(r)
+	if tagnumber == 0 || !ok {
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
 		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
-	var tagnumber, err = strconv.Atoi(tag)
-	if err != nil || tagnumber <= 0 {
-		tagnumber = 0
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
 	}
-	jsonStr, err := DBSelQueuedJobData(ctx, db, tagnumber)
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	activeJobs, err := repo.GetActiveJobs(ctx, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	io.WriteString(w, jsonStr)
-}
 
-type availableJobs struct {
-	Tagnumber    int  `json:"tagnumber"`
-	JobAvailable bool `json:"job_available"`
-}
-
-func DBSelAvailableJobs(ctx context.Context, tagnumber int) (string, error) {
-	var sqlQuery string
-	var results []*availableJobs
-
-	if tagnumber <= 0 {
-		return "", errors.New("no tagnumber provided")
-	}
-
-	sqlQuery = `SELECT 
-	remote.tagnumber,
-	(CASE 
-		WHEN (remote.job_queued IS NULL) THEN TRUE
-		ELSE FALSE
-	END) AS job_available,
-	WHERE remote.tagnumber = $1`
-
-	rows, err := db.QueryContext(ctx, sqlQuery, tagnumber)
-	if err != nil {
-		return "", errors.New("Context error: " + err.Error())
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		row := &availableJobs{}
-		if err := rows.Scan(
-			&row.Tagnumber,
-			&row.JobAvailable,
-		); err != nil {
-			return "", errors.New("Error scanning rows: " + err.Error())
-		}
-		results = append(results, row)
-	}
-	if err := rows.Err(); err != nil {
-		return "", errors.New("Query error: " + err.Error())
-	}
-	if err := ctx.Err(); err != nil {
-		return "", errors.New("Context error: " + err.Error())
-	}
-	if len(results) == 0 {
-		return "", errors.New("no results found")
-	}
-
-	jsonStr, err := jsonEncode(results)
-	if err != nil {
-		return "", errors.New("Error encoding results to JSON: " + err.Error())
-	}
-
-	return jsonStr, nil
+	writeJSON(w, http.StatusOK, activeJobs)
 }
 
 func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	requestIP, ok := middleware.GetRequestIP(r)
-	if !ok {
-		log.Warning("no IP address stored in context")
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	requestURL, ok := middleware.GetRequestURL(r)
-	if !ok {
-		log.Warning("no URL stored in context")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
-		return
-	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
 
-	tag := strings.TrimSpace(r.URL.Query().Get("tagnumber"))
-	if tag == "" {
-		log.Warning("No tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+	tagnumber, ok := ConvertRequestTagnumber(r)
+	if tagnumber == 0 || !ok {
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
 		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
-	var tagnumber, err = strconv.Atoi(tag)
-	if err != nil || tagnumber <= 0 {
-		tagnumber = 0
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
 	}
-	jsonStr, err := DBSelAvailableJobs(ctx, db, tagnumber)
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	availableJobs, err := repo.GetAvailableJobs(ctx, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	io.WriteString(w, jsonStr)
+
+	writeJSON(w, http.StatusOK, availableJobs)
 }
 
 // Overview section
-
-type JobQueueOverview struct {
-	TotalQueuedJobs         int `json:"total_queued_jobs"`
-	TotalActiveJobs         int `json:"total_active_jobs"`
-	TotalActiveBlockingJobs int `json:"total_active_blocking_jobs"`
-}
-
-func DBSelJobQueueOverview(ctx context.Context, db *sql.DB) (string, error) {
-	var sqlQuery string
-	var results []*JobQueueOverview
-
-	sqlQuery = `SELECT t1.total_queued_jobs, t2.total_active_jobs, t3.total_active_blocking_jobs
-	FROM 
-	(SELECT COUNT(*) AS total_queued_jobs FROM remote WHERE job_queued IS NOT NULL AND (NOW() - present < INTERVAL '30 SECOND')) AS t1,
-	(SELECT COUNT(*) AS total_active_jobs FROM remote WHERE job_active IS NOT NULL AND job_active = TRUE AND (NOW() - present < INTERVAL '30 SECOND')) AS t2,
-	(SELECT COUNT(*) AS total_active_blocking_jobs FROM remote WHERE job_active IS NOT NULL AND job_active = TRUE AND job_queued IS NOT NULL AND job_queued IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')) AS t3;`
-
-	rows, err := db.QueryContext(ctx, sqlQuery)
-	if err != nil {
-		return "", errors.New("Context error: " + err.Error())
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		row := &JobQueueOverview{}
-		if err := rows.Scan(
-			&row.TotalQueuedJobs,
-			&row.TotalActiveJobs,
-			&row.TotalActiveBlockingJobs,
-		); err != nil {
-			return "", errors.New("Error scanning rows: " + err.Error())
-		}
-		results = append(results, row)
-	}
-	if err := rows.Err(); err != nil {
-		return "", errors.New("Query error: " + err.Error())
-	}
-	if err := ctx.Err(); err != nil {
-		return "", errors.New("Context error: " + err.Error())
-	}
-	if len(results) == 0 {
-		return "", errors.New("no results found")
-	}
-
-	jsonStr, err := jsonEncode(results)
-	if err != nil {
-		return "", errors.New("Error encoding results to JSON: " + err.Error())
-	}
-
-	return jsonStr, nil
-}
-
 func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	requestIP, ok := middleware.GetRequestIP(r)
-	if !ok {
-		log.Warning("no IP address stored in context")
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	requestURL, ok := middleware.GetRequestURL(r)
-	if !ok {
-		log.Warning("no URL stored in context")
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
+
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
-	tag := strings.TrimSpace(r.URL.Query().Get("tagnumber"))
-	if tag == "" {
-		log.Warning("No tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
-		return
-	}
-
-	var tagnumber, err = strconv.Atoi(tag)
-	if err != nil || tagnumber <= 0 {
-		tagnumber = 0
-	}
-	jsonStr, err := DBSelJobQueueOverview(ctx, db)
+	jobQueueOverview, err := repo.GetJobQueueOverview(ctx)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	io.WriteString(w, jsonStr)
+
+	writeJSON(w, http.StatusOK, jobQueueOverview)
 }

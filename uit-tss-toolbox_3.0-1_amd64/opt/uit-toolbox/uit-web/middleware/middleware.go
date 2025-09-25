@@ -769,7 +769,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		if sessionValid && sessionExists && !strings.HasSuffix(requestURL, "/logout") {
-			sessionIDCookie, basicCookie, bearerCookie, csrfCookie := GetAuthCookiesForResponse(uitSessionIDCookie.Value, uitBasicCookie.Value, uitBearerCookie.Value, uitCSRFCookie.Value)
+			sessionIDCookie, basicCookie, bearerCookie, csrfCookie := GetAuthCookiesForResponse(uitSessionIDCookie.Value, uitBasicCookie.Value, uitBearerCookie.Value, uitCSRFCookie.Value, 20*time.Minute)
 			http.SetCookie(w, sessionIDCookie)
 			http.SetCookie(w, basicCookie)
 			http.SetCookie(w, bearerCookie)
