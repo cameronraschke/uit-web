@@ -234,7 +234,7 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=/opt/uit-toolbox/uit-web/uit-toolbox
-WorkingDirectory=/opt/uit-toolbox/uit-web/uit-toolbox
+WorkingDirectory=/opt/uit-toolbox/uit-web/
 User=uitweb
 Group=uitweb
 UMask=227

@@ -31,6 +31,13 @@ func (chain muxChain) then(handle http.Handler) http.Handler {
 }
 
 func main() {
+	// Initialize application
+	appState, err := config.InitApp()
+	if appState != nil && err != nil {
+		fmt.Println("Failed to initialize application: " + err.Error())
+		os.Exit(1)
+	}
+
 	debug.PrintStack()
 	log := config.GetLogger()
 	log.Info("Server time: " + time.Now().Format("01-02-2006 15:04:05"))
@@ -43,13 +50,6 @@ func main() {
 			log.Error("Trace: \n" + string(debug.Stack()))
 		}
 	}()
-
-	// Initialize application
-	appState, err := config.InitApp()
-	if appState != nil && err != nil {
-		log.Error("Failed to initialize application: " + err.Error())
-		os.Exit(1)
-	}
 
 	// Get DB credentials
 	dbName, dbHost, dbPort, dbUsername, dbPassword := config.GetDatabaseCredentials()
