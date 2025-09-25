@@ -216,11 +216,11 @@ find /var/www/html/uit-web -type f -exec chmod 660 {} \;
 
 (cd /opt/uit-toolbox/uit-web/
     /usr/local/go/bin/go build .
-    chown uitweb:uit /opt/uit-toolbox/uit-web/ -R
-    find /opt/uit-toolbox/uit-web/ -type d -exec chmod 770 {} \;
-    find /opt/uit-toolbox/uit-web/ -type f -exec chmod 660 {} \;
-    chmod 750 /opt/uit-toolbox/uit-web/main
 )
+chown uitweb:uit /opt/uit-toolbox/uit-web/ -R
+find /opt/uit-toolbox/uit-web/ -type d -exec chmod 770 {} \;
+find /opt/uit-toolbox/uit-web/ -type f -exec chmod 660 {} \;
+chmod 750 /opt/uit-toolbox/uit-web/uit-toolbox
 
 # Create systemd service
 touch /etc/systemd/system/uit-web.service
@@ -233,8 +233,8 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/opt/uit-toolbox/uit-web/main
-WorkingDirectory=/opt/uit-toolbox/uit-web/main
+ExecStart=/opt/uit-toolbox/uit-web/uit-toolbox
+WorkingDirectory=/opt/uit-toolbox/uit-web/uit-toolbox
 User=uitweb
 Group=uitweb
 UMask=227
