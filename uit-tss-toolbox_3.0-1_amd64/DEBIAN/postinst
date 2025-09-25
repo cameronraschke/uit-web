@@ -182,7 +182,7 @@ mkdir -p /opt/uit-toolbox/sql-backups
 echo -e "\n" >> /etc/cron.d/uit-cron
 
 ## File permissions
-chown root:uit /etc/uit-toolbox/ -R
+chown uitweb:uit /etc/uit-toolbox/ -R
 find /etc/uit-toolbox/ -type d -exec chmod 750 {} \;
 find /etc/uit-toolbox/ -type f -exec chmod 640 {} \;
 chown root:uitweb /etc/uit-toolbox/certs/ -R
