@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"strings"
 	"time"
 
@@ -87,4 +88,26 @@ func IsClientRateLimited(limiterType, ip string) (limited bool, retryAfter time.
 	}
 
 	return false, 0
+}
+
+func CleanupOldLimiterEntries() (int64, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return 0, errors.New("app state is not initialized")
+	}
+	now := time.Now()
+
+	var count int
+	appState.WebServerLimiter.M.Range(func(key, value any) bool {
+		limiterEntry, ok := value.(*LimiterEntry)
+		if !ok {
+			return true
+		}
+		if now.Sub(limiterEntry.LastSeen) > 3*time.Minute {
+			appState.WebServerLimiter.M.Delete(key)
+			count++
+		}
+		return true
+	})
+	return int64(count), nil
 }

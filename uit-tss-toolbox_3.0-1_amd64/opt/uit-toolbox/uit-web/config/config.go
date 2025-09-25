@@ -698,28 +698,6 @@ func CleanupBlockedIPs() {
 	})
 }
 
-func CleanupOldLimiterEntries() {
-	appState := GetAppState()
-	if appState == nil {
-		return
-	}
-	now := time.Now()
-
-	cleanupInterval := appState.WebServerLimiter.Rate
-	var count int
-	appState.WebServerLimiter.M.Range(func(key, value any) bool {
-		limiterEntry, ok := value.(*LimiterEntry)
-		if !ok {
-			return true
-		}
-		if now.Sub(limiterEntry.LastSeen) > 3*time.Minute {
-			appState.WebServerLimiter.M.Delete(key)
-			count++
-		}
-		return true
-	})
-}
-
 // Webserver config
 func GetWebServerIP() (string, string, error) {
 	appState := GetAppState()
