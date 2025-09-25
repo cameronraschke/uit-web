@@ -17,7 +17,6 @@ import (
 	"unicode/utf8"
 
 	config "uit-toolbox/config"
-	webserver "uit-toolbox/webserver"
 
 	"golang.org/x/text/unicode/norm"
 )
@@ -69,7 +68,7 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(req.Context(), webserver.CTXClientIP{}, ip)
+		ctx := context.WithValue(req.Context(), CTXClientIP{}, ip)
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }
@@ -238,7 +237,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 
 		var ctx context.Context
 		if strings.TrimSpace(req.URL.RawQuery) == "" {
-			ctx = context.WithValue(req.Context(), webserver.CTXURLRequest{}, fullPath)
+			ctx = context.WithValue(req.Context(), CTXURLRequest{}, fullPath)
 		} else {
 			parsedQuery, err := url.ParseQuery(req.URL.RawQuery)
 			if err != nil {
@@ -250,7 +249,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 				Path:     fullPath,
 				RawQuery: parsedQuery.Encode(),
 			}
-			ctx = context.WithValue(req.Context(), webserver.CTXURLRequest{}, newURL.RequestURI())
+			ctx = context.WithValue(req.Context(), CTXURLRequest{}, newURL.RequestURI())
 		}
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
@@ -395,12 +394,12 @@ func AllowedFilesMiddleware(appState *config.AppState) func(http.Handler) http.H
 				return
 			}
 
-			fileRequest := webserver.CTXFileRequest{
+			fileRequest := CTXFileRequest{
 				FullPath:     fullPath,
 				ResolvedPath: resolvedPath,
 				FileName:     fileRequested,
 			}
-			ctxWithFile := context.WithValue(req.Context(), webserver.CTXFileRequest{}, fileRequest)
+			ctxWithFile := context.WithValue(req.Context(), CTXFileRequest{}, fileRequest)
 			next.ServeHTTP(w, req.WithContext(ctxWithFile))
 		})
 	}
@@ -577,15 +576,15 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Get web server IP for CORS
-		_, webServerIP, err := config.GetWebServerIP()
-		if err != nil || strings.TrimSpace(webServerIP) == "" {
+		_, webserverWanIP, err := config.GetWebServerIP()
+		if err != nil || strings.TrimSpace(webserverWanIP) == "" {
 			log.Error("Cannot get web server IP for CORS: " + err.Error())
 			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
 			return
 		}
 		// Check CORS policy
 		cors := http.NewCrossOriginProtection()
-		cors.AddTrustedOrigin("https://" + webServerIP + ":1411")
+		cors.AddTrustedOrigin("https://" + webserverWanIP + ":1411")
 		if err := cors.Check(req); err != nil {
 			log.Warning("Request to " + requestURL + " blocked from " + requestIP)
 			http.Error(w, FormatHttpError("CORS policy violation"), http.StatusForbidden)
@@ -595,7 +594,7 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 		// Handle OPTIONS early
 		if req.Method == http.MethodOptions {
 			// Headers for OPTIONS request
-			w.Header().Set("Access-Control-Allow-Origin", "https://"+webServerIP+":1411")
+			w.Header().Set("Access-Control-Allow-Origin", "https://"+webserverWanIP+":1411")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Set-Cookie, credentials")
@@ -603,7 +602,7 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		w.Header().Set("Access-Control-Allow-Origin", "https://"+webServerIP+":1411")
+		w.Header().Set("Access-Control-Allow-Origin", "https://"+webserverWanIP+":1411")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
@@ -731,7 +730,7 @@ func APIAuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func HTTPCookieAuthMiddleware(next http.Handler) http.Handler {
+func CookieAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log := config.GetLogger()
 		requestIP, ok := GetRequestIP(req)
@@ -770,54 +769,19 @@ func HTTPCookieAuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		if sessionValid && sessionExists && !strings.HasSuffix(requestURL, "/logout") {
-			http.SetCookie(w, &http.Cookie{
-				Name:     "uit_session_id",
-				Value:    uitSessionIDCookie.Value,
-				Path:     "/",
-				Expires:  time.Now().Add(20 * time.Minute),
-				MaxAge:   20 * 60,
-				Secure:   true,
-				HttpOnly: true,
-				SameSite: http.SameSiteStrictMode,
-			})
-			http.SetCookie(w, &http.Cookie{
-				Name:     "uit_basic_token",
-				Value:    uitBasicCookie.Value,
-				Path:     "/",
-				Expires:  time.Now().Add(20 * time.Minute),
-				MaxAge:   20 * 60,
-				Secure:   true,
-				HttpOnly: true,
-				SameSite: http.SameSiteStrictMode,
-			})
-			http.SetCookie(w, &http.Cookie{
-				Name:     "uit_bearer_token",
-				Value:    uitBearerCookie.Value,
-				Path:     "/",
-				Expires:  time.Now().Add(20 * time.Minute),
-				MaxAge:   20 * 60,
-				Secure:   true,
-				HttpOnly: true,
-				SameSite: http.SameSiteStrictMode,
-			})
-			http.SetCookie(w, &http.Cookie{
-				Name:     "uit_csrf_token",
-				Value:    uitCSRFCookie.Value,
-				Path:     "/",
-				Expires:  time.Now().Add(20 * time.Minute),
-				MaxAge:   20 * 60,
-				Secure:   true,
-				HttpOnly: true,
-				SameSite: http.SameSiteStrictMode,
-			})
+			sessionIDCookie, basicCookie, bearerCookie, csrfCookie := GetAuthCookiesForResponse(uitSessionIDCookie.Value, uitBasicCookie.Value, uitBearerCookie.Value, uitCSRFCookie.Value)
+			http.SetCookie(w, sessionIDCookie)
+			http.SetCookie(w, basicCookie)
+			http.SetCookie(w, bearerCookie)
+			http.SetCookie(w, csrfCookie)
 
-			success, err := config.ExtendAuthSession(uitSessionIDCookie.Value)
+			sessionExtended, err := config.ExtendAuthSession(uitSessionIDCookie.Value)
 			if err != nil {
 				log.Error("Error extending auth session: " + err.Error())
 				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
 				return
 			}
-			if success {
+			if sessionExtended {
 				log.Debug("Auth session extended: " + requestIP)
 				next.ServeHTTP(w, req)
 			} else {

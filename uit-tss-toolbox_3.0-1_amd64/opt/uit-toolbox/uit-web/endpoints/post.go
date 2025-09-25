@@ -1,23 +1,82 @@
-package auth
+package endpoints
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	_ "image/png"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 	config "uit-toolbox/config"
+	"uit-toolbox/database"
 	middleware "uit-toolbox/middleware"
 	"unicode/utf8"
 )
 
-type ReturnedJsonToken struct {
-	Token string  `json:"token"`
-	TTL   float64 `json:"ttl"`
-	Valid bool    `json:"valid"`
+type RemoteTable struct {
+	Tagnumber         *int       `sql:"tagnumber"`
+	JobQueued         *string    `sql:"job_queued"`
+	JobQueuedPosition *int       `sql:"job_queued_position"`
+	JobActive         *bool      `sql:"job_queued_position"`
+	CloneMode         *string    `sql:"clone_mode"`
+	EraseMode         *string    `sql:"erase_mode"`
+	LastJobTime       *time.Time `sql:"last_job_time"`
+	Present           *time.Time `sql:"present"`
+	PresentBool       *bool      `sql:"present_bool"`
+	Status            *string    `sql:"status"`
+	KernelUpdated     *bool      `sql:"kernel_updated"`
+	BatteryCharge     *int       `sql:"battery_charge"`
+	BatteryStatus     *string    `sql:"battery_status"`
+	Uptime            *int       `sql:"uptime"`
+	CpuTemp           *int       `sql:"cpu_temp"`
+	DiskTemp          *int       `sql:"disk_temp"`
+	MaxDiskTemp       *int       `sql:"max_disk_temp"`
+	WattsNow          *int       `sql:"watts_now"`
+	NetworkSpeed      *int       `sql:"network_speed"`
+}
+
+type FormJobQueue struct {
+	Tagnumber string `json:"job_queued_tagnumber"`
+	JobQueued string `json:"job_queued_select"`
+}
+
+func UpdateRemoteJobQueued(ctx context.Context, req *http.Request, key string) error {
+	// Parse request body JSON
+	var j FormJobQueue
+	err := json.NewDecoder(req.Body).Decode(&j)
+	if err != nil {
+		return errors.New("Cannot parse request body JSON: " + err.Error())
+	}
+	defer req.Body.Close()
+
+	tag := j.Tagnumber
+	var tagnumber int
+	if len(tag) > 0 {
+		tagnumber, err = strconv.Atoi(tag)
+		if err != nil {
+			return errors.New("Tagnumber cannot be converted to integer: " + j.Tagnumber)
+		}
+	}
+	value := j.JobQueued
+
+	log.Println("Updating job_queued for tagnumber " + j.Tagnumber + " to value " + j.JobQueued)
+
+	// Commit to DB
+	if key == "job_queued" {
+		err := database.UpdateDB(ctx, "UPDATE remote SET job_queued = $1 WHERE tagnumber = $2", value, tagnumber)
+		if err != nil {
+			return errors.New("Database error: " + err.Error())
+		}
+		return nil
+	}
+
+	return errors.New("Unknown key: " + key)
 }
 
 func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
@@ -70,73 +129,40 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
-	var authData struct {
+	var clientFormAuthData struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
 	}
-	if err := json.Unmarshal(decodedBytes, &authData); err != nil {
+	if err := json.Unmarshal(decodedBytes, &clientFormAuthData); err != nil {
 		log.Warning("Invalid JSON structure: " + err.Error() + " (" + requestIP + ")")
 		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
 	// Validate input data
-	if err := middleware.ValidateAuthFormInput(authData.Username, authData.Password); err != nil {
+	if err := middleware.ValidateAuthFormInput(clientFormAuthData.Username, clientFormAuthData.Password); err != nil {
 		log.Warning("Invalid auth input: " + err.Error() + " (" + requestIP + ")")
 		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
 	// Authenticate with bcrypt
-	authenticated, err := middleware.CheckAuthCredentials(ctx, authData.Username, authData.Password)
+	authenticated, err := middleware.CheckAuthCredentials(ctx, clientFormAuthData.Username, clientFormAuthData.Password)
 	if err != nil || !authenticated {
 		log.Info("Authentication failed for " + requestIP + ": " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Unauthorized"), http.StatusUnauthorized)
 		return
 	}
 
-	bearerValue, csrfValue, err := middleware.GenerateAuthTokens()
+	sessionID, basicToken, bearerToken, csrfToken, err := config.CreateAuthSession(requestIP)
 	if err != nil {
 		log.Error("Failed to generate tokens: " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
 		return
 	}
 
-	basicExpiry := time.Now().Add(20 * time.Minute)
-	bearerExpiry := time.Now().Add(20 * time.Minute)
-	basic := config.BasicToken{Token: authData.Username + ":" + authData.Password, Expiry: basicExpiry, NotBefore: time.Now(), TTL: time.Until(basicExpiry).Seconds(), IP: requestIP, Valid: true}
-	bearer := config.BearerToken{Token: bearerValue, Expiry: bearerExpiry, NotBefore: time.Now(), TTL: time.Until(bearerExpiry).Seconds(), IP: requestIP, Valid: true}
-	csrfToken := csrfValue
-
-	sessionID := fmt.Sprintf("%s:%s", requestIP, bearer.Token)
-	authSession := config.AuthSession{Basic: basic, Bearer: bearer, CSRF: csrfToken}
-
-	if err := config.CreateAuthSession(sessionID, authSession); err != nil {
-		log.Error("Failed to create auth session: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
-		return
-	}
-
-	sessionValid, sessionExists, err := config.CheckAuthSession(sessionID, requestIP, basic.Token, bearer.Token, csrfToken)
-	if err != nil {
-		log.Error("Failed to create or update auth session: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
-		return
-	}
-	if !sessionValid {
-		log.Warning("Auth session invalid after creation/update: " + requestIP)
-		http.Error(w, middleware.FormatHttpError("Internal middleware error"), http.StatusInternalServerError)
-		return
-	}
-
 	sessionCount := config.GetAuthSessionCount()
-	if sessionExists {
-		log.Info("Auth session exists: " + requestIP + " (Sessions: " + strconv.Itoa(int(sessionCount)) + " TTL: " + fmt.Sprintf("%.2f", bearer.TTL) + "s)")
-	} else {
-		config.DeleteAuthSession(sessionID)
-		sessionCount = config.GetAuthSessionCount()
-		log.Info("New auth session created: " + requestIP + " (Sessions: " + strconv.Itoa(int(sessionCount)) + " TTL: " + fmt.Sprintf("%.2f", bearer.TTL) + "s)")
-	}
+	log.Info("New auth session created: " + requestIP + " (Sessions: " + strconv.Itoa(int(sessionCount)) + " TTL: " + fmt.Sprintf("%.2f", bearerToken) + "s)")
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "uit_basic_token",

@@ -680,6 +680,57 @@ func IsIPBlocked(ipAddress string) bool {
 	return false
 }
 
+func CleanupBlockedIPs() {
+	appState := GetAppState()
+	if appState == nil {
+		return
+	}
+	now := time.Now()
+	appState.BlockedIPs.M.Range(func(key, value any) bool {
+		blockedEntry, ok := value.(LimiterEntry)
+		if !ok {
+			return true
+		}
+		if now.After(blockedEntry.LastSeen.Add(appState.BlockedIPs.BanPeriod)) {
+			appState.BlockedIPs.M.Delete(key)
+		}
+		return true
+	})
+}
+
+func CleanupOldLimiterEntries() {
+	appState := GetAppState()
+	if appState == nil {
+		return
+	}
+	now := time.Now()
+
+	cleanupInterval := appState.WebServerLimiter.Rate
+	var count int
+	appState.WebServerLimiter.M.Range(func(key, value any) bool {
+		limiterEntry, ok := value.(*LimiterEntry)
+		if !ok {
+			return true
+		}
+		if now.Sub(limiterEntry.LastSeen) > 3*time.Minute {
+			appState.WebServerLimiter.M.Delete(key)
+			count++
+		}
+		return true
+	})
+}
+
+// Webserver config
+func GetWebServerIP() (string, string, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return "", "", errors.New("app state is not initialized")
+	}
+	lanIP := appState.AppConfig.UIT_LAN_IP_ADDRESS
+	wanIP := appState.AppConfig.UIT_WAN_IP_ADDRESS
+	return lanIP, wanIP, nil
+}
+
 func GetServerIPAddressByInterface(ifName string) (string, error) {
 	if ifName == "" {
 		return "", errors.New("interface name is empty")
@@ -705,15 +756,4 @@ func GetServerIPAddressByInterface(ifName string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("no valid IP address found for interface %s", ifName)
-}
-
-// Webserver config
-func GetWebServerIP() (string, string, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return "", "", errors.New("app state is not initialized")
-	}
-	lanIP := appState.AppConfig.UIT_LAN_IP_ADDRESS
-	wanIP := appState.AppConfig.UIT_WAN_IP_ADDRESS
-	return lanIP, wanIP, nil
 }

@@ -15,17 +15,79 @@ import (
 	"net/netip"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
 	config "uit-toolbox/config"
-	webserver "uit-toolbox/webserver"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
+type CTXClientIP struct{}
+type CTXURLRequest struct{}
+type CTXFileRequest struct {
+	FullPath     string
+	ResolvedPath string
+	FileName     string
+}
+
+type HTTPErrorCodes struct {
+	Message string `json:"message"`
+}
+
+type ReturnedJsonToken struct {
+	Token string  `json:"token"`
+	TTL   float64 `json:"ttl"`
+	Valid bool    `json:"valid"`
+}
+
+func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue, uitCSRFValue string) (*http.Cookie, *http.Cookie, *http.Cookie, *http.Cookie) {
+	sessionIDCookie := &http.Cookie{
+		Name:     "uit_session_id",
+		Value:    uitSessionIDValue,
+		Path:     "/",
+		Expires:  time.Now().Add(20 * time.Minute),
+		MaxAge:   20 * 60,
+		Secure:   true,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	}
+	basicCookie := &http.Cookie{
+		Name:     "uit_basic_token",
+		Value:    uitBasicValue,
+		Path:     "/",
+		Expires:  time.Now().Add(20 * time.Minute),
+		MaxAge:   20 * 60,
+		Secure:   true,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	}
+	bearerCookie := &http.Cookie{
+		Name:     "uit_bearer_token",
+		Value:    uitBearerValue,
+		Path:     "/",
+		Expires:  time.Now().Add(20 * time.Minute),
+		MaxAge:   20 * 60,
+		Secure:   true,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	}
+	csrfCookie := &http.Cookie{
+		Name:     "uit_csrf_token",
+		Value:    uitCSRFValue,
+		Path:     "/",
+		Expires:  time.Now().Add(20 * time.Minute),
+		MaxAge:   20 * 60,
+		Secure:   true,
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+	}
+	return sessionIDCookie, basicCookie, bearerCookie, csrfCookie
+}
+
 func FormatHttpError(errorString string) (jsonErrStr string) {
-	jsonStr := webserver.HTTPErrorCodes{Message: errorString}
+	jsonStr := HTTPErrorCodes{Message: errorString}
 	jsonErr, err := json.Marshal(jsonStr)
 	if err != nil {
 		return ""
@@ -112,21 +174,21 @@ func checkValidIP(s string) (isValid bool, isLoopback bool, isLocal bool) {
 }
 
 func GetRequestIP(r *http.Request) (string, bool) {
-	if ip, ok := r.Context().Value(webserver.CTXClientIP{}).(string); ok {
+	if ip, ok := r.Context().Value(CTXClientIP{}).(string); ok {
 		return ip, true
 	}
 	return "", false
 }
 
 func GetRequestURL(r *http.Request) (string, bool) {
-	if url, ok := r.Context().Value(webserver.CTXURLRequest{}).(string); ok {
+	if url, ok := r.Context().Value(CTXURLRequest{}).(string); ok {
 		return url, true
 	}
 	return "", false
 }
 
 func GetRequestedFile(req *http.Request) (string, string, string, bool) {
-	if fileRequest, ok := req.Context().Value(webserver.CTXFileRequest{}).(webserver.CTXFileRequest); ok {
+	if fileRequest, ok := req.Context().Value(CTXFileRequest{}).(CTXFileRequest); ok {
 		return fileRequest.FullPath, fileRequest.ResolvedPath, fileRequest.FileName, true
 	}
 	return "", "", "", false

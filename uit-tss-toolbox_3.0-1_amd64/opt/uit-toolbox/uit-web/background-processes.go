@@ -5,12 +5,11 @@ import (
 	"os"
 	"runtime"
 	"strconv"
-	"strings"
-	"sync/atomic"
 	"time"
+	config "uit-toolbox/config"
 )
 
-func backgroundProcesses(appState *AppState) {
+func backgroundProcesses() {
 	// Start auth map cleanup goroutine
 	startAuthMapCleanup(15 * time.Second)
 	// Start IP blocklist cleanup goroutine
@@ -22,36 +21,13 @@ func backgroundProcesses(appState *AppState) {
 }
 
 func startAuthMapCleanup(interval time.Duration) {
+	log := config.GetLogger()
 	go func() {
 		for {
 			time.Sleep(interval)
-			authMap.Range(func(k, v any) bool {
-				sessionID := k.(string)
-				authSession := v.(AuthSession)
-				sessionIP := strings.SplitN(sessionID, ":", 2)[0]
-
-				// basicExpiry := authSession.Basic.Expiry.Sub(time.Now())
-				bearerExpiry := time.Until(authSession.Bearer.Expiry)
-
-				if time.Now().After(authSession.Basic.Expiry) &&
-					time.Now().After(authSession.Bearer.Expiry) {
-					authMap.Delete(sessionID)
-					atomic.AddInt64(&authMapEntryCount, -1)
-					sessionCount := CountAuthSessions(&authMap)
-					log.Info("(Cleanup) Auth session expired: " + sessionIP + " (TTL: " + fmt.Sprintf("%.2f", bearerExpiry.Seconds()) + ", " + strconv.Itoa(int(sessionCount)) + " session(s))")
-				}
-				return true
-			})
-		}
-	}()
-}
-
-func printAuthMapCount(interval time.Duration) {
-	go func() {
-		for {
-			time.Sleep(interval)
-			sessionCount := CountAuthSessions(&authMap)
-			log.Info("Current auth sessions: " + strconv.Itoa(int(sessionCount)))
+			config.ClearExpiredAuthSessions()
+			sessionCount := config.RefreshAndGetAuthSessionCount()
+			log.Info("Auth session cleanup done (Sessions: " + strconv.Itoa(int(sessionCount)) + ")")
 		}
 	}()
 }

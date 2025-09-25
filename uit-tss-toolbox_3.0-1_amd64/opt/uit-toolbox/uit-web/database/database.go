@@ -7,6 +7,7 @@ import (
 	"errors"
 	"strconv"
 	"time"
+	"uit-toolbox/config"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -18,12 +19,14 @@ type AvailableJobs struct {
 	JobActive   *bool   `json:"job_active"`
 }
 
-func GetAvailableJobs(ctx context.Context, db *sql.DB, tagnumber int) (string, error) {
+func GetAvailableJobs(ctx context.Context, tagnumber int) (string, error) {
 	var sqlCode string
 	var rows *sql.Rows
 	var results []*AvailableJobs
 	var resultsJson string
 	var err error
+
+	db := config.GetDatabaseConn()
 
 	sqlCode = "SELECT remote.tagnumber, static_job_names.job, static_job_names.job_readable, remote.job_active FROM static_job_names LEFT JOIN remote ON (static_job_names.job = remote.job_queued OR (remote.job_active = TRUE OR remote.job_active = FALSE OR remote.job_queued IS NOT NULL OR remote.job_queued IS NULL)) WHERE remote.tagnumber = $1 AND static_job_names.job_html_bool = TRUE ORDER BY static_job_names.job_rank ASC;"
 
@@ -72,12 +75,14 @@ type JobQueue struct {
 	JobActive           *bool   `json:"job_active"`
 }
 
-func GetJobQueueByTagnumber(ctx context.Context, db *sql.DB, tagnumber int) (string, error) {
+func GetJobQueueByTagnumber(ctx context.Context, tagnumber int) (string, error) {
 	var sqlCode string
 	var rows *sql.Rows
 	var results []*JobQueue
 	var resultsJson string
 	var err error
+
+	db := config.GetDatabaseConn()
 
 	sqlCode = `SELECT remote.tagnumber, remote.present_bool, remote.kernel_updated, client_health.bios_updated, 
   remote.status AS remote_status, TO_CHAR(remote.present, 'MM/DD/YY HH12:MI:SS AM') AS remote_time_formatted,
@@ -131,12 +136,14 @@ type AllTags struct {
 	Tagnumber *int32 `json:"tagnumber"`
 }
 
-func GetAllTags(ctx context.Context, db *sql.DB) (string, error) {
+func GetAllTags(ctx context.Context) (string, error) {
 	var sqlCode string
 	var rows *sql.Rows
 	var results []*AllTags
 	var resultsJson string
 	var err error
+
+	db := config.GetDatabaseConn()
 
 	sqlCode = `SELECT t1.tagnumber FROM (SELECT time, tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS row_nums FROM locations) t1 WHERE t1.row_nums = 1 ORDER BY t1.time DESC`
 
@@ -199,12 +206,14 @@ type RemoteOnlineTable struct {
 	JobActive              *bool   `json:"job_active"`
 }
 
-func GetRemoteOnlineTable(ctx context.Context, db *sql.DB) (string, error) {
+func GetRemoteOnlineTable(ctx context.Context) (string, error) {
 	var sqlCode string
 	var rows *sql.Rows
 	var results []*RemoteOnlineTable
 	var resultsJson string
 	var err error
+
+	db := config.GetDatabaseConn()
 
 	sqlCode = `SELECT remote.tagnumber, live_images.screenshot, t1.domain, 
       TO_CHAR(remote.present, 'MM/DD/YY HH12:MI:SS AM') AS time_formatted, locationFormatting(t3.location) AS location_formatted, 
@@ -306,12 +315,14 @@ type RemoteOfflineTable struct {
 	DomainJoined           *bool   `json:"domain_joined"`
 }
 
-func GetRemoteOfflineTable(ctx context.Context, db *sql.DB) (string, error) {
+func GetRemoteOfflineTable(ctx context.Context) (string, error) {
 	var sqlCode string
 	var rows *sql.Rows
 	var results []*RemoteOfflineTable
 	var resultsJson string
 	var err error
+
+	db := config.GetDatabaseConn()
 
 	sqlCode = `SELECT remote.tagnumber, TO_CHAR(remote.present, 'MM/DD/YY HH12:MI:SS AM') AS time_formatted, 
         remote.status, locations.status AS locations_status, locationFormatting(locations.location) AS location_formatted, CONCAT(remote.battery_charge, '%', ' - ', remote.battery_status) AS battery_charge_formatted, 
@@ -372,12 +383,14 @@ type LiveImage struct {
 	Screenshot    *string `json:"screenshot"`
 }
 
-func GetLiveImage(ctx context.Context, db *sql.DB, tagnumber int) (string, error) {
+func GetLiveImage(ctx context.Context, tagnumber int) (string, error) {
 	var sqlCode string
 	var rows *sql.Rows
 	var results []*LiveImage
 	var resultsJson string
 	var err error
+
+	db := config.GetDatabaseConn()
 
 	sqlCode = `SELECT TO_CHAR(time, 'MM/DD/YY HH12:MI:SS AM') AS time_formatted, screenshot 
             FROM live_images 
@@ -424,12 +437,14 @@ type RemotePresentHeader struct {
 	PowerUsageFormatted    *string `json:"power_usage_formatted"`
 }
 
-func GetRemotePresentHeader(ctx context.Context, db *sql.DB) (string, error) {
+func GetRemotePresentHeader(ctx context.Context) (string, error) {
 	var sqlCode string
 	var rows *sql.Rows
 	var results []*RemotePresentHeader
 	var resultsJson string
 	var err error
+
+	db := config.GetDatabaseConn()
 
 	sqlCode = `SELECT CONCAT('(', COUNT(remote.tagnumber), ')') AS tagnumber_count, 
         CONCAT('(', MIN(remote.battery_charge), '%', '/', MAX(remote.battery_charge), '%', '/', ROUND(AVG(remote.battery_charge), 2), '%', ')') AS battery_charge_formatted, 
@@ -530,12 +545,14 @@ type TagnumberData struct {
 	TpmVersion             *int       `json:"tpm_version"`
 }
 
-func GetTagnumberData(ctx context.Context, db *sql.DB, tagnumber int) (string, error) {
+func GetTagnumberData(ctx context.Context, tagnumber int) (string, error) {
 	var sqlCode string
 	var rows *sql.Rows
 	var results []*TagnumberData
 	var resultsJson string
 	var err error
+
+	db := config.GetDatabaseConn()
 
 	sqlCode = `SELECT TO_CHAR(t10.time, 'MM/DD/YY HH12:MI:SS AM') AS location_time_formatted,
     (CASE WHEN t3.time = t10.time THEN 1 ELSE 0 END) AS placeholder_bool,
@@ -727,7 +744,8 @@ func CreateJson(results any) (string, error) {
 	return jsonDataStr, nil
 }
 
-func UpdateDB(ctx context.Context, db *sql.DB, sqlCode string, value string, tagnumber int) error {
+func UpdateDB(ctx context.Context, sqlCode string, value string, tagnumber int) error {
+	db := config.GetDatabaseConn()
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return errors.New("Cannot begin DB transaction: " + err.Error())

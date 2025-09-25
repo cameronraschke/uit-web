@@ -1,4 +1,4 @@
-package get
+package endpoints
 
 import (
 	"context"
@@ -11,7 +11,8 @@ import (
 	"strings"
 	"time"
 
-	log "uit-toolbox/logger"
+	middleware "uit-toolbox/middleware"
+	webserver "uit-toolbox/webserver"
 )
 
 // Helper functions
@@ -31,16 +32,16 @@ type serverTime struct {
 }
 
 func GetServerTime(w http.ResponseWriter, r *http.Request) {
-	requestIP, ok := GetRequestIP(r)
+	requestIP, ok := middleware.GetRequestIP(r)
 	if !ok {
 		log.Warning("no IP address stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	requestURL, ok := GetRequestURL(r)
 	if !ok {
 		log.Warning("no URL stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 
@@ -49,7 +50,7 @@ func GetServerTime(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil || strings.TrimSpace(jsonData) == "" {
 		log.Error("Cannot parse JSON from " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	io.WriteString(w, jsonData)
@@ -108,16 +109,16 @@ func DBSelClientLookup(ctx context.Context, db *sql.DB, tagnumber int, serial st
 
 func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requestIP, ok := GetRequestIP(r)
+	requestIP, ok := middleware.GetRequestIP(r)
 	if !ok {
 		log.Warning("no IP address stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	requestURL, ok := GetRequestURL(r)
 	if !ok {
 		log.Warning("no URL stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 
@@ -125,7 +126,7 @@ func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 	systemSerial := strings.TrimSpace(r.URL.Query().Get("system_serial"))
 	if tag == "" && systemSerial == "" {
 		log.Warning("No tagnumber or system_serial provided in request from: " + requestIP + " (" + requestURL + ")")
-		http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
+		http.Error(w, webserver.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
@@ -136,7 +137,7 @@ func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 	jsonStr, err := DBSelClientLookup(ctx, db, tagnumber, systemSerial)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	io.WriteString(w, jsonStr)
@@ -218,23 +219,23 @@ func DBSelHardwareData(ctx context.Context, db *sql.DB, tagnumber int) (string, 
 
 func GetHardwareData(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requestIP, ok := GetRequestIP(r)
+	requestIP, ok := middleware.GetRequestIP(r)
 	if !ok {
 		log.Warning("no IP address stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	requestURL, ok := GetRequestURL(r)
 	if !ok {
 		log.Warning("no URL stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 
 	tag := strings.TrimSpace(r.URL.Query().Get("tagnumber"))
 	if tag == "" {
 		log.Warning("No tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
+		http.Error(w, webserver.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
@@ -245,7 +246,7 @@ func GetHardwareData(w http.ResponseWriter, r *http.Request) {
 	jsonStr, err := DBSelHardwareData(ctx, db, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	io.WriteString(w, jsonStr)
@@ -310,23 +311,23 @@ func DBSelBiosData(ctx context.Context, db *sql.DB, tagnumber int) (string, erro
 
 func GetBiosData(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requestIP, ok := GetRequestIP(r)
+	requestIP, ok := middleware.GetRequestIP(r)
 	if !ok {
 		log.Warning("no IP address stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	requestURL, ok := GetRequestURL(r)
 	if !ok {
 		log.Warning("no URL stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 
 	tag := strings.TrimSpace(r.URL.Query().Get("tagnumber"))
 	if tag == "" {
 		log.Warning("No tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
+		http.Error(w, webserver.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
@@ -337,7 +338,7 @@ func GetBiosData(w http.ResponseWriter, r *http.Request) {
 	jsonStr, err := DBSelBiosData(ctx, db, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	io.WriteString(w, jsonStr)
@@ -408,23 +409,23 @@ func DBSelOsData(ctx context.Context, db *sql.DB, tagnumber int) (string, error)
 
 func GetOSData(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requestIP, ok := GetRequestIP(r)
+	requestIP, ok := middleware.GetRequestIP(r)
 	if !ok {
 		log.Warning("no IP address stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	requestURL, ok := GetRequestURL(r)
 	if !ok {
 		log.Warning("no URL stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 
 	tag := strings.TrimSpace(r.URL.Query().Get("tagnumber"))
 	if tag == "" {
 		log.Warning("No tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
+		http.Error(w, webserver.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
@@ -435,7 +436,7 @@ func GetOSData(w http.ResponseWriter, r *http.Request) {
 	jsonStr, err := DBSelOsData(ctx, db, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	io.WriteString(w, jsonStr)
@@ -500,23 +501,23 @@ func DBSelQueuedJobData(ctx context.Context, db *sql.DB, tagnumber int) (string,
 
 func GetClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requestIP, ok := GetRequestIP(r)
+	requestIP, ok := middleware.GetRequestIP(r)
 	if !ok {
 		log.Warning("no IP address stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	requestURL, ok := GetRequestURL(r)
 	if !ok {
 		log.Warning("no URL stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 
 	tag := strings.TrimSpace(r.URL.Query().Get("tagnumber"))
 	if tag == "" {
 		log.Warning("No tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
+		http.Error(w, webserver.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
@@ -527,7 +528,7 @@ func GetClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
 	jsonStr, err := DBSelQueuedJobData(ctx, db, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	io.WriteString(w, jsonStr)
@@ -590,23 +591,23 @@ func DBSelAvailableJobs(ctx context.Context, db *sql.DB, tagnumber int) (string,
 
 func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requestIP, ok := GetRequestIP(r)
+	requestIP, ok := middleware.GetRequestIP(r)
 	if !ok {
 		log.Warning("no IP address stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	requestURL, ok := GetRequestURL(r)
 	if !ok {
 		log.Warning("no URL stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 
 	tag := strings.TrimSpace(r.URL.Query().Get("tagnumber"))
 	if tag == "" {
 		log.Warning("No tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
+		http.Error(w, webserver.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
@@ -617,7 +618,7 @@ func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
 	jsonStr, err := DBSelAvailableJobs(ctx, db, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	io.WriteString(w, jsonStr)
@@ -678,23 +679,23 @@ func DBSelJobQueueOverview(ctx context.Context, db *sql.DB) (string, error) {
 
 func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	requestIP, ok := GetRequestIP(r)
+	requestIP, ok := middleware.GetRequestIP(r)
 	if !ok {
 		log.Warning("no IP address stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	requestURL, ok := GetRequestURL(r)
 	if !ok {
 		log.Warning("no URL stored in context")
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 
 	tag := strings.TrimSpace(r.URL.Query().Get("tagnumber"))
 	if tag == "" {
 		log.Warning("No tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		http.Error(w, formatHttpError("Bad request"), http.StatusBadRequest)
+		http.Error(w, webserver.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return
 	}
 
@@ -705,7 +706,7 @@ func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
 	jsonStr, err := DBSelJobQueueOverview(ctx, db)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, formatHttpError("Internal server error"), http.StatusInternalServerError)
+		http.Error(w, webserver.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
 	io.WriteString(w, jsonStr)
