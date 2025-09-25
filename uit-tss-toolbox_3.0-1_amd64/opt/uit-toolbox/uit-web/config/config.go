@@ -699,7 +699,7 @@ func CleanupBlockedIPs() {
 }
 
 // Webserver config
-func GetWebServerIP() (string, string, error) {
+func GetWebServerIPs() (string, string, error) {
 	appState := GetAppState()
 	if appState == nil {
 		return "", "", errors.New("app state is not initialized")

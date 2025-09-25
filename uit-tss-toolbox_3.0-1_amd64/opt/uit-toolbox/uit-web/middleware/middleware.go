@@ -255,7 +255,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func RateLimitMiddleware(appState *config.AppState, rateType string) func(http.Handler) http.Handler {
+func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			log := config.GetLogger()
@@ -284,125 +284,123 @@ func RateLimitMiddleware(appState *config.AppState, rateType string) func(http.H
 	}
 }
 
-func AllowedFilesMiddleware(appState *config.AppState) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			log := config.GetLogger()
-			requestIP, ok := GetRequestIP(req)
-			if !ok {
-				log.Warning("no IP address stored in context")
-				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
-				return
-			}
-			requestURL, ok := GetRequestURL(req)
-			if !ok {
-				log.Warning("no URL stored in context")
-				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
-				return
-			}
+func AllowedFilesMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := config.GetLogger()
+		requestIP, ok := GetRequestIP(req)
+		if !ok {
+			log.Warning("no IP address stored in context")
+			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			return
+		}
+		requestURL, ok := GetRequestURL(req)
+		if !ok {
+			log.Warning("no URL stored in context")
+			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			return
+		}
 
-			var basePath string
-			if strings.HasPrefix(requestURL, "/client/") {
-				basePath = "/srv/uit-toolbox/"
-			} else {
-				basePath = "/var/www/html/uit-web/"
-			}
+		var basePath string
+		if strings.HasPrefix(requestURL, "/client/") {
+			basePath = "/srv/uit-toolbox/"
+		} else {
+			basePath = "/var/www/html/uit-web/"
+		}
 
-			fullPath := path.Join(basePath, requestURL)
-			_, fileRequested := path.Split(fullPath)
+		fullPath := path.Join(basePath, requestURL)
+		_, fileRequested := path.Split(fullPath)
 
-			if !config.IsFileAllowed(fileRequested) {
-				log.Warning("File not in whitelist: " + fileRequested)
-				http.Error(w, FormatHttpError("Forbidden"), http.StatusForbidden)
-				return
-			}
+		if !config.IsFileAllowed(fileRequested) {
+			log.Warning("File not in whitelist: " + fileRequested)
+			http.Error(w, FormatHttpError("Forbidden"), http.StatusForbidden)
+			return
+		}
 
-			resolvedPath, err := filepath.EvalSymlinks(fullPath)
-			if err != nil || !strings.HasPrefix(resolvedPath, basePath) {
-				log.Warning("File request error from " + requestIP + " (" + resolvedPath + "): Error resolving symlink: " + err.Error())
-				http.Error(w, FormatHttpError("Forbidden"), http.StatusForbidden)
-				return
-			}
+		resolvedPath, err := filepath.EvalSymlinks(fullPath)
+		if err != nil || !strings.HasPrefix(resolvedPath, basePath) {
+			log.Warning("File request error from " + requestIP + " (" + resolvedPath + "): Error resolving symlink: " + err.Error())
+			http.Error(w, FormatHttpError("Forbidden"), http.StatusForbidden)
+			return
+		}
 
-			if resolvedPath != fullPath {
-				log.Warning("Resolved path does not match full path (" + requestIP + "): " + resolvedPath + " -> " + fullPath)
-				http.Error(w, FormatHttpError("Forbidden"), http.StatusForbidden)
-				return
-			}
+		if resolvedPath != fullPath {
+			log.Warning("Resolved path does not match full path (" + requestIP + "): " + resolvedPath + " -> " + fullPath)
+			http.Error(w, FormatHttpError("Forbidden"), http.StatusForbidden)
+			return
+		}
 
-			metadata, err := os.Lstat(fullPath)
-			if err != nil {
-				log.Error("Cannot get metadata from file: " + fullPath + " (" + err.Error() + ")")
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-			if metadata == nil {
-				log.Error("Metadata is nil for file: " + fullPath)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-			if metadata.Name() != fileRequested || !config.IsFileAllowed(metadata.Name()) {
-				log.Warning("Filename mismatch: " + metadata.Name() + " != " + fileRequested)
-				http.Error(w, "Forbidden", http.StatusForbidden)
-				return
-			}
-			if metadata.Size() <= 0 {
-				log.Warning("Attempt to access empty file: " + fileRequested)
-				http.Error(w, "Empty file", http.StatusNoContent)
-				return
-			}
-			if metadata.IsDir() {
-				log.Warning("Attempt to access directory as file: " + fileRequested)
-				http.Error(w, "Forbidden", http.StatusForbidden)
-				return
-			}
+		metadata, err := os.Lstat(fullPath)
+		if err != nil {
+			log.Error("Cannot get metadata from file: " + fullPath + " (" + err.Error() + ")")
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if metadata == nil {
+			log.Error("Metadata is nil for file: " + fullPath)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if metadata.Name() != fileRequested || !config.IsFileAllowed(metadata.Name()) {
+			log.Warning("Filename mismatch: " + metadata.Name() + " != " + fileRequested)
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		if metadata.Size() <= 0 {
+			log.Warning("Attempt to access empty file: " + fileRequested)
+			http.Error(w, "Empty file", http.StatusNoContent)
+			return
+		}
+		if metadata.IsDir() {
+			log.Warning("Attempt to access directory as file: " + fileRequested)
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
 
-			fileMode := metadata.Mode()
-			if fileMode&os.ModeSymlink != 0 {
-				log.Warning("Attempt to access symbolic link: " + fileRequested)
-				http.Error(w, "Forbidden", http.StatusForbidden)
-				return
-			}
-			if fileMode&os.ModeDevice != 0 {
-				log.Warning("Attempt to access device file: " + fileRequested)
-				http.Error(w, "Forbidden", http.StatusForbidden)
-				return
-			}
-			if fileMode&os.ModeNamedPipe != 0 {
-				log.Warning("Attempt to access named pipe: " + fileRequested)
-				http.Error(w, "Forbidden", http.StatusForbidden)
-				return
-			}
-			if fileMode&os.ModeSocket != 0 {
-				log.Warning("Attempt to access socket file: " + fileRequested)
-				http.Error(w, "Forbidden", http.StatusForbidden)
-				return
-			}
-			if fileMode&os.ModeCharDevice != 0 {
-				log.Warning("Attempt to access character device file: " + fileRequested)
-				http.Error(w, "Forbidden", http.StatusForbidden)
-				return
-			}
-			if fileMode&os.ModeIrregular != 0 {
-				log.Warning("Attempt to access irregular file: " + fileRequested)
-				http.Error(w, "Forbidden", http.StatusForbidden)
-				return
-			}
-			if !fileMode.IsRegular() {
-				log.Warning("Attempt to access non-regular file: " + fileRequested)
-				http.Error(w, "Forbidden", http.StatusForbidden)
-				return
-			}
+		fileMode := metadata.Mode()
+		if fileMode&os.ModeSymlink != 0 {
+			log.Warning("Attempt to access symbolic link: " + fileRequested)
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		if fileMode&os.ModeDevice != 0 {
+			log.Warning("Attempt to access device file: " + fileRequested)
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		if fileMode&os.ModeNamedPipe != 0 {
+			log.Warning("Attempt to access named pipe: " + fileRequested)
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		if fileMode&os.ModeSocket != 0 {
+			log.Warning("Attempt to access socket file: " + fileRequested)
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		if fileMode&os.ModeCharDevice != 0 {
+			log.Warning("Attempt to access character device file: " + fileRequested)
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		if fileMode&os.ModeIrregular != 0 {
+			log.Warning("Attempt to access irregular file: " + fileRequested)
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		if !fileMode.IsRegular() {
+			log.Warning("Attempt to access non-regular file: " + fileRequested)
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
 
-			fileRequest := CTXFileRequest{
-				FullPath:     fullPath,
-				ResolvedPath: resolvedPath,
-				FileName:     fileRequested,
-			}
-			ctxWithFile := context.WithValue(req.Context(), CTXFileRequest{}, fileRequest)
-			next.ServeHTTP(w, req.WithContext(ctxWithFile))
-		})
-	}
+		fileRequest := CTXFileRequest{
+			FullPath:     fullPath,
+			ResolvedPath: resolvedPath,
+			FileName:     fileRequested,
+		}
+		ctxWithFile := context.WithValue(req.Context(), CTXFileRequest{}, fileRequest)
+		next.ServeHTTP(w, req.WithContext(ctxWithFile))
+	})
 }
 
 func TLSMiddleware(next http.Handler) http.Handler {
@@ -576,7 +574,7 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Get web server IP for CORS
-		_, webserverWanIP, err := config.GetWebServerIP()
+		_, webserverWanIP, err := config.GetWebServerIPs()
 		if err != nil || strings.TrimSpace(webserverWanIP) == "" {
 			log.Error("Cannot get web server IP for CORS: " + err.Error())
 			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)

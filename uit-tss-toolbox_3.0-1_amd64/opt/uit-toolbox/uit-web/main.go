@@ -10,6 +10,7 @@ import (
 	"time"
 	config "uit-toolbox/config"
 	"uit-toolbox/database"
+	"uit-toolbox/endpoints"
 	middleware "uit-toolbox/middleware"
 
 	_ "net/http/pprof"
@@ -45,7 +46,7 @@ func main() {
 
 	// Initialize application
 	appState, err := config.InitApp()
-	if err != nil {
+	if appState != nil && err != nil {
 		log.Error("Failed to initialize application: " + err.Error())
 		os.Exit(1)
 	}
@@ -63,6 +64,12 @@ func main() {
 	config.SetDatabaseConn(dbConn)
 	defer dbConn.Close()
 
+	lanServerIP, _, err := config.GetWebServerIPs()
+	if err != nil || lanServerIP == "" {
+		log.Error("Cannot get LAN server IP: " + err.Error())
+		os.Exit(1)
+	}
+
 	fileServerBaseChain := muxChain{
 		middleware.LimitRequestSizeMiddleware,
 		middleware.TimeoutMiddleware,
@@ -76,86 +83,80 @@ func main() {
 	}
 
 	fileServerMuxChain := muxChain{
-		middleware.AllowedFilesMiddleware(appState),
+		middleware.AllowedFilesMiddleware,
 	}
 
 	fileServerFullChain := append(fileServerBaseChain, fileServerMuxChain...)
 
 	httpMux := http.NewServeMux()
-	httpMux.Handle("/client/", fileServerFullChain.then(fileServerHandler(appState)))
-	httpMux.Handle("/client", fileServerFullChain.thenFunc(rejectRequest))
-	httpMux.Handle("/", fileServerBaseChain.thenFunc(rejectRequest))
+	httpMux.Handle("/client/", fileServerFullChain.thenFunc(endpoints.FileServerHandler))
+	httpMux.Handle("/client", fileServerFullChain.thenFunc(endpoints.RejectRequest))
+	httpMux.Handle("/", fileServerBaseChain.thenFunc(endpoints.RejectRequest))
+
 	httpServer := &http.Server{
-		Addr:         appConfig.UIT_LAN_IP_ADDRESS + ":8080",
+		Addr:         lanServerIP + ":8080",
 		Handler:      httpMux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 1 * time.Minute,
 		IdleTimeout:  2 * time.Minute,
 	}
+	defer httpServer.Close()
 
 	go func() {
-		log.Info("HTTP server listening on http://" + appConfig.UIT_LAN_IP_ADDRESS + ":8080")
+		log.Info("HTTP server listening on http://" + lanServerIP + ":8080")
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("HTTP server error: " + err.Error())
 		}
 	}()
-	defer httpServer.Close()
-
-	// go func() {
-	//   err := http.ListenAndServe("localhost:6060", nil)
-	//   if err != nil {
-	//     log.Error("Profiler error: " + err.Error())
-	//   }
-	// }()
 
 	// https handlers and middleware chains
 	httpsBaseChain := muxChain{
-		mw.LimitRequestSize(),
-		mw.Timeout(),
-		mw.StoreClientIP(),
-		mw.CheckValidURL(),
-		mw.AllowIPRange(appConfig.UIT_ALL_ALLOWED_IP),
-		mw.RateLimit("web"),
-		mw.TLS(),
-		mw.HTTPMethod(),
-		mw.CheckHeaders(),
-		mw.SetHeaders(),
+		middleware.LimitRequestSizeMiddleware,
+		middleware.TimeoutMiddleware,
+		middleware.StoreClientIPMiddleware,
+		middleware.CheckValidURLMiddleware,
+		middleware.AllowIPRangeMiddleware("all"),
+		middleware.RateLimitMiddleware("web"),
+		middleware.TLSMiddleware,
+		middleware.HTTPMethodMiddleware,
+		middleware.CheckHeadersMiddleware,
+		middleware.SetHeadersMiddleware,
 	}
 
 	// No allowedFilesMiddleware here, as API calls do not serve files
 	httpsBaseAPIChain := muxChain{
-		middleware.APIAuth,
+		middleware.APIAuthMiddleware,
 	}
 
 	httpsBaseCookieAuthChain := muxChain{
-		middleware.AllowedFilesMiddleware(appState),
-		middleware.HTTPCookieAuth,
+		middleware.AllowedFilesMiddleware,
+		middleware.CookieAuthMiddleware,
 	}
 
 	httpsFullCookieAuthChain := append(httpsBaseChain, httpsBaseCookieAuthChain...)
 	httpsFullAPIChain := append(httpsBaseChain, httpsBaseAPIChain...)
 
 	httpsMux := http.NewServeMux()
-	httpsMux.Handle("GET /api/server_time", httpsFullAPIChain.thenFunc(get.GetServerTime))
-	httpsMux.Handle("GET /api/lookup", httpsFullAPIChain.thenFunc(get.GetClientLookup))
-	httpsMux.Handle("GET /api/client/hardware", httpsFullAPIChain.thenFunc(get.GetHardwareData))
-	httpsMux.Handle("GET /api/client/bios", httpsFullAPIChain.thenFunc(get.GetBiosData))
-	httpsMux.Handle("GET /api/client/os", httpsFullAPIChain.thenFunc(get.GetOSData))
-	httpsMux.Handle("GET /api/job_queue/overview", httpsFullAPIChain.thenFunc(get.GetJobQueueOverview))
-	httpsMux.Handle("GET /api/job_queue/client/queued_job", httpsFullAPIChain.thenFunc(get.GetClientQueuedJobs))
-	httpsMux.Handle("GET /api/job_queue/client/job_available", httpsFullAPIChain.thenFunc(get.GetClientAvailableJobs))
+	httpsMux.Handle("GET /api/server_time", httpsFullAPIChain.thenFunc(endpoints.GetServerTime))
+	httpsMux.Handle("GET /api/lookup", httpsFullAPIChain.thenFunc(endpoints.GetClientLookup))
+	httpsMux.Handle("GET /api/client/hardware/ids", httpsFullAPIChain.thenFunc(endpoints.GetHardwareIdentifiers))
+	httpsMux.Handle("GET /api/client/bios", httpsFullAPIChain.thenFunc(endpoints.GetBiosData))
+	httpsMux.Handle("GET /api/client/os", httpsFullAPIChain.thenFunc(endpoints.GetOSData))
+	httpsMux.Handle("GET /api/job_queue/overview", httpsFullAPIChain.thenFunc(endpoints.GetJobQueueOverview))
+	httpsMux.Handle("GET /api/job_queue/client/queued_job", httpsFullAPIChain.thenFunc(endpoints.GetClientQueuedJobs))
+	httpsMux.Handle("GET /api/job_queue/client/job_available", httpsFullAPIChain.thenFunc(endpoints.GetClientAvailableJobs))
 
-	httpsMux.Handle("GET /login.html", httpsBaseChain.then(webServerHandler(appState)))
-	httpsMux.Handle("POST /login.html", httpsBaseChain.thenFunc(auth.WebAuthEndpoint))
-	httpsMux.Handle("/js/login.js", httpsBaseChain.then(webServerHandler(appState)))
-	httpsMux.Handle("/css/desktop.css", httpsBaseChain.then(webServerHandler(appState)))
-	httpsMux.Handle("/favicon.ico", httpsBaseChain.then(webServerHandler(appState)))
+	httpsMux.Handle("GET /login.html", httpsBaseChain.thenFunc(endpoints.WebServerHandler))
+	httpsMux.Handle("POST /login.html", httpsBaseChain.thenFunc(endpoints.WebAuthEndpoint))
+	httpsMux.Handle("/js/login.js", httpsBaseChain.thenFunc(endpoints.WebServerHandler))
+	httpsMux.Handle("/css/desktop.css", httpsBaseChain.thenFunc(endpoints.WebServerHandler))
+	httpsMux.Handle("/favicon.ico", httpsBaseChain.thenFunc(endpoints.WebServerHandler))
 
-	httpsMux.Handle("GET /logout", httpsFullCookieAuthChain.then(logoutHandler(appState)))
+	httpsMux.Handle("GET /logout", httpsFullCookieAuthChain.thenFunc(endpoints.LogoutHandler))
 
-	httpsMux.Handle("/js/", httpsFullCookieAuthChain.then(webServerHandler(appState)))
-	httpsMux.Handle("/css/", httpsFullCookieAuthChain.then(webServerHandler(appState)))
-	httpsMux.Handle("/", httpsFullCookieAuthChain.then(webServerHandler(appState)))
+	httpsMux.Handle("/js/", httpsFullCookieAuthChain.thenFunc(endpoints.WebServerHandler))
+	httpsMux.Handle("/css/", httpsFullCookieAuthChain.thenFunc(endpoints.WebServerHandler))
+	httpsMux.Handle("/", httpsFullCookieAuthChain.thenFunc(endpoints.WebServerHandler))
 	// httpsMux.HandleFunc("/dbstats/", GetInfoHandler)
 
 	log.Info("Starting web server")
@@ -202,6 +203,11 @@ func main() {
 		log.Error("Error getting UIT_TLS_KEY_FILE: variable not set")
 		os.Exit(1)
 	}
+
+	go func() {
+		log.Info("Background processes starting...")
+		backgroundProcesses()
+	}()
 
 	// Start HTTPS server
 	if err := httpsServer.ListenAndServeTLS(webCertFile, webKeyFile); err != nil {

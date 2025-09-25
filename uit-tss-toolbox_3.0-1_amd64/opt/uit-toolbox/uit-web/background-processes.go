@@ -14,6 +14,8 @@ func backgroundProcesses() {
 	startAuthMapCleanup(15 * time.Second)
 	// Start IP blocklist cleanup goroutine
 	startIPBlocklistCleanup(1 * time.Minute)
+	// Start IP limiter cleanup goroutine
+	startIPLimiterCleanup(1 * time.Minute)
 	// Start memory monitor goroutine
 	startMemoryMonitor(4000*1024*1024, 5*time.Second) // 4GB limit, check every 5s
 }
