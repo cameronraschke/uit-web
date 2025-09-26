@@ -284,12 +284,12 @@ func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 	requestSessionIDCookie, err := req.Cookie("uit_session_id")
 	if err != nil && err != http.ErrNoCookie {
 		log.Warning("Error retrieving session ID cookie for logout: " + err.Error() + " (" + requestIP + ")")
-		http.Redirect(w, req, "/login.html", http.StatusSeeOther)
+		http.Redirect(w, req, "/login", http.StatusSeeOther)
 		return
 	}
 	if requestSessionIDCookie == nil || strings.TrimSpace(requestSessionIDCookie.Value) == "" {
 		log.Info("No session ID cookie provided for logout: " + requestIP)
-		http.Redirect(w, req, "/login.html", http.StatusSeeOther)
+		http.Redirect(w, req, "/login", http.StatusSeeOther)
 		return
 	}
 	sessionID := strings.TrimSpace(requestSessionIDCookie.Value)
@@ -303,7 +303,7 @@ func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 	http.SetCookie(w, csrfCookie)
 
 	// Redirect to login page
-	http.Redirect(w, req, "/login.html", http.StatusSeeOther)
+	http.Redirect(w, req, "/login", http.StatusSeeOther)
 }
 
 func RejectRequest(w http.ResponseWriter, req *http.Request) {

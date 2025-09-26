@@ -190,12 +190,12 @@ func GetFileRequest(req *http.Request) (CTXFileRequest, bool) {
 	if v == nil {
 		return CTXFileRequest{}, false
 	}
-	fr, ok := v.(CTXFileRequest)
-	return fr, ok
+	fileRequest, ok := v.(CTXFileRequest)
+	return fileRequest, ok
 }
 
 func GetRequestedFile(req *http.Request) (string, string, string, bool) {
-	if fileRequest, ok := req.Context().Value(CTXFileRequest{}).(CTXFileRequest); ok {
+	if fileRequest, ok := req.Context().Value(ctxFileReqKey{}).(CTXFileRequest); ok {
 		return fileRequest.FullPath, fileRequest.ResolvedPath, fileRequest.FileName, true
 	}
 	return "", "", "", false

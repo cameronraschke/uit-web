@@ -146,11 +146,16 @@ func main() {
 		middleware.CookieAuthMiddleware,
 	}
 
+	httpsBaseLoginChain := muxChain{
+		middleware.AllowedFilesMiddleware,
+	}
+
 	httpsLogoutChain := muxChain{
 		middleware.CookieAuthMiddleware,
 	}
 
 	httpsFullCookieAuthChain := append(httpsBaseChain, httpsBaseCookieAuthChain...)
+	httpsFullLoginChain := append(httpsBaseChain, httpsBaseLoginChain...)
 	httpsFullLogoutChain := append(httpsBaseChain, httpsLogoutChain...)
 	httpsFullAPIChain := append(httpsBaseChain, httpsBaseAPIChain...)
 
@@ -164,12 +169,12 @@ func main() {
 	httpsMux.Handle("GET /api/job_queue/client/queued_job", httpsFullAPIChain.thenFunc(endpoints.GetClientQueuedJobs))
 	httpsMux.Handle("GET /api/job_queue/client/job_available", httpsFullAPIChain.thenFunc(endpoints.GetClientAvailableJobs))
 
-	httpsMux.Handle("GET /login", httpsBaseChain.thenFunc(endpoints.WebServerHandler))
-	httpsMux.Handle("GET /login.html", httpsBaseChain.thenFunc(endpoints.WebServerHandler))
-	httpsMux.Handle("POST /login.html", httpsBaseChain.thenFunc(endpoints.WebAuthEndpoint))
-	httpsMux.Handle("/js/login.js", httpsBaseChain.thenFunc(endpoints.WebServerHandler))
-	httpsMux.Handle("/css/desktop.css", httpsBaseChain.thenFunc(endpoints.WebServerHandler))
-	httpsMux.Handle("/favicon.ico", httpsBaseChain.thenFunc(endpoints.WebServerHandler))
+	httpsMux.Handle("GET /login", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
+	httpsMux.Handle("GET /login.html", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
+	httpsMux.Handle("POST /login.html", httpsFullLoginChain.thenFunc(endpoints.WebAuthEndpoint))
+	httpsMux.Handle("/js/login.js", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
+	httpsMux.Handle("/css/desktop.css", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
+	httpsMux.Handle("/favicon.ico", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
 
 	httpsMux.Handle("GET /logout", httpsFullLogoutChain.thenFunc(endpoints.LogoutHandler))
 

@@ -105,7 +105,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	if err != nil || !authenticated {
 		log.Info("Authentication failed for " + requestIP + ": " + err.Error())
 		http.Error(w, middleware.FormatHttpError("Unauthorized"), http.StatusUnauthorized)
-		http.Redirect(w, req, "/login.html?error=1", http.StatusSeeOther)
+		http.Redirect(w, req, "/login?error=1", http.StatusSeeOther)
 		return
 	}
 
@@ -131,5 +131,5 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	w.Write([]byte(`{"token":"` + sessionID + `"}`))
 
-	http.Redirect(w, req, "/index.html", http.StatusSeeOther)
+	http.Redirect(w, req, "/index", http.StatusSeeOther)
 }
