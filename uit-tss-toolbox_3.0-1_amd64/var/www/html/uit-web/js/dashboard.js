@@ -1,7 +1,7 @@
 let dashboardPollController = null;
 
 function startDashboardPolling(intervalMs = 3000) {
-  if (dashboardPollController) return dashboardPollController.stop; // already running
+  if (dashboardPollController) return dashboardPollController.stop;
 
   let stopped = false;
   const abortSignal = new AbortController();
