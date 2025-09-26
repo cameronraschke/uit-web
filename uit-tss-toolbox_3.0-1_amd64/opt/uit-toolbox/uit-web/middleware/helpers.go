@@ -293,15 +293,15 @@ func ValidateAuthFormInput(username, password string) error {
 
 func ValidateAuthFormInputSHA256(username, password string) error {
 	username = strings.TrimSpace(username)
-	usernameLen := utf8.RuneCountInString(username)
-	if usernameLen < 3 || usernameLen > 20 {
-		return errors.New("invalid username length")
+	usernameLength := utf8.RuneCountInString(username)
+	if usernameLength != 64 {
+		return errors.New("invalid SHA hash length for username")
 	}
 
 	password = strings.TrimSpace(password)
-	passwordLen := utf8.RuneCountInString(password)
-	if passwordLen < 8 || passwordLen > 64 {
-		return errors.New("invalid password length")
+	passwordLength := utf8.RuneCountInString(password)
+	if passwordLength != 64 {
+		return errors.New("invalid SHA hash length for password")
 	}
 
 	if err := IsSHA256String(username); err != nil {
