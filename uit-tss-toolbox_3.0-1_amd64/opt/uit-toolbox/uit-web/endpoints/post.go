@@ -94,7 +94,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Validate input data
-	if err := middleware.ValidateAuthFormInput(clientFormAuthData.Username, clientFormAuthData.Password); err != nil {
+	if err := middleware.ValidateAuthFormInputSHA256(clientFormAuthData.Username, clientFormAuthData.Password); err != nil {
 		log.Warning("Invalid auth input: " + err.Error() + " (" + requestIP + ")")
 		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
 		return

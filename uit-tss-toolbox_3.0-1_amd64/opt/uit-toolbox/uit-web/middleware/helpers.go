@@ -249,6 +249,15 @@ func IsPrintableASCII(b []byte) bool {
 	return true
 }
 
+func IsSHA256String(s string) error {
+	sha256HexRegex := regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
+	s = strings.TrimSpace(s)
+	if !sha256HexRegex.MatchString(s) {
+		return errors.New("invalid digest")
+	}
+	return nil
+}
+
 func ValidateAuthFormInput(username, password string) error {
 	usernameRegex := regexp.MustCompile(`^[A-Za-z0-9._-]{3,20}$`)
 	passwordRegex := regexp.MustCompile(`^[\x21-\x7E]{8,64}$`)
@@ -270,6 +279,36 @@ func ValidateAuthFormInput(username, password string) error {
 	}
 	if !passwordRegex.MatchString(password) {
 		return errors.New("password does not match regex")
+	}
+
+	authStr := username + ":" + password
+
+	// Check for non-printable ASCII characters
+	if !IsPrintableASCII([]byte(authStr)) {
+		return errors.New("credentials contain non-printable ASCII characters")
+	}
+
+	return nil
+}
+
+func ValidateAuthFormInputSHA256(username, password string) error {
+	username = strings.TrimSpace(username)
+	usernameLen := utf8.RuneCountInString(username)
+	if usernameLen < 3 || usernameLen > 20 {
+		return errors.New("invalid username length")
+	}
+
+	password = strings.TrimSpace(password)
+	passwordLen := utf8.RuneCountInString(password)
+	if passwordLen < 8 || passwordLen > 64 {
+		return errors.New("invalid password length")
+	}
+
+	if err := IsSHA256String(username); err != nil {
+		return errors.New("username does not match SHA regex")
+	}
+	if err := IsSHA256String(password); err != nil {
+		return errors.New("password does not match SHA regex")
 	}
 
 	authStr := username + ":" + password
