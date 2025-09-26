@@ -1,4 +1,5 @@
 let dashboardPollController = null;
+let updatingNote = false;
 
 function startDashboardPolling(intervalMs = 3000) {
   if (dashboardPollController) return dashboardPollController.stop;
@@ -34,6 +35,15 @@ function startDashboardPolling(intervalMs = 3000) {
 
 document.addEventListener("DOMContentLoaded", () => {
   startDashboardPolling(3000);
+  document.getElementById('update-note-button').addEventListener('click', async () => {
+    if (updatingNote) return;
+    updatingNote = true;
+    try {
+      await postNote();
+    } finally {
+      updatingNote = false;
+    }
+  });
 });
 
 async function fetchDashboardData(signal) {
