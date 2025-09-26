@@ -56,7 +56,7 @@ async function fetchNotes(signal) {
     if (!jsonParsed || Object.keys(jsonParsed).length === 0 || (jsonParsed && typeof jsonParsed === 'object' && Object.prototype.hasOwnProperty.call(jsonParsed, '__proto__'))) {
         throw new Error('Response JSON is empty or invalid');
     }
-    const noteTextArea = document.getElementById('noteTextArea');
+    const noteTextArea = document.getElementById('note-textarea');
     if (!noteTextArea) throw new Error('Note text area not found in DOM');
     noteTextArea.value = jsonParsed.note || '';
     return jsonParsed;
