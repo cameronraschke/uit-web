@@ -1,4 +1,5 @@
 let submitInProgress = false;
+let tokenDBConn = null;
 
 const loginForm = document.querySelector("#login-form");
 const usernameInput = document.getElementById("username");
@@ -6,6 +7,49 @@ const passwordInput = document.getElementById("password");
 const loginButton = document.getElementById("login-button");
 const usernameStar = document.getElementById("username-star");
 const passwordStar = document.getElementById("password-star");
+
+function openTokenDB() {
+  if (tokenDBConn) return Promise.resolve(tokenDBConn);
+
+  return new Promise((resolve, reject) => {
+    // First open with current known version (1)
+    const req = indexedDB.open("uitTokens", 1);
+
+    req.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      // Create object store if it does not exist
+      if (!db.objectStoreNames.contains("uitTokens")) {
+        const os = db.createObjectStore("uitTokens", { keyPath: "tokenType" });
+      }
+    };
+
+    req.onsuccess = (event) => {
+      tokenDBConn = event.target.result;
+
+      if (!tokenDBConn.objectStoreNames.contains("uitTokens")) {
+        tokenDBConn.close();
+        const v = tokenDBConn.version + 1;
+        const upgradeReq = indexedDB.open("uitTokens", v);
+        upgradeReq.onupgradeneeded = (ev) => {
+          const db2 = ev.target.result;
+            if (!db2.objectStoreNames.contains("uitTokens")) {
+              db2.createObjectStore("uitTokens", { keyPath: "tokenType" });
+            }
+        };
+        upgradeReq.onsuccess = (ev) => {
+          tokenDBConn = ev.target.result;
+          resolve(tokenDBConn);
+        };
+        upgradeReq.onerror = (ev) => reject(ev.target.error);
+        return;
+      }
+
+      resolve(tokenDBConn);
+    };
+    req.onerror = (event) => reject(event.target.error);
+    req.onblocked = () => reject(new Error("IndexedDB open blocked (close other tabs)."));
+  });
+}
 
 function checkUsernameValidity() {
     const usernameValid = usernameInput.checkValidity();
@@ -113,30 +157,25 @@ loginForm.addEventListener("submit", async (event) => {
 });
 
 async function setKeyFromIndexDB(key, value) {
-    try {
-        if (!key || key.length === 0 || typeof key !== "string" || key.trim() === "") {
-        throw new Error("Key is invalid: " + key);
-        }
-        if (!value || value.length === 0 || typeof value !== "string" || value.trim() === "") {
-        throw new Error("Value is invalid: " + value);
-        }
+  if (typeof key !== "string" || key.trim() === "" ||
+      typeof value !== "string" || value.trim() === "") {
+    throw new Error("Invalid key/value");
+  }
 
-        await new Promise((resolve, reject) => {
-            const tokenDBConnection = indexedDB.open("uitTokens", 1);
-            tokenDBConnection.onsuccess = (event) => {
-                const db = event.target.result;
-                const transaction = db.transaction(["uitTokens"], "readwrite");
-                const objectStore = transaction.objectStore("uitTokens");
-                objectStore.put({ tokenType: key, value: value });
-                transaction.oncomplete = () => resolve();
-                transaction.onerror = (event) => reject("Error storing " + key + " in IndexedDB: " + event.target.error);
-            };
-            tokenDBConnection.onerror = (event) => reject("Error opening IndexedDB: " + event.target.error);
-        });
-        
-    } catch (error) {
-        throw new Error("Error accessing IndexedDB: " + error);
+  const db = await openTokenDB();
+
+  return new Promise((resolve, reject) => {
+    try {
+      const tx = db.transaction("uitTokens", "readwrite");
+      const store = tx.objectStore("uitTokens");
+      store.put({ tokenType: key, value: value });
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e.target.error);
+      tx.onabort = (e) => reject(e.target.error);
+    } catch (err) {
+      reject(err);
     }
+  });
 }
 
 async function generateSHA256Hash(input) {

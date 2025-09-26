@@ -4,9 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -25,6 +23,7 @@ import (
 
 type CTXClientIP struct{}
 type CTXURLRequest struct{}
+type ctxFileReqKey struct{}
 type CTXFileRequest struct {
 	FullPath     string
 	ResolvedPath string
@@ -186,6 +185,15 @@ func GetRequestURL(r *http.Request) (string, bool) {
 	return "", false
 }
 
+func GetFileRequest(req *http.Request) (CTXFileRequest, bool) {
+	v := req.Context().Value(ctxFileReqKey{})
+	if v == nil {
+		return CTXFileRequest{}, false
+	}
+	fr, ok := v.(CTXFileRequest)
+	return fr, ok
+}
+
 func GetRequestedFile(req *http.Request) (string, string, string, bool) {
 	if fileRequest, ok := req.Context().Value(CTXFileRequest{}).(CTXFileRequest); ok {
 		return fileRequest.FullPath, fileRequest.ResolvedPath, fileRequest.FileName, true
@@ -198,45 +206,31 @@ func CheckAuthCredentials(ctx context.Context, username, password string) (bool,
 	if db == nil {
 		return false, errors.New("database is not initialized")
 	}
-	var tmpToken = username + ":" + password
-	authToken := sha256.Sum256([]byte(tmpToken))
-	authTokenString := hex.EncodeToString(authToken[:])
 
-	sqlCode := `SELECT ENCODE(SHA256(CONCAT(username, ':', password)::bytea), 'hex') FROM logins WHERE ENCODE(SHA256(CONCAT(username, ':', password)::bytea), 'hex') = $1`
-	rows, err := db.QueryContext(ctx, sqlCode, authTokenString)
-	for rows.Next() {
-		var dbToken string
-		if err := rows.Scan(&dbToken); err != nil {
-			return false, errors.New("cannot scan database row for API Auth: " + err.Error())
+	sqlCode := `SELECT password FROM logins WHERE username = $1 LIMIT 1;`
+	var dbBcryptHash sql.NullString
+	err := db.QueryRowContext(ctx, sqlCode, username).Scan(&dbBcryptHash)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			buffer1 := make([]byte, 32)
+			_, _ = rand.Read(buffer1)
+			buffer2 := make([]byte, 32)
+			_, _ = rand.Read(buffer2)
+			pass1, _ := bcrypt.GenerateFromPassword(buffer1, bcrypt.DefaultCost)
+			pass2, _ := bcrypt.GenerateFromPassword(buffer2, bcrypt.DefaultCost)
+			bcrypt.CompareHashAndPassword(pass1, pass2)
+			return false, errors.New("invalid credentials")
 		}
-		if dbToken == authTokenString {
-			err := bcrypt.CompareHashAndPassword([]byte(dbToken), []byte(authTokenString))
-			if err != nil {
-				return false, errors.New("invalid credentials - bcrypt mismatch")
-			}
-			return true, nil
-		}
+
+		return false, errors.New("query error")
 	}
-	if err == sql.ErrNoRows {
-		buffer1 := make([]byte, 32)
-		_, _ = rand.Read(buffer1)
-		buffer2 := make([]byte, 32)
-		_, _ = rand.Read(buffer2)
-		pass1, _ := bcrypt.GenerateFromPassword(buffer1, bcrypt.DefaultCost)
-		pass2, _ := bcrypt.GenerateFromPassword(buffer2, bcrypt.DefaultCost)
-		bcrypt.CompareHashAndPassword(pass1, pass2)
+
+	// Compare supplied (already SHA256 hex or plaintext per your chosen model) versus stored bcrypt
+	if bcrypt.CompareHashAndPassword([]byte(dbBcryptHash.String), []byte(password)) != nil {
 		return false, errors.New("invalid credentials")
 	}
-	if err != nil {
-		return false, errors.New("cannot query database for API Auth: " + err.Error())
-	}
-	defer rows.Close()
 
-	if !rows.Next() {
-		return false, errors.New("no matching auth token found")
-	}
-
-	return false, errors.New("unknown error during authentication")
+	return true, nil
 }
 
 func IsPrintableASCII(b []byte) bool {

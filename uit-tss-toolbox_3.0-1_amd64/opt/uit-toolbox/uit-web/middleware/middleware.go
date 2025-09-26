@@ -300,6 +300,10 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		if requestURL == "/login" || requestURL == "/logout" || requestURL == "/index" {
+			requestURL = requestURL + ".html"
+		}
+
 		var basePath string
 		if strings.HasPrefix(requestURL, "/client/") {
 			basePath = "/srv/uit-toolbox/"
@@ -398,7 +402,7 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 			ResolvedPath: resolvedPath,
 			FileName:     fileRequested,
 		}
-		ctxWithFile := context.WithValue(req.Context(), CTXFileRequest{}, fileRequest)
+		ctxWithFile := context.WithValue(req.Context(), ctxFileReqKey{}, fileRequest)
 		next.ServeHTTP(w, req.WithContext(ctxWithFile))
 	})
 }
@@ -717,11 +721,12 @@ func APIAuthMiddleware(next http.Handler) http.Handler {
 			if queryType == "new-token" && strings.TrimSpace(requestBasicToken) != "" {
 				next.ServeHTTP(w, req)
 			} else {
+				log.Info("No valid authentication found for request: " + requestIP + " ( " + requestURL + ")")
 				http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
 				return
 			}
 		} else {
-			log.Warning("No valid authentication found for request: " + requestIP + " ( " + requestURL + ")")
+			log.Info("No valid authentication found for request: " + requestIP + " ( " + requestURL + ")")
 			http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
 			return
 		}
@@ -753,7 +758,9 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			if sessionErr != nil && sessionErr != http.ErrNoCookie {
 				log.Error("Error retrieving UIT cookies: " + requestIP + " (" + requestURL + ")")
 			}
-			http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
+			log.Info("No authentication cookies found for request: " + requestIP + " (" + requestURL + ")")
+			// http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
+			http.Redirect(w, req, "/login", http.StatusSeeOther)
 			return
 		}
 
@@ -792,8 +799,9 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			log.Info("(Cleanup) Auth session expired: " + requestIP + " (" + strconv.Itoa(int(sessionCount)) + " session(s))")
 			return
 		} else {
-			log.Info("No valid authentication found for request: " + requestIP + " ( " + requestURL + ")")
-			http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
+			log.Info("No valid authentication found for request: " + requestIP + " (" + requestURL + ")")
+			// http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
+			http.Redirect(w, req, "/login", http.StatusSeeOther)
 			return
 		}
 	})
