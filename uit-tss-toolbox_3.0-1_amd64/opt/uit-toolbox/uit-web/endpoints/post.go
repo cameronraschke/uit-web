@@ -131,5 +131,5 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	w.Write([]byte(`{"token":"` + sessionID + `"}`))
 
-	http.Redirect(w, req, "/index", http.StatusSeeOther)
+	http.Redirect(w, req, "/dashboard", http.StatusSeeOther)
 }

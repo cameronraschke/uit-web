@@ -147,6 +147,7 @@ loginForm.addEventListener("submit", async (event) => {
         }
 
         await setKeyFromIndexDB("bearerToken", data.token);
+        window.location.href = "/index";
     } catch (error) {
         console.error('There was a problem with the fetch operation:', error);
         submitInProgress = false;

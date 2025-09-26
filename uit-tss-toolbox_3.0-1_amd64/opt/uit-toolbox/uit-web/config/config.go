@@ -357,7 +357,7 @@ func InitApp() (*AppState, error) {
 		{Filename: "favicon.ico", Allowed: true},
 		{Filename: "header.html", Allowed: true},
 		{Filename: "footer.html", Allowed: true},
-		{Filename: "index.html", Allowed: true},
+		{Filename: "dashboard.html", Allowed: true},
 		{Filename: "login.html", Allowed: true},
 		{Filename: "auth-webworker.js", Allowed: true},
 		{Filename: "footer.js", Allowed: true},
