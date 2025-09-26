@@ -138,7 +138,7 @@ func main() {
 
 	// No allowedFilesMiddleware here, as API calls do not serve files
 	httpsBaseAPIChain := muxChain{
-		middleware.APIAuthMiddleware,
+		middleware.CookieAuthMiddleware,
 	}
 
 	httpsBaseCookieAuthChain := muxChain{
