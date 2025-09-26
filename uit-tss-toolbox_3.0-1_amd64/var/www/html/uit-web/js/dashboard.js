@@ -35,9 +35,9 @@ function startDashboardPolling(intervalMs = 3000) {
 
 document.addEventListener("DOMContentLoaded", () => {
   startDashboardPolling(3000);
+  fetchNotes();
   const textArea = document.getElementById('note-textarea');
   const noteSubmitButton = document.getElementById('update-note-button');
-
   noteSubmitButton.addEventListener('click', async () => {
     textArea.disabled = true;
     noteSubmitButton.disabled = true;
@@ -55,7 +55,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function fetchDashboardData(signal) {
   const tasks = [
-    fetchNotes(signal), 
     fetchInventoryOverview(signal), 
     fetchJobQueueOverview(signal)
   ];
