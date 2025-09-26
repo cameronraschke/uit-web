@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 	config "uit-toolbox/config"
+	"uit-toolbox/database"
 	middleware "uit-toolbox/middleware"
 	"unicode/utf8"
 )
@@ -132,4 +133,71 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	w.Write([]byte(`{"token":"` + sessionID + `"}`))
 
 	http.Redirect(w, req, "/dashboard", http.StatusSeeOther)
+}
+
+func InsertNewNote(w http.ResponseWriter, req *http.Request) {
+	requestInfo, err := GetRequestInfo(req)
+	if err != nil {
+		fmt.Println("Cannot get request info error: " + err.Error())
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
+	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
+	requestMethod := req.Method
+
+	// Sanitize POST request
+	if requestMethod != http.MethodPost || !(strings.HasSuffix(requestURL, "/notes")) {
+		log.Warning("Invalid method or URL for note insertion: " + requestIP + " ( " + requestURL + ")")
+		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
+		return
+	}
+
+	// Parse and validate note data
+	var newNote struct {
+		NoteType string `json:"note_type"`
+		Content  string `json:"note"`
+	}
+	err = json.NewDecoder(req.Body).Decode(&newNote)
+	if err != nil {
+		log.Warning("Cannot decode note JSON: " + err.Error() + " (" + requestIP + ")")
+		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
+		return
+	}
+	defer req.Body.Close()
+
+	newNote.NoteType = strings.TrimSpace(newNote.NoteType)
+	if len(newNote.NoteType) > 64 {
+		log.Warning("Note type too long: " + requestIP)
+		http.Error(w, middleware.FormatHttpError("Note type too long"), http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(newNote.NoteType) == "" {
+		log.Warning("Empty note type: " + requestIP)
+		http.Error(w, middleware.FormatHttpError("Note type cannot be empty"), http.StatusBadRequest)
+		return
+	}
+	newNote.Content = strings.TrimSpace(newNote.Content)
+	if len(newNote.Content) > 2000 {
+		log.Warning("Note content too long: " + requestIP)
+		http.Error(w, middleware.FormatHttpError("Note content too long"), http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(newNote.Content) == "" {
+		log.Warning("Empty note content: " + requestIP)
+		http.Error(w, middleware.FormatHttpError("Note content cannot be empty"), http.StatusBadRequest)
+		return
+	}
+
+	// Insert note into database
+	dbConn := config.GetDatabaseConn()
+	insertRepo := database.NewRepo(dbConn)
+	err = insertRepo.InsertNewNote(ctx, time.Now(), newNote.NoteType, newNote.Content)
+	if err != nil {
+		log.Error("Failed to insert new note: " + err.Error() + " (" + requestIP + ")")
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
+	}
 }

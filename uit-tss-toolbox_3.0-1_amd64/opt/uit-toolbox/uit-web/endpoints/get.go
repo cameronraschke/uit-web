@@ -278,6 +278,43 @@ func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, availableJobs)
 }
 
+func GetNotes(w http.ResponseWriter, r *http.Request) {
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
+	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
+
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
+	}
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	noteType := strings.TrimSpace(r.URL.Query().Get("note_type"))
+	if noteType == "" {
+		log.Info("No note_type provided, defaulting to 'general'")
+		noteType = "general"
+	}
+
+	notesData, err := repo.GetNotes(ctx, noteType)
+	if err != nil {
+		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, notesData)
+}
+
 // Overview section
 func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)

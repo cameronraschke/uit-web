@@ -51,8 +51,8 @@ func CreateAdminUser() error {
 
 	// Delete and recreate admin user in table logins
 	sqlCode := `
-    INSERT INTO logins (username, password, name)
-    VALUES ($1, $2, 'admin')
+    INSERT INTO logins (username, password, common_name, is_admin, enabled)
+    VALUES ($1, $2, 'admin', TRUE, TRUE)
     ON CONFLICT (username)
     DO UPDATE SET password = EXCLUDED.password
     `

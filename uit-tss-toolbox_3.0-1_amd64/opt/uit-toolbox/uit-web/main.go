@@ -137,9 +137,9 @@ func main() {
 	}
 
 	// No allowedFilesMiddleware here, as API calls do not serve files
-	httpsBaseAPIChain := muxChain{
-		middleware.APIAuthMiddleware,
-	}
+	// httpsBaseAPIChain := muxChain{
+	// 	middleware.APIAuthMiddleware,
+	// }
 
 	httpsBaseCookieAuthChain := muxChain{
 		middleware.AllowedFilesMiddleware,
@@ -157,7 +157,7 @@ func main() {
 	httpsFullCookieAuthChain := append(httpsBaseChain, httpsBaseCookieAuthChain...)
 	httpsFullLoginChain := append(httpsBaseChain, httpsBaseLoginChain...)
 	httpsFullLogoutChain := append(httpsBaseChain, httpsLogoutChain...)
-	httpsFullAPIChain := append(httpsBaseChain, httpsBaseAPIChain...)
+	httpsFullAPIChain := append(httpsBaseChain, httpsBaseCookieAuthChain...)
 
 	httpsMux := http.NewServeMux()
 	httpsMux.Handle("GET /api/server_time", httpsFullAPIChain.thenFunc(endpoints.GetServerTime))
@@ -168,6 +168,8 @@ func main() {
 	httpsMux.Handle("GET /api/job_queue/overview", httpsFullAPIChain.thenFunc(endpoints.GetJobQueueOverview))
 	httpsMux.Handle("GET /api/job_queue/client/queued_job", httpsFullAPIChain.thenFunc(endpoints.GetClientQueuedJobs))
 	httpsMux.Handle("GET /api/job_queue/client/job_available", httpsFullAPIChain.thenFunc(endpoints.GetClientAvailableJobs))
+	httpsMux.Handle("GET /api/notes", httpsFullAPIChain.thenFunc(endpoints.GetNotes))
+	httpsMux.Handle("POST /api/notes", httpsFullAPIChain.thenFunc(endpoints.InsertNewNote))
 
 	httpsMux.Handle("GET /login", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
 	httpsMux.Handle("GET /login.html", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))

@@ -358,6 +358,7 @@ func InitApp() (*AppState, error) {
 		{Filename: "header.html", Allowed: true},
 		{Filename: "footer.html", Allowed: true},
 		{Filename: "dashboard.html", Allowed: true},
+		{Filename: "dashboard.js", Allowed: true},
 		{Filename: "login.html", Allowed: true},
 		{Filename: "auth-webworker.js", Allowed: true},
 		{Filename: "footer.js", Allowed: true},

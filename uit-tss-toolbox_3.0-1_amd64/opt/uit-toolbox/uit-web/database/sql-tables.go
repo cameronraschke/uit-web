@@ -1,5 +1,7 @@
 package database
 
+import "time"
+
 type RemoteTable struct {
 	Tagnumber         *int    `json:"tagnumber"`
 	JobQueued         *string `json:"job_queued"`
@@ -20,4 +22,38 @@ type RemoteTable struct {
 	MaxDiskTemp       *int    `json:"max_disk_temp"`
 	WattsNow          *int    `json:"watts_now"`
 	NetworkSpeed      *int    `json:"network_speed"`
+}
+
+type LocationsTable struct {
+	Time         *time.Time `json:"time"`
+	Tagnumber    *int       `json:"tagnumber"`
+	SystemSerial *string    `json:"system_serial"`
+	Location     *string    `json:"location"`
+	Status       *bool      `json:"status"`
+	DiskRemoved  *bool      `json:"disk_removed"`
+	Department   *string    `json:"department"`
+	Domain       *string    `json:"domain"`
+	Note         *string    `json:"note"`
+}
+
+type NotesTable struct {
+	Time     *time.Time `json:"time"`
+	NoteType *string    `json:"note_type"`
+	Note     *string    `json:"note"`
+	ToDo     *string    `json:"todo"`
+	Projects *string    `json:"projects"`
+	Misc     *string    `json:"misc"`
+	Bugs     *string    `json:"bugs"`
+}
+
+type LoginsTable struct {
+	Username   *string `json:"username"`
+	Password   *string `json:"password"`
+	Email      *string `json:"email"`
+	FirstName  *string `json:"first_name"`
+	LastName   *string `json:"last_name"`
+	CommonName *string `json:"common_name"`
+	Role       *string `json:"role"`
+	IsAdmin    *bool   `json:"is_admin"`
+	Enabled    *bool   `json:"enabled"`
 }

@@ -163,3 +163,18 @@ func (repo *Repo) GetJobQueueOverview(ctx context.Context) (*JobQueueOverview, e
 	}
 	return &jobQueueOverview, nil
 }
+
+func (repo *Repo) GetNotes(ctx context.Context, noteType string) (*NotesTable, error) {
+	sqlQuery := `SELECT time, note_type, note FROM notes WHERE note_type = $1 ORDER BY time DESC LIMIT 1;`
+
+	var notesTable NotesTable
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, noteType)
+	if err := row.Scan(
+		&notesTable.Time,
+		&notesTable.NoteType,
+		&notesTable.Note,
+	); err != nil {
+		return nil, err
+	}
+	return &notesTable, nil
+}
