@@ -792,11 +792,12 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			} else {
 				log.Debug("Auth session not found or expired: " + requestIP)
 			}
-		} else if sessionExists && strings.HasSuffix(requestURL, "/logout") {
+		} else if sessionExists && strings.TrimSpace(requestURL) == "/logout" {
 			log.Debug("Logging out user: " + requestIP)
 			config.DeleteAuthSession(uitSessionIDCookie.Value)
 			sessionCount := config.RefreshAndGetAuthSessionCount()
-			log.Info("(Cleanup) Auth session expired: " + requestIP + " (" + strconv.Itoa(int(sessionCount)) + " session(s))")
+			log.Info("Auth session deleted: " + requestIP + " (" + strconv.Itoa(int(sessionCount)) + " session(s))")
+			http.Redirect(w, req, "/login", http.StatusSeeOther)
 			return
 		} else {
 			log.Info("No valid authentication found for request: " + requestIP + " (" + requestURL + ")")
