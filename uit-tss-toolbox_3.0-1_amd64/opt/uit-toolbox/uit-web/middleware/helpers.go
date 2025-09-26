@@ -9,14 +9,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/netip"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 	"unicode/utf8"
 
 	config "uit-toolbox/config"
@@ -240,34 +239,44 @@ func CheckAuthCredentials(ctx context.Context, username, password string) (bool,
 	return false, errors.New("unknown error during authentication")
 }
 
+func IsPrintableASCII(b []byte) bool {
+	for i := range b {
+		c := b[i]
+		if c < 0x21 || c > 0x7E {
+			return false
+		}
+	}
+	return true
+}
+
 func ValidateAuthFormInput(username, password string) error {
+	usernameRegex := regexp.MustCompile(`^[A-Za-z0-9._-]{3,20}$`)
+	passwordRegex := regexp.MustCompile(`^[\x21-\x7E]{8,64}$`)
+
 	username = strings.TrimSpace(username)
-	if len(username) < 3 || len(username) > 20 {
+	usernameLen := utf8.RuneCountInString(username)
+	if usernameLen < 3 || usernameLen > 20 {
 		return errors.New("invalid username length")
 	}
 
-	if len(password) < 8 || len(password) > 64 {
+	password = strings.TrimSpace(password)
+	passwordLen := utf8.RuneCountInString(password)
+	if passwordLen < 8 || passwordLen > 64 {
 		return errors.New("invalid password length")
+	}
+
+	if !usernameRegex.MatchString(username) {
+		return errors.New("username does not match regex")
+	}
+	if !passwordRegex.MatchString(password) {
+		return errors.New("password does not match regex")
 	}
 
 	authStr := username + ":" + password
 
-	// ASCII characters except space
-	allowedAuthChars := "U+0021-U+007E"
-
-	for _, char := range authStr {
-		if char <= 31 || char >= 127 || char > unicode.MaxASCII || char > unicode.MaxLatin1 {
-			return errors.New(`auth string contains an invalid control character (beyond ASCII/Latin1): ` + fmt.Sprintf("U+%04X", char))
-		}
-		if unicode.IsControl(char) {
-			return errors.New(`auth string contains an invalid control character: ` + fmt.Sprintf("U+%04X", char))
-		}
-		if unicode.IsSpace(char) {
-			return errors.New(`auth string contains a whitespace character: ` + fmt.Sprintf("U+%04X", char))
-		}
-		if !strings.ContainsRune(allowedAuthChars, char) {
-			return errors.New(`auth string contains a disallowed character: ` + fmt.Sprintf("U+%04X", char))
-		}
+	// Check for non-printable ASCII characters
+	if !IsPrintableASCII([]byte(authStr)) {
+		return errors.New("credentials contain non-printable ASCII characters")
 	}
 
 	return nil
