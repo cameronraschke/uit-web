@@ -50,7 +50,12 @@ func CreateAdminUser() error {
 	defer cancel()
 
 	// Delete and recreate admin user in table logins
-	sqlCode := `DELETE FROM logins WHERE username = $1; INSERT INTO logins (username, password) VALUES ($1, $2);`
+	sqlCode := `
+    INSERT INTO logins (username, password)
+    VALUES ($1, $2)
+    ON CONFLICT (username)
+    DO UPDATE SET password = EXCLUDED.password
+    `
 
 	_, err = db.ExecContext(ctx, sqlCode, adminUsernameHash, bcryptHashString)
 	if err != nil {
