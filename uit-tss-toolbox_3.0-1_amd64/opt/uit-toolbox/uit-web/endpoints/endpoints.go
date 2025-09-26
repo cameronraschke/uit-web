@@ -287,8 +287,8 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 	} else if strings.HasSuffix(requestedFile, ".js") {
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-	} else if strings.HasSuffix(requestedFile, ".ico") {
-		w.Header().Set("Content-Type", "image/x-icon")
+	} else if strings.HasSuffix(requestedFile, ".png") {
+		w.Header().Set("Content-Type", "image/png")
 	} else {
 		log.Warning("Unknown file type requested: " + requestedFile)
 		http.Error(w, "Unsupported Media Type", http.StatusUnsupportedMediaType)
