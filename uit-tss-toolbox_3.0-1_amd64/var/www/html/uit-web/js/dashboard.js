@@ -35,13 +35,20 @@ function startDashboardPolling(intervalMs = 3000) {
 
 document.addEventListener("DOMContentLoaded", () => {
   startDashboardPolling(3000);
-  document.getElementById('update-note-button').addEventListener('click', async () => {
+  const textArea = document.getElementById('note-textarea');
+  const noteSubmitButton = document.getElementById('update-note-button');
+
+  noteSubmitButton.addEventListener('click', async () => {
+    textArea.disabled = true;
+    noteSubmitButton.disabled = true;
     if (updatingNote) return;
     updatingNote = true;
     try {
       await postNote();
     } finally {
       updatingNote = false;
+      textArea.disabled = false;
+      noteSubmitButton.disabled = false;
     }
   });
 });
