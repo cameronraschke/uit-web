@@ -50,7 +50,7 @@ async function fetchDashboardData(signal) {
 
 async function fetchNotes(signal) {
   try {
-    const response = await fetchData('/api/notes', true, { signal });
+    const response = await fetchData('/api/notes?note_type=general', true, { signal });
     if (!response || response.length === 0) throw new Error('No data received from /api/notes');
     const jsonParsed = JSON.parse(response);
     if (!jsonParsed || Object.keys(jsonParsed).length === 0 || (jsonParsed && typeof jsonParsed === 'object' && Object.prototype.hasOwnProperty.call(jsonParsed, '__proto__'))) {
