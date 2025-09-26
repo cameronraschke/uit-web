@@ -103,12 +103,12 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	defer f.Close()
 
-	err = f.SetDeadline(time.Now().Add(30 * time.Second))
-	if err != nil {
-		log.Error("Cannot set file read deadline: " + fullPath + " (" + err.Error() + ")")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	// err = f.SetDeadline(time.Now().Add(30 * time.Second))
+	// if err != nil {
+	// 	log.Error("Cannot set file read deadline: " + fullPath + " (" + err.Error() + ")")
+	// 	http.Error(w, "Internal server error", http.StatusInternalServerError)
+	// 	return
+	// }
 
 	metadata, err := f.Stat()
 	if err != nil {
@@ -199,12 +199,12 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	defer f.Close()
 
-	err = f.SetDeadline(time.Now().Add(30 * time.Second))
-	if err != nil {
-		log.Error("Cannot set file read deadline: " + fullPath + " (" + err.Error() + ")")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	// err = f.SetDeadline(time.Now().Add(30 * time.Second))
+	// if err != nil {
+	// 	log.Error("Cannot set file read deadline: " + fullPath + " (" + err.Error() + ")")
+	// 	http.Error(w, "Internal server error", http.StatusInternalServerError)
+	// 	return
+	// }
 
 	metadata, err := f.Stat()
 	if err != nil {

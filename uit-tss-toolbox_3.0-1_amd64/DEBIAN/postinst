@@ -196,8 +196,8 @@ find /etc/uit-toolbox/certs/ -type f -exec chmod 640 {} \;
 find /srv/uit-toolbox/client/ -type d ! -path "/srv/uit-toolbox/client/iso" ! -path "/srv/uit-toolbox/client/iso/*" -exec chown uitweb:uit {} \;
 find /srv/uit-toolbox/ -type d -not -path "*/iso*" -exec chmod 755 {} \;
 find /srv/uit-toolbox/ -type f -not -path "*/iso/*" -exec chmod 664 {} \;
-chmod 600 /srv/uit-toolbox/client/certs/uit-ca.crt
-chmod 600 /srv/uit-toolbox/client/certs/uit-web.crt
+chmod 644 /srv/uit-toolbox/client/certs/uit-ca.crt
+chmod 644 /srv/uit-toolbox/client/certs/uit-web.crt
 
 chmod 750 /usr/sbin/uit-*
 chown root:uit /usr/sbin/uit-*

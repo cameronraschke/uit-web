@@ -659,6 +659,8 @@ func IsIPAllowed(source string, ipAddress string) bool {
 			}
 			return true
 		})
+	default:
+		return false
 	}
 	return allowed
 }

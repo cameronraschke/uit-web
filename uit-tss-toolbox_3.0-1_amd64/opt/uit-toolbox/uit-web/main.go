@@ -121,12 +121,13 @@ func main() {
 		middleware.TimeoutMiddleware,
 		middleware.StoreClientIPMiddleware,
 		middleware.CheckValidURLMiddleware,
-		middleware.AllowIPRangeMiddleware("all"),
+		middleware.AllowIPRangeMiddleware("any"),
 		middleware.RateLimitMiddleware("web"),
 		middleware.TLSMiddleware,
 		middleware.HTTPMethodMiddleware,
 		middleware.CheckHeadersMiddleware,
 		middleware.SetHeadersMiddleware,
+		middleware.AllowedFilesMiddleware,
 	}
 
 	// No allowedFilesMiddleware here, as API calls do not serve files
@@ -135,7 +136,6 @@ func main() {
 	}
 
 	httpsBaseCookieAuthChain := muxChain{
-		middleware.AllowedFilesMiddleware,
 		middleware.CookieAuthMiddleware,
 	}
 
