@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="stylesheet" href="/css/desktop.css" />
-    <script type="text/javascript" src="/js/init.js"></script>
+    <script nonce="{{ .jsNonce }}" type="text/javascript" src="/js/init.js"></script>
     <title>Home - ITSC Mgmt</title>
   </head>
   <body>
     <div id="uit-header"></div>
-    <script type="text/javascript" src="/js/header.js"></script>
+    <script nonce="{{ .jsNonce }}" type="text/javascript" src="/js/header.js"></script>
     <div><h1>UIT - ITSC Inventory Management</h1></div>
     <div id="main-content"><h2>Welcome to the ITSC Inventory Management System</h2></div>
 
@@ -71,6 +71,6 @@
     </div>
 
     <div id="uit-footer" class="flex-container footer"></div>
-    <script type="text/javascript" src="/js/footer.js"></script>
+    <script nonce="{{ .jsNonce }}" type="text/javascript" src="/js/footer.js"></script>
   </body>
 </html>

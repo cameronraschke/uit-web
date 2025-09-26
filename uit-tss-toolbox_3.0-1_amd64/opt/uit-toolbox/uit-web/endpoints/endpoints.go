@@ -2,6 +2,8 @@ package endpoints
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +27,15 @@ type RequestInfo struct {
 
 type ServerTime struct {
 	Time string `json:"server_time"`
+}
+
+func GenerateNonce(n int) (string, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	// URL-safe without padding keeps it compact
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -223,6 +234,23 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	// Set headers
 	if strings.HasSuffix(requestedFile, ".html") {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		nonce, err := GenerateNonce(24)
+		if err != nil {
+			log.Error("Cannot generate CSP nonce: " + err.Error())
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Security-Policy",
+			"default-src 'none'; "+
+				"script-src 'self' 'nonce-"+nonce+"'; "+
+				"style-src 'self'; "+
+				"img-src 'self'; "+
+				"font-src 'self'; "+
+				"connect-src 'self'; "+
+				"frame-ancestors 'none'; "+
+				"form-action 'self'; "+
+				"base-uri 'self'")
 		// Parse the template
 		htmlTemp, err := template.ParseFiles(resolvedPath)
 		if err != nil {
@@ -230,8 +258,15 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
+		data := struct {
+			jsNonce string
+		}{
+			jsNonce: nonce,
+		}
+
 		// Execute the template
-		err = htmlTemp.Execute(w, nil)
+		err = htmlTemp.Execute(w, data)
 		if err != nil {
 			log.Error("Error executing template for " + resolvedPath + ": " + err.Error())
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

@@ -131,8 +131,8 @@ sudo chown uitweb:uitweb /etc/uit-toolbox.env
 sudo chmod 400 /etc/uit-toolbox.env
 
 # Web server setup
-if [[ ! -f /var/www/html/uit-web/favicon.ico ]]; then
-    wget 'https://uh.edu/favicon.ico' --output-document /var/www/html/uit-web/favicon.ico
+if [[ ! -f /var/www/html/uit-web/favicon.png ]]; then
+    wget 'https://uh.edu/favicon.png' --output-document /var/www/html/uit-web/favicon.png
 fi
 if [[ ! -f  /var/www/html/uit-web/images/uh-logo.png ]]; then
     wget 'http://www.sa.uh.edu/brand/_img/uh-wide-full-color-rgb.png' --output-document=/var/www/html/uit-web/images/uh-logo.png
