@@ -70,6 +70,13 @@ func main() {
 	config.SetDatabaseConn(dbConn)
 	defer dbConn.Close()
 
+	// Create admin user
+	err = database.CreateAdminUser()
+	if err != nil {
+		log.Error("Failed to create admin user: " + err.Error())
+		return
+	}
+
 	lanServerIP, _, err := config.GetWebServerIPs()
 	if err != nil || lanServerIP == "" {
 		log.Error("Cannot get LAN server IP: " + err.Error())

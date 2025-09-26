@@ -2,15 +2,63 @@ package database
 
 import (
 	"context"
+	"crypto"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 	"uit-toolbox/config"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"golang.org/x/crypto/bcrypt"
 )
+
+func CreateAdminUser() error {
+	db := config.GetDatabaseConn()
+	if db == nil {
+		return errors.New("database connection is not initialized")
+	}
+	adminUsername, adminPasswd, err := config.GetAdminCredentials()
+	if err != nil {
+		return errors.New("failed to get admin credentials: " + err.Error())
+	}
+
+	if strings.TrimSpace(adminUsername) == "" {
+		return errors.New("admin username is empty")
+	}
+	usernameHash := crypto.SHA256.New()
+	usernameHash.Write([]byte(adminUsername))
+	adminUsernameHash := hex.EncodeToString(usernameHash.Sum(nil))
+
+	if strings.TrimSpace(adminPasswd) == "" {
+		return errors.New("admin password is empty")
+	}
+	passwordHash := crypto.SHA256.New()
+	passwordHash.Write([]byte(adminPasswd))
+	adminPasswdHash := hex.EncodeToString(passwordHash.Sum(nil))
+
+	bcryptHashBytes, err := bcrypt.GenerateFromPassword([]byte(adminPasswdHash), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.New("failed to hash admin password: " + err.Error())
+	}
+	bcryptHashString := string(bcryptHashBytes)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// Delete and recreate admin user in table logins
+	sqlCode := `DELETE FROM logins WHERE username = $1; INSERT INTO logins (username, password) VALUES ($1, $2);`
+
+	_, err = db.ExecContext(ctx, sqlCode, adminUsernameHash, bcryptHashString)
+	if err != nil {
+		return errors.New("failed to create admin user: " + err.Error())
+	}
+
+	return nil
+}
 
 // type AvailableJobs struct {
 // 	Tagnumber   *int    `json:"tagnumber"`
