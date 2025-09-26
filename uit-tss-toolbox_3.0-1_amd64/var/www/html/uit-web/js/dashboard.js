@@ -68,3 +68,30 @@ async function fetchNotes(signal) {
 
 async function fetchInventoryOverview(_signal) { return null; }
 async function fetchJobQueueOverview(_signal) { return null; }
+
+async function postNote() {
+  const noteTextArea = document.getElementById('note-textarea');
+  if (!noteTextArea) {
+    alert('Note text area not found in DOM');
+    return;
+  }
+  const noteContent = noteTextArea.value.trim();
+  const noteData = {
+    note_type: 'general',
+    note: noteContent
+  };
+  try {
+    const response = await fetch('/api/notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(noteData),
+      credentials: 'same-origin'
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to post note: ${response.statusText}`);
+    }
+    await fetchNotes();
+  } catch (err) {
+    console.error("postNote error:", err);
+  }
+}
