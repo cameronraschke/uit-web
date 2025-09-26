@@ -47,6 +47,7 @@
                 autocapitalize="off"
                 required />
             </div>
+            <div><p id="login-error" class="error-message"></p></div>
             <div><small><a href="/forgot-password.html">Forgot password?</a></small></div>
             <div class="flex-container login button">
               <button type="submit" id="login-button" form="login-form">Login</button>
@@ -58,7 +59,7 @@
 
     <div id="uit-footer" class="flex-container footer">
       <footer class="flex-box footer">
-        <p>Website created and maintained by _. <a href="mailto:">Need assistance?<a></p>
+        <p>Website created and maintained by {{ .WebmasterName }}. <a href="mailto:{{ .WebmasterEmail }}">Need assistance?<a></p>
       </footer>
     </div>
     <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/login.js"></script>

@@ -140,7 +140,20 @@ loginForm.addEventListener("submit", async (event) => {
             body: base64Payload
         });
 
-        if (!response.ok) throw new Error('Network response was not ok: ' + response.statusText);
+        if (!response.ok) {
+          const errorMsg = document.getElementById("login-error");
+            if (errorMsg) {
+              if (response.status === 401 || response.status === 403 || response.status === 400) {
+                errorMsg.style.display = "block";
+                errorMsg.innerText = "Invalid username or password.";
+              } else {
+                errorMsg.style.display = "block";
+                errorMsg.innerText = "An unexpected error occurred. Please try again later.";
+              }
+            } else {
+              throw new Error('Network response was not ok: ' + response.statusText);
+            }
+        }
         const data = await response.json();
         if (!data || (typeof data === "object" && Object.keys(data).length === 0) || !data.token || data.token.length === 0) {
             throw new Error('No data returned from login API');

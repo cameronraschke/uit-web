@@ -11,6 +11,15 @@ button {
     font-size: 1.1rem;
 }
 
+.error-message {
+    display: none;
+    color: red;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
 .flex-container {
     display: flex;
     flex-wrap: wrap;
