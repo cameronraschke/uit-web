@@ -137,9 +137,9 @@ func main() {
 	}
 
 	// No allowedFilesMiddleware here, as API calls do not serve files
-	// httpsBaseAPIChain := muxChain{
-	// 	middleware.APIAuthMiddleware,
-	// }
+	httpsBaseAPIChain := muxChain{
+		middleware.APIAuthMiddleware,
+	}
 
 	httpsBaseCookieAuthChain := muxChain{
 		middleware.AllowedFilesMiddleware,
@@ -157,7 +157,7 @@ func main() {
 	httpsFullCookieAuthChain := append(httpsBaseChain, httpsBaseCookieAuthChain...)
 	httpsFullLoginChain := append(httpsBaseChain, httpsBaseLoginChain...)
 	httpsFullLogoutChain := append(httpsBaseChain, httpsLogoutChain...)
-	httpsFullAPIChain := append(httpsBaseChain, httpsBaseCookieAuthChain...)
+	httpsFullAPIChain := append(httpsBaseChain, httpsBaseAPIChain...)
 
 	httpsMux := http.NewServeMux()
 	httpsMux.Handle("GET /api/server_time", httpsFullAPIChain.thenFunc(endpoints.GetServerTime))
