@@ -258,15 +258,25 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+		webmasterName, webmasterEmail, err := config.GetWebmasterContact()
+		if err != nil {
+			log.Error("Cannot get webmaster contact info: " + err.Error())
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 
-		data := struct {
-			jsNonce string
+		templateData := struct {
+			JsNonce        string
+			WebmasterName  string
+			WebmasterEmail string
 		}{
-			jsNonce: nonce,
+			JsNonce:        nonce,
+			WebmasterName:  webmasterName,
+			WebmasterEmail: webmasterEmail,
 		}
 
 		// Execute the template
-		err = htmlTemp.Execute(w, data)
+		err = htmlTemp.Execute(w, templateData)
 		if err != nil {
 			log.Error("Error executing template for " + resolvedPath + ": " + err.Error())
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

@@ -354,7 +354,7 @@ func InitApp() (*AppState, error) {
 		{Filename: "uit-web.crt", Allowed: true},
 		{Filename: "uit-toolbox-client.deb", Allowed: true},
 		{Filename: "desktop.css", Allowed: true},
-		{Filename: "favicon.ico", Allowed: true},
+		{Filename: "favicon.png", Allowed: true},
 		{Filename: "header.html", Allowed: true},
 		{Filename: "footer.html", Allowed: true},
 		{Filename: "dashboard.html", Allowed: true},
@@ -739,4 +739,12 @@ func GetServerIPAddressByInterface(ifName string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("no valid IP address found for interface %s", ifName)
+}
+
+func GetWebmasterContact() (string, string, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return "", "", errors.New("app state is not initialized")
+	}
+	return appState.AppConfig.UIT_WEBMASTER_NAME, appState.AppConfig.UIT_WEBMASTER_EMAIL, nil
 }

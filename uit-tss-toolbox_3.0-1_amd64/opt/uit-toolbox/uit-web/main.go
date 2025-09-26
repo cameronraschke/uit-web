@@ -174,7 +174,7 @@ func main() {
 	httpsMux.Handle("POST /login.html", httpsFullLoginChain.thenFunc(endpoints.WebAuthEndpoint))
 	httpsMux.Handle("/js/login.js", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
 	httpsMux.Handle("/css/desktop.css", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
-	httpsMux.Handle("/favicon.ico", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
+	httpsMux.Handle("/favicon.png", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
 
 	httpsMux.Handle("GET /logout", httpsFullLogoutChain.thenFunc(endpoints.LogoutHandler))
 
