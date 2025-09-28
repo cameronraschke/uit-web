@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -34,18 +33,7 @@ func GenerateNonce(n int) (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
-	// URL-safe without padding keeps it compact
 	return base64.RawURLEncoding.EncodeToString(b), nil
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
-func writeError(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{"error": msg})
 }
 
 func GetRequestInfo(r *http.Request) (RequestInfo, error) {
@@ -81,7 +69,7 @@ func ConvertRequestTagnumber(r *http.Request) (int, bool) {
 func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	requestInfo, err := GetRequestInfo(req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	ctx := requestInfo.Ctx
@@ -92,13 +80,13 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	fullPath, resolvedPath, requestedFile, ok := middleware.GetRequestedFile(req)
 	if !ok {
 		log.Warning("no requested file stored in context")
-		writeError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
 	if resolvedPath != fullPath {
 		log.Warning("Resolved path does not match full path (" + requestIP + "): " + resolvedPath + " -> " + fullPath)
-		writeError(w, http.StatusForbidden, "Forbidden")
+		middleware.WriteJsonError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
 
@@ -177,7 +165,7 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	requestInfo, err := GetRequestInfo(req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	ctx := requestInfo.Ctx
@@ -188,13 +176,13 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	fullPath, resolvedPath, requestedFile, ok := middleware.GetRequestedFile(req)
 	if !ok {
 		log.Warning("no requested file stored in context")
-		writeError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
 	if resolvedPath != fullPath {
 		log.Warning("Resolved path does not match full path (" + requestIP + "): " + resolvedPath + " -> " + fullPath)
-		writeError(w, http.StatusForbidden, "Forbidden")
+		middleware.WriteJsonError(w, http.StatusForbidden, "Forbidden")
 		return
 	}
 
@@ -251,7 +239,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 				"frame-ancestors 'none'; "+
 				"form-action 'self'; "+
 				"base-uri 'self'")
-		// Parse the template
+
 		htmlTemp, err := template.ParseFiles(resolvedPath)
 		if err != nil {
 			log.Warning("Cannot parse template file (" + resolvedPath + "): " + err.Error())
@@ -317,7 +305,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 	requestInfo, err := GetRequestInfo(req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	log := requestInfo.Log
@@ -354,7 +342,7 @@ func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 func RejectRequest(w http.ResponseWriter, req *http.Request) {
 	requestInfo, err := GetRequestInfo(req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	requestIP := requestInfo.IP

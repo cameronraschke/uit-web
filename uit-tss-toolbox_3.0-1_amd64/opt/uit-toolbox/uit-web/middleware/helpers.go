@@ -31,7 +31,7 @@ type CTXFileRequest struct {
 }
 
 type HTTPErrorCodes struct {
-	Message string `json:"message"`
+	Error string `json:"error"`
 }
 
 type ReturnedJsonToken struct {
@@ -40,13 +40,23 @@ type ReturnedJsonToken struct {
 	Valid bool    `json:"valid"`
 }
 
+func WriteJson(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+func WriteJsonError(w http.ResponseWriter, status int, msg string) {
+	WriteJson(w, status, map[string]string{"error": msg})
+}
+
 func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue, uitCSRFValue string, timeout time.Duration) (*http.Cookie, *http.Cookie, *http.Cookie, *http.Cookie) {
 	sessionIDCookie := &http.Cookie{
 		Name:     "uit_session_id",
 		Value:    uitSessionIDValue,
 		Path:     "/",
 		Expires:  time.Now().Add(timeout),
-		MaxAge:   20 * 60,
+		MaxAge:   int(timeout.Minutes()),
 		Secure:   true,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
@@ -56,7 +66,7 @@ func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue,
 		Value:    uitBasicValue,
 		Path:     "/",
 		Expires:  time.Now().Add(timeout),
-		MaxAge:   20 * 60,
+		MaxAge:   int(timeout.Minutes()),
 		Secure:   true,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
@@ -66,7 +76,7 @@ func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue,
 		Value:    uitBearerValue,
 		Path:     "/",
 		Expires:  time.Now().Add(timeout),
-		MaxAge:   20 * 60,
+		MaxAge:   int(timeout.Minutes()),
 		Secure:   true,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
@@ -76,7 +86,7 @@ func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue,
 		Value:    uitCSRFValue,
 		Path:     "/",
 		Expires:  time.Now().Add(timeout),
-		MaxAge:   20 * 60,
+		MaxAge:   int(timeout.Minutes()),
 		Secure:   true,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
@@ -84,13 +94,13 @@ func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue,
 	return sessionIDCookie, basicCookie, bearerCookie, csrfCookie
 }
 
-func FormatHttpError(errorString string) (jsonErrStr string) {
-	jsonStr := HTTPErrorCodes{Message: errorString}
-	jsonErr, err := json.Marshal(jsonStr)
+func FormatHttpError(errorMessage string) (jsonErrStr string) {
+	httpError := HTTPErrorCodes{Error: errorMessage}
+	json, err := json.Marshal(httpError)
 	if err != nil {
 		return ""
 	}
-	return string(jsonErr)
+	return string(json)
 }
 
 func checkValidIP(s string) (isValid bool, isLoopback bool, isLocal bool) {
@@ -314,3 +324,10 @@ func ValidateAuthFormInputSHA256(username, password string) error {
 
 	return nil
 }
+
+// func IsBodyTooLarge(err error) bool {
+// 	if err == nil {
+// 		return false
+// 	}
+// 	return  || strings.Contains(err.Error(), "http: request body too large")
+// }

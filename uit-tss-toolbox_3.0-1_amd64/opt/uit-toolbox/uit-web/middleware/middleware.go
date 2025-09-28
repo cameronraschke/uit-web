@@ -73,6 +73,35 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			log := config.GetLogger()
+			requestIP, ok := GetRequestIP(req)
+			if !ok {
+				log.Warning("no IP address stored in context")
+				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+				return
+			}
+
+			if config.IsIPBlocked(requestIP) {
+				log.Debug("Blocked IP attempted request: " + requestIP)
+				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+				return
+			}
+
+			limited, retryAfter := config.IsClientRateLimited(rateType, requestIP)
+			if limited {
+				log.Debug("Client is rate limited: " + requestIP + " (retry after " + retryAfter.String() + ")")
+				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+				return
+			}
+
+			next.ServeHTTP(w, req)
+		})
+	}
+}
+
 func AllowIPRangeMiddleware(source string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -97,6 +126,66 @@ func AllowIPRangeMiddleware(source string) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, req)
 		})
 	}
+}
+
+func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := config.GetLogger()
+		requestIP, ok := GetRequestIP(req)
+		if !ok {
+			log.Warning("no IP address stored in context")
+			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			return
+		}
+		if req.ProtoMajor != 2 {
+			log.Warning("Client does not support HTTP/2: " + requestIP)
+			WriteJsonError(w, http.StatusUpgradeRequired, "Client must use HTTP/2: "+requestIP+" ("+strconv.Itoa(req.ProtoMajor)+"."+strconv.Itoa(req.ProtoMinor)+")")
+			return
+		}
+		next.ServeHTTP(w, req)
+	})
+}
+
+func TLSMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := config.GetLogger()
+		requestIP, ok := GetRequestIP(req)
+		if !ok {
+			log.Warning("no IP address stored in context")
+			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			return
+		}
+
+		if req.TLS == nil || !req.TLS.HandshakeComplete {
+			log.Warning("TLS handshake failed for client " + requestIP)
+			http.Error(w, FormatHttpError("TLS required"), http.StatusUpgradeRequired)
+			return
+		}
+
+		if req.TLS.Version < tls.VersionTLS13 {
+			log.Warning("Rejected connection with weak TLS version from " + requestIP)
+			http.Error(w, FormatHttpError("TLS version too low"), http.StatusUpgradeRequired)
+			return
+		}
+
+		weakCiphers := map[uint16]bool{
+			tls.TLS_RSA_WITH_RC4_128_SHA:                true,
+			tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA:           true,
+			tls.TLS_RSA_WITH_AES_128_CBC_SHA256:         true,
+			tls.TLS_ECDHE_ECDSA_WITH_RC4_128_SHA:        true,
+			tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA:          true,
+			tls.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA:     true,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256: true,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256:   true,
+		}
+		if weakCiphers[req.TLS.CipherSuite] {
+			log.Warning("Rejected connection with weak cipher suite from " + requestIP)
+			http.Error(w, FormatHttpError("Weak cipher suite not allowed"), http.StatusUpgradeRequired)
+			return
+		}
+
+		next.ServeHTTP(w, req)
+	})
 }
 
 func CheckValidURLMiddleware(next http.Handler) http.Handler {
@@ -255,35 +344,6 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			log := config.GetLogger()
-			requestIP, ok := GetRequestIP(req)
-			if !ok {
-				log.Warning("no IP address stored in context")
-				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
-				return
-			}
-
-			if config.IsIPBlocked(requestIP) {
-				log.Debug("Blocked IP attempted request: " + requestIP)
-				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
-				return
-			}
-
-			limited, retryAfter := config.IsClientRateLimited(rateType, requestIP)
-			if limited {
-				log.Debug("Client is rate limited: " + requestIP + " (retry after " + retryAfter.String() + ")")
-				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
-				return
-			}
-
-			next.ServeHTTP(w, req)
-		})
-	}
-}
-
 func AllowedFilesMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log := config.GetLogger()
@@ -404,48 +464,6 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 		}
 		ctxWithFile := context.WithValue(req.Context(), ctxFileReqKey{}, fileRequest)
 		next.ServeHTTP(w, req.WithContext(ctxWithFile))
-	})
-}
-
-func TLSMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := config.GetLogger()
-		requestIP, ok := GetRequestIP(req)
-		if !ok {
-			log.Warning("no IP address stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
-			return
-		}
-
-		if req.TLS == nil || !req.TLS.HandshakeComplete {
-			log.Warning("TLS handshake failed for client " + requestIP)
-			http.Error(w, FormatHttpError("TLS required"), http.StatusUpgradeRequired)
-			return
-		}
-
-		if req.TLS.Version < tls.VersionTLS13 {
-			log.Warning("Rejected connection with weak TLS version from " + requestIP)
-			http.Error(w, FormatHttpError("TLS version too low"), http.StatusUpgradeRequired)
-			return
-		}
-
-		weakCiphers := map[uint16]bool{
-			tls.TLS_RSA_WITH_RC4_128_SHA:                true,
-			tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA:           true,
-			tls.TLS_RSA_WITH_AES_128_CBC_SHA256:         true,
-			tls.TLS_ECDHE_ECDSA_WITH_RC4_128_SHA:        true,
-			tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA:          true,
-			tls.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA:     true,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256: true,
-			tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256:   true,
-		}
-		if weakCiphers[req.TLS.CipherSuite] {
-			log.Warning("Rejected connection with weak cipher suite from " + requestIP)
-			http.Error(w, FormatHttpError("Weak cipher suite not allowed"), http.StatusUpgradeRequired)
-			return
-		}
-
-		next.ServeHTTP(w, req)
 	})
 }
 

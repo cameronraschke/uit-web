@@ -25,7 +25,7 @@ func GetServerTime(w http.ResponseWriter, r *http.Request) {
 
 	curTime := time.Now().Format("2006-01-02 15:04:05.000")
 
-	writeJSON(w, http.StatusOK, ServerTime{Time: curTime})
+	middleware.WriteJson(w, http.StatusOK, ServerTime{Time: curTime})
 }
 
 func GetClientLookup(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +82,7 @@ func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, dbResult)
+	middleware.WriteJson(w, http.StatusOK, dbResult)
 }
 
 func GetHardwareIdentifiers(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +119,7 @@ func GetHardwareIdentifiers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, hardwareData)
+	middleware.WriteJson(w, http.StatusOK, hardwareData)
 }
 
 func GetBiosData(w http.ResponseWriter, r *http.Request) {
@@ -158,7 +158,7 @@ func GetBiosData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, biosData)
+	middleware.WriteJson(w, http.StatusOK, biosData)
 }
 
 func GetOSData(w http.ResponseWriter, r *http.Request) {
@@ -197,7 +197,7 @@ func GetOSData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, osData)
+	middleware.WriteJson(w, http.StatusOK, osData)
 }
 
 func GetClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
@@ -236,7 +236,7 @@ func GetClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, activeJobs)
+	middleware.WriteJson(w, http.StatusOK, activeJobs)
 }
 
 func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
@@ -275,7 +275,7 @@ func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, availableJobs)
+	middleware.WriteJson(w, http.StatusOK, availableJobs)
 }
 
 func GetNotes(w http.ResponseWriter, r *http.Request) {
@@ -312,7 +312,7 @@ func GetNotes(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, notesData)
+	middleware.WriteJson(w, http.StatusOK, notesData)
 }
 
 // Overview section
@@ -345,5 +345,5 @@ func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, jobQueueOverview)
+	middleware.WriteJson(w, http.StatusOK, jobQueueOverview)
 }

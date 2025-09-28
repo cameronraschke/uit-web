@@ -87,9 +87,11 @@ func main() {
 		middleware.LimitRequestSizeMiddleware,
 		middleware.TimeoutMiddleware,
 		middleware.StoreClientIPMiddleware,
+		middleware.RateLimitMiddleware("lan"),
+		middleware.AllowIPRangeMiddleware("file"),
+		middleware.CheckHttpVersionMiddleware,
+		middleware.TLSMiddleware,
 		middleware.CheckValidURLMiddleware,
-		middleware.AllowIPRangeMiddleware("lan"),
-		middleware.RateLimitMiddleware("file"),
 		middleware.HTTPMethodMiddleware,
 		middleware.CheckHeadersMiddleware,
 		middleware.SetHeadersMiddleware,
@@ -127,10 +129,11 @@ func main() {
 		middleware.LimitRequestSizeMiddleware,
 		middleware.TimeoutMiddleware,
 		middleware.StoreClientIPMiddleware,
-		middleware.CheckValidURLMiddleware,
-		middleware.AllowIPRangeMiddleware("any"),
 		middleware.RateLimitMiddleware("web"),
+		middleware.AllowIPRangeMiddleware("any"),
+		middleware.CheckHttpVersionMiddleware,
 		middleware.TLSMiddleware,
+		middleware.CheckValidURLMiddleware,
 		middleware.HTTPMethodMiddleware,
 		middleware.CheckHeadersMiddleware,
 		middleware.SetHeadersMiddleware,
@@ -216,6 +219,7 @@ func main() {
 
 	httpsServer.Protocols = new(http.Protocols)
 	httpsServer.Protocols.SetHTTP1(false)
+	httpsServer.Protocols.SetUnencryptedHTTP2(false)
 	httpsServer.Protocols.SetHTTP2(true)
 
 	log.Info("Web server ready and listening for requests on https://*:31411")
