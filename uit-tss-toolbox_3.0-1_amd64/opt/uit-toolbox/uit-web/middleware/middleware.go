@@ -264,8 +264,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 			strings.Contains(fullPath, "..") ||
 			strings.Contains(fullPath, "../") ||
 			fullPath == "/" ||
-			fullPath == "." ||
-			fullPath == "" {
+			fullPath == "." {
 
 			log.Warning("Empty file path requested: " + requestIP)
 			http.Error(w, "Forbidden", http.StatusForbidden)
@@ -362,6 +361,10 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 
 		if requestURL == "/login" || requestURL == "/logout" || requestURL == "/dashboard" || requestURL == "/inventory" {
 			requestURL = requestURL + ".html"
+		}
+
+		if requestURL == "" || requestURL == "/" {
+			requestURL = "/dashboard.html"
 		}
 
 		var basePath string
