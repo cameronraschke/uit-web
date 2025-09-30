@@ -299,7 +299,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Info("Served file: " + requestedFile + " to " + requestIP)
+	log.Debug("Served file: " + requestedFile + " to " + requestIP)
 }
 
 func LogoutHandler(w http.ResponseWriter, req *http.Request) {
