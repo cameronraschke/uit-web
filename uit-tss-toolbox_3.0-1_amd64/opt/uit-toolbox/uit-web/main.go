@@ -173,6 +173,7 @@ func main() {
 	httpsMux.Handle("GET /api/job_queue/client/job_available", httpsFullAPIChain.thenFunc(endpoints.GetClientAvailableJobs))
 	httpsMux.Handle("GET /api/notes", httpsFullAPIChain.thenFunc(endpoints.GetNotes))
 	httpsMux.Handle("POST /api/notes", httpsFullAPIChain.thenFunc(endpoints.InsertNewNote))
+	httpsMux.Handle("GET /api/dashboard/inventory_summary", httpsFullAPIChain.thenFunc(endpoints.GetDashboardInventorySummary))
 
 	httpsMux.Handle("GET /login", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
 	httpsMux.Handle("GET /login.html", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))

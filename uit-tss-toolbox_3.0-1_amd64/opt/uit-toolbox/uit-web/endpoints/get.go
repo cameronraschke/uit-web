@@ -347,3 +347,34 @@ func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
 
 	middleware.WriteJson(w, http.StatusOK, jobQueueOverview)
 }
+
+func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
+	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
+
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
+	}
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	inventorySummary, err := repo.GetDashboardInventorySummary(ctx)
+	if err != nil {
+		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, inventorySummary)
+}

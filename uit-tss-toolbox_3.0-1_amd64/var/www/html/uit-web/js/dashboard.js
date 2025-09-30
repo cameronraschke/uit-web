@@ -70,9 +70,12 @@ async function fetchNotes(signal) {
     if (!response || response.length === 0) throw new Error('No data received from /api/notes');
     const jsonParsed = JSON.parse(response);
     if (!jsonParsed || Object.keys(jsonParsed).length === 0 || (jsonParsed && typeof jsonParsed === 'object' && Object.prototype.hasOwnProperty.call(jsonParsed, '__proto__'))) {
-        throw new Error('Response JSON is empty or invalid');
+      throw new Error('Response JSON is empty or invalid');
     }
     const noteTextArea = document.getElementById('note-text');
+    const noteTime = document.getElementById('note-date');
+    if (!noteTime) throw new Error('Note date element not found in DOM');
+    noteTime.innerHTML = jsonParsed.time ? new Date(jsonParsed.time).toLocaleString() : 'Never';
     if (!noteTextArea) throw new Error('Note text area not found in DOM');
     noteTextArea.innerHTML = jsonParsed.note || '';
     return jsonParsed;
@@ -82,7 +85,40 @@ async function fetchNotes(signal) {
   }
 }
 
-async function fetchInventoryOverview(_signal) { return null; }
+async function fetchInventoryOverview(signal) {
+  try {
+    const response = await fetchData('/api/dashboard/inventory_summary', true, { signal });
+    if (!response || response.length === 0) throw new Error('No data received from /api/dashboard/inventory_summary');
+    const jsonParsed = JSON.parse(response);
+    if (!jsonParsed || Object.keys(jsonParsed).length === 0 || (jsonParsed && typeof jsonParsed === 'object' && Object.prototype.hasOwnProperty.call(jsonParsed, '__proto__'))) {
+      throw new Error('Response JSON is empty or invalid');
+    }
+    const inventoryTableBody = document.getElementById('inventory-table-body');
+    if (!inventoryTableBody) throw new Error('Inventory table body element not found in DOM');
+    inventoryTableBody.innerHTML = '';
+    for (const item of jsonParsed) {
+      const fragment = document.createDocumentFragment();
+      const row = document.createElement('tr');
+      const modelCell = document.createElement('td');
+      modelCell.textContent = item.system_model || 'N/A';
+      fragment.appendChild(modelCell);
+      const countCell = document.createElement('td');
+      countCell.textContent = item.system_model_count != null ? item.system_model_count : '0';
+      fragment.appendChild(countCell);
+      const checkedOutCell = document.createElement('td');
+      checkedOutCell.textContent = item.total_checked_out != null ? item.total_checked_out : '0';
+      fragment.appendChild(checkedOutCell);
+      const availableCell = document.createElement('td');
+      availableCell.textContent = item.available_for_checkout != null ? item.available_for_checkout : '0';
+      fragment.appendChild(availableCell);
+      row.appendChild(fragment);
+      inventoryTableBody.replaceChildren(row);
+    }
+  } catch (err) {
+    if (err.name !== 'AbortError') console.error("fetchInventoryOverview error:", err);
+  }
+}
+
 async function fetchJobQueueOverview(_signal) { return null; }
 
 async function postNote() {

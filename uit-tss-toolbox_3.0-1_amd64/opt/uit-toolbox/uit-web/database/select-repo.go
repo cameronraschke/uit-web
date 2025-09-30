@@ -83,7 +83,7 @@ func (repo *Repo) GetBiosData(ctx context.Context, tag int) (*BiosData, error) {
 
 func (repo *Repo) GetOsData(ctx context.Context, tag int) (*OsData, error) {
 	sqlQuery := `SELECT locations.tagnumber, client_health.os_installed, client_health.os_name,
-	client_health.last_imaged_time, client_health.tpm_version, jobstats.boot_time
+	client_health.last_imaged_time AT TIME ZONE 'America/Chicago', client_health.tpm_version, jobstats.boot_time
 	FROM locations
 	LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
 	LEFT JOIN jobstats ON locations.tagnumber = jobstats.tagnumber AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
@@ -165,7 +165,7 @@ func (repo *Repo) GetJobQueueOverview(ctx context.Context) (*JobQueueOverview, e
 }
 
 func (repo *Repo) GetNotes(ctx context.Context, noteType string) (*NotesTable, error) {
-	sqlQuery := `SELECT time, note_type, note FROM notes WHERE note_type = $1 ORDER BY time DESC LIMIT 1;`
+	sqlQuery := `SELECT time AT TIME ZONE 'America/Chicago', note_type, note FROM notes WHERE note_type = $1 ORDER BY time DESC LIMIT 1;`
 
 	var notesTable NotesTable
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, noteType)
@@ -177,4 +177,51 @@ func (repo *Repo) GetNotes(ctx context.Context, noteType string) (*NotesTable, e
 		return nil, err
 	}
 	return &notesTable, nil
+}
+
+func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) (*DashboardInventorySummary, error) {
+	sqlQuery := `WITH latest_locations AS (
+		SELECT DISTINCT ON (locations.tagnumber) locations.tagnumber, locations.department
+		FROM locations
+		ORDER BY locations.tagnumber, locations.time DESC
+	),
+	latest_checkouts AS (
+		SELECT DISTINCT ON (checkouts.tagnumber) checkouts.tagnumber, checkouts.checkout_date, checkouts.return_date
+		FROM checkouts
+		ORDER BY checkouts.tagnumber, checkouts.time DESC
+	),
+	systems AS (
+		SELECT system_data.tagnumber, system_data.system_model
+		FROM system_data
+		WHERE system_data.system_model IS NOT NULL
+	),
+	joined AS (
+		SELECT systems.system_model,
+			(latest_checkouts.checkout_date IS NOT NULL AND latest_checkouts.return_date IS NULL)
+				OR (latest_checkouts.return_date IS NOT NULL AND latest_checkouts.return_date > NOW()) AS is_checked_out,
+			(latest_locations.department IS NOT NULL AND latest_locations.department NOT IN ('property', 'pre-property')) AS loc_ok
+		FROM systems
+		LEFT JOIN latest_checkouts ON latest_checkouts.tagnumber = systems.tagnumber
+		LEFT JOIN latest_locations ON latest_locations.tagnumber = systems.tagnumber
+	)
+	SELECT system_model,
+		COUNT(*) AS system_model_count,
+		COUNT(*) FILTER (WHERE is_checked_out) AS total_checked_out,
+		COUNT(*) FILTER (WHERE NOT is_checked_out AND loc_ok) AS available_for_checkout
+	FROM joined
+	GROUP BY system_model
+	ORDER BY system_model_count DESC;`
+
+	var dashboardInventorySummary DashboardInventorySummary
+	row := repo.DB.QueryRowContext(ctx, sqlQuery)
+	if err := row.Scan(
+		&dashboardInventorySummary.SystemModel,
+		&dashboardInventorySummary.SystemModelCount,
+		&dashboardInventorySummary.TotalCheckedOut,
+		&dashboardInventorySummary.AvailableForCheckout,
+	); err != nil {
+		return nil, err
+	}
+
+	return &dashboardInventorySummary, nil
 }

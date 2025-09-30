@@ -55,3 +55,10 @@ type JobQueueOverview struct {
 	TotalActiveJobs         int `json:"total_active_jobs"`
 	TotalActiveBlockingJobs int `json:"total_active_blocking_jobs"`
 }
+
+type DashboardInventorySummary struct {
+	SystemModel          string `json:"system_model"`
+	SystemModelCount     int    `json:"system_model_count"`
+	TotalCheckedOut      int    `json:"total_checked_out"`
+	AvailableForCheckout int    `json:"available_for_checkout"`
+}
