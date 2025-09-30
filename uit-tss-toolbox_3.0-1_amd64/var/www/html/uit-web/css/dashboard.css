@@ -60,6 +60,23 @@
   background: #f1f1f1;
 }
 
+.flex-container.home {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem 1rem 2rem;
+  gap: 1rem;
+}
+
+.flex-box.home {
+  display: flex;
+  flex: 1 1 45%;
+  font-size: 1.1rem;
+}
+
+.flex-box.home.notes-section div {
+  width: 100%;
+}
 
 .flex-box.home.inventory-summary-section {
   display: flex;

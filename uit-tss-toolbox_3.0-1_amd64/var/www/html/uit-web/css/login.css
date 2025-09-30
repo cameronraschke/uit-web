@@ -1,3 +1,12 @@
+.flex-container.login {
+  flex-direction: column;
+  align-items: center;
+}
+
+.flex-container.login.button {
+  flex-direction: column;
+  align-items: center;
+}
 
 .flex-box.login {
   display: flex;
