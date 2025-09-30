@@ -7,7 +7,7 @@
 
 #note-text:focus {
   outline: none;
-  border: 2px solid #007BFF;
+  border: 1px solid #007BFF;
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }
 
@@ -78,12 +78,9 @@
   width: 100%;
 }
 
-
-
 .flex-box.home.inventory-summary-section div {
   width: 100%;
 }
-
 
 .flex-box.home.notes-section {
   display: flex;
