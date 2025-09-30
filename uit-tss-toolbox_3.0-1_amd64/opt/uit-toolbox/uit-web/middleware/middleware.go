@@ -360,7 +360,7 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if requestURL == "/login" || requestURL == "/logout" || requestURL == "/dashboard" {
+		if requestURL == "/login" || requestURL == "/logout" || requestURL == "/dashboard" || requestURL == "/inventory" {
 			requestURL = requestURL + ".html"
 		}
 

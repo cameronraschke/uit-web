@@ -70,9 +70,11 @@
   border-radius: 1rem;
   background-color: #f9f9f9;
 }
+
 .flex-box.home.inventory-summary-section div {
   width: 100%;
 }
+
 .flex-box.home.inventory-summary-section table {
   width: 100%;
   background-color: white;
@@ -80,11 +82,13 @@
   margin-top: 5rem;
   text-align: left;
 }
+
 .flex-box.home.inventory-summary-section table thead {
   background-color: #FFF9D9;
   font-weight: bold;
   border-bottom: 2px solid black;
 }
+
 .flex-box.home.inventory-summary-section table tfoot {
   background-color: #FFF9D9;
   border-top: 2px solid black;
@@ -92,15 +96,19 @@
   font-weight: bold;
   padding: 1rem 1rem 1rem 1rem;
 }
+
 .flex-box.home.inventory-summary-section table td, .flex-box.home.inventory-summary-section table th {
   padding: 1rem 1rem 1rem 1rem;
 }
+
 .flex-box.home.inventory-summary-section table tr {
   border-bottom: 1px solid #ddd;
 }
+
 .flex-box.home.inventory-summary-section table tr:nth-child(even) {
   background-color: #f2f2f2;
 }
+
 .flex-box.home.notes-section {
   display: flex;
   align-self: flex-start;
