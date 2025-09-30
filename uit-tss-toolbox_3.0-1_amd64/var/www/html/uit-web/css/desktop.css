@@ -37,8 +37,11 @@ textarea {
 }
 
 .flex-container.footer {
-  flex-direction: column;
+  display: flex;
+  flex-direction: row;
+  font-size: 1.1rem;
   align-items: center;
+  justify-content: center;
 }
 
 .flex-box {
