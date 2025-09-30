@@ -10,8 +10,10 @@
 
 .flex-box.login {
   display: flex;
+  flex-direction: row;
   font-size: 1.1rem;
   align-items: center;
+  justify-content: center;
 }
 
 .flex-box.login label {
