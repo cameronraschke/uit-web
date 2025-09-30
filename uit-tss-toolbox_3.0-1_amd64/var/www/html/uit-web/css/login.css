@@ -1,0 +1,41 @@
+
+.flex-box.login {
+  display: flex;
+  font-size: 1.1rem;
+}
+
+.flex-box.login label {
+  display: flex;
+  margin: 2rem 0rem 0.5rem 1rem;
+}
+
+.flex-box.login input[type="text"], input[type="password"] {
+  display: flex;
+  font-size: 1.1rem;
+  margin: 0.5rem 1rem 1rem 1rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+}
+
+.flex-box.login input[type="text"]:invalid:user-invalid, input[type="password"]:invalid:user-invalid {
+  display: block;
+  color: red;
+  border: 2px solid red;
+  caret-color: red;
+}
+
+.flex-box.login input[type="text"]:valid, input[type="password"]:valid {
+  display: block;
+  color: black;
+  caret-color: black;
+}
+
+.flex-box.login small {
+  display: flex;
+  margin: 0.5rem 0rem 1rem 1rem;
+}
+
+.flex-box.login button {
+  display: flex;
+  margin: 1rem 0rem 1.5rem 0rem;
+  padding: 0.7rem 1rem 0.7rem 1rem;
+}

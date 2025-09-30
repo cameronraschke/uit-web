@@ -68,55 +68,7 @@ textarea {
   flex: 1 1 45%;
   font-size: 1.1rem;
 }
-.flex-box.home.inventory-summary-section {
-  display: flex;
-  align-self: flex-start;
-  margin: 1rem;
-  padding: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 1rem;
-  background-color: #f9f9f9;
-}
-.flex-box.home.inventory-summary-section div {
-  width: 100%;
-}
-.flex-box.home.inventory-summary-section table {
-  width: 100%;
-  background-color: white;
-  border-collapse: collapse;
-  margin-top: 5rem;
-  text-align: left;
-}
-.flex-box.home.inventory-summary-section table thead {
-  background-color: #FFF9D9;
-  font-weight: bold;
-  border-bottom: 2px solid black;
-}
-.flex-box.home.inventory-summary-section table tfoot {
-  background-color: #FFF9D9;
-  border-top: 2px solid black;
-  border-bottom: 2px solid black;
-  font-weight: bold;
-  padding: 1rem 1rem 1rem 1rem;
-}
-.flex-box.home.inventory-summary-section table td, .flex-box.home.inventory-summary-section table th {
-  padding: 1rem 1rem 1rem 1rem;
-}
-.flex-box.home.inventory-summary-section table tr {
-  border-bottom: 1px solid #ddd;
-}
-.flex-box.home.inventory-summary-section table tr:nth-child(even) {
-  background-color: #f2f2f2;
-}
-.flex-box.home.notes-section {
-  display: flex;
-  align-self: flex-start;
-  margin: 1rem;
-  padding: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 1rem;
-  background-color: #f9f9f9;
-}
+
 .flex-box.home.notes-section div {
   width: 100%;
 }
@@ -144,45 +96,4 @@ textarea {
 
 .flex-box.footer {
   display: flex;
-}
-
-.flex-box.login {
-  display: flex;
-  font-size: 1.1rem;
-}
-
-.flex-box.login label {
-  display: flex;
-  margin: 2rem 0rem 0.5rem 1rem;
-}
-
-.flex-box.login input[type="text"], input[type="password"] {
-  display: flex;
-  font-size: 1.1rem;
-  margin: 0.5rem 1rem 1rem 1rem;
-  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
-}
-
-.flex-box.login input[type="text"]:invalid:user-invalid, input[type="password"]:invalid:user-invalid {
-  display: block;
-  color: red;
-  border: 2px solid red;
-  caret-color: red;
-}
-
-.flex-box.login input[type="text"]:valid, input[type="password"]:valid {
-  display: block;
-  color: black;
-  caret-color: black;
-}
-
-.flex-box.login small {
-  display: flex;
-  margin: 0.5rem 0rem 1rem 1rem;
-}
-
-.flex-box.login button {
-  display: flex;
-  margin: 1rem 0rem 1.5rem 0rem;
-  padding: 0.7rem 1rem 0.7rem 1rem;
 }

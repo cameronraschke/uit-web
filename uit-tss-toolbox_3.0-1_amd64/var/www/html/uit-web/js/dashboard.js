@@ -104,19 +104,19 @@ async function fetchInventoryOverview(signal) {
 
       const modelCell = document.createElement('td');
       modelCell.textContent = item.system_model || 'N/A';
-      fragment.appendChild(modelCell);
+      row.appendChild(modelCell);
 
       const countCell = document.createElement('td');
       countCell.textContent = item.system_model_count != null ? item.system_model_count : '0';
-      fragment.appendChild(countCell);
+      row.appendChild(countCell);
 
       const checkedOutCell = document.createElement('td');
       checkedOutCell.textContent = item.total_checked_out != null ? item.total_checked_out : '0';
-      fragment.appendChild(checkedOutCell);
+      row.appendChild(checkedOutCell);
 
       const availableCell = document.createElement('td');
       availableCell.textContent = item.available_for_checkout != null ? item.available_for_checkout : '0';
-      fragment.appendChild(availableCell);
+      row.appendChild(availableCell);
 
       fragment.appendChild(row);
     }

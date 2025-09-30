@@ -30,13 +30,13 @@
 #inventory-summary-table tfoot td {
   padding: 4px 6px;
   text-align: left;
-  font-weight: 600;
+  font-weight: bold;
   border-bottom: 1px solid #ddd;
 }
 
 #inventory-summary-table tbody {
   display: block;
-  max-height: 25rem;
+  max-height: 20em;
   overflow-y: auto;
   width: 100%;
 }
@@ -48,7 +48,6 @@
 }
 
 #inventory-summary-table tbody td {
-  padding: 4px 6px;
   border-bottom: 1px solid #eee;
   word-break: break-word;
 }
@@ -58,5 +57,56 @@
 }
 
 #inventory-summary-table tbody tr:hover {
-  background: #f0f6ff;
+  background: #f1f1f1;
+}
+
+
+.flex-box.home.inventory-summary-section {
+  display: flex;
+  align-self: flex-start;
+  margin: 1rem;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 1rem;
+  background-color: #f9f9f9;
+}
+.flex-box.home.inventory-summary-section div {
+  width: 100%;
+}
+.flex-box.home.inventory-summary-section table {
+  width: 100%;
+  background-color: white;
+  border-collapse: collapse;
+  margin-top: 5rem;
+  text-align: left;
+}
+.flex-box.home.inventory-summary-section table thead {
+  background-color: #FFF9D9;
+  font-weight: bold;
+  border-bottom: 2px solid black;
+}
+.flex-box.home.inventory-summary-section table tfoot {
+  background-color: #FFF9D9;
+  border-top: 2px solid black;
+  border-bottom: 2px solid black;
+  font-weight: bold;
+  padding: 1rem 1rem 1rem 1rem;
+}
+.flex-box.home.inventory-summary-section table td, .flex-box.home.inventory-summary-section table th {
+  padding: 1rem 1rem 1rem 1rem;
+}
+.flex-box.home.inventory-summary-section table tr {
+  border-bottom: 1px solid #ddd;
+}
+.flex-box.home.inventory-summary-section table tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+.flex-box.home.notes-section {
+  display: flex;
+  align-self: flex-start;
+  margin: 1rem;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 1rem;
+  background-color: #f9f9f9;
 }
