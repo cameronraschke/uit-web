@@ -1,3 +1,12 @@
-#notes {
+#note-text {
+  background-color: white;
   min-width: 45%;
+  min-height: 10rem;
+  border: 1px solid #ccc;
+}
+
+#note-text:focus {
+  outline: none;
+  border: 2px solid #007BFF;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }

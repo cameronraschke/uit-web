@@ -74,7 +74,7 @@ async function fetchNotes(signal) {
     }
     const noteTextArea = document.getElementById('note-text');
     if (!noteTextArea) throw new Error('Note text area not found in DOM');
-    noteTextArea.value = jsonParsed.note || '';
+    noteTextArea.innerHTML = jsonParsed.note || '';
     return jsonParsed;
   } catch (err) {
     if (err.name !== 'AbortError') console.error("fetchNotes error:", err);

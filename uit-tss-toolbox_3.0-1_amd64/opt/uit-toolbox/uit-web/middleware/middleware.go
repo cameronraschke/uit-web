@@ -770,13 +770,14 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 		uitSessionIDCookie, sessionErr := req.Cookie("uit_session_id")
 		uitBasicCookie, basicErr := req.Cookie("uit_basic_token")
 		uitBearerCookie, bearerErr := req.Cookie("uit_bearer_token")
-		uitCSRFCookie, csrfErr := req.Cookie("uit_csrf_token")
+		uitCSRFCookie, _ := req.Cookie("uit_csrf_token")
 
-		if sessionErr != nil || basicErr != nil || bearerErr != nil || csrfErr != nil {
+		if sessionErr != nil || basicErr != nil || bearerErr != nil {
 			if sessionErr != nil && sessionErr != http.ErrNoCookie {
 				log.Error("Error retrieving UIT cookies: " + requestIP + " (" + requestURL + ")")
 			}
 			log.Info("No authentication cookies found for request: " + requestIP + " (" + requestURL + ")")
+			log.Info("Basic cookie error: " + fmt.Sprintf("%v", basicErr) + ", Bearer cookie error: " + fmt.Sprintf("%v", bearerErr) + ", SessionID cookie error: " + fmt.Sprintf("%v", sessionErr) + ")")
 			// http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
 			http.Redirect(w, req, "/login", http.StatusSeeOther)
 			return
