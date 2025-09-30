@@ -89,7 +89,9 @@ textarea {
 
 .flex-box.footer {
   display: flex;
+  flex-direction: row;
   align-items: center;
+  justify-content: center;
 }
 
 .flex-box table {
