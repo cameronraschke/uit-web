@@ -161,30 +161,3 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION getDashboardInventorySummary()
-RETURNS TABLE (
-    system_model TEXT,
-    system_model_count INT,
-    total_checked_out INT,
-    available_for_checkout INT
-) LANGUAGE sql AS
-$$
-DECLARE
-  system_model_record RECORD;
-  available_for_checkout INTEGER;
-BEGIN
-FOR system_model_record IN 
-  SELECT t1.system_model, t1.system_model_count, t2.total_checked_out
-  FROM
-  (SELECT system_model, system_model_count FROM (SELECT DISTINCT ON (system_model) system_model, COUNT(*) AS system_model_count FROM system_data GROUP BY system_model ORDER BY system_model, system_model_count DESC) s1 ORDER BY s1.system_model_count DESC) AS t1
-  LEFT JOIN checkouts ON checkouts.time IN (SELECT MAX(time) FROM checkouts GROUP BY tagnumber)
-  LEFT JOIN (SELECT system_data.system_model, COUNT(*) FILTER (WHERE (checkouts.checkout_date IS NOT NULL AND checkouts.return_date IS NULL) OR checkouts.return_date > NOW()) AS total_checked_out FROM checkouts LEFT JOIN system_data ON checkouts.tagnumber = system_data.tagnumber WHERE checkouts.time IN (SELECT MAX(time) FROM checkouts GROUP BY tagnumber) AND system_model IS NOT NULL GROUP BY system_model) AS t2
-  ON t1.system_model = t2.system_model
-LOOP
-  available_for_checkout := (SELECT COUNT(*) FROM locations LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber AND locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber) AND locations.department NOT IN ('property', 'pre-property') AND status IS FALSE AND system_data.system_model = system_model_record.system_model);
-END LOOP;
-
-RETURN system_model_record.system_model, COALESCE(system_model_record.system_model_count, 0), COALESCE(system_model_record.total_checked_out, 0), COALESCE(available_for_checkout, 0);
-END;
-$$;
-
