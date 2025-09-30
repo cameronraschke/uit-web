@@ -260,7 +260,6 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		// Clean entire path and format the URL path
 		fullPath := path.Clean(normalizedPath)
 		if !path.IsAbs(fullPath) ||
-			strings.TrimSpace(fullPath) == "" ||
 			strings.Contains(fullPath, "..") ||
 			strings.Contains(fullPath, "../") ||
 			fullPath == "/" ||
