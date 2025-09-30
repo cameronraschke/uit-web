@@ -265,7 +265,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 			fullPath == "/" ||
 			fullPath == "." {
 
-			log.Warning("Empty file path requested: " + requestIP)
+			log.Warning("Empty file path requested: " + requestIP + " (" + fullPath + ")")
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
