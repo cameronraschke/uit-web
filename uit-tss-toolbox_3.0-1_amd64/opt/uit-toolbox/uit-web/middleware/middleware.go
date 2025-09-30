@@ -262,7 +262,6 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		if !path.IsAbs(fullPath) ||
 			strings.Contains(fullPath, "..") ||
 			strings.Contains(fullPath, "../") ||
-			fullPath == "/" ||
 			fullPath == "." {
 
 			log.Warning("Empty file path requested: " + requestIP + " (" + fullPath + ")")
