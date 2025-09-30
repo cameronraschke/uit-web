@@ -29,12 +29,11 @@ textarea {
   flex-wrap: wrap;
 }
 
-.flex-container.header {
+.flex-container.nav {
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem 1rem 2rem;
-  border-bottom: 1px solid #ccc;
 }
 
 .flex-container.footer {
@@ -44,6 +43,16 @@ textarea {
 
 .flex-box {
   display: flex;
+  align-self: flex-start;
+  margin: 1rem;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 1rem;
+  background-color: #f9f9f9;
+}
+
+.flex-box div {
+  width: 100%;
 }
 
 .flex-box.header {
@@ -51,23 +60,65 @@ textarea {
   font-size: 1.5rem;
   font-weight: bold;
 }
+
 .flex-box.nav {
   display: flex;
-  width: 100dvw;
-  justify-content: space-between;
   align-items: center;
 }
-.nav-left {
+
+.flex-box.nav > div {
+  width: auto;
+  flex: 0 0 auto;
   display: flex;
-  justify-self: flex-start;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.75rem;
 }
-.nav-right {
+
+.flex-box.nav {
   display: flex;
-  justify-self: flex-end;
-  gap: 1rem;
+  width: 100%;
+  align-items: center;
+}
+.flex-box.nav .nav-left {
+  display: flex;
+  gap: 0.75rem;
+}
+.flex-box.nav .logout {
+  margin-left: auto;
 }
 
 .flex-box.footer {
   display: flex;
+}
+
+.flex-box table {
+  width: 100%;
+  background-color: white;
+  border-collapse: collapse;
+  margin-top: 5rem;
+  text-align: left;
+}
+
+.flex-box table thead {
+  font-weight: bold;
+  border-bottom: 2px solid black;
+}
+
+.flex-box table tfoot {
+  border-top: 2px solid black;
+  border-bottom: 2px solid black;
+  font-weight: bold;
+  padding: 1rem 1rem 1rem 1rem;
+}
+
+.flex-box table td, .flex-box table th {
+  padding: 1rem 1rem 1rem 1rem;
+}
+
+.flex-box table tr {
+  border-bottom: 1px solid #ddd;
+}
+
+.flex-box table tr:nth-child(even) {
+  background-color: #f2f2f2;
 }

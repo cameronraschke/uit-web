@@ -15,7 +15,7 @@
     <div><h1>UIT - ITSC Inventory Management</h1></div>
     <div id="main-content"><h2>Update and View Inventory</h2></div>
 
-    <div class="flex-container inventory">
+    <div class="flex-container inventory inventory-form">
       <div class="flex-box inventory">
         <form id="inventory-form" method="POST" enctype="multipart/form-data" onsubmit="return false;">
           <input type="hidden" id="csrf-token" value="" />
@@ -38,25 +38,24 @@
         </form>
       </div>
 
-      <div class="flex-box inventory">
+      <div class="flex-box inventory inventory-search">
         <form id="inventory-search-form">
-          <button type="button" id="inventory-refresh-button">Refresh Inventory</button>
-          <input type="text" id="inventory-search-tagnumber" name="tagnumber" 
+          <div><button type="button" id="inventory-refresh-button">Refresh Inventory</button></div>
+          <div><input type="text" id="inventory-search-tagnumber" name="tagnumber" 
             form="inventory-search-form" 
             placeholder="Tag Number"
-            pattern="[0-9]*" />
-          <select id="inventory-search-model" name="model" form="inventory-search-form"></select>
-          <select id="inventory-search-location" name="location" form="inventory-search-form"></select>
-          <select id="inventory-search-status" name="status" form="inventory-search-form"></select>
+            pattern="[0-9]*" /></div>
+          <div><select id="inventory-search-model" name="model" form="inventory-search-form"></select></div>
+          <div><select id="inventory-search-location" name="location" form="inventory-search-form"></select></div>
+          <div><select id="inventory-search-status" name="status" form="inventory-search-form"></select></div>
         </form>
       </div>
     </div>
 
-    <div class="flex-container inventory">
         <div id="inventory-search-container">
           <input id="inventory-search" type="text" placeholder="Filter inventory...">
         </div>
-      <div class="flex-box inventory">
+    <div class="flex-box inventory inventory-summary">
         <table id="inventory-summary-table">
           <thead id="inventory-table-head">
             <tr>
@@ -76,7 +75,6 @@
             </tr>
           </tfoot>
         </table>
-      </div>
     </div>
 
 
