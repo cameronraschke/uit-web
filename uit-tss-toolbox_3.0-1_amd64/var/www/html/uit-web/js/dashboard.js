@@ -36,7 +36,7 @@ function startDashboardPolling(intervalMs = 3000) {
 document.addEventListener("DOMContentLoaded", () => {
   startDashboardPolling(3000);
   fetchNotes();
-  const textArea = document.getElementById('note-textarea');
+  const textArea = document.getElementById('note-text');
   const noteSubmitButton = document.getElementById('update-note-button');
   noteSubmitButton.addEventListener('click', async () => {
     textArea.disabled = true;
@@ -72,7 +72,7 @@ async function fetchNotes(signal) {
     if (!jsonParsed || Object.keys(jsonParsed).length === 0 || (jsonParsed && typeof jsonParsed === 'object' && Object.prototype.hasOwnProperty.call(jsonParsed, '__proto__'))) {
         throw new Error('Response JSON is empty or invalid');
     }
-    const noteTextArea = document.getElementById('note-textarea');
+    const noteTextArea = document.getElementById('note-text');
     if (!noteTextArea) throw new Error('Note text area not found in DOM');
     noteTextArea.value = jsonParsed.note || '';
     return jsonParsed;
@@ -86,12 +86,12 @@ async function fetchInventoryOverview(_signal) { return null; }
 async function fetchJobQueueOverview(_signal) { return null; }
 
 async function postNote() {
-  const noteTextArea = document.getElementById('note-textarea');
+  const noteTextArea = document.getElementById('note-text');
   if (!noteTextArea) {
     alert('Note text area not found in DOM');
     return;
   }
-  const noteContent = noteTextArea.value.trim();
+  const noteContent = noteTextArea.innerHTML.trim();
   const noteData = {
     note_type: 'general',
     note: noteContent

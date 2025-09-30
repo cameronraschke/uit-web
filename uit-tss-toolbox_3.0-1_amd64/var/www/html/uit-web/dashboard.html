@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="stylesheet" href="/css/desktop.css" />
+    <link rel="stylesheet" href="/css/dashboard.css" />
     <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/init.js"></script>
     <title>Home - ITSC Mgmt</title>
   </head>
@@ -20,8 +21,8 @@
           <h2>Notes</h2>
           <p>Note last updated: <span id="note-date"></span></p>
           <form id="note-form" onsubmit="return false;">
-            <label for="note-textarea">Enter your notes below:</label><br />
-            <textarea id="note-textarea" form="note-form" rows="6" cols="100"></textarea>
+            <label for="note-text">Enter your notes below:</label><br />
+            <div id="note-text" form="note-form" contenteditable="true"></div>
             <div><input id="update-note-button" type="button" value="Update Note" /></div>
           </form>
         </div>
