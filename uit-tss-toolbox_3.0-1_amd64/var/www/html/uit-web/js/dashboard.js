@@ -95,25 +95,32 @@ async function fetchInventoryOverview(signal) {
     }
     const inventoryTableBody = document.getElementById('inventory-table-body');
     if (!inventoryTableBody) throw new Error('Inventory table body element not found in DOM');
-    inventoryTableBody.innerHTML = '';
-    for (const item of jsonParsed) {
-      const fragment = document.createDocumentFragment();
+
+    const rows = Array.isArray(jsonParsed) ? jsonParsed : [jsonParsed];
+
+    const fragment = document.createDocumentFragment();
+    for (const item of rows) {
       const row = document.createElement('tr');
+
       const modelCell = document.createElement('td');
       modelCell.textContent = item.system_model || 'N/A';
       fragment.appendChild(modelCell);
+
       const countCell = document.createElement('td');
       countCell.textContent = item.system_model_count != null ? item.system_model_count : '0';
       fragment.appendChild(countCell);
+
       const checkedOutCell = document.createElement('td');
       checkedOutCell.textContent = item.total_checked_out != null ? item.total_checked_out : '0';
       fragment.appendChild(checkedOutCell);
+
       const availableCell = document.createElement('td');
       availableCell.textContent = item.available_for_checkout != null ? item.available_for_checkout : '0';
       fragment.appendChild(availableCell);
-      row.appendChild(fragment);
-      inventoryTableBody.replaceChildren(row);
+
+      fragment.appendChild(row);
     }
+    inventoryTableBody.replaceChildren(fragment);
   } catch (err) {
     if (err.name !== 'AbortError') console.error("fetchInventoryOverview error:", err);
   }

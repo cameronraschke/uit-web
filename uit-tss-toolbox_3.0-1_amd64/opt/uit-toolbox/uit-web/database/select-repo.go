@@ -179,7 +179,7 @@ func (repo *Repo) GetNotes(ctx context.Context, noteType string) (*NotesTable, e
 	return &notesTable, nil
 }
 
-func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) (*DashboardInventorySummary, error) {
+func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]DashboardInventorySummary, error) {
 	sqlQuery := `WITH latest_locations AS (
 		SELECT DISTINCT ON (locations.tagnumber) locations.tagnumber, locations.department
 		FROM locations
@@ -212,16 +212,28 @@ func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) (*DashboardI
 	GROUP BY system_model
 	ORDER BY system_model_count DESC;`
 
-	var dashboardInventorySummary DashboardInventorySummary
-	row := repo.DB.QueryRowContext(ctx, sqlQuery)
-	if err := row.Scan(
-		&dashboardInventorySummary.SystemModel,
-		&dashboardInventorySummary.SystemModelCount,
-		&dashboardInventorySummary.TotalCheckedOut,
-		&dashboardInventorySummary.AvailableForCheckout,
-	); err != nil {
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var dashboardInventorySummary []DashboardInventorySummary
+	for rows.Next() {
+		var summary DashboardInventorySummary
+		if err := rows.Scan(
+			&summary.SystemModel,
+			&summary.SystemModelCount,
+			&summary.TotalCheckedOut,
+			&summary.AvailableForCheckout,
+		); err != nil {
+			return nil, err
+		}
+		dashboardInventorySummary = append(dashboardInventorySummary, summary)
+	}
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return &dashboardInventorySummary, nil
+	return dashboardInventorySummary, nil
 }
