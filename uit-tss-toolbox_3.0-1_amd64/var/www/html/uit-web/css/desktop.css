@@ -3,11 +3,23 @@ body {
   margin: 0;
 }
 
+div {
+  padding: 1rem;
+  margin: 0.5rem;
+  box-sizing: border-box;
+}
+
 h1, h2 {
   text-align: center;
 }
 
-button, input[type="button"] {
+a {
+  font-weight: bold;
+  color: #C8102E;
+  text-decoration: underline;
+}
+
+button, input[type="button"], input[type="submit"], input[type="reset"], input[type="file"] {
   font-size: 1.1rem;
 }
 
@@ -134,4 +146,16 @@ textarea {
 
 .flex-box table tr:nth-child(even) {
   background-color: #f2f2f2;
+}
+
+
+
+.grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  margin: 1rem;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 1rem;
+  background-color: #f9f9f9;
 }

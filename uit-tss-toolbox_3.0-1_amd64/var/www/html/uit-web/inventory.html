@@ -19,7 +19,7 @@
       <div class="flex-box inventory">
         <form id="inventory-form" method="POST" enctype="multipart/form-data" onsubmit="return false;">
           <input type="hidden" id="csrf-token" value="" />
-          <input type="text" id="inventory-tag-input"
+          <div><input type="text" id="inventory-tag-input"
             placeholder="Enter Tag Number"
             minlength="6"
             maxlength="6"
@@ -29,22 +29,25 @@
             pattern="[0-9]{6}"
             autofocus
             required
-            />
-          <button type="button" id="inventory-tag-button">Fetch Inventory</button>
-          <label for="inventory-file-input">Upload Inventory Image(s):</label>
-          <input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple />
-          <input type="submit" id="inventory-submit-button" value="Submit Inventory Update" />
-          <p id="inventory-error" class="error-message"></p>
+            /></div>
+          <div><button type="button" id="inventory-tag-button">Fetch Inventory</button></div>
+          <div><label for="inventory-file-input">Upload Inventory Image(s):</label></div>
+          <div><input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple /></div>
+          <div><input type="submit" id="inventory-submit-button" value="Submit Inventory Update" /></div>
+          <div><p id="inventory-error" class="error-message"></p></div>
         </form>
       </div>
 
-      <div class="flex-box inventory inventory-search">
+      <div class="grid-container">
         <form id="inventory-search-form">
-          <div><button type="button" id="inventory-refresh-button">Refresh Inventory</button></div>
-          <div><input type="text" id="inventory-search-tagnumber" name="tagnumber" 
+          <div>
+            <div><label for="inventory-search-tagnumber">Search Inventory:</label></div>
+            <div><button type="button" id="inventory-refresh-button">Refresh Inventory</button></div>
+            <div><input type="text" id="inventory-search-tagnumber" name="tagnumber" 
             form="inventory-search-form" 
             placeholder="Tag Number"
             pattern="[0-9]*" /></div>
+          </div>
           <div><select id="inventory-search-model" name="model" form="inventory-search-form"></select></div>
           <div><select id="inventory-search-location" name="location" form="inventory-search-form"></select></div>
           <div><select id="inventory-search-status" name="status" form="inventory-search-form"></select></div>
