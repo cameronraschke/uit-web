@@ -1,8 +1,21 @@
-.grid-container {
+.flex-container.inventory {
+  justify-content: center;
+  align-items: center;
+  gap: 2dvw;
+  padding: 1dvw;
+}
+
+.grid-container.inventory {
+  height: 50dvh;
   grid-template-columns: repeat(auto-fit, minmax(35dvw, 1fr));
 }
 
-.grid-container.inventory-form div {
+.grid-box {
+  max-width: fit-content;
+  display: inline-grid;
+}
+
+.grid-box.inventory-form div {
   max-width: fit-content;
   display: inline-grid;
 }

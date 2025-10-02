@@ -15,30 +15,33 @@
     <div><h1>UIT - ITSC Inventory Management</h1></div>
     <div id="main-content"><h2>Update and View Inventory</h2></div>
 
-    <div class="flex-container inventory inventory-form">
-      <div class="grid-container">
+    <div class="flex-container inventory">
+      <div class="grid-container inventory">
         <form id="inventory-form" method="POST" enctype="multipart/form-data" onsubmit="return false;">
           <input type="hidden" id="csrf-token" value="" />
-          <div class="grid-container inventory-form"><input type="text" id="inventory-tag-input"
-            placeholder="Enter Tag Number"
-            minlength="6"
-            maxlength="6"
-            autocomplete="off"
-            autocorrect="off"
-            autocapitalize="off"
-            pattern="[0-9]{6}"
-            autofocus
-            required
-            /></div>
-          <div class="grid-container inventory-form"><button type="button" id="inventory-tag-button">Fetch Inventory</button></div>
-          <div class="grid-container inventory-form"><label for="inventory-file-input">Upload Inventory Image(s):</label></div>
-          <div class="grid-container inventory-form"><input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple /></div>
-          <div class="grid-container inventory-form"><input type="submit" id="inventory-submit-button" value="Submit Inventory Update" /></div>
-          <div class="grid-container inventory-form"><p id="inventory-error" class="error-message"></p></div>
+          <div>
+            <div class="grid-box inventory-form"><label for="inventory-tag-input">Inventory Tag Number:</label>
+            <input type="text" id="inventory-tag-input"
+              placeholder="Enter Tag Number"
+              minlength="6"
+              maxlength="6"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              pattern="[0-9]{6}"
+              autofocus
+              required
+              />
+            <button type="button" id="inventory-tag-button">Fetch Inventory</button></div>
+          </div>
+          <div class="grid-box inventory-form"><label for="inventory-file-input">Upload Inventory Image(s):</label></div>
+          <div class="grid-box inventory-form"><input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple /></div>
+          <div class="grid-box inventory-form"><input type="submit" id="inventory-submit-button" value="Submit Inventory Update" /></div>
+          <div class="grid-box inventory-form"><p id="inventory-error" class="error-message"></p></div>
         </form>
       </div>
 
-      <div class="grid-container">
+      <div class="grid-container inventory">
         <form id="inventory-search-form">
           <div>
             <div><label for="inventory-search-tagnumber">Search Inventory:</label></div>
