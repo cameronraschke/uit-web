@@ -87,7 +87,7 @@ func main() {
 		middleware.LimitRequestSizeMiddleware,
 		middleware.TimeoutMiddleware,
 		middleware.StoreClientIPMiddleware,
-		middleware.RateLimitMiddleware("lan"),
+		middleware.RateLimitMiddleware("file"),
 		middleware.AllowIPRangeMiddleware("lan"),
 		middleware.CheckHttpVersionMiddleware,
 		middleware.TLSMiddleware,
