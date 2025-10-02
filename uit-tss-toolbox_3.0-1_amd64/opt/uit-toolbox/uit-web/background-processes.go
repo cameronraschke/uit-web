@@ -13,9 +13,9 @@ func backgroundProcesses() {
 	// Start auth map cleanup goroutine
 	startAuthMapCleanup(15 * time.Second)
 	// Start IP blocklist cleanup goroutine
-	startIPBlocklistCleanup(1 * time.Minute)
+	startIPBlocklistCleanup(5 * time.Minute)
 	// Start IP limiter cleanup goroutine
-	startIPLimiterCleanup(1 * time.Minute)
+	startIPLimiterCleanup(5 * time.Minute)
 	// Start memory monitor goroutine
 	startMemoryMonitor(4000*1024*1024, 5*time.Second) // 4GB limit, check every 5s
 }
@@ -25,9 +25,12 @@ func startAuthMapCleanup(interval time.Duration) {
 	go func() {
 		for {
 			time.Sleep(interval)
+			originalCount := config.GetAuthSessionCount()
 			config.ClearExpiredAuthSessions()
 			sessionCount := config.RefreshAndGetAuthSessionCount()
-			log.Info("(Background) Auth session cleanup done (Sessions: " + strconv.Itoa(int(sessionCount)) + ")")
+			if originalCount != sessionCount {
+				log.Info("(Background) Auth session cleanup done (Sessions: " + strconv.Itoa(int(sessionCount)) + ")")
+			}
 		}
 	}()
 }
