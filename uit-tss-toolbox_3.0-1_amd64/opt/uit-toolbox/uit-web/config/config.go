@@ -380,6 +380,7 @@ func InitApp() (*AppState, error) {
 		{Filename: "reports.html", Allowed: true},
 		{Filename: "reports.js", Allowed: true},
 		{Filename: "go-latest.linux-amd64.tar.gz", Allowed: true},
+		{Filename: "uit-client.conf", Allowed: true},
 	}
 
 	allowed := make(map[string]bool, len(allowedFiles))
