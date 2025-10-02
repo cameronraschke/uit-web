@@ -1,0 +1,8 @@
+.grid-container {
+  grid-template-columns: repeat(auto-fit, minmax(35dvw, 1fr));
+}
+
+.grid-container.inventory-form div {
+  max-width: fit-content;
+  display: inline-grid;
+}

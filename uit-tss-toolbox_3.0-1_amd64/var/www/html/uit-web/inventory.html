@@ -16,10 +16,10 @@
     <div id="main-content"><h2>Update and View Inventory</h2></div>
 
     <div class="flex-container inventory inventory-form">
-      <div class="flex-box inventory">
+      <div class="grid-container">
         <form id="inventory-form" method="POST" enctype="multipart/form-data" onsubmit="return false;">
           <input type="hidden" id="csrf-token" value="" />
-          <div><input type="text" id="inventory-tag-input"
+          <div class="grid-container inventory-form"><input type="text" id="inventory-tag-input"
             placeholder="Enter Tag Number"
             minlength="6"
             maxlength="6"
@@ -30,11 +30,11 @@
             autofocus
             required
             /></div>
-          <div><button type="button" id="inventory-tag-button">Fetch Inventory</button></div>
-          <div><label for="inventory-file-input">Upload Inventory Image(s):</label></div>
-          <div><input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple /></div>
-          <div><input type="submit" id="inventory-submit-button" value="Submit Inventory Update" /></div>
-          <div><p id="inventory-error" class="error-message"></p></div>
+          <div class="grid-container inventory-form"><button type="button" id="inventory-tag-button">Fetch Inventory</button></div>
+          <div class="grid-container inventory-form"><label for="inventory-file-input">Upload Inventory Image(s):</label></div>
+          <div class="grid-container inventory-form"><input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple /></div>
+          <div class="grid-container inventory-form"><input type="submit" id="inventory-submit-button" value="Submit Inventory Update" /></div>
+          <div class="grid-container inventory-form"><p id="inventory-error" class="error-message"></p></div>
         </form>
       </div>
 
