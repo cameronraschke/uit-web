@@ -46,6 +46,7 @@ textarea {
 .flex-container {
   display: flex;
   flex-wrap: wrap;
+  min-width: fit-content;
 }
 
 .flex-container.nav {
@@ -71,6 +72,7 @@ textarea {
   border: 1px solid #ccc;
   border-radius: 1rem;
   background-color: #f9f9f9;
+  min-width: fit-content;
 }
 
 .flex-box div {

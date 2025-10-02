@@ -6,16 +6,26 @@
 }
 
 .grid-container.inventory {
-  height: 50dvh;
+  max-width: 35dvw;
+  min-height: 50dvh;
+  height: fit-content;
   grid-template-columns: repeat(auto-fit, minmax(35dvw, 1fr));
 }
 
 .grid-box {
-  max-width: fit-content;
+  min-width: fit-content;
   display: inline-grid;
 }
 
-.grid-box.inventory-form div {
-  max-width: fit-content;
+.grid-box.inventory-form-row {
+  min-width: fit-content;
   display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.grid-box.inventory-form-row div {
+  min-width: fit-content;
+  max-width: 50%;
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
 }

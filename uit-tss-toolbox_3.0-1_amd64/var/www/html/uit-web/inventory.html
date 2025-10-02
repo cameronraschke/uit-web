@@ -19,8 +19,8 @@
       <div class="grid-container inventory">
         <form id="inventory-form" method="POST" enctype="multipart/form-data" onsubmit="return false;">
           <input type="hidden" id="csrf-token" value="" />
-          <div>
-            <div class="grid-box inventory-form"><label for="inventory-tag-input">Inventory Tag Number:</label>
+          <div class="grid-box inventory-form-row">
+            <div><label for="inventory-tag-input">Inventory Tag Number:</label>
             <input type="text" id="inventory-tag-input"
               placeholder="Enter Tag Number"
               minlength="6"
@@ -32,12 +32,24 @@
               autofocus
               required
               />
+              <label for="inventory-serial-input">Serial Number:</label>
+              <input type="text" id="inventory-serial-input"
+                placeholder="Enter Serial Number"
+                minlength="4"
+                maxlength="50"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                pattern="[A-Za-z0-9\-_]{1,50}"
+                />
+            <div></div>
             <button type="button" id="inventory-tag-button">Fetch Inventory</button></div>
+            <div></div>
           </div>
-          <div class="grid-box inventory-form"><label for="inventory-file-input">Upload Inventory Image(s):</label></div>
-          <div class="grid-box inventory-form"><input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple /></div>
-          <div class="grid-box inventory-form"><input type="submit" id="inventory-submit-button" value="Submit Inventory Update" /></div>
-          <div class="grid-box inventory-form"><p id="inventory-error" class="error-message"></p></div>
+          <div><label for="inventory-file-input">Upload Inventory Image(s):</label></div>
+          <div><input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple /></div>
+          <div><input type="submit" id="inventory-submit-button" value="Submit Inventory Update" /></div>
+          <div><p id="inventory-error" class="error-message"></p></div>
         </form>
       </div>
 
