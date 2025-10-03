@@ -93,39 +93,55 @@ async function fetchInventoryOverview(signal) {
     if (!jsonParsed || Object.keys(jsonParsed).length === 0 || (jsonParsed && typeof jsonParsed === 'object' && Object.prototype.hasOwnProperty.call(jsonParsed, '__proto__'))) {
       throw new Error('Response JSON is empty or invalid');
     }
-    const inventoryTableBody = document.getElementById('inventory-summary-row');
+    const inventoryTableBody = document.getElementById('inventory-summary');
     if (!inventoryTableBody) throw new Error('Inventory table body element not found in DOM');
 
     const rows = Array.isArray(jsonParsed) ? jsonParsed : [jsonParsed];
 
     const fragment = document.createDocumentFragment();
-    for (const item of rows) {
-      const row = document.createElement('div');
-      row.classList.add('grid-item', 'row');
+    const row = document.createElement('div');
+    row.setAttribute("id", "inventory-summary");
+    row.classList.add("grid-item", "grid-container", "inventory-summary");
 
-      const modelCell = document.createElement('div');
+      const modelHeader = document.createElement('h3');
+      modelHeader.textContent = 'System Model';
+      row.appendChild(modelHeader);
+
+      const totalClientsHeader = document.createElement('h3');
+      totalClientsHeader.textContent = 'Total Clients';
+      row.appendChild(totalClientsHeader);
+
+      const checkedOutHeader = document.createElement('h3');
+      checkedOutHeader.textContent = 'Checked Out';
+      row.appendChild(checkedOutHeader);
+
+      const availableHeader = document.createElement('h3');
+      availableHeader.textContent = 'Available for Checkout';
+      row.appendChild(availableHeader);
+    for (const item of rows) {
+      const oldRows = document.getElementById('inventory-summary-body');
+      const row = document.createElement('div');
+      row.classList.add("grid-item", "grid-container", "inventory-summary");
+
+      const modelCell = document.createElement('p');
       modelCell.textContent = item.system_model || 'N/A';
-      modelCell.classList.add('grid-item');
       row.appendChild(modelCell);
 
-      const countCell = document.createElement('div');
+      const countCell = document.createElement('p');
       countCell.textContent = item.system_model_count != null ? item.system_model_count : '0';
-      countCell.classList.add('grid-item');
       row.appendChild(countCell);
 
-      const checkedOutCell = document.createElement('div');
+      const checkedOutCell = document.createElement('p');
       checkedOutCell.textContent = item.total_checked_out != null ? item.total_checked_out : '0';
-      checkedOutCell.classList.add('grid-item');
       row.appendChild(checkedOutCell);
 
-      const availableCell = document.createElement('div');
+      const availableCell = document.createElement('p');
       availableCell.textContent = item.available_for_checkout != null ? item.available_for_checkout : '0';
-      availableCell.classList.add('grid-item');
       row.appendChild(availableCell);
 
       fragment.appendChild(row);
     }
-    inventoryTableBody.replaceChildren(fragment);
+    inventoryTableBody.replaceWith(fragment);
   } catch (err) {
     if (err.name !== 'AbortError') console.error("fetchInventoryOverview error:", err);
   }

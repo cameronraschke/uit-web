@@ -167,24 +167,17 @@ input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
   border-radius: 0.25rem;
   table-layout: fixed;
   border-collapse: collapse;
+  align-items: left;
 }
 
 .grid-item {
-  display: grid;
-  align-items: left;
   padding: 1rem;
   background-color: white;
   word-wrap: break-word;
 }
 
-.grid-item.cell {
-  border: 1px solid #ccc;
-  border-radius: 0.25rem;
-}
-
 .grid-item.row {
   border: 1px solid #ccc;
-  border-radius: 0.25rem;
 }
 
 .grid-item.row.header {
