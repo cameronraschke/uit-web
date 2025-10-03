@@ -157,23 +157,38 @@ input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
 
 .grid-container {
   display: grid;
-  grid-template-rows: 2rem;
-  column-gap: 1rem;
   border: 1px solid #ccc;
   border-radius: 1rem;
   background-color: #f9f9f9;
   word-wrap: break-word;
-  border-spacing: 1rem;
+  border-spacing: 0px;
   border-radius: 0.25rem;
   table-layout: fixed;
   border-collapse: collapse;
-  align-items: left;
+  row-gap: 0px;
+  column-gap: 0px;
+  justify-content: start;
+  align-content: end;
+  margin: 0;
+  padding: 0;
+}
+
+.grid-container div {
+  margin: 0;
+  padding: 0;
 }
 
 .grid-item {
-  padding: 1rem;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-row: auto;
   background-color: white;
   word-wrap: break-word;
+}
+
+.grid-item div, .grid-item p, .grid-item h3 {
+  margin: 0;
+  padding: 0;
 }
 
 .grid-item.row {

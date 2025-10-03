@@ -93,35 +93,16 @@ async function fetchInventoryOverview(signal) {
     if (!jsonParsed || Object.keys(jsonParsed).length === 0 || (jsonParsed && typeof jsonParsed === 'object' && Object.prototype.hasOwnProperty.call(jsonParsed, '__proto__'))) {
       throw new Error('Response JSON is empty or invalid');
     }
-    const inventoryTableBody = document.getElementById('inventory-summary');
+    const inventoryTableBody = document.getElementById('inventory-summary-body');
     if (!inventoryTableBody) throw new Error('Inventory table body element not found in DOM');
 
     const rows = Array.isArray(jsonParsed) ? jsonParsed : [jsonParsed];
 
+    
     const fragment = document.createDocumentFragment();
-    const row = document.createElement('div');
-    row.setAttribute("id", "inventory-summary");
-    row.classList.add("grid-item", "grid-container", "inventory-summary");
-
-      const modelHeader = document.createElement('h3');
-      modelHeader.textContent = 'System Model';
-      row.appendChild(modelHeader);
-
-      const totalClientsHeader = document.createElement('h3');
-      totalClientsHeader.textContent = 'Total Clients';
-      row.appendChild(totalClientsHeader);
-
-      const checkedOutHeader = document.createElement('h3');
-      checkedOutHeader.textContent = 'Checked Out';
-      row.appendChild(checkedOutHeader);
-
-      const availableHeader = document.createElement('h3');
-      availableHeader.textContent = 'Available for Checkout';
-      row.appendChild(availableHeader);
     for (const item of rows) {
-      const oldRows = document.getElementById('inventory-summary-body');
       const row = document.createElement('div');
-      row.classList.add("grid-item", "grid-container", "inventory-summary");
+      row.classList.add("grid-item", "row", "home");
 
       const modelCell = document.createElement('p');
       modelCell.textContent = item.system_model || 'N/A';
@@ -141,7 +122,7 @@ async function fetchInventoryOverview(signal) {
 
       fragment.appendChild(row);
     }
-    inventoryTableBody.replaceWith(fragment);
+    inventoryTableBody.replaceChildren(fragment);
   } catch (err) {
     if (err.name !== 'AbortError') console.error("fetchInventoryOverview error:", err);
   }

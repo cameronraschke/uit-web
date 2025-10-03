@@ -23,11 +23,11 @@
   grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 1dvw;
   padding: 1dvw;
-  row-gap: 0;
+  word-break: break-word;
 }
 
-.grid-item.row.home {
-  border: 1px solid #ccc;
+.grid-item {
+  grid-column: 1/5;
 }
 
 .flex-container.home {

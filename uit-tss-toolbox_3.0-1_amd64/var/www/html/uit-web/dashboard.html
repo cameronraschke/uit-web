@@ -29,22 +29,25 @@
         <div>
           <h2>Inventory Summary</h2>
           <div id="inventory-summary" class="grid-container inventory-summary">
-            <div>System Model</div>
-            <div>Total Clients</div>
-            <div>Checked Out</div>
-            <div>Available for Checkout</div>
-            <div id="inventory-summary-body" class="grid-item row home">
+            <div class="grid-item row header">
+              <div><h3>System Model</h3></div>
+              <div><h3>Total Clients</h3></div>
+              <div><h3>Checked Out</h3></div>
+              <div><h3>Available for Checkout</h3></div>
+            </div>
+            
+            <div id="inventory-summary-body" class="grid-item row">
               <div id="inventory-summary-model"></div>
               <div id="inventory-summary-total-clients"></div>
               <div id="inventory-summary-checked-out"></div>
               <div id="inventory-summary-available"></div>
             </div>
-            <div id="inventory-table-foot" class="grid-item row footer">
+            <!-- <div id="inventory-table-foot" class="grid-item row footer">
             <div><strong>Totals:</strong></div>
               <div><span id="total-clients">Loading...</span></div>
               <div><span id="total-checked-out">Loading...</span></div>
               <div><span id="total-available">Loading...</span></div>
-            </div>
+            </div> -->
           </div>
         </div>
       </div>
