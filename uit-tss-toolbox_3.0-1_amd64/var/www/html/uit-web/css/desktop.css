@@ -20,18 +20,24 @@ a {
 }
 
 button, input[type="button"], input[type="submit"], input[type="reset"], input[type="file"] {
+  border: 1px solid #ccc;
   font-size: 1.1rem;
 }
 
 input[type="text"], input[type="password"], select, textarea {
+  background: white;
   font-size: 1.1rem;
   padding: 0.5rem;
   border: 1px solid #ccc;
   border-radius: 0.25rem;
 }
 
-textarea {
+input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
   font-size: 1.1rem;
+  padding: 0.5rem;
+  border: 1px solid #007BFF;
+  outline: none;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }
 
 .error-message {
@@ -45,34 +51,31 @@ textarea {
 
 .flex-container {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   min-width: fit-content;
+  justify-content: space-around;
+  align-content: space-between;
 }
 
 .flex-container.nav {
-  flex-direction: row;
   justify-content: space-between;
   align-items: center;
   padding: 1rem 2rem 1rem 2rem;
 }
 
 .flex-container.footer {
-  display: flex;
-  flex-direction: row;
   font-size: 1.1rem;
   align-items: center;
   justify-content: center;
 }
 
 .flex-box {
-  display: flex;
-  align-self: flex-start;
   margin: 1rem;
   padding: 1rem;
   border: 1px solid #ccc;
   border-radius: 1rem;
   background-color: #f9f9f9;
-  min-width: fit-content;
 }
 
 .flex-box div {
@@ -80,13 +83,13 @@ textarea {
 }
 
 .flex-box.header {
-  display: flex;
   font-size: 1.5rem;
   font-weight: bold;
 }
 
 .flex-box.nav {
   display: flex;
+  width: 100%;
   align-items: center;
 }
 
@@ -98,14 +101,8 @@ textarea {
   gap: 0.75rem;
 }
 
-.flex-box.nav {
-  display: flex;
-  width: 100%;
-  align-items: center;
-}
 .flex-box.nav .nav-left {
-  display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 .flex-box.nav .logout {
   margin-left: auto;
@@ -113,50 +110,93 @@ textarea {
 
 .flex-box.footer {
   display: flex;
-  flex-direction: row;
   align-items: center;
   justify-content: center;
 }
 
-.flex-box table {
-  width: 100%;
-  background-color: white;
-  border-collapse: collapse;
-  margin-top: 5rem;
-  text-align: left;
-}
-
-.flex-box table thead {
+.flex-box thead {
+  font-size: 1.1rem;
   font-weight: bold;
   border-bottom: 2px solid black;
+  z-index: 1;
 }
 
-.flex-box table tfoot {
+.flex-box tbody {
+  max-height: 20em;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.flex-box tfoot {
+  font-weight: bold;
   border-top: 2px solid black;
   border-bottom: 2px solid black;
-  font-weight: bold;
+  z-index: 1;
+}
+
+.flex-box tbody td, .flex-box tbody th {
+  display: block;
+  border-bottom: 1px solid #eee;
+  word-break: break-word;
   padding: 1rem 1rem 1rem 1rem;
 }
 
-.flex-box table td, .flex-box table th {
-  padding: 1rem 1rem 1rem 1rem;
-}
-
-.flex-box table tr {
+.flex-box tbody tr {
+  display: block;
+  width: 100%;
   border-bottom: 1px solid #ddd;
 }
 
-.flex-box table tr:nth-child(even) {
-  background-color: #f2f2f2;
+.flex-box tbody tr:nth-child(even) {
+  background: #fafafa;
 }
 
-
+.flex-box tbody tr:hover {
+  background: #f1f1f1;
+}
 
 .grid-container {
   display: grid;
-  margin: 1rem;
-  padding: 1rem;
+  grid-template-rows: 2rem;
+  column-gap: 1rem;
   border: 1px solid #ccc;
   border-radius: 1rem;
   background-color: #f9f9f9;
+  word-wrap: break-word;
+  border-spacing: 1rem;
+  border-radius: 0.25rem;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.grid-item {
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+  background-color: white;
+  word-wrap: break-word;
+}
+
+.grid-item.row.header {
+  position: sticky;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 1rem;
+  font-weight: bold;
+  border-bottom: 2px solid black;
+  z-index: 1;
+}
+
+.grid-item.row {
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 1rem;
+}
+
+.grid-item.row.footer {
+  position: sticky;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 1rem;
+  font-weight: bold;
+  border-top: 2px solid black;
+  border-bottom: 2px solid black;
+  z-index: 1;
 }

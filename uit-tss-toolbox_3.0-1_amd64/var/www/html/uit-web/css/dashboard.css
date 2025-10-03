@@ -1,63 +1,23 @@
 #note-text {
-  background-color: white;
+  background: white;
   min-width: 45%;
   min-height: 15rem;
+  font-size: 1.1rem;
+  padding: 0.5rem;
   border: 1px solid #ccc;
+  border-radius: 0.25rem;
 }
 
 #note-text:focus {
-  outline: none;
+  font-size: 1.1rem;
+  padding: 0.5rem;
   border: 1px solid #007BFF;
+  outline: none;
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }
 
 #inventory-summary-table {
-  width: 100%;
-  border-collapse: collapse;
   table-layout: fixed;
-}
-
-#inventory-summary-table thead,
-#inventory-summary-table tfoot {
-  display: table;
-  width: 100%;
-  table-layout: fixed;
-  background: #f5f5f5;
-  z-index: 1;
-}
-
-#inventory-summary-table thead th,
-#inventory-summary-table tfoot td {
-  padding: 4px 6px;
-  text-align: left;
-  font-weight: bold;
-  border-bottom: 1px solid #ddd;
-}
-
-#inventory-summary-table tbody {
-  display: block;
-  max-height: 20em;
-  overflow-y: auto;
-  width: 100%;
-}
-
-#inventory-summary-table tbody tr {
-  display: table;
-  width: 100%;
-  table-layout: fixed;
-}
-
-#inventory-summary-table tbody td {
-  border-bottom: 1px solid #eee;
-  word-break: break-word;
-}
-
-#inventory-summary-table tbody tr:nth-child(even) {
-  background: #fafafa;
-}
-
-#inventory-summary-table tbody tr:hover {
-  background: #f1f1f1;
 }
 
 .flex-container.home {
@@ -74,12 +34,16 @@
   font-size: 1.1rem;
 }
 
-.flex-box.home.notes-section div {
+.flex-box.home.notes-section {
+  height: 70dvh;
+  overflow-y: auto;
   width: 100%;
 }
 
-.flex-box.home.inventory-summary-section div {
+.flex-box.home.inventory-summary-section {
+  max-height: 70dvh;
   width: 100%;
+  padding: 1rem;
 }
 
 .flex-box.home.notes-section {
