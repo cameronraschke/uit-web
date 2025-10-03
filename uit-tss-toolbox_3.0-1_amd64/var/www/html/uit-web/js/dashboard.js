@@ -105,22 +105,22 @@ async function fetchInventoryOverview(signal) {
 
       const modelCell = document.createElement('div');
       modelCell.textContent = item.system_model || 'N/A';
-      modelCell.classList.add('grid-item', 'row');
+      modelCell.classList.add('grid-item');
       row.appendChild(modelCell);
 
       const countCell = document.createElement('div');
       countCell.textContent = item.system_model_count != null ? item.system_model_count : '0';
-      countCell.classList.add('grid-item', 'row');
+      countCell.classList.add('grid-item');
       row.appendChild(countCell);
 
       const checkedOutCell = document.createElement('div');
       checkedOutCell.textContent = item.total_checked_out != null ? item.total_checked_out : '0';
-      checkedOutCell.classList.add('grid-item', 'row');
+      checkedOutCell.classList.add('grid-item');
       row.appendChild(checkedOutCell);
 
       const availableCell = document.createElement('div');
       availableCell.textContent = item.available_for_checkout != null ? item.available_for_checkout : '0';
-      availableCell.classList.add('grid-item', 'row');
+      availableCell.classList.add('grid-item');
       row.appendChild(availableCell);
 
       fragment.appendChild(row);

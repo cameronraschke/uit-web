@@ -170,31 +170,32 @@ input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
 }
 
 .grid-item {
+  display: grid;
+  align-items: left;
   padding: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 0.25rem;
   background-color: white;
   word-wrap: break-word;
 }
 
+.grid-item.cell {
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+}
+
+.grid-item.row {
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+}
+
 .grid-item.row.header {
   position: sticky;
-  grid-template-columns: 1fr 1fr 1fr;
-  padding: 1rem;
   font-weight: bold;
   border-bottom: 2px solid black;
   z-index: 1;
 }
 
-.grid-item.row {
-  grid-template-columns: 1fr 1fr 1fr;
-  padding: 1rem;
-}
-
 .grid-item.row.footer {
   position: sticky;
-  grid-template-columns: 1fr 1fr 1fr;
-  padding: 1rem;
   font-weight: bold;
   border-top: 2px solid black;
   border-bottom: 2px solid black;

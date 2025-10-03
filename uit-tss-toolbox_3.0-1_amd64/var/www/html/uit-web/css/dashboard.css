@@ -20,6 +20,19 @@
   table-layout: fixed;
 }
 
+.grid-container.inventory-summary-row {
+  min-width: fit-content;
+  min-height: 20dvh;
+  height: fit-content;
+  grid-template-columns: 1fr;
+  gap: 1dvw;
+  padding: 1dvw;
+}
+
+.grid-item.row.inventory-summary-row {
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+
 .flex-container.home {
   flex-direction: row;
   justify-content: space-between;
