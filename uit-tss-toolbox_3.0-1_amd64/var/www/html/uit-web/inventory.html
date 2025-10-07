@@ -53,6 +53,10 @@
                 autocomplete="off"
                 autocorrect="off"
                 autocapitalize="off" />
+            </div>
+            <div class="vertical-spacer"></div>
+            <div>
+              <label for="department">Department:</label>
               <select id="department" name="department">
                 <option value="" disabled selected>Select Department</option>
                 <option value="">None</option>
@@ -60,16 +64,39 @@
                 <option value="{{ $department }}">{{ $departmentReadable }}</option>
                 {{- end }}
               </select>
-            </div>
-            <div class="vertical-spacer"></div>
-            <div>
+              <label for="domain">AD Domain:</label>
               <select id="domain" name="domain">
+                <option value="" disabled selected>Select AD Domain</option>
                 <option value="">None</option>
                 {{- range $domain, $domainReadable := .Domains }}
                 <option value="{{ $domain }}">{{ $domainReadable }}</option>
                 {{- end }}
               </select>
             </div>
+            <div class="vertical-spacer"></div>
+            <div>
+              <label for="working">Is it Working?</label>
+              <select id="working" name="working">
+                <option value="" disabled selected>Is it Working?</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+              <label for="status">Status:</label>
+              <select id="status" name="status">
+                <option value="" disabled selected>Select Status</option>
+                <option value="storage">Storage</option>
+                <option value="checked-out">Checked Out</option>
+                <option value="needs-repair">Needs Repair</option>
+                <option value="retired">Retired</option>
+                <option value="lost">Lost</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="vertical-spacer"></div>
+            <div>
+              <textarea id="note" name="note" placeholder="Enter notes..." maxlength="1024" rows="6" cols="50"></textarea>
+            </div>
+            <div class="vertical-spacer"></div>
             <div><label for="inventory-file-input">Upload Inventory Image(s):</label></div>
             <div><input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple /></div>
             <div class="vertical-spacer"></div>
