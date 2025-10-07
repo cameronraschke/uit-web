@@ -48,13 +48,6 @@ func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tagnumber, ok := ConvertRequestTagnumber(r)
-	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-		return
-	}
-
 	db := config.GetDatabaseConn()
 	if db == nil {
 		log.Warning("no database connection available")
@@ -64,7 +57,13 @@ func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 	repo := database.NewRepo(db)
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	hardwareData, err := repo.ClientLookupByTag(ctx, tagnumber)
+
+	var hardwareData *database.ClientLookup
+	if tagnumber != 0 {
+		hardwareData, err = repo.ClientLookupByTag(ctx, tagnumber)
+	} else if systemSerial != "" {
+		hardwareData, err = repo.ClientLookupBySerial(ctx, systemSerial)
+	}
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
