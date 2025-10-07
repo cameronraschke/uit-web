@@ -17,8 +17,8 @@
 
     <div class="flex-container inventory">
       <div class="flex-box">
+        <p id="existing-inventory-message" class="warning-message"></p>
         <form id="inventory-form-lookup">
-          <input type="hidden" id="csrf-token" value="" />
           <div>
             <input type="text" id="inventory-tag-lookup"
               placeholder="Enter Tag Number"
@@ -40,10 +40,28 @@
                 pattern="[A-Za-z0-9\-_]{1,50}"
                 />
           </div>
-          <div><button type="submit" id="inventory-lookup-button">Fetch Inventory</button></div>
+          <div><button type="submit" id="inventory-lookup-button">Fetch Inventory</button><button type="reset" id="inventory-reset-button">Reset Search</button></div>
           </form>
+          <div class="vertical-spacer"></div>
           <form>
-            <div class="vertical-spacer"></div>
+            <input type="hidden" id="csrf-token" value="" />
+            <div>
+              <input type="text" id="location" placeholder="Location" maxlength="64" autocomplete="off" />
+              <input type="text" id="system_model" name="system_model" 
+                placeholder="Model" 
+                maxlength="128" 
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off" />
+              <select id="department" name="department">
+                <option value="" disabled selected>Select Department</option>
+                <option value="">None</option>
+                {{- range $department, $departmentReadable := .Departments }}
+                <option value="{{ $department }}">{{ $departmentReadable }}</option>
+                {{- end }}
+              </select>
+            </div>
+
             <div><label for="inventory-file-input">Upload Inventory Image(s):</label></div>
             <div><input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple /></div>
             <div class="vertical-spacer"></div>

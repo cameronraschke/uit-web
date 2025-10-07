@@ -2,6 +2,7 @@ package endpoints
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"net/http"
 	"strings"
@@ -66,8 +67,10 @@ func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
+		if err != sql.ErrNoRows {
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 	}
 	middleware.WriteJson(w, http.StatusOK, hardwareData)
 }

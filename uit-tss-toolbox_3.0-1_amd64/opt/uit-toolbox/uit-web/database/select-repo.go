@@ -11,6 +11,27 @@ type Repo struct {
 
 func NewRepo(db *sql.DB) *Repo { return &Repo{DB: db} }
 
+func GetDepartments(ctx context.Context, db *sql.DB) ([]string, error) {
+	rows, err := db.QueryContext(ctx, "SELECT department, department_readable FROM departments ORDER BY department_readable;")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var departments []string
+	for rows.Next() {
+		var department DepartmentList
+		if err := rows.Scan(&department.Department, &department.DepartmentReadable); err != nil {
+			return nil, err
+		}
+		departments = append(departments, department.Department, department.DepartmentReadable)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return departments, nil
+}
+
 func (repo *Repo) ClientLookupByTag(ctx context.Context, tag int) (*ClientLookup, error) {
 	var clientLookup ClientLookup
 	row := repo.DB.QueryRowContext(ctx, "SELECT tagnumber, system_serial FROM locations WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1;", tag)

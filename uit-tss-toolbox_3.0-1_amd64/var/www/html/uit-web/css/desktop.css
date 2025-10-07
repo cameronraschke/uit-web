@@ -19,6 +19,8 @@ a {
 }
 
 button, input[type="button"], input[type="submit"], input[type="reset"] {
+  padding: 0.5rem;
+  border-radius: 0.25rem;
   border: 1px solid #ccc;
   font-size: 1.1rem;
 }
@@ -48,15 +50,24 @@ input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
 }
 
 .submit button, input[type="button"], input[type="submit"] {
-  padding: 0.5rem;
-  border-radius: 0.25rem;
   background: #00B388;
   border: 1px solid black;
 }
 
 .error-message {
   display: none;
+  max-width: 70%;
   color: red;
+  font-weight: bold;
+  text-align: center;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.warning-message {
+  display: none;
+  max-width: 70%;
+  color: #ffae00;
   font-weight: bold;
   text-align: center;
   margin-top: 1rem;
@@ -68,7 +79,7 @@ input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
   flex-direction: row;
   flex-wrap: wrap;
   min-width: fit-content;
-  justify-content: space-around;
+  justify-content: space-evenly;
   align-content: space-between;
 }
 

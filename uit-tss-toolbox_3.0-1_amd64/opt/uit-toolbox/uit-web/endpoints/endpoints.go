@@ -13,6 +13,7 @@ import (
 	"text/template"
 	"time"
 	config "uit-toolbox/config"
+	database "uit-toolbox/database"
 	"uit-toolbox/logger"
 	middleware "uit-toolbox/middleware"
 )
@@ -253,14 +254,23 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
+		departments, err := database.GetDepartments(ctx, config.GetDatabaseConn())
+		if err != nil {
+			log.Error("Cannot get department list from database: " + err.Error())
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
 		templateData := struct {
 			JsNonce        string
 			WebmasterName  string
 			WebmasterEmail string
+			Departments    []string
 		}{
 			JsNonce:        nonce,
 			WebmasterName:  webmasterName,
 			WebmasterEmail: webmasterEmail,
+			Departments:    departments,
 		}
 
 		// Execute the template

@@ -1,5 +1,10 @@
+#inventory-reset-button {
+  display: none;
+  margin-left: 1rem;
+  background-color: #888B8D;
+}
+
 .flex-container.inventory {
-  justify-content: center;
   align-items: center;
   gap: 2dvw;
   padding: 1dvw;

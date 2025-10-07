@@ -62,3 +62,8 @@ type DashboardInventorySummary struct {
 	TotalCheckedOut      int    `json:"total_checked_out"`
 	AvailableForCheckout int    `json:"available_for_checkout"`
 }
+
+type DepartmentList struct {
+	Department         string `json:"department"`
+	DepartmentReadable string `json:"department_readable"`
+}
