@@ -12,7 +12,7 @@ type Repo struct {
 func NewRepo(db *sql.DB) *Repo { return &Repo{DB: db} }
 
 func GetDepartments(ctx context.Context, db *sql.DB) ([]string, error) {
-	rows, err := db.QueryContext(ctx, "SELECT department, department_readable FROM departments ORDER BY department_readable;")
+	rows, err := db.QueryContext(ctx, "SELECT department, department_readable FROM static_departments ORDER BY department_readable;")
 	if err != nil {
 		return nil, err
 	}
