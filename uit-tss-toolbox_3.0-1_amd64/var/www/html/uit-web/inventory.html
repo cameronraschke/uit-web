@@ -40,7 +40,7 @@
                 pattern="[A-Za-z0-9\-_]{1,50}"
                 />
           </div>
-          <div><button type="submit" id="inventory-lookup-button">Fetch Inventory</button><button type="reset" id="inventory-reset-button">Reset Search</button></div>
+          <div><button type="submit" id="inventory-lookup-button">Search for Client</button><button type="reset" id="inventory-reset-button">Reset Search</button></div>
           </form>
           <div class="vertical-spacer"></div>
           <form>
@@ -61,7 +61,15 @@
                 {{- end }}
               </select>
             </div>
-
+            <div class="vertical-spacer"></div>
+            <div>
+              <select id="domain" name="domain">
+                <option value="">None</option>
+                {{- range $domain, $domainReadable := .Domains }}
+                <option value="{{ $domain }}">{{ $domainReadable }}</option>
+                {{- end }}
+              </select>
+            </div>
             <div><label for="inventory-file-input">Upload Inventory Image(s):</label></div>
             <div><input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple /></div>
             <div class="vertical-spacer"></div>

@@ -67,3 +67,8 @@ type DepartmentList struct {
 	Department         string `json:"department"`
 	DepartmentReadable string `json:"department_readable"`
 }
+
+type DomainList struct {
+	Domain         string `json:"domain"`
+	DomainReadable string `json:"domain_readable"`
+}

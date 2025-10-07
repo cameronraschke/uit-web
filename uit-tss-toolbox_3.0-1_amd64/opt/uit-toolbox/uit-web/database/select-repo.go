@@ -11,25 +11,58 @@ type Repo struct {
 
 func NewRepo(db *sql.DB) *Repo { return &Repo{DB: db} }
 
-func GetDepartments(ctx context.Context, db *sql.DB) ([]string, error) {
+func GetDepartments(ctx context.Context, db *sql.DB) (map[string]string, error) {
 	rows, err := db.QueryContext(ctx, "SELECT department, department_readable FROM static_departments ORDER BY department_readable;")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var departments []string
+	var departments []DepartmentList
 	for rows.Next() {
 		var department DepartmentList
 		if err := rows.Scan(&department.Department, &department.DepartmentReadable); err != nil {
 			return nil, err
 		}
-		departments = append(departments, department.Department, department.DepartmentReadable)
+		departments = append(departments, department)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	return departments, nil
+
+	deptMap := make(map[string]string)
+	for i := range departments {
+		deptMap[departments[i].Department] = departments[i].DepartmentReadable
+	}
+
+	return deptMap, nil
+}
+
+func GetDomains(ctx context.Context, db *sql.DB) (map[string]string, error) {
+	rows, err := db.QueryContext(ctx, "SELECT domain, domain_readable FROM static_domains ORDER BY domain_readable;")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var domains []DomainList
+	for rows.Next() {
+		var domain DomainList
+		if err := rows.Scan(&domain.Domain, &domain.DomainReadable); err != nil {
+			return nil, err
+		}
+		domains = append(domains, domain)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	domainMap := make(map[string]string)
+	for i := range domains {
+		domainMap[domains[i].Domain] = domains[i].DomainReadable
+	}
+
+	return domainMap, nil
 }
 
 func (repo *Repo) ClientLookupByTag(ctx context.Context, tag int) (*ClientLookup, error) {

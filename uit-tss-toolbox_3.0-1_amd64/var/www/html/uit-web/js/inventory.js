@@ -47,11 +47,13 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
     inventoryLookupSerialInput.value = lookupResult.system_serial || "";
     inventoryLookupTagInput.disabled = true;
     inventoryLookupSerialInput.disabled = true;
+    inventoryLookupTagInput.style.backgroundColor = "gainsboro";
+    inventoryLookupSerialInput.style.backgroundColor = "gainsboro";
   } else {
     inventoryLookupWarningMessage.style.display = "block";
     inventoryLookupWarningMessage.textContent = "No inventory found for the provided tag number or serial number. New entry can be created.";
   }
-  
+
   inventoryLookupButton.disabled = true;
   inventoryResetButton.style.display = "inline-block";
 });

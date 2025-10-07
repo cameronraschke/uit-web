@@ -261,16 +261,25 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
+		domains, err := database.GetDomains(ctx, config.GetDatabaseConn())
+		if err != nil {
+			log.Error("Cannot get domain list from database: " + err.Error())
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
 		templateData := struct {
 			JsNonce        string
 			WebmasterName  string
 			WebmasterEmail string
-			Departments    []string
+			Departments    map[string]string
+			Domains        map[string]string
 		}{
 			JsNonce:        nonce,
 			WebmasterName:  webmasterName,
 			WebmasterEmail: webmasterEmail,
 			Departments:    departments,
+			Domains:        domains,
 		}
 
 		// Execute the template
