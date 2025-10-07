@@ -355,6 +355,7 @@ func InitApp() (*AppState, error) {
 		{Filename: "uit-toolbox-client.deb", Allowed: true},
 		{Filename: "desktop.css", Allowed: true},
 		{Filename: "favicon.png", Allowed: true},
+		{Filename: "favicon.ico", Allowed: true},
 		{Filename: "header.html", Allowed: true},
 		{Filename: "footer.html", Allowed: true},
 		{Filename: "dashboard.html", Allowed: true},

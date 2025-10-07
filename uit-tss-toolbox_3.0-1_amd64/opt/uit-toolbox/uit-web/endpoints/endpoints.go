@@ -275,7 +275,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
 	} else if strings.HasSuffix(requestedFile, ".js") {
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-	} else if strings.HasSuffix(requestedFile, ".png") {
+	} else if strings.HasSuffix(requestedFile, ".png") || strings.HasSuffix(requestedFile, ".ico") {
 		w.Header().Set("Content-Type", "image/png")
 	} else {
 		log.Warning("Unknown file type requested: " + requestedFile)

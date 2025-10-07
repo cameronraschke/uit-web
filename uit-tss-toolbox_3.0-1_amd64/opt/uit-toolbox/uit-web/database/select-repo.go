@@ -40,10 +40,7 @@ func (repo *Repo) GetHardwareIdentifiers(ctx context.Context, tag int) (*Hardwar
 	AND locations.tagnumber = $1;`
 
 	var hardwareData HardwareData
-	row, err := repo.DB.QueryContext(ctx, sqlQuery, tag)
-	if err != nil {
-		return nil, err
-	}
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
 	if err := row.Scan(
 		&hardwareData.Tagnumber,
 		&hardwareData.SystemSerial,

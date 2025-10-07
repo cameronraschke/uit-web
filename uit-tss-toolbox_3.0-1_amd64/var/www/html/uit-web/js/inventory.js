@@ -6,17 +6,17 @@ function postInventoryData() {
 }
 
 async function getTagOrSerial(tagnumber, serial) {
-  let lookupValue = "";
+  const query = new URLSearchParams();
   if (tagnumber) {
-    lookupValue = "?tagnumber=" + tagnumber;
+    query.append("tagnumber", tagnumber);
   } else if (serial) {
-    lookupValue = "?system_serial=" + serial;
+    query.append("system_serial", serial);
   } else {
     console.log("No tag or serial provided");
     return;
   }
   try {
-    const request = await fetchData('/api/lookup' + lookupValue);
+    const request = await fetchData(`/api/lookup?${query.toString()}`);
     if (!request) {
       throw new Error("Cannot parse json from /api/lookup");
     }
@@ -24,7 +24,7 @@ async function getTagOrSerial(tagnumber, serial) {
     console.log(request.tagnumber + request.system_serial);
 
   } catch(e) {
-    console.log("Error getting tag/serial:" + e.message);
+    console.log("Error getting tag/serial: " + e.message);
   }
 }
 
