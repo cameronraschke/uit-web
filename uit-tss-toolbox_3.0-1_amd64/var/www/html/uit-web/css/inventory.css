@@ -1,35 +1,48 @@
+#inventory-lookup-button {
+  grid-column-start: 1;
+  grid-column-end: 2;
+  text-align: center;
+  border: 1px solid black;
+}
+
 #inventory-reset-button {
   display: none;
   margin-left: 1rem;
   background-color: #888B8D;
+  border: 1px solid black;
+}
+
+#inventory-update-section {
+  display: none;
+}
+
+.inventory-lookup-label {
+  grid-column-start: 1;
+  grid-column-end: 3;
+  text-align: center;
 }
 
 .flex-container.inventory {
+  gap: 0;
   align-items: center;
   gap: 2dvw;
   padding: 1dvw;
 }
 
-.grid-container.inventory {
-  min-width: fit-content;
-  min-height: 50dvh;
-  height: fit-content;
-  grid-template-columns: repeat(2, 1 fr);
-}
-
-.grid-box {
-  min-width: fit-content;
-  display: inline-grid;
-}
-
-.grid-box.inventory-form-row {
-  min-width: fit-content;
-  display: inline-grid;
+.grid-container.inventory.inventory-lookup-form {
   grid-template-columns: 1fr 1fr;
+  gap: 0.5dvw;
+  padding: 1dvw;
+  border: 1px solid #960C22;
+  border-radius: 1rem;
+  /* background-color: #FFF9D9; */
 }
 
-.grid-box.inventory-form-row div {
-  min-width: fit-content;
-  max-width: 50%;
+.grid-container.inventory.inventory-update-form {
   grid-template-columns: 1fr 1fr;
+  gap: 0.5dvw;
+  padding: 1dvw;
+  /* border: 1px solid #960C22; */
+  border-radius: 1rem;
+  background-color: whitesmoke;
 }

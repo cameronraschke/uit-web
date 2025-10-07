@@ -17,69 +17,95 @@
 
     <div class="flex-container inventory">
       <div class="flex-box">
-        <p id="existing-inventory-message" class="warning-message"></p>
-        <form id="inventory-form-lookup">
-          <div>
-            <input type="text" id="inventory-tag-lookup"
-              placeholder="Enter Tag Number"
-              minlength="6"
-              maxlength="6"
-              autocomplete="off"
-              autocorrect="off"
-              autocapitalize="off"
-              pattern="[0-9]{6}"
-              autofocus
-              />
-              <input type="text" id="inventory-serial-lookup"
-                placeholder="Enter Serial Number"
-                minlength="4"
-                maxlength="50"
+        <div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
+          <form id="inventory-lookup-form">
+            <div class="inventory-lookup-label"><h3>Update Client Information</h3></div>
+            <div class="grid-container inventory inventory-lookup-form">
+            <div class="inventory-lookup-label"><p>Tag Number/Serial Number Lookup:</p></div>
+            <div><p>Search Tag Number:</p></div>
+            <div><p>Search Serial Number:</p></div>
+              <input type="text" id="inventory-tag-lookup"
+                placeholder="Enter Tag Number"
+                minlength="6"
+                maxlength="6"
                 autocomplete="off"
                 autocorrect="off"
                 autocapitalize="off"
-                pattern="[A-Za-z0-9\-_]{1,50}"
+                pattern="[0-9]{6}"
+                autofocus
                 />
-          </div>
-          <div><button type="submit" id="inventory-lookup-button">Search for Client</button><button type="reset" id="inventory-reset-button">Reset Search</button></div>
+                <input type="text" id="inventory-serial-lookup"
+                  placeholder="Enter Serial Number"
+                  minlength="4"
+                  maxlength="50"
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  pattern="[A-Za-z0-9\-_]{1,50}"
+                  />
+              <div><button type="submit" id="inventory-lookup-button">Search for Client</button><button type="reset" id="inventory-reset-button">Reset Search</button></div>
+            </div>
           </form>
-          <div class="vertical-spacer"></div>
-          <form>
+        <div class="vertical-spacer"></div>
+        <div id="inventory-update-section">
+          <form id="inventory-update-form">
             <input type="hidden" id="csrf-token" value="" />
-            <div>
-              <input type="text" id="location" placeholder="Location" maxlength="64" autocomplete="off" />
-              <input type="text" id="system_model" name="system_model" 
-                placeholder="Model" 
-                maxlength="128" 
+            <div class="grid-container inventory inventory-update-form">
+              <div class="inventory-lookup-label"><p>Location, Manufacturer, and Model:</p></div>
+              <div><p>Location:</p></div>
+              <div><p>Manufacturer/Model:</p></div>
+              <div><input type="text" id="location" name="location"
+                placeholder="Location" 
+                maxlength="128"
                 autocomplete="off"
                 autocorrect="off"
-                autocapitalize="off" />
+                autocapitalize="off" /></div>
+              <div>
+                <input type="text" id="system_manufacturer" name="system_manufacturer" 
+                  placeholder="Manufacturer" 
+                  maxlength="128" 
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off" />
+              </div>
+              <div></div>
+              <div>
+                <input type="text" id="system_model" name="system_model" 
+                  placeholder="Model" 
+                  maxlength="128" 
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off" />
+              </div>
             </div>
             <div class="vertical-spacer"></div>
-            <div>
-              <label for="department">Department:</label>
-              <select id="department" name="department">
+            <div class="grid-container inventory inventory-update-form">
+              <div class="inventory-lookup-label"><p>Department and AD Domain:</p></div>
+              <div><label for="department">Department:</label></div>
+              <div><select id="department" name="department">
                 <option value="" disabled selected>Select Department</option>
                 <option value="">None</option>
                 {{- range $department, $departmentReadable := .Departments }}
                 <option value="{{ $department }}">{{ $departmentReadable }}</option>
                 {{- end }}
-              </select>
-              <label for="domain">AD Domain:</label>
-              <select id="domain" name="domain">
+              </select></div>
+              <div><label for="domain">AD Domain:</label></div>
+              <div><select id="domain" name="domain">
                 <option value="" disabled selected>Select AD Domain</option>
                 <option value="">None</option>
                 {{- range $domain, $domainReadable := .Domains }}
                 <option value="{{ $domain }}">{{ $domainReadable }}</option>
                 {{- end }}
-              </select>
+              </select></div>
             </div>
             <div class="vertical-spacer"></div>
-            <div>
+            <div class="grid-container inventory inventory-update-form">
+              <div class="inventory-lookup-label"><p>Health and Status:</p></div>
               <label for="working">Is it Working?</label>
               <select id="working" name="working">
                 <option value="" disabled selected>Is it Working?</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
+                <option value="yes">Yes, it works</option>
+                <option value="no">No, it doesn't</option>
               </select>
               <label for="status">Status:</label>
               <select id="status" name="status">
@@ -101,8 +127,9 @@
             <div><input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple /></div>
             <div class="vertical-spacer"></div>
             <div><input type="submit" id="inventory-submit-button" class="submit" value="Submit Inventory Update" /></div>
-            <div><p id="inventory-error" class="error-message"></p></div>
+            <div class="message"><p id="inventory-error" class="error-message"></p></div>
           </form>
+        </div>
       </div>
 
       <div class="grid-container inventory">
