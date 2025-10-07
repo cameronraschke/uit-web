@@ -4,7 +4,6 @@ body {
 }
 
 div {
-  padding: 1rem;
   margin: 0.5rem;
   box-sizing: border-box;
 }
@@ -19,8 +18,12 @@ a {
   text-decoration: underline;
 }
 
-button, input[type="button"], input[type="submit"], input[type="reset"], input[type="file"] {
+button, input[type="button"], input[type="submit"], input[type="reset"] {
   border: 1px solid #ccc;
+  font-size: 1.1rem;
+}
+
+input[type="file"] {
   font-size: 1.1rem;
 }
 
@@ -38,6 +41,17 @@ input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
   border: 1px solid #007BFF;
   outline: none;
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+.vertical-spacer {
+  margin: 5dvh 0 0 0;
+}
+
+.submit button, input[type="button"], input[type="submit"] {
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  background: #00B388;
+  border: 1px solid black;
 }
 
 .error-message {
@@ -137,7 +151,6 @@ input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
 .flex-box tbody td, .flex-box tbody th {
   display: block;
   border-bottom: 1px solid #eee;
-  word-break: break-word;
   padding: 1rem 1rem 1rem 1rem;
 }
 
@@ -163,7 +176,6 @@ input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
   word-wrap: break-word;
   border-spacing: 0px;
   border-radius: 0.25rem;
-  table-layout: fixed;
   border-collapse: collapse;
   row-gap: 0px;
   column-gap: 0px;
@@ -189,6 +201,7 @@ input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
 .grid-item div, .grid-item p, .grid-item h3 {
   margin: 0;
   padding: 0;
+  align-content: end;
 }
 
 .grid-item.row {

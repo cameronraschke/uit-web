@@ -19,7 +19,7 @@ func GetServerTime(w http.ResponseWriter, r *http.Request) {
 	_, err := GetRequestInfo(r)
 	if err != nil {
 		log.Println("Cannot get request info error: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -32,7 +32,7 @@ func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)
 	if err != nil {
 		log.Println("Cannot get request info error: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	ctx := requestInfo.Ctx
@@ -46,14 +46,14 @@ func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 	systemSerial := strings.TrimSpace(r.URL.Query().Get("system_serial"))
 	if tagnumber == 0 && systemSerial == "" {
 		log.Warning("No tagnumber or system_serial provided in request from: " + requestIP + " (" + requestURL + ")")
-		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
 
 	db := config.GetDatabaseConn()
 	if db == nil {
 		log.Warning("no database connection available")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -69,16 +69,16 @@ func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 		dbResult, err = repo.ClientLookupByTag(ctx, tagnumber)
 	} else {
 		log.Warning("no tagnumber or system_serial provided")
-		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, middleware.FormatHttpError("Not found"), http.StatusNotFound)
+			middleware.WriteJsonError(w, http.StatusNotFound, "Not found")
 			return
 		}
 		log.Warning("DB error: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -89,7 +89,7 @@ func GetHardwareIdentifiers(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)
 	if err != nil {
 		log.Println("Cannot get request info error: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	ctx := requestInfo.Ctx
@@ -100,14 +100,14 @@ func GetHardwareIdentifiers(w http.ResponseWriter, r *http.Request) {
 	tagnumber, ok := ConvertRequestTagnumber(r)
 	if tagnumber == 0 || !ok {
 		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
 
 	db := config.GetDatabaseConn()
 	if db == nil {
 		log.Warning("no database connection available")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	repo := database.NewRepo(db)
@@ -116,7 +116,7 @@ func GetHardwareIdentifiers(w http.ResponseWriter, r *http.Request) {
 	hardwareData, err := repo.GetHardwareIdentifiers(ctx, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	middleware.WriteJson(w, http.StatusOK, hardwareData)
@@ -126,7 +126,7 @@ func GetBiosData(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)
 	if err != nil {
 		log.Println("Cannot get request info error: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	ctx := requestInfo.Ctx
@@ -137,14 +137,14 @@ func GetBiosData(w http.ResponseWriter, r *http.Request) {
 	tagnumber, ok := ConvertRequestTagnumber(r)
 	if tagnumber == 0 || !ok {
 		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
 
 	db := config.GetDatabaseConn()
 	if db == nil {
 		log.Warning("no database connection available")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	repo := database.NewRepo(db)
@@ -154,7 +154,7 @@ func GetBiosData(w http.ResponseWriter, r *http.Request) {
 	biosData, err := repo.GetBiosData(ctx, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -165,7 +165,7 @@ func GetOSData(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)
 	if err != nil {
 		log.Println("Cannot get request info error: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	ctx := requestInfo.Ctx
@@ -176,14 +176,14 @@ func GetOSData(w http.ResponseWriter, r *http.Request) {
 	tagnumber, ok := ConvertRequestTagnumber(r)
 	if tagnumber == 0 || !ok {
 		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
 
 	db := config.GetDatabaseConn()
 	if db == nil {
 		log.Warning("no database connection available")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	repo := database.NewRepo(db)
@@ -193,7 +193,7 @@ func GetOSData(w http.ResponseWriter, r *http.Request) {
 	osData, err := repo.GetOsData(ctx, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -204,7 +204,7 @@ func GetClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)
 	if err != nil {
 		log.Println("Cannot get request info error: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	ctx := requestInfo.Ctx
@@ -215,14 +215,14 @@ func GetClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
 	tagnumber, ok := ConvertRequestTagnumber(r)
 	if tagnumber == 0 || !ok {
 		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
 
 	db := config.GetDatabaseConn()
 	if db == nil {
 		log.Warning("no database connection available")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	repo := database.NewRepo(db)
@@ -232,7 +232,7 @@ func GetClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
 	activeJobs, err := repo.GetActiveJobs(ctx, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -243,7 +243,7 @@ func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)
 	if err != nil {
 		log.Println("Cannot get request info error: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	ctx := requestInfo.Ctx
@@ -254,14 +254,14 @@ func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
 	tagnumber, ok := ConvertRequestTagnumber(r)
 	if tagnumber == 0 || !ok {
 		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		http.Error(w, middleware.FormatHttpError("Bad request"), http.StatusBadRequest)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
 
 	db := config.GetDatabaseConn()
 	if db == nil {
 		log.Warning("no database connection available")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	repo := database.NewRepo(db)
@@ -271,7 +271,7 @@ func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
 	availableJobs, err := repo.GetAvailableJobs(ctx, tagnumber)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -282,7 +282,7 @@ func GetNotes(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)
 	if err != nil {
 		log.Println("Cannot get request info error: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	ctx := requestInfo.Ctx
@@ -293,7 +293,7 @@ func GetNotes(w http.ResponseWriter, r *http.Request) {
 	db := config.GetDatabaseConn()
 	if db == nil {
 		log.Warning("no database connection available")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	repo := database.NewRepo(db)
@@ -309,7 +309,7 @@ func GetNotes(w http.ResponseWriter, r *http.Request) {
 	notesData, err := repo.GetNotes(ctx, noteType)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	middleware.WriteJson(w, http.StatusOK, notesData)
@@ -320,7 +320,7 @@ func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)
 	if err != nil {
 		log.Println("Cannot get request info error: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	ctx := requestInfo.Ctx
@@ -331,7 +331,7 @@ func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
 	db := config.GetDatabaseConn()
 	if db == nil {
 		log.Warning("no database connection available")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	repo := database.NewRepo(db)
@@ -341,7 +341,7 @@ func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
 	jobQueueOverview, err := repo.GetJobQueueOverview(ctx)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -352,7 +352,7 @@ func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)
 	if err != nil {
 		log.Println("Cannot get request info error: " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	ctx := requestInfo.Ctx
@@ -363,7 +363,7 @@ func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
 	db := config.GetDatabaseConn()
 	if db == nil {
 		log.Warning("no database connection available")
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	repo := database.NewRepo(db)
@@ -373,7 +373,7 @@ func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
 	inventorySummary, err := repo.GetDashboardInventorySummary(ctx)
 	if err != nil {
 		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 	middleware.WriteJson(w, http.StatusOK, inventorySummary)

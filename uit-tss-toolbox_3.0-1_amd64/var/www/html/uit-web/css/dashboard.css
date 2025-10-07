@@ -1,11 +1,13 @@
 #note-text {
+  height: 45dvh;
   background: white;
   min-width: 45%;
-  min-height: 15rem;
   font-size: 1.1rem;
   padding: 0.5rem;
   border: 1px solid #ccc;
   border-radius: 0.25rem;
+  overflow-y: auto;
+  overflow-x: clip;
 }
 
 #note-text:focus {
@@ -16,14 +18,18 @@
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }
 
+#inventory-summary-body {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .grid-container.inventory-summary {
   min-width: fit-content;
-  min-height: 20dvh;
-  height: fit-content;
+  height: 60dvh;
   grid-template-columns: 1fr 1fr 1fr 1fr;
   gap: 1dvw;
   padding: 1dvw;
-  word-break: break-word;
 }
 
 .grid-item {
@@ -47,11 +53,12 @@
 .flex-box.home.notes-section {
   height: 70dvh;
   overflow-y: auto;
+  overflow-x: hidden;
   width: 100%;
 }
 
 .flex-box.home.inventory-summary-section {
-  max-height: 70dvh;
+  min-height: fit-content;
   width: 100%;
   padding: 1rem;
 }
