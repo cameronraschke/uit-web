@@ -162,7 +162,7 @@ func main() {
 
 	httpsMux := http.NewServeMux()
 	httpsMux.Handle("GET /api/server_time", httpsFullAPIChain.thenFunc(endpoints.GetServerTime))
-	httpsMux.Handle("GET /api/lookup", httpsFullAPIChain.thenFunc(endpoints.GetClientLookup))
+	httpsMux.Handle("GET /api/lookup/", httpsFullAPIChain.thenFunc(endpoints.GetClientLookup))
 	httpsMux.Handle("GET /api/client/hardware/ids", httpsFullAPIChain.thenFunc(endpoints.GetHardwareIdentifiers))
 	httpsMux.Handle("GET /api/client/bios", httpsFullAPIChain.thenFunc(endpoints.GetBiosData))
 	httpsMux.Handle("GET /api/client/os", httpsFullAPIChain.thenFunc(endpoints.GetOSData))

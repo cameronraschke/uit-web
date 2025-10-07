@@ -17,40 +17,40 @@
 
     <div class="flex-container inventory">
       <div class="flex-box">
-        <form id="inventory-form" method="POST" enctype="multipart/form-data" onsubmit="return false;">
+        <form id="inventory-form-lookup" onsubmit="return false;">
           <input type="hidden" id="csrf-token" value="" />
-            <div>
-              <!-- <label for="inventory-tag-input">Inventory Tag Number:</label> -->
-              <input type="text" id="inventory-tag-input"
-                placeholder="Enter Tag Number"
-                minlength="6"
-                maxlength="6"
+          <div>
+            <input type="text" id="inventory-tag-lookup"
+              placeholder="Enter Tag Number"
+              minlength="6"
+              maxlength="6"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              pattern="[0-9]{6}"
+              autofocus
+              required
+              />
+              <input type="text" id="inventory-serial-lookup"
+                placeholder="Enter Serial Number"
+                minlength="4"
+                maxlength="50"
                 autocomplete="off"
                 autocorrect="off"
                 autocapitalize="off"
-                pattern="[0-9]{6}"
-                autofocus
-                required
+                pattern="[A-Za-z0-9\-_]{1,50}"
                 />
-                <!-- <label for="inventory-serial-input">Serial Number:</label> -->
-                <input type="text" id="inventory-serial-input"
-                  placeholder="Enter Serial Number"
-                  minlength="4"
-                  maxlength="50"
-                  autocomplete="off"
-                  autocorrect="off"
-                  autocapitalize="off"
-                  pattern="[A-Za-z0-9\-_]{1,50}"
-                  />
-              </div>
-              <div><button type="button" id="inventory-lookup-button">Fetch Inventory</button></div>
-              <div class="vertical-spacer"></div>
-              <div><label for="inventory-file-input">Upload Inventory Image(s):</label></div>
-              <div><input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple /></div>
-              <div class="vertical-spacer"></div>
-              <div><input type="submit" id="inventory-submit-button" class="submit" value="Submit Inventory Update" /></div>
-              <div><p id="inventory-error" class="error-message"></p></div>
-        </form>
+          </div>
+          <div><button type="submit" id="inventory-lookup-button">Fetch Inventory</button></div>
+          </form>
+          <form>
+            <div class="vertical-spacer"></div>
+            <div><label for="inventory-file-input">Upload Inventory Image(s):</label></div>
+            <div><input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple /></div>
+            <div class="vertical-spacer"></div>
+            <div><input type="submit" id="inventory-submit-button" class="submit" value="Submit Inventory Update" /></div>
+            <div><p id="inventory-error" class="error-message"></p></div>
+          </form>
       </div>
 
       <div class="grid-container inventory">
