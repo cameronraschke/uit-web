@@ -43,7 +43,10 @@
                   autocapitalize="off"
                   pattern="[A-Za-z0-9\-_]{1,50}"
                   />
-              <div><button type="submit" id="inventory-lookup-button">Search for Client</button><button type="reset" id="inventory-reset-button">Reset Search</button></div>
+              <div>
+                <button type="submit" id="inventory-lookup-submit-button">Search for Client</button>
+                <button type="reset" id="inventory-lookup-reset-button">Reset Search</button>
+              </div>
             </div>
           </form>
         <div class="vertical-spacer"></div>
@@ -126,7 +129,10 @@
             <div><label for="inventory-file-input">Upload Inventory Image(s):</label></div>
             <div><input type="file" id="inventory-file-input" accept=".jpeg,.jpg,.png,.gif" multiple /></div>
             <div class="vertical-spacer"></div>
-            <div><input type="submit" id="inventory-submit-button" class="submit" value="Submit Inventory Update" /></div>
+            <div>
+              <input type="submit" id="inventory-update-submit-button" class="submit" value="Submit Inventory Update" />
+              <input type="reset" id="inventory-update-cancel-button" class="cancel" value="Cancel" />
+            </div>
             <div class="message"><p id="inventory-error" class="error-message"></p></div>
           </form>
         </div>

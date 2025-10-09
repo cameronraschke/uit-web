@@ -58,8 +58,13 @@ input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
   margin: 5dvh 0 0 0;
 }
 
-.submit button, input[type="button"], input[type="submit"] {
+button.submit, input[type="button"].submit, input[type="submit"].submit {
   background: #00B388;
+  border: 1px solid black;
+}
+
+button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[type="submit"].cancel {
+  background: #c8102f86;
   border: 1px solid black;
 }
 

@@ -1,11 +1,11 @@
-#inventory-lookup-button {
+#inventory-lookup-submit-button {
   grid-column-start: 1;
   grid-column-end: 2;
   text-align: center;
   border: 1px solid black;
 }
 
-#inventory-reset-button {
+#inventory-lookup-reset-button {
   display: none;
   margin-left: 1rem;
   background-color: #888B8D;

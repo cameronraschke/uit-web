@@ -254,14 +254,16 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		departments, err := database.GetDepartments(ctx, config.GetDatabaseConn())
+		db := database.NewRepo(config.GetDatabaseConn())
+
+		departments, err := db.GetDepartments(ctx)
 		if err != nil {
 			log.Error("Cannot get department list from database: " + err.Error())
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
-		domains, err := database.GetDomains(ctx, config.GetDatabaseConn())
+		domains, err := db.GetDomains(ctx)
 		if err != nil {
 			log.Error("Cannot get domain list from database: " + err.Error())
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

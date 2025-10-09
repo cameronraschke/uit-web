@@ -75,6 +75,37 @@ func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, hardwareData)
 }
 
+func GetAllTags(w http.ResponseWriter, r *http.Request) {
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
+
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	allTags, err := repo.GetAllTags(ctx)
+	if err != nil {
+		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, allTags)
+}
+
 func GetHardwareIdentifiers(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)
 	if err != nil {

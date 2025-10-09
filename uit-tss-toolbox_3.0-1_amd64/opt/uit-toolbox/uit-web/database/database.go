@@ -185,52 +185,6 @@ func GetJobQueueByTagnumber(ctx context.Context, tagnumber int) (string, error) 
 	return resultsJson, nil
 }
 
-type AllTags struct {
-	Tagnumber *int32 `json:"tagnumber"`
-}
-
-func GetAllTags(ctx context.Context) (string, error) {
-	var sqlCode string
-	var rows *sql.Rows
-	var results []*AllTags
-	var resultsJson string
-	var err error
-
-	db := config.GetDatabaseConn()
-
-	sqlCode = `SELECT t1.tagnumber FROM (SELECT time, tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS row_nums FROM locations) t1 WHERE t1.row_nums = 1 ORDER BY t1.time DESC`
-
-	rows, err = db.QueryContext(ctx, sqlCode)
-	if err != nil {
-		return "", errors.New("Timeout error: " + err.Error())
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		row := &AllTags{}
-		if err = rows.Err(); err != nil {
-			return "", errors.New("Query error: " + err.Error())
-		}
-		if err = ctx.Err(); err != nil {
-			return "", errors.New("Context error: " + err.Error())
-		}
-		err = rows.Scan(
-			&row.Tagnumber,
-		)
-		if err != nil && err != sql.ErrNoRows {
-			return "", errors.New("Error scanning rows: " + err.Error())
-		}
-		results = append(results, row)
-	}
-
-	resultsJson, err = CreateJson(results)
-	if err != nil {
-		return "", errors.New("JSON error: " + err.Error())
-	}
-	return resultsJson, nil
-
-}
-
 type RemoteOnlineTable struct {
 	Tagnumber              *int32  `json:"tagnumber"`
 	Screenshot             *string `json:"screenshot"`

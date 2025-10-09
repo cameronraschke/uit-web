@@ -72,3 +72,7 @@ type DomainList struct {
 	Domain         string `json:"domain"`
 	DomainReadable string `json:"domain_readable"`
 }
+
+type AllTags struct {
+	Tagnumber int `json:"tagnumber"`
+}

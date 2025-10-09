@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 )
 
 type Repo struct {
@@ -11,8 +12,37 @@ type Repo struct {
 
 func NewRepo(db *sql.DB) *Repo { return &Repo{DB: db} }
 
-func GetDepartments(ctx context.Context, db *sql.DB) (map[string]string, error) {
-	rows, err := db.QueryContext(ctx, "SELECT department, department_readable FROM static_departments ORDER BY department_readable;")
+func (repo *Repo) GetAllTags(ctx context.Context) ([]byte, error) {
+	sqlCode := `SELECT DISTINCT tagnumber FROM locations ORDER BY tagnumber;`
+
+	rows, err := repo.DB.QueryContext(ctx, sqlCode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var allTags []AllTags
+	for rows.Next() {
+		var tag AllTags
+		if err := rows.Scan(&tag.Tagnumber); err != nil {
+			return nil, err
+		}
+		allTags = append(allTags, tag)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	jsonData, err := json.Marshal(allTags)
+	if err != nil {
+		return nil, err
+	}
+
+	return jsonData, nil
+}
+
+func (repo *Repo) GetDepartments(ctx context.Context) (map[string]string, error) {
+	rows, err := repo.DB.QueryContext(ctx, "SELECT department, department_readable FROM static_departments ORDER BY department_readable;")
 	if err != nil {
 		return nil, err
 	}
@@ -38,8 +68,8 @@ func GetDepartments(ctx context.Context, db *sql.DB) (map[string]string, error) 
 	return deptMap, nil
 }
 
-func GetDomains(ctx context.Context, db *sql.DB) (map[string]string, error) {
-	rows, err := db.QueryContext(ctx, "SELECT domain, domain_readable FROM static_domains ORDER BY domain_readable;")
+func (repo *Repo) GetDomains(ctx context.Context) (map[string]string, error) {
+	rows, err := repo.DB.QueryContext(ctx, "SELECT domain, domain_readable FROM static_domains ORDER BY domain_readable;")
 	if err != nil {
 		return nil, err
 	}

@@ -159,3 +159,13 @@ async function generateSHA256Hash(input) {
     }
     return hashStr;
 }
+
+async function getAllTags(fetchOptions = {}) {
+  let tagArray = [];
+  const url = "/api/all_tags";
+  const data = await fetchData(url, fetchOptions);
+  if (data && Array.isArray(data)) {
+    tagArray = data.map(item => item.tagnumber).filter(num => Number.isInteger(num));
+  }
+  return tagArray;
+}
