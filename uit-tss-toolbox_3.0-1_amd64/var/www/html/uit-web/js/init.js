@@ -164,8 +164,15 @@ async function getAllTags(fetchOptions = {}) {
   let tagArray = [];
   const url = "/api/all_tags";
   const data = await fetchData(url, fetchOptions);
-  if (data && Array.isArray(data)) {
-    tagArray = data.map(item => item.tagnumber).filter(num => Number.isInteger(num));
+  tagString = data.replace('\[','').replace('\]','');
+  tagArray = String(tagString).split(",");
+  console.log(tagArray);
+  if (!data || !Array.isArray(tagArray) || tagArray.length === 0) {
+    console.warn("No tags returned from /api/all_tags");
+    return tagArray;
+  }
+  if (data && Array.isArray(tagArray) && tagArray.length > 0) {
+    tagArray = tagArray.map(item => parseInt(item, 10)).filter(num => Number.isInteger(num));
   }
   return tagArray;
 }

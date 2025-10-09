@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 )
 
 type Repo struct {
@@ -12,7 +11,7 @@ type Repo struct {
 
 func NewRepo(db *sql.DB) *Repo { return &Repo{DB: db} }
 
-func (repo *Repo) GetAllTags(ctx context.Context) ([]byte, error) {
+func (repo *Repo) GetAllTags(ctx context.Context) ([]int, error) {
 	sqlCode := `SELECT DISTINCT tagnumber FROM locations ORDER BY tagnumber;`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlCode)
@@ -33,12 +32,12 @@ func (repo *Repo) GetAllTags(ctx context.Context) ([]byte, error) {
 		return nil, err
 	}
 
-	jsonData, err := json.Marshal(allTags)
-	if err != nil {
-		return nil, err
+	allTagsSlice := make([]int, len(allTags))
+	for i := range allTags {
+		allTagsSlice[i] = allTags[i].Tagnumber
 	}
 
-	return jsonData, nil
+	return allTagsSlice, nil
 }
 
 func (repo *Repo) GetDepartments(ctx context.Context) (map[string]string, error) {
