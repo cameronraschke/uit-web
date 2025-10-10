@@ -204,7 +204,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 }
 
 type InventoryUpdate struct {
-	Tagnumber          int     `json:"tagnumber"`
+	Tagnumber          int64   `json:"tagnumber"`
 	SystemSerial       string  `json:"system_serial"`
 	Location           string  `json:"location"`
 	SystemManufacturer *string `json:"system_manufacturer"`

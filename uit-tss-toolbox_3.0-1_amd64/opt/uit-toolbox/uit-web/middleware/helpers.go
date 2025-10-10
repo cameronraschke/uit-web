@@ -273,7 +273,7 @@ func IsNumericAscii(b []byte) bool {
 	return true
 }
 
-func CountDigits(n int) int {
+func CountDigits(n int64) int {
 	if n == 0 {
 		return 1
 	}

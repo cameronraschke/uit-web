@@ -24,7 +24,7 @@
             <div class="inventory-lookup-label"><p>Tag Number/Serial Number Lookup:</p></div>
             <div><p>Search Tag Number:</p></div>
             <div><p>Search Serial Number:</p></div>
-              <input type="text" id="inventory-tag-lookup" list="inventory-tag-suggestions"
+              <input type="number" id="inventory-tag-lookup" list="inventory-tag-suggestions"
                 placeholder="Enter Tag Number"
                 minlength="6"
                 maxlength="6"
@@ -109,8 +109,8 @@
               <label for="working">Is it Working?</label>
               <select id="working" name="working">
                 <option value="" disabled selected>Is it Working?</option>
-                <option value="yes">Yes, it works</option>
-                <option value="no">No, it doesn't</option>
+                <option value="true">Yes, it works</option>
+                <option value="false">No, it doesn't</option>
               </select>
               <label for="status">Status:</label>
               <select id="status" name="status">
