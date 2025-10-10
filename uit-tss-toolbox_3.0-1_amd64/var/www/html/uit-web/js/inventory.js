@@ -102,3 +102,9 @@ inventoryUpdateCancelButton.addEventListener("click", (event) => {
   event.preventDefault();
   resetInventoryForm();
 });
+
+inventoryLookupTagInput.addEventListener("keyup", (event) => {
+  const searchTerm = event.target.value.toLowerCase();
+  const filteredTags = window.availableTags.filter(tag => tag.toLowerCase().includes(searchTerm));
+  console.log("Filtered tags: ", filteredTags);
+});

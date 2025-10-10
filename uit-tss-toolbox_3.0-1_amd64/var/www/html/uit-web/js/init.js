@@ -176,3 +176,10 @@ async function getAllTags(fetchOptions = {}) {
   }
   return tagArray;
 }
+
+getAllTags().then(tags => {
+  console.log("Available tags: " + tags);
+  window.availableTags = tags;
+}).catch(error => {
+  console.error("Error fetching tags: " + error);
+});

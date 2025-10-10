@@ -12,7 +12,8 @@ type Repo struct {
 func NewRepo(db *sql.DB) *Repo { return &Repo{DB: db} }
 
 func (repo *Repo) GetAllTags(ctx context.Context) ([]int, error) {
-	sqlCode := `SELECT DISTINCT tagnumber FROM locations ORDER BY tagnumber;`
+	sqlCode := `SELECT tagnumber FROM (SELECT tagnumber, time, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS
+		row_nums FROM locations WHERE tagnumber IS NOT NULL) t1 WHERE t1.row_nums = 1 ORDER BY t1.time DESC;`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlCode)
 	if err != nil {
