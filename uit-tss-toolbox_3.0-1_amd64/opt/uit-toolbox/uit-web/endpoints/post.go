@@ -209,10 +209,10 @@ type InventoryUpdate struct {
 	Location           string  `json:"location"`
 	SystemManufacturer *string `json:"system_manufacturer"`
 	SystemModel        *string `json:"system_model"`
-	Department         string  `json:"department"`
+	Department         *string `json:"department"`
 	Domain             *string `json:"domain"`
 	Working            *bool   `json:"working"`
-	Status             string  `json:"status"`
+	Status             *string `json:"status"`
 	Note               *string `json:"note"`
 	Image              *string `json:"image"`
 }
@@ -334,22 +334,23 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		log.Warning("No system model provided for inventory update: " + requestIP)
 	}
 
-	// Department (optional, max 24 chars)
-	if strings.TrimSpace(inventoryUpdate.Department) != "" {
-		if utf8.RuneCountInString(inventoryUpdate.Department) < 1 || utf8.RuneCountInString(inventoryUpdate.Department) > 24 {
-			log.Warning("Invalid department length for inventory update: " + requestIP)
-			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-			return
-		}
-		if !middleware.IsPrintableASCII([]byte(inventoryUpdate.Department)) {
-			log.Warning("Non-printable ASCII characters in department field for inventory update: " + requestIP)
-			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-			return
-		}
-		inventoryUpdate.Department = strings.TrimSpace(inventoryUpdate.Department)
-	} else {
+	// Department (required, max 24 chars)
+	if inventoryUpdate.Department == nil || strings.TrimSpace(*inventoryUpdate.Department) == "" {
 		log.Warning("No department provided for inventory update: " + requestIP)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
 	}
+	if utf8.RuneCountInString(*inventoryUpdate.Department) < 1 || utf8.RuneCountInString(*inventoryUpdate.Department) > 24 {
+		log.Warning("Invalid department length for inventory update: " + requestIP)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	if !middleware.IsPrintableASCII([]byte(*inventoryUpdate.Department)) {
+		log.Warning("Non-printable ASCII characters in department field for inventory update: " + requestIP)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	*inventoryUpdate.Department = strings.TrimSpace(*inventoryUpdate.Department)
 
 	// Domain (optional, min 1 char, max 24 chars)
 	if inventoryUpdate.Domain != nil && strings.TrimSpace(*inventoryUpdate.Domain) != "" {
@@ -376,22 +377,22 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Status (mandatory, max 64 chars)
-	if strings.TrimSpace(inventoryUpdate.Status) == "" {
+	if inventoryUpdate.Status == nil || strings.TrimSpace(*inventoryUpdate.Status) == "" {
 		log.Warning("No status provided for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	if utf8.RuneCountInString(inventoryUpdate.Status) < 1 || utf8.RuneCountInString(inventoryUpdate.Status) > 64 {
+	if utf8.RuneCountInString(*inventoryUpdate.Status) < 1 || utf8.RuneCountInString(*inventoryUpdate.Status) > 64 {
 		log.Warning("Invalid status length for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	if !middleware.IsPrintableASCII([]byte(inventoryUpdate.Status)) {
+	if !middleware.IsPrintableASCII([]byte(*inventoryUpdate.Status)) {
 		log.Warning("Non-printable ASCII characters in status field for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	inventoryUpdate.Status = strings.TrimSpace(inventoryUpdate.Status)
+	*inventoryUpdate.Status = strings.TrimSpace(*inventoryUpdate.Status)
 
 	// Note (optional, max 2000 chars)
 	if inventoryUpdate.Note != nil && strings.TrimSpace(*inventoryUpdate.Note) != "" {
@@ -447,10 +448,11 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Update inventory in database
+	// Update db
 	dbConn := config.GetDatabaseConn()
 	updateRepo := database.NewRepo(dbConn)
-	err = updateRepo.UpdateInventory(ctx, inventoryUpdate.Tagnumber, inventoryUpdate.SystemSerial, inventoryUpdate.Location, *inventoryUpdate.SystemManufacturer, *inventoryUpdate.SystemModel, inventoryUpdate.Department, *inventoryUpdate.Domain, *inventoryUpdate.Working, inventoryUpdate.Status, *inventoryUpdate.Note, *inventoryUpdate.Image)
+	// No pointers here, pointers in repo
+	err = updateRepo.UpdateInventory(ctx, inventoryUpdate.Tagnumber, inventoryUpdate.SystemSerial, inventoryUpdate.Location, inventoryUpdate.SystemManufacturer, inventoryUpdate.SystemModel, inventoryUpdate.Department, inventoryUpdate.Domain, inventoryUpdate.Working, inventoryUpdate.Status, inventoryUpdate.Note, inventoryUpdate.Image)
 	if err != nil {
 		log.Error("Failed to update inventory: " + err.Error() + " (" + requestIP + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
