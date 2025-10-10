@@ -204,14 +204,14 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 }
 
 type InventoryUpdate struct {
-	Tagnumber          int64   `json:"tagnumber"`
+	Tagnumber          string  `json:"tagnumber"`
 	SystemSerial       string  `json:"system_serial"`
 	Location           string  `json:"location"`
 	SystemManufacturer *string `json:"system_manufacturer"`
 	SystemModel        *string `json:"system_model"`
 	Department         *string `json:"department"`
 	Domain             *string `json:"domain"`
-	Working            *bool   `json:"working"`
+	Working            *string `json:"working"`
 	Status             *string `json:"status"`
 	Note               *string `json:"note"`
 	Image              *string `json:"image"`
@@ -248,18 +248,29 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 
 	// Validate and sanitize input data
 	// Tag number (required, 6 digits)
-	if inventoryUpdate.Tagnumber == 0 {
+	if strings.TrimSpace(inventoryUpdate.Tagnumber) == "" {
 		log.Warning("No tag number provided for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	if inventoryUpdate.Tagnumber < 1 || inventoryUpdate.Tagnumber > 999999 {
-		log.Warning("Invalid tag number provided for inventory update: " + requestIP)
+	if !middleware.IsNumericAscii([]byte(inventoryUpdate.Tagnumber)) {
+		log.Warning("Non-digit characters in tag number field for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	if middleware.CountDigits(inventoryUpdate.Tagnumber) != 6 {
+	if utf8.RuneCountInString(inventoryUpdate.Tagnumber) != 6 {
 		log.Warning("Tag number not 6 digits for inventory update: " + requestIP)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	tagnumber, err := strconv.ParseInt(inventoryUpdate.Tagnumber, 10, 64)
+	if err != nil {
+		log.Warning("Cannot parse tag number for inventory update: " + requestIP)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	if tagnumber < 1 || tagnumber > 999999 {
+		log.Warning("Invalid tag number provided for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
@@ -370,8 +381,20 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Working (mandatory, bool)
-	if inventoryUpdate.Working == nil || !*inventoryUpdate.Working {
-		log.Warning("No working status provided for inventory update: " + requestIP)
+	if inventoryUpdate.Working == nil || strings.TrimSpace(*inventoryUpdate.Working) == "" {
+		log.Warning("No working bool value provided for inventory update: " + requestIP)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	if *inventoryUpdate.Working != "true" && *inventoryUpdate.Working != "false" {
+		log.Warning("Invalid working bool value for inventory update: " + requestIP)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	var workingBool bool
+	workingBool, err = strconv.ParseBool(*inventoryUpdate.Working)
+	if err != nil {
+		log.Warning("Cannot parse working bool value for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
@@ -452,7 +475,8 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	dbConn := config.GetDatabaseConn()
 	updateRepo := database.NewRepo(dbConn)
 	// No pointers here, pointers in repo
-	err = updateRepo.UpdateInventory(ctx, inventoryUpdate.Tagnumber, inventoryUpdate.SystemSerial, inventoryUpdate.Location, inventoryUpdate.SystemManufacturer, inventoryUpdate.SystemModel, inventoryUpdate.Department, inventoryUpdate.Domain, inventoryUpdate.Working, inventoryUpdate.Status, inventoryUpdate.Note, inventoryUpdate.Image)
+	// tagnumber and working are converted above
+	err = updateRepo.UpdateInventory(ctx, tagnumber, inventoryUpdate.SystemSerial, inventoryUpdate.Location, inventoryUpdate.SystemManufacturer, inventoryUpdate.SystemModel, inventoryUpdate.Department, inventoryUpdate.Domain, workingBool, inventoryUpdate.Status, inventoryUpdate.Note, inventoryUpdate.Image)
 	if err != nil {
 		log.Error("Failed to update inventory: " + err.Error() + " (" + requestIP + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
