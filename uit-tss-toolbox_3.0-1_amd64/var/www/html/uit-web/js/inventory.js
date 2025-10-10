@@ -55,6 +55,21 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
     inventoryLookupWarningMessage.textContent = "Please provide a tag number or serial number to look up.";
     return;
   }
+  if (lookupTag && isNaN(Number(lookupTag))) {
+    inventoryLookupWarningMessage.style.display = "block";
+    inventoryLookupWarningMessage.textContent = "Tag number must be numeric.";
+    return;
+  }
+  if (lookupSerial && (lookupSerial.length < 4 || lookupSerial.length > 20)) {
+    inventoryLookupWarningMessage.style.display = "block";
+    inventoryLookupWarningMessage.textContent = "Serial number must be between 4 and 20 characters long.";
+    return;
+  }
+  if (lookupTag && lookupTag.length != 6) {
+    inventoryLookupWarningMessage.style.display = "block";
+    inventoryLookupWarningMessage.textContent = "Tag number must be exactly 6 digits long.";
+    return;
+  }
   inventoryUpdateSection.style.display = "block";
   if (lookupResult) {
     inventoryLookupTagInput.value = lookupResult.tagnumber || "";
@@ -78,20 +93,20 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
 });
 
 function resetInventoryForm() {
-  inventoryLookupTagInput.value = "";
-  inventoryLookupSerialInput.value = "";
-  inventoryLookupTagInput.disabled = false;
-  inventoryLookupSerialInput.disabled = false;
-  inventoryLookupSubmitButton.disabled = false;
-  inventoryLookupSubmitButton.style.cursor = "pointer";
-  inventoryLookupSubmitButton.style.border = "1px solid black";
-  inventoryLookupResetButton.style.display = "none";
   inventoryLookupForm.reset();
   inventoryUpdateForm.reset();
+  inventoryLookupTagInput.value = "";
+  inventoryLookupTagInput.style.backgroundColor = "initial";
+  inventoryLookupTagInput.disabled = false;
+  inventoryLookupSerialInput.value = "";
+  inventoryLookupSerialInput.disabled = false;
+  inventoryLookupSubmitButton.style.cursor = "pointer";
+  inventoryLookupSubmitButton.style.border = "1px solid black";
+  inventoryLookupSubmitButton.disabled = false;
+  inventoryLookupResetButton.style.display = "none";
   inventoryUpdateSection.style.display = "none";
   inventoryLookupWarningMessage.style.display = "none";
   inventoryLookupWarningMessage.textContent = "";
-  inventoryLookupTagInput.style.backgroundColor = "initial";
   inventoryLookupSerialInput.style.backgroundColor = "initial";
   inventoryLookupTagInput.focus();
 }
@@ -179,15 +194,13 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
       body: JSON.stringify(jsonData)
     });
 
-    const body = await response.text();
-    console.log(body);
+    const data = await response.json();
 
     if (!response.ok) {
       throw new Error("Failed to update inventory");
     }
-
-    const result = await response.json();
-    console.log("Inventory updated successfully:", result);
+    console.log(JSON.stringify(jsonData));
+    console.log("Inventory updated successfully:", data.message);
   } catch (error) {
     console.error("Error updating inventory:", error);
   } finally {

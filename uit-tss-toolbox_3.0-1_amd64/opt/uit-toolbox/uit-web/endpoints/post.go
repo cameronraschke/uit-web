@@ -440,35 +440,35 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	file, handler, err := req.FormFile("inventory-file-input")
 	if err != nil {
 		log.Warning("Failed to retrieve file from form: " + requestIP)
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-		return
 	}
-	defer file.Close()
+	if file != nil && handler != nil && err == nil {
+		defer file.Close()
 
-	if handler.Size > 64<<20 {
-		log.Warning("Uploaded file too large for inventory update: " + requestIP)
-		middleware.WriteJsonError(w, http.StatusBadRequest, "File too large")
-		return
-	}
+		if handler.Size > 64<<20 {
+			log.Warning("Uploaded file too large for inventory update: " + requestIP)
+			middleware.WriteJsonError(w, http.StatusBadRequest, "File too large")
+			return
+		}
 
-	for _, rune := range handler.Filename {
-		if !(unicode.IsLetter(rune) || unicode.IsDigit(rune) || rune == '.' || rune == '-' || rune == '_') {
-			log.Warning("Invalid characters in uploaded file name for inventory update: " + requestIP)
+		for _, rune := range handler.Filename {
+			if !(unicode.IsLetter(rune) || unicode.IsDigit(rune) || rune == '.' || rune == '-' || rune == '_') {
+				log.Warning("Invalid characters in uploaded file name for inventory update: " + requestIP)
+				middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+				return
+			}
+		}
+
+		fileBytes, err := io.ReadAll(file)
+		if err != nil {
+			log.Warning("Failed to read uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
 			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 			return
 		}
-	}
-
-	fileBytes, err := io.ReadAll(file)
-	if err != nil {
-		log.Warning("Failed to read uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-		return
-	}
-	if len(fileBytes) == 0 {
-		log.Warning("Empty file uploaded for inventory update: " + requestIP)
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-		return
+		if len(fileBytes) == 0 {
+			log.Warning("Empty file uploaded for inventory update: " + requestIP)
+			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+			return
+		}
 	}
 
 	// Update db
@@ -482,5 +482,5 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+	middleware.WriteJson(w, http.StatusOK, map[string]string{"message": "Inventory updated successfully"})
 }
