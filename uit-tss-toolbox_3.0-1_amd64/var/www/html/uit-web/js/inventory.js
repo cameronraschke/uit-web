@@ -1,3 +1,5 @@
+let updatingInventory = false;
+
 const inventoryLookupWarningMessage = document.getElementById('existing-inventory-message');
 const inventoryLookupForm = document.getElementById('inventory-lookup-form');
 const inventoryLookupTagInput = document.getElementById('inventory-tag-lookup');
@@ -9,6 +11,7 @@ const inventoryUpdateSection = document.getElementById('inventory-update-section
 const inventoryLocationInput = document.getElementById('location');
 const inventoryUpdateSubmitButton = document.getElementById('inventory-update-submit-button');
 const inventoryUpdateCancelButton = document.getElementById('inventory-update-cancel-button');
+const tagDatalist = document.getElementById('inventory-tag-suggestions');
 
 function postInventoryData() {
   return null;
@@ -37,8 +40,8 @@ async function getTagOrSerial(tagnumber, serial) {
 
     return returnObject;
 
-  } catch(e) {
-    console.log("Error getting tag/serial: " + e.message);
+  } catch(error) {
+    console.log("Error getting tag/serial: " + error.message);
   }
 }
 
@@ -103,8 +106,71 @@ inventoryUpdateCancelButton.addEventListener("click", (event) => {
   resetInventoryForm();
 });
 
+function renderTagOptions(tags) {
+  if (!tagDatalist) {
+    console.warn("No tag datalist found");
+    return;
+  }
+  tagDatalist.innerHTML = '';
+  (tags || []).slice(0, 20).forEach(tag => {
+    const option = document.createElement('option');
+    option.value = tag;
+    tagDatalist.appendChild(option);
+  });
+}
+
+if (Array.isArray(window.availableTags)) {
+  console.log("Available tags found:", window.availableTags);
+  renderTagOptions(window.availableTags);
+}
+
+document.addEventListener('tags:loaded', (event) => {
+  const tags = (event && event.detail && Array.isArray(event.detail.tags)) ? event.detail.tags : window.availableTags;
+  renderTagOptions(tags || []);
+});
+
 inventoryLookupTagInput.addEventListener("keyup", (event) => {
-  const searchTerm = event.target.value.toLowerCase();
-  const filteredTags = window.availableTags.filter(tag => tag.toLowerCase().includes(searchTerm));
-  console.log("Filtered tags: ", filteredTags);
+  const searchTerm = (event.target.value || '').trim().toLowerCase();
+  const allTags = Array.isArray(window.availableTags) ? window.availableTags : [];
+  const filteredTags = searchTerm
+    ? allTags.filter(tag => String(tag).trim().includes(searchTerm))
+    : allTags;
+  renderTagOptions(filteredTags);
+});
+
+inventoryUpdateForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  inventoryUpdateSubmitButton.disabled = true;
+  if (updatingInventory) return;
+  updatingInventory = true;
+
+  const formData = new FormData(inventoryUpdateForm);
+  if (inventoryLookupTagInput && inventoryLookupSerialInput) {
+    formData.append("tagnumber", inventoryLookupTagInput.value || "");
+    formData.append("system_serial", inventoryLookupSerialInput.value || "");
+  } else {
+    throw new Error("No tag or serial input fields found in DOM");
+  }
+  const jsonData = Object.fromEntries(formData.entries());
+
+  try {
+    const response = await fetch("/api/update_inventory", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(jsonData)
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to update inventory");
+    }
+
+    const result = await response.json();
+    console.log("Inventory updated successfully:", result);
+  } catch (error) {
+    console.error("Error updating inventory:", error);
+  } finally {
+    inventoryUpdateSubmitButton.disabled = false;
+  }
 });

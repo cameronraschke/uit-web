@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS jobstats (
     etheraddress VARCHAR(17) DEFAULT NULL,
     date DATE DEFAULT NULL,
     time TIMESTAMP(3) DEFAULT NULL,
-    system_serial VARCHAR(24) DEFAULT NULL,
+    system_serial VARCHAR(64) DEFAULT NULL,
     disk VARCHAR(8) DEFAULT NULL,
     disk_model VARCHAR(36) DEFAULT NULL,
     disk_type VARCHAR(4) DEFAULT NULL,
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS jobstats (
 CREATE TABLE IF NOT EXISTS locations (
     time TIMESTAMP(3) UNIQUE NOT NULL,
     tagnumber INTEGER DEFAULT NULL,
-    system_serial VARCHAR(24) DEFAULT NULL,
+    system_serial VARCHAR(64) DEFAULT NULL,
     location VARCHAR(128) DEFAULT NULL,
     status BOOLEAN DEFAULT NULL,
     disk_removed BOOLEAN DEFAULT NULL,
@@ -205,7 +205,7 @@ INSERT INTO static_bios_stats
 
 CREATE TABLE IF NOT EXISTS client_health (
     tagnumber INTEGER UNIQUE NOT NULL,
-    system_serial VARCHAR(24) DEFAULT NULL,
+    system_serial VARCHAR(64) DEFAULT NULL,
     tpm_version VARCHAR(24) DEFAULT NULL,
     bios_version VARCHAR(24) DEFAULT NULL,
     bios_updated BOOLEAN DEFAULT NULL,

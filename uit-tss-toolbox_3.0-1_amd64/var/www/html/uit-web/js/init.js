@@ -161,25 +161,50 @@ async function generateSHA256Hash(input) {
 }
 
 async function getAllTags(fetchOptions = {}) {
-  let tagArray = [];
   const url = "/api/all_tags";
-  const data = await fetchData(url, fetchOptions);
-  tagString = data.replace('\[','').replace('\]','');
-  tagArray = String(tagString).split(",");
-  console.log(tagArray);
-  if (!data || !Array.isArray(tagArray) || tagArray.length === 0) {
-    console.warn("No tags returned from /api/all_tags");
-    return tagArray;
+  try {
+    const data = await fetchData(url, true, fetchOptions);
+    if (!data) {
+      console.warn("No data returned from /api/all_tags");
+      return [];
+    }
+
+    let tagArr = [];
+    if (!Array.isArray(data) && typeof data === "string") {
+      try {
+        tagArr = data
+          .replace(/\[/, "")
+          .replace(/\]/, "")
+          .split(",")
+          .map(tag => tag.trim())
+          .filter(Boolean);
+      } catch (error) {
+        console.warn("/api/all_tags cannot be parsed as JSON: " + error);
+        return [];
+      }
+    }
+
+    if (!Array.isArray(tagArr)) {
+      console.warn("/api/all_tags did not return an array");
+      return [];
+    }
+    tagArr = tagArr.map(tag => (typeof tag === "number" ? String(tag) : String(tag || "").trim())).filter(tag => tag.length === 6);
+    return tagArr;
+  } catch (error) {
+    console.error("Error fetching tags from /api/all_tags:", error);
+    return [];
   }
-  if (data && Array.isArray(tagArray) && tagArray.length > 0) {
-    tagArray = tagArray.map(item => parseInt(item, 10)).filter(num => Number.isInteger(num));
-  }
-  return tagArray;
 }
 
-getAllTags().then(tags => {
-  console.log("Available tags: " + tags);
-  window.availableTags = tags;
-}).catch(error => {
-  console.error("Error fetching tags: " + error);
+
+document.addEventListener("DOMContentLoaded", () => {
+  getAllTags()
+    .then(tags => {
+      window.availableTags = Array.isArray(tags) ? tags : [];
+      document.dispatchEvent(new CustomEvent("tags:loaded", { detail: { tags: window.availableTags } }));
+    })
+    .catch(error => {
+      console.warn("Error initializing available tags:", error);
+      window.availableTags = [];
+    });
 });

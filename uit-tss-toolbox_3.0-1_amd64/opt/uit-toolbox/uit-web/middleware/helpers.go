@@ -245,12 +245,44 @@ func CheckAuthCredentials(ctx context.Context, username, password string) (bool,
 
 func IsPrintableASCII(b []byte) bool {
 	for i := range b {
-		c := b[i]
-		if c < 0x21 || c > 0x7E {
+		char := b[i]
+		if char < 0x20 || char > 0x7E { // Space (0x20) to tilde (0x7E)
 			return false
 		}
 	}
 	return true
+}
+
+func IsAlphanumericAscii(b []byte) bool {
+	for i := range b {
+		char := b[i]
+		if (char < '0' || char > '9') && (char < 'A' || char > 'Z') && (char < 'a' || char > 'z') {
+			return false
+		}
+	}
+	return true
+}
+
+func IsNumericAscii(b []byte) bool {
+	for i := range b {
+		char := b[i]
+		if char < '0' || char > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func CountDigits(n int) int {
+	if n == 0 {
+		return 1
+	}
+	count := 0
+	for n != 0 {
+		n /= 10
+		count++
+	}
+	return count
 }
 
 func IsSHA256String(s string) error {
