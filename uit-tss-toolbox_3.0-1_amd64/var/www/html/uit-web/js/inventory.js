@@ -184,7 +184,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     inventoryUpdateForm.querySelector("#system_model").value ? formData.append("system_model", String(inventoryUpdateForm.querySelector("#system_model").value)) : formData.append("system_model", null);
     inventoryUpdateForm.querySelector("#department").value ? formData.append("department", String(inventoryUpdateForm.querySelector("#department").value)) : formData.append("department", null);
     inventoryUpdateForm.querySelector("#domain").value ? formData.append("domain", String(inventoryUpdateForm.querySelector("#domain").value)) : formData.append("domain", null);
-    inventoryUpdateForm.querySelector("#working").value ? formData.append("working", Boolean(inventoryUpdateForm.querySelector("#working").value)) : formData.append("working", null);
+    inventoryUpdateForm.querySelector("#working").value ? formData.append("working", new Boolean(inventoryUpdateForm.querySelector("#working").value)) : formData.append("working", null);
     inventoryUpdateForm.querySelector("#status").value ? formData.append("status", String(inventoryUpdateForm.querySelector("#status").value)) : formData.append("status", null);
     inventoryUpdateForm.querySelector("#note").value ? formData.append("note", String(inventoryUpdateForm.querySelector("#note").value)) : formData.append("note", null);
     var fileCount = 0;
@@ -213,6 +213,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     }
     console.log(JSON.stringify(jsonData));
     console.log("Inventory updated successfully:", data.message);
+    inventoryUpdateSubmitButton.disabled = false;
   } catch (error) {
     console.error("Error updating inventory:", error);
   } finally {

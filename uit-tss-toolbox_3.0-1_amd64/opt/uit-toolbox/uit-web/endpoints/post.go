@@ -3,6 +3,7 @@ package endpoints
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	_ "image/png"
 	"io"
@@ -424,14 +425,14 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 
 	// Image (base64, optional, max 64MB, multiple file uploads supported)
 	file, handler, err := req.FormFile("inventory-file-input")
-	if err != nil {
-		log.Warning("Failed to retrieve file from form: " + requestIP)
+	if err != nil && !errors.Is(err, http.ErrMissingFile) {
+		log.Warning("Failed to retrieve file from form: " + requestIP + " (" + err.Error() + ")")
 	}
 	if file != nil && handler != nil && err == nil {
 		defer file.Close()
 
 		if handler.Size > 64<<20 {
-			log.Warning("Uploaded file too large for inventory update: " + requestIP)
+			log.Warning("Uploaded file too large for inventory update: " + requestIP + " (" + strconv.FormatInt(handler.Size, 10) + " bytes)")
 			middleware.WriteJsonError(w, http.StatusBadRequest, "File too large")
 			return
 		}
