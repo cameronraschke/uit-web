@@ -1,14 +1,15 @@
 package endpoints
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	_ "image/png"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -224,25 +225,24 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	// Parse inventory data
-	encodedString, err := io.ReadAll(req.Body)
-	if err != nil {
-		log.Warning("Cannot read request body: " + err.Error() + " (" + requestIP + ")")
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-		return
-	}
-	defer req.Body.Close()
 
-	decodedBytes, err := base64.StdEncoding.DecodeString(string(encodedString))
+	// Parse inventory data
+	if err := req.ParseMultipartForm(64 << 20); err != nil {
+		log.Warning("Cannot parse multipart form: " + err.Error() + " (" + requestIP + ")")
+		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge, "Request entity too large")
+		return
+	}
+
+	jsonFile, _, err := req.FormFile("json")
 	if err != nil {
-		log.Warning("Cannot decode base64 inventory data: " + err.Error() + " (" + requestIP + ")")
+		log.Warning("No JSON data provided in form: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
+	defer jsonFile.Close()
 
 	var inventoryUpdate database.InventoryUpdateFormInput
-	err = json.NewDecoder(bytes.NewReader(decodedBytes)).Decode(&inventoryUpdate)
-	if err != nil {
+	if err := json.NewDecoder(jsonFile).Decode(&inventoryUpdate); err != nil {
 		log.Warning("Cannot decode inventory JSON: " + err.Error() + " (" + requestIP + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
@@ -382,15 +382,15 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	if !*inventoryUpdate.Working && *inventoryUpdate.Working {
-		log.Warning("Invalid working bool value for inventory update: " + requestIP)
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-		return
-	}
 	var workingBool bool
 	workingBool, err = strconv.ParseBool(strconv.FormatBool(*inventoryUpdate.Working))
 	if err != nil {
 		log.Warning("Cannot parse working bool value for inventory update: " + requestIP)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	if !workingBool && workingBool {
+		log.Warning("Invalid working bool value for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
@@ -433,38 +433,73 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Image (base64, optional, max 64MB, multiple file uploads supported)
-	file, handler, err := req.FormFile("inventory-file-input")
-	if err != nil && !errors.Is(err, http.ErrMissingFile) && !errors.Is(err, http.ErrNotMultipart) {
-		log.Warning("Failed to retrieve file from form: " + requestIP + " (" + err.Error() + ")")
-	}
-	if file != nil && handler != nil && err == nil {
-		defer file.Close()
-
-		if handler.Size > 64<<20 {
-			log.Warning("Uploaded file too large for inventory update: " + requestIP + " (" + strconv.FormatInt(handler.Size, 10) + " bytes)")
-			middleware.WriteJsonError(w, http.StatusBadRequest, "File too large")
-			return
+	var files []*multipart.FileHeader
+	if req.MultipartForm != nil && req.MultipartForm.File != nil {
+		if f := req.MultipartForm.File["inventory-file-input"]; len(f) > 0 {
+			files = f
 		}
+	}
 
-		for _, rune := range handler.Filename {
-			if !(unicode.IsLetter(rune) || unicode.IsDigit(rune) || rune == '.' || rune == '-' || rune == '_') {
+	const maxFileSize = 64 << 20 // 64 MB
+	for _, fileHeader := range files {
+		for _, char := range fileHeader.Filename {
+			if !(unicode.IsLetter(char) || unicode.IsDigit(char) || char == '.' || char == '-' || char == '_') {
 				log.Warning("Invalid characters in uploaded file name for inventory update: " + requestIP)
 				middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 				return
 			}
 		}
-
-		fileBytes, err := io.ReadAll(file)
+		if fileHeader.Size > maxFileSize {
+			log.Warning("Uploaded file too large for inventory update: " + requestIP + " (" + strconv.FormatInt(fileHeader.Size, 10) + " bytes)")
+			middleware.WriteJsonError(w, http.StatusBadRequest, "File too large")
+			return
+		}
+		file, err := fileHeader.Open()
 		if err != nil {
-			log.Warning("Failed to read uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
+			log.Warning("Failed to open uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
 			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 			return
 		}
-		if len(fileBytes) == 0 {
-			log.Warning("Empty file uploaded for inventory update: " + requestIP)
-			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-			return
-		}
+		func() {
+			defer file.Close()
+
+			lr := &io.LimitedReader{R: file, N: maxFileSize + 1}
+			fileData, err := io.ReadAll(lr)
+			if err != nil {
+				log.Warning("Failed to read uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
+				middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+				return
+			}
+			if int64(len(fileData)) > maxFileSize {
+				log.Warning("Uploaded file too large for inventory update: " + requestIP + " (" + strconv.Itoa(len(fileData)) + " bytes)")
+				middleware.WriteJsonError(w, http.StatusBadRequest, "File too large")
+				return
+			}
+			if len(fileData) == 0 {
+				log.Warning("Empty file uploaded for inventory update: " + requestIP)
+				middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+				return
+			}
+			var fileSize int64 = int64(len(fileData))
+			if fileSize < 512 {
+				log.Warning("Uploaded file too small for inventory update: " + requestIP + " (" + strconv.FormatInt(fileSize, 10) + " bytes)")
+				middleware.WriteJsonError(w, http.StatusBadRequest, "File too small")
+				return
+			}
+			contentType := http.DetectContentType(fileData[:fileSize])
+			if !strings.HasPrefix(contentType, "image/") {
+				log.Warning("Uploaded file is not an image for inventory update: " + requestIP + " (Content-Type: " + contentType + ")")
+				middleware.WriteJsonError(w, http.StatusUnsupportedMediaType, "Unsupported media type")
+				return
+			}
+
+			savePath := filepath.Join("./inventory-images", fmt.Sprintf("%06d_%s", tagnumber, fileHeader.Filename))
+			if err := os.WriteFile(savePath, fileData, 0644); err != nil {
+				log.Warning("Failed to save uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
+				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
+		}()
 	}
 
 	// Update db
@@ -496,7 +531,6 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	retMap.Working = &workingBool
 	retMap.Status = inventoryUpdate.Status
 	retMap.Note = inventoryUpdate.Note
-	retMap.Image = inventoryUpdate.Image
 	retMapJson, err := json.Marshal(retMap)
 	if err != nil {
 		log.Error("Failed to marshal inventory update response JSON: " + err.Error() + " (" + requestIP + ")")

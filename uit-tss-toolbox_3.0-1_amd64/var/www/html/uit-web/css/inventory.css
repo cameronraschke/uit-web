@@ -27,7 +27,7 @@
   align-items: center;
   gap: 2dvw;
   padding: 1dvw;
-  justify-content: space-between;
+  justify-content: center;
 }
 
 .grid-container.inventory.inventory-lookup-form {

@@ -103,5 +103,4 @@ type InventoryUpdateFormInput struct {
 	Working            *bool   `json:"working"`
 	Status             *string `json:"status"`
 	Note               *string `json:"note"`
-	Image              *string `json:"image"`
 }
