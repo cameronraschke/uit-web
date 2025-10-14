@@ -93,14 +93,14 @@ type InventoryFormAutofill struct {
 }
 
 type InventoryUpdateFormInput struct {
-	Tagnumber          string  `json:"tagnumber"`
+	Tagnumber          int     `json:"tagnumber"`
 	SystemSerial       string  `json:"system_serial"`
 	Location           string  `json:"location"`
 	SystemManufacturer *string `json:"system_manufacturer"`
 	SystemModel        *string `json:"system_model"`
 	Department         *string `json:"department"`
 	Domain             *string `json:"domain"`
-	Working            *string `json:"working"`
+	Working            *bool   `json:"working"`
 	Status             *string `json:"status"`
 	Note               *string `json:"note"`
 	Image              *string `json:"image"`

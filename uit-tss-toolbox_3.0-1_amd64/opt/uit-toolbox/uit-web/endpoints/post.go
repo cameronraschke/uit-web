@@ -235,22 +235,17 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 
 	// Validate and sanitize input data
 	// Tag number (required, 6 digits)
-	if strings.TrimSpace(inventoryUpdate.Tagnumber) == "" {
-		log.Warning("No tag number provided for inventory update: " + requestIP)
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-		return
-	}
-	if !middleware.IsNumericAscii([]byte(inventoryUpdate.Tagnumber)) {
+	if !middleware.IsNumericAscii([]byte(strconv.Itoa(inventoryUpdate.Tagnumber))) {
 		log.Warning("Non-digit characters in tag number field for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	if utf8.RuneCountInString(inventoryUpdate.Tagnumber) != 6 {
+	if utf8.RuneCountInString(strconv.Itoa(inventoryUpdate.Tagnumber)) != 6 {
 		log.Warning("Tag number not 6 digits for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	tagnumber, err := strconv.ParseInt(inventoryUpdate.Tagnumber, 10, 64)
+	tagnumber, err := strconv.ParseInt(strconv.Itoa(inventoryUpdate.Tagnumber), 10, 64)
 	if err != nil {
 		log.Warning("Cannot parse tag number for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
@@ -368,18 +363,18 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Working (mandatory, bool)
-	if inventoryUpdate.Working == nil || strings.TrimSpace(*inventoryUpdate.Working) == "" {
+	if inventoryUpdate.Working == nil {
 		log.Warning("No working bool value provided for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	if *inventoryUpdate.Working != "true" && *inventoryUpdate.Working != "false" {
+	if !*inventoryUpdate.Working && *inventoryUpdate.Working {
 		log.Warning("Invalid working bool value for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
 	var workingBool bool
-	workingBool, err = strconv.ParseBool(*inventoryUpdate.Working)
+	workingBool, err = strconv.ParseBool(strconv.FormatBool(*inventoryUpdate.Working))
 	if err != nil {
 		log.Warning("Cannot parse working bool value for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")

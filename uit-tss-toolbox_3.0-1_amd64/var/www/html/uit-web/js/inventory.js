@@ -111,6 +111,7 @@ function resetInventoryForm() {
   inventoryLookupTagInput.style.backgroundColor = "initial";
   inventoryLookupTagInput.disabled = false;
   inventoryLookupSerialInput.value = "";
+  inventoryLookupSerialInput.style.backgroundColor = "initial";
   inventoryLookupSerialInput.disabled = false;
   inventoryLookupSubmitButton.style.cursor = "pointer";
   inventoryLookupSubmitButton.style.border = "1px solid black";
@@ -119,7 +120,6 @@ function resetInventoryForm() {
   inventoryUpdateSection.style.display = "none";
   inventoryLookupWarningMessage.style.display = "none";
   inventoryLookupWarningMessage.textContent = "";
-  inventoryLookupSerialInput.style.backgroundColor = "initial";
   inventoryLookupTagInput.focus();
 }
 
@@ -176,17 +176,30 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
   updatingInventory = true;
 
   const formData = new FormData();
+  const jsonObject = {};
   if (inventoryLookupTagInput && inventoryLookupSerialInput) {
-    inventoryLookupForm.querySelector("#inventory-tag-lookup").value ? formData.append("tagnumber", Number(inventoryLookupForm.querySelector("#inventory-tag-lookup").value)) : formData.append("tagnumber", null);
-    inventoryLookupForm.querySelector("#inventory-serial-lookup").value ? formData.append("system_serial", String(inventoryLookupForm.querySelector("#inventory-serial-lookup").value)) : formData.append("system_serial", null);
-    inventoryUpdateForm.querySelector("#location").value ? formData.append("location", String(inventoryUpdateForm.querySelector("#location").value)) : formData.append("location", null);
-    inventoryUpdateForm.querySelector("#system_manufacturer").value ? formData.append("system_manufacturer", String(inventoryUpdateForm.querySelector("#system_manufacturer").value)) : formData.append("system_manufacturer", null);
-    inventoryUpdateForm.querySelector("#system_model").value ? formData.append("system_model", String(inventoryUpdateForm.querySelector("#system_model").value)) : formData.append("system_model", null);
-    inventoryUpdateForm.querySelector("#department").value ? formData.append("department", String(inventoryUpdateForm.querySelector("#department").value)) : formData.append("department", null);
-    inventoryUpdateForm.querySelector("#domain").value ? formData.append("domain", String(inventoryUpdateForm.querySelector("#domain").value)) : formData.append("domain", null);
-    inventoryUpdateForm.querySelector("#working").value ? formData.append("working", new Boolean(inventoryUpdateForm.querySelector("#working").value)) : formData.append("working", null);
-    inventoryUpdateForm.querySelector("#status").value ? formData.append("status", String(inventoryUpdateForm.querySelector("#status").value)) : formData.append("status", null);
-    inventoryUpdateForm.querySelector("#note").value ? formData.append("note", String(inventoryUpdateForm.querySelector("#note").value)) : formData.append("note", null);
+    // inventoryLookupForm.querySelector("#inventory-tag-lookup").value ? formData.append("tagnumber", Number(inventoryLookupForm.querySelector("#inventory-tag-lookup").value)) : formData.append("tagnumber", null);
+    // inventoryLookupForm.querySelector("#inventory-serial-lookup").value ? formData.append("system_serial", String(inventoryLookupForm.querySelector("#inventory-serial-lookup").value)) : formData.append("system_serial", null);
+    // inventoryUpdateForm.querySelector("#location").value ? formData.append("location", String(inventoryUpdateForm.querySelector("#location").value)) : formData.append("location", null);
+    // inventoryUpdateForm.querySelector("#system_manufacturer").value ? formData.append("system_manufacturer", String(inventoryUpdateForm.querySelector("#system_manufacturer").value)) : formData.append("system_manufacturer", null);
+    // inventoryUpdateForm.querySelector("#system_model").value ? formData.append("system_model", String(inventoryUpdateForm.querySelector("#system_model").value)) : formData.append("system_model", null);
+    // inventoryUpdateForm.querySelector("#department").value ? formData.append("department", String(inventoryUpdateForm.querySelector("#department").value)) : formData.append("department", null);
+    // inventoryUpdateForm.querySelector("#domain").value ? formData.append("domain", String(inventoryUpdateForm.querySelector("#domain").value)) : formData.append("domain", null);
+    // inventoryUpdateForm.querySelector("#working").value ? formData.append("working", new Boolean(inventoryUpdateForm.querySelector("#working").value)) : formData.append("working", null);
+    // inventoryUpdateForm.querySelector("#status").value ? formData.append("status", String(inventoryUpdateForm.querySelector("#status").value)) : formData.append("status", null);
+    // inventoryUpdateForm.querySelector("#note").value ? formData.append("note", String(inventoryUpdateForm.querySelector("#note").value)) : formData.append("note", null);
+
+    inventoryLookupForm.querySelector("#inventory-tag-lookup").value ? jsonObject["tagnumber"] = Number(inventoryLookupForm.querySelector("#inventory-tag-lookup").value) : jsonObject["tagnumber"] = null;
+    inventoryLookupForm.querySelector("#inventory-serial-lookup").value ? jsonObject["system_serial"] = String(inventoryLookupForm.querySelector("#inventory-serial-lookup").value) : jsonObject["system_serial"] = null;
+    inventoryUpdateForm.querySelector("#location").value ? jsonObject["location"] = String(inventoryUpdateForm.querySelector("#location").value) : jsonObject["location"] = null;
+    inventoryUpdateForm.querySelector("#system_manufacturer").value ? jsonObject["system_manufacturer"] = String(inventoryUpdateForm.querySelector("#system_manufacturer").value) : jsonObject["system_manufacturer"] = null;
+    inventoryUpdateForm.querySelector("#system_model").value ? jsonObject["system_model"] = String(inventoryUpdateForm.querySelector("#system_model").value) : jsonObject["system_model"] = null;
+    inventoryUpdateForm.querySelector("#department").value ? jsonObject["department"] = String(inventoryUpdateForm.querySelector("#department").value) : jsonObject["department"] = null;
+    inventoryUpdateForm.querySelector("#domain").value ? jsonObject["domain"] = String(inventoryUpdateForm.querySelector("#domain").value) : jsonObject["domain"] = null;
+    inventoryUpdateForm.querySelector("#working").value ? jsonObject["working"] = new Boolean(inventoryUpdateForm.querySelector("#working").value) : jsonObject["working"] = null;
+    inventoryUpdateForm.querySelector("#status").value ? jsonObject["status"] = String(inventoryUpdateForm.querySelector("#status").value) : jsonObject["status"] = null;
+    inventoryUpdateForm.querySelector("#note").value ? jsonObject["note"] = String(inventoryUpdateForm.querySelector("#note").value) : jsonObject["note"] = null;
+
     var fileCount = 0;
     for (const file of inventoryUpdateForm.querySelector("#inventory-file-input").files) {
       fileCount++;
@@ -195,7 +208,9 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
   } else {
     throw new Error("No tag or serial input fields found in DOM");
   }
-  const jsonData = Object.fromEntries(formData.entries());
+  // const jsonData = Object.fromEntries(formData.entries());
+  const jsonData = jsonObject;
+  console.log(jsonData);
 
   try {
     const response = await fetch("/api/update_inventory", {
@@ -206,6 +221,8 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
       body: JSON.stringify(jsonData)
     });
 
+    console.log(JSON.stringify(jsonData));
+
     const data = await response.json();
 
     if (!response.ok) {
@@ -213,10 +230,10 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     }
     console.log(JSON.stringify(jsonData));
     console.log("Inventory updated successfully:", data.message);
-    inventoryUpdateSubmitButton.disabled = false;
   } catch (error) {
     console.error("Error updating inventory:", error);
   } finally {
+    updatingInventory = false;
     inventoryUpdateSubmitButton.disabled = false;
   }
 });
