@@ -3,9 +3,11 @@ package endpoints
 import (
 	"context"
 	"database/sql"
+	"image/jpeg"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -506,5 +508,14 @@ func GetClientImages(w http.ResponseWriter, r *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
+
+	imageConfig, err := jpeg.DecodeConfig(image)
+	if err != nil {
+		log.Info("Client image decode config error: " + requestIP + " (" + requestURL + "): " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	log.Info("Serving image " + imageStat.Name() + " (" + strconv.Itoa(imageConfig.Width) + "x" + strconv.Itoa(imageConfig.Height) + ") to " + requestIP + " (" + requestURL + ")")
+	w.Header().Set("Content-Type", "image/jpeg")
 	http.ServeContent(w, r, imageStat.Name(), imageStat.ModTime(), image)
 }
