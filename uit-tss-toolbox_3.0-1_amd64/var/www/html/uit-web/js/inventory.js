@@ -70,17 +70,7 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
     inventoryLookupWarningMessage.textContent = "Tag number must be exactly 6 digits long.";
     return;
   }
-  const locationFormData = await getLocationFormData(lookupTag);
-  if (locationFormData && location) {
-    if (locationFormData.location) inventoryLocationInput.value = locationFormData.location;
-    if (locationFormData.system_manufacturer) inventoryUpdateForm.querySelector("#system_manufacturer").value = locationFormData.system_manufacturer;
-    if (locationFormData.system_model) inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model;
-    if (locationFormData.department) inventoryUpdateForm.querySelector("#department").value = locationFormData.department;
-    if (locationFormData.domain) inventoryUpdateForm.querySelector("#domain").value = locationFormData.domain;
-    if (typeof locationFormData.working === "boolean") inventoryUpdateForm.querySelector("#working").value = locationFormData.working;
-    if (typeof locationFormData.status === "boolean") inventoryUpdateForm.querySelector("#status").value = locationFormData.status;
-    if (locationFormData.note) inventoryUpdateForm.querySelector("#note").value = locationFormData.note;
-  }
+  await populateLocationForm(lookupTag);
 
   inventoryUpdateSection.style.display = "block";
   if (lookupResult) {
@@ -177,8 +167,8 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
 
   const jsonObject = {};
   if (inventoryLookupTagInput && inventoryLookupSerialInput) {
-
-    inventoryLookupForm.querySelector("#inventory-tag-lookup").value ? jsonObject["tagnumber"] = Number(inventoryLookupForm.querySelector("#inventory-tag-lookup").value) : jsonObject["tagnumber"] = null;
+    const lookupTag = inventoryLookupForm.querySelector("#inventory-tag-lookup").value;
+    lookupTag ? jsonObject["tagnumber"] = Number(lookupTag) : jsonObject["tagnumber"] = null;
     inventoryLookupForm.querySelector("#inventory-serial-lookup").value ? jsonObject["system_serial"] = String(inventoryLookupForm.querySelector("#inventory-serial-lookup").value) : jsonObject["system_serial"] = null;
     inventoryUpdateForm.querySelector("#location").value ? jsonObject["location"] = String(inventoryUpdateForm.querySelector("#location").value) : jsonObject["location"] = null;
     inventoryUpdateForm.querySelector("#system_manufacturer").value ? jsonObject["system_manufacturer"] = String(inventoryUpdateForm.querySelector("#system_manufacturer").value) : jsonObject["system_manufacturer"] = null;
@@ -188,6 +178,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     inventoryUpdateForm.querySelector("#working").value ? jsonObject["working"] = new Boolean(inventoryUpdateForm.querySelector("#working").value) : jsonObject["working"] = null;
     inventoryUpdateForm.querySelector("#status").value ? jsonObject["status"] = String(inventoryUpdateForm.querySelector("#status").value) : jsonObject["status"] = null;
     inventoryUpdateForm.querySelector("#note").value ? jsonObject["note"] = String(inventoryUpdateForm.querySelector("#note").value) : jsonObject["note"] = null;
+    inventoryUpdateForm.querySelector("#inventory-file-input").files.length > 0 ? jsonObject["image"] = "" : jsonObject["image"] = null;
 
     var fileCount = 0;
     for (const file of inventoryUpdateForm.querySelector("#inventory-file-input").files) {
@@ -198,7 +189,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     throw new Error("No tag or serial input fields found in DOM");
   }
 
-  jsonPayload = jsonToBase64(JSON.stringify(jsonObject));
+  const jsonPayload = jsonToBase64(JSON.stringify(jsonObject));
 
   try {
     const response = await fetch("/api/update_inventory", {
@@ -214,14 +205,11 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     if (!response.ok) {
       throw new Error("Failed to update inventory");
     }
-    const returnBase64 = JSON.parse(base64ToJson(data));
-    if (returnBase64) {
-      if (returnBase64 != jsonPayload) {
-        throw new Error("Returned inventory data does not match submitted data");
-      }
-    } else {
+    const returnedJson = JSON.parse(base64ToJson(data));
+    if (!returnedJson) {
       throw new Error("No return data from inventory update");
     }
+    await populateLocationForm(lookupTag);
     console.log("Inventory updated successfully");
   } catch (error) {
     console.error("Error updating inventory:", error);
@@ -241,5 +229,19 @@ async function getLocationFormData(tag) {
   } catch (error) {
     console.log("Error fetching location form data: " + error.message);
     return null;
+  }
+}
+
+async function populateLocationForm(tag) {
+  const locationFormData = await getLocationFormData(tag);
+  if (locationFormData && location) {
+    if (locationFormData.location) inventoryLocationInput.value = locationFormData.location;
+    if (locationFormData.system_manufacturer) inventoryUpdateForm.querySelector("#system_manufacturer").value = locationFormData.system_manufacturer;
+    if (locationFormData.system_model) inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model;
+    if (locationFormData.department) inventoryUpdateForm.querySelector("#department").value = locationFormData.department;
+    if (locationFormData.domain) inventoryUpdateForm.querySelector("#domain").value = locationFormData.domain;
+    if (typeof locationFormData.working === "boolean") inventoryUpdateForm.querySelector("#working").value = locationFormData.working;
+    if (typeof locationFormData.status === "boolean") inventoryUpdateForm.querySelector("#status").value = locationFormData.status;
+    if (locationFormData.note) inventoryUpdateForm.querySelector("#note").value = locationFormData.note;
   }
 }

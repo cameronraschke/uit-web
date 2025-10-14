@@ -435,7 +435,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 
 	// Image (base64, optional, max 64MB, multiple file uploads supported)
 	file, handler, err := req.FormFile("inventory-file-input")
-	if err != nil && !errors.Is(err, http.ErrMissingFile) {
+	if err != nil && !errors.Is(err, http.ErrMissingFile) && !errors.Is(err, http.ErrNotMultipart) {
 		log.Warning("Failed to retrieve file from form: " + requestIP + " (" + err.Error() + ")")
 	}
 	if file != nil && handler != nil && err == nil {
@@ -473,7 +473,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	updateRepo := database.NewRepo(dbConn)
 	// No pointers here, pointers in repo
 	// tagnumber and working are converted above
-	err = updateRepo.UpdateInventory(ctx, tagnumber, inventoryUpdate.SystemSerial, inventoryUpdate.Location, inventoryUpdate.SystemManufacturer, inventoryUpdate.SystemModel, inventoryUpdate.Department, inventoryUpdate.Domain, workingBool, inventoryUpdate.Status, inventoryUpdate.Note, inventoryUpdate.Image)
+	err = updateRepo.InsertInventory(ctx, tagnumber, inventoryUpdate.SystemSerial, inventoryUpdate.Location, inventoryUpdate.SystemManufacturer, inventoryUpdate.SystemModel, inventoryUpdate.Department, inventoryUpdate.Domain, workingBool, inventoryUpdate.Status, inventoryUpdate.Note, inventoryUpdate.Image)
 	if err != nil {
 		log.Error("Failed to update inventory: " + err.Error() + " (" + requestIP + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
