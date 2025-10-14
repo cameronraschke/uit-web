@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -224,14 +225,28 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// Parse inventory data
+	encodedString, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warning("Cannot read request body: " + err.Error() + " (" + requestIP + ")")
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	defer req.Body.Close()
+
+	decodedBytes, err := base64.StdEncoding.DecodeString(string(encodedString))
+	if err != nil {
+		log.Warning("Cannot decode base64 inventory data: " + err.Error() + " (" + requestIP + ")")
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+
 	var inventoryUpdate database.InventoryUpdateFormInput
-	err = json.NewDecoder(req.Body).Decode(&inventoryUpdate)
+	err = json.NewDecoder(bytes.NewReader(decodedBytes)).Decode(&inventoryUpdate)
 	if err != nil {
 		log.Warning("Cannot decode inventory JSON: " + err.Error() + " (" + requestIP + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	defer req.Body.Close()
 
 	// Validate and sanitize input data
 	// Tag number (required, 6 digits)
