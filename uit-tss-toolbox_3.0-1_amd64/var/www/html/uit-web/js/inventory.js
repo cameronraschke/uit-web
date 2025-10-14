@@ -210,7 +210,6 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
   }
   // const jsonData = Object.fromEntries(formData.entries());
   const jsonData = jsonObject;
-  console.log(jsonData);
 
   try {
     const response = await fetch("/api/update_inventory", {

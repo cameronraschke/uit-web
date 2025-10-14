@@ -464,5 +464,24 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	middleware.WriteJson(w, http.StatusOK, map[string]string{"message": "Inventory updated successfully"})
+
+	retMap := database.InventoryUpdateFormInput{}
+	retMap.Tagnumber = int(tagnumber)
+	retMap.SystemSerial = inventoryUpdate.SystemSerial
+	retMap.Location = inventoryUpdate.Location
+	retMap.SystemManufacturer = inventoryUpdate.SystemManufacturer
+	retMap.SystemModel = inventoryUpdate.SystemModel
+	retMap.Department = inventoryUpdate.Department
+	retMap.Domain = inventoryUpdate.Domain
+	retMap.Working = &workingBool
+	retMap.Status = inventoryUpdate.Status
+	retMap.Note = inventoryUpdate.Note
+	retMap.Image = inventoryUpdate.Image
+	retMapJson, err := json.Marshal(retMap)
+	if err != nil {
+		log.Error("Failed to marshal inventory update response JSON: " + err.Error() + " (" + requestIP + ")")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, retMapJson)
 }
