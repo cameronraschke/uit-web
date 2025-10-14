@@ -336,6 +336,42 @@ func GetNotes(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, notesData)
 }
 
+func GetLocationFormData(w http.ResponseWriter, r *http.Request) {
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
+	tagnumber, ok := ConvertRequestTagnumber(r)
+	if tagnumber == 0 || !ok {
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	locationData, err := repo.GetLocationFormData(ctx, tagnumber)
+	if err != nil {
+		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, locationData)
+}
+
 // Overview section
 func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)

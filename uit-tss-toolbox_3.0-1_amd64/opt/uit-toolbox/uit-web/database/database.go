@@ -234,7 +234,7 @@ func GetRemoteOnlineTable(ctx context.Context) (string, error) {
       remote.disk_temp, CONCAT(remote.disk_temp, '°C') AS disk_temp_formatted, static_disk_stats.max_temp AS max_disk_temp, 
       CONCAT(remote.watts_now, ' watts') AS watts_now, remote.job_active
     FROM remote 
-    LEFT JOIN (SELECT s1.time, s1.tagnumber, s1.domain, s1.status AS locations_status FROM (SELECT time, tagnumber, domain, status, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS row_nums FROM locations) s1 WHERE s1.row_nums = 1) t1
+    LEFT JOIN (SELECT s1.time, s1.tagnumber, s1.domain, s1.working AS locations_status FROM (SELECT time, tagnumber, domain, working, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS row_nums FROM locations) s1 WHERE s1.row_nums = 1) t1
       ON remote.tagnumber = t1.tagnumber
     LEFT JOIN client_health ON remote.tagnumber = client_health.tagnumber
     LEFT JOIN (SELECT tagnumber, location, row_nums FROM (SELECT tagnumber, location, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS row_nums FROM locations) s3 WHERE s3.row_nums = 1) t3
@@ -332,7 +332,7 @@ func GetRemoteOfflineTable(ctx context.Context) (string, error) {
 	db := config.GetDatabaseConn()
 
 	sqlCode = `SELECT remote.tagnumber, TO_CHAR(remote.present, 'MM/DD/YY HH12:MI:SS AM') AS time_formatted, 
-        remote.status, locations.status AS locations_status, locationFormatting(locations.location) AS location_formatted, CONCAT(remote.battery_charge, '%', ' - ', remote.battery_status) AS battery_charge_formatted, 
+        remote.status, locations.working AS locations_status, locationFormatting(locations.location) AS location_formatted, CONCAT(remote.battery_charge, '%', ' - ', remote.battery_status) AS battery_charge_formatted, 
         CONCAT(remote.cpu_temp, '°C') AS cpu_temp_formatted, 
         CONCAT(remote.disk_temp, '°C') AS disk_temp_formatted, CONCAT(remote.watts_now, ' watts') AS watts_now_formatted,
         client_health.os_name AS os_installed_formatted, client_health.os_installed, 
@@ -565,7 +565,7 @@ func GetTagnumberData(ctx context.Context, tagnumber int) (string, error) {
     (CASE WHEN t3.time = t10.time THEN 1 ELSE 0 END) AS placeholder_bool,
     jobstats.time AS jobstatsTime, locations.tagnumber, locations.system_serial, locations.department, 
     locationFormatting(locations.location) AS location, 
-    (CASE WHEN locations.status = TRUE THEN 'Broken' ELSE 'Yes' END) AS remote_status_formatted, locations.status AS locations_status, t2.department_readable, t3.note AS most_recent_note,
+    (CASE WHEN locations.working = TRUE THEN 'Broken' ELSE 'Yes' END) AS remote_status_formatted, locations.working AS locations_status, t2.department_readable, t3.note AS most_recent_note,
     locations.note, TO_CHAR(t3.time, 'MM/DD/YY HH12:MI:SS AM') AS note_time_formatted, 
     (CASE WHEN locations.disk_removed = TRUE THEN 'Yes' ELSE 'No' END) AS disk_removed_formatted, locations.disk_removed,
     (CASE 

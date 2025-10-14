@@ -318,3 +318,35 @@ func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]Dashboard
 
 	return dashboardInventorySummary, nil
 }
+
+func (repo *Repo) GetLocationFormData(ctx context.Context, tag int) (*InventoryFormAutofill, error) {
+	sqlQuery := `SELECT locations.time, locations.tagnumber, locations.system_serial, locations.location, system_data.system_manufacturer, system_data.system_model,
+	locations.department, locations.domain, locations.working, locations.status, locations.disk_removed, locations.note
+	FROM locations
+	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
+	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
+	AND locations.tagnumber = $1
+	ORDER BY locations.time DESC
+	LIMIT 1;`
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
+
+	inventoryUpdateForm := &InventoryFormAutofill{}
+	if err := row.Scan(
+		&inventoryUpdateForm.Time,
+		&inventoryUpdateForm.Tagnumber,
+		&inventoryUpdateForm.SystemSerial,
+		&inventoryUpdateForm.Location,
+		&inventoryUpdateForm.SystemManufacturer,
+		&inventoryUpdateForm.SystemModel,
+		&inventoryUpdateForm.Department,
+		&inventoryUpdateForm.Domain,
+		&inventoryUpdateForm.StatusWorking,
+		&inventoryUpdateForm.Status,
+		&inventoryUpdateForm.DiskRemoved,
+		&inventoryUpdateForm.Note,
+	); err != nil {
+		return nil, err
+	}
+
+	return inventoryUpdateForm, nil
+}

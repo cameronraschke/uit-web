@@ -170,6 +170,7 @@ func main() {
 	httpsMux.Handle("GET /api/job_queue/overview", httpsFullAPIChain.thenFunc(endpoints.GetJobQueueOverview))
 	httpsMux.Handle("GET /api/job_queue/client/queued_job", httpsFullAPIChain.thenFunc(endpoints.GetClientQueuedJobs))
 	httpsMux.Handle("GET /api/job_queue/client/job_available", httpsFullAPIChain.thenFunc(endpoints.GetClientAvailableJobs))
+	httpsMux.Handle("GET /api/client/location_form_data", httpsFullAPIChain.thenFunc(endpoints.GetLocationFormData))
 	httpsMux.Handle("GET /api/notes", httpsFullAPIChain.thenFunc(endpoints.GetNotes))
 	httpsMux.Handle("GET /api/dashboard/inventory_summary", httpsFullAPIChain.thenFunc(endpoints.GetDashboardInventorySummary))
 

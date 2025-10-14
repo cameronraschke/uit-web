@@ -25,15 +25,16 @@ type RemoteTable struct {
 }
 
 type LocationsTable struct {
-	Time         *time.Time `json:"time"`
-	Tagnumber    *int       `json:"tagnumber"`
-	SystemSerial *string    `json:"system_serial"`
-	Location     *string    `json:"location"`
-	Status       *bool      `json:"status"`
-	DiskRemoved  *bool      `json:"disk_removed"`
-	Department   *string    `json:"department"`
-	Domain       *string    `json:"domain"`
-	Note         *string    `json:"note"`
+	Time          *time.Time `json:"time"`
+	Tagnumber     *int       `json:"tagnumber"`
+	SystemSerial  *string    `json:"system_serial"`
+	Location      *string    `json:"location"`
+	Status        *bool      `json:"status"`
+	StatusWorking *bool      `json:"status_working"`
+	DiskRemoved   *bool      `json:"disk_removed"`
+	Department    *string    `json:"department"`
+	Domain        *string    `json:"domain"`
+	Note          *string    `json:"note"`
 }
 
 type NotesTable struct {

@@ -76,3 +76,32 @@ type DomainList struct {
 type AllTags struct {
 	Tagnumber int `json:"tagnumber"`
 }
+
+type InventoryFormAutofill struct {
+	Time               *time.Time `json:"time"`
+	Tagnumber          *int       `json:"tagnumber"`
+	SystemSerial       *string    `json:"system_serial"`
+	Location           *string    `json:"location"`
+	SystemManufacturer *string    `json:"system_manufacturer"`
+	SystemModel        *string    `json:"system_model"`
+	Status             *bool      `json:"status"`
+	StatusWorking      *bool      `json:"status_working"`
+	DiskRemoved        *bool      `json:"disk_removed"`
+	Department         *string    `json:"department"`
+	Domain             *string    `json:"domain"`
+	Note               *string    `json:"note"`
+}
+
+type InventoryUpdateFormInput struct {
+	Tagnumber          string  `json:"tagnumber"`
+	SystemSerial       string  `json:"system_serial"`
+	Location           string  `json:"location"`
+	SystemManufacturer *string `json:"system_manufacturer"`
+	SystemModel        *string `json:"system_model"`
+	Department         *string `json:"department"`
+	Domain             *string `json:"domain"`
+	Working            *string `json:"working"`
+	Status             *string `json:"status"`
+	Note               *string `json:"note"`
+	Image              *string `json:"image"`
+}

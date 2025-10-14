@@ -203,20 +203,6 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-type InventoryUpdate struct {
-	Tagnumber          string  `json:"tagnumber"`
-	SystemSerial       string  `json:"system_serial"`
-	Location           string  `json:"location"`
-	SystemManufacturer *string `json:"system_manufacturer"`
-	SystemModel        *string `json:"system_model"`
-	Department         *string `json:"department"`
-	Domain             *string `json:"domain"`
-	Working            *string `json:"working"`
-	Status             *string `json:"status"`
-	Note               *string `json:"note"`
-	Image              *string `json:"image"`
-}
-
 func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	requestInfo, err := GetRequestInfo(req)
 	if err != nil {
@@ -237,7 +223,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// Parse inventory data
-	var inventoryUpdate InventoryUpdate
+	var inventoryUpdate database.InventoryUpdateFormInput
 	err = json.NewDecoder(req.Body).Decode(&inventoryUpdate)
 	if err != nil {
 		log.Warning("Cannot decode inventory JSON: " + err.Error() + " (" + requestIP + ")")

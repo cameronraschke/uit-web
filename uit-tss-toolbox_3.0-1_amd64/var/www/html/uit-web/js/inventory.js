@@ -70,6 +70,18 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
     inventoryLookupWarningMessage.textContent = "Tag number must be exactly 6 digits long.";
     return;
   }
+  const locationFormData = await getLocationFormData(lookupTag);
+  if (locationFormData && location) {
+    if (locationFormData.location) inventoryLocationInput.value = locationFormData.location;
+    if (locationFormData.system_manufacturer) inventoryUpdateForm.querySelector("#system_manufacturer").value = locationFormData.system_manufacturer;
+    if (locationFormData.system_model) inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model;
+    if (locationFormData.department) inventoryUpdateForm.querySelector("#department").value = locationFormData.department;
+    if (locationFormData.domain) inventoryUpdateForm.querySelector("#domain").value = locationFormData.domain;
+    if (typeof locationFormData.working === "boolean") inventoryUpdateForm.querySelector("#working").value = locationFormData.working;
+    if (typeof locationFormData.status === "boolean") inventoryUpdateForm.querySelector("#status").value = locationFormData.status;
+    if (locationFormData.note) inventoryUpdateForm.querySelector("#note").value = locationFormData.note;
+  }
+
   inventoryUpdateSection.style.display = "block";
   if (lookupResult) {
     inventoryLookupTagInput.value = lookupResult.tagnumber || "";
@@ -207,3 +219,17 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     inventoryUpdateSubmitButton.disabled = false;
   }
 });
+
+async function getLocationFormData(tag) {
+  try {
+    const response = await fetchData(`/api/client/location_form_data?tagnumber=${tag}`);
+    if (!response) {
+      throw new Error("Cannot parse json from /api/client/location_form_data");
+    }
+    jsonData = await response.json();
+    return jsonData;
+  } catch (error) {
+    console.log("Error fetching location form data: " + error.message);
+    return null;
+  }
+}
