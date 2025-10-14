@@ -28,7 +28,6 @@
   gap: 2dvw;
   padding: 1dvw;
   justify-content: space-between;
-  flex-direction: column;
 }
 
 .grid-container.inventory.inventory-lookup-form {
@@ -47,4 +46,10 @@
   /* border: 1px solid #960C22; */
   border-radius: 1rem;
   background-color: whitesmoke;
+}
+
+.flex-box.inventory {
+  width:40dvw;
+  min-width: fit-content;
+  align-self: flex-start;
 }
