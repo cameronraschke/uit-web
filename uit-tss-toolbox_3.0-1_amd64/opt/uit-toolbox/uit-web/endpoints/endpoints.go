@@ -234,7 +234,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			"default-src 'none'; "+
 				"script-src 'self' 'nonce-"+nonce+"'; "+
 				"style-src 'self'; "+
-				"img-src 'self'; "+
+				"img-src 'self' blob: data:; "+
 				"font-src 'self'; "+
 				"connect-src 'self'; "+
 				"frame-ancestors 'none'; "+

@@ -464,7 +464,7 @@ func GetClientImages(w http.ResponseWriter, r *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	ctx := requestInfo.Ctx
+	// ctx := requestInfo.Ctx
 	log := requestInfo.Log
 	requestIP := requestInfo.IP
 	requestURL := requestInfo.URL
@@ -481,16 +481,16 @@ func GetClientImages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+	// ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	// defer cancel()
 	// images, err := repo.GetClientImages(ctx, tagnumber)
-	if err != nil {
-		if err != sql.ErrNoRows {
-			log.Info("Client images query error: " + requestIP + " (" + requestURL + "): " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-			return
-		}
-	}
+	// if err != nil {
+	// 	if err != sql.ErrNoRows {
+	// 		log.Info("Client images query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+	// 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+	// 		return
+	// 	}
+	// }
 
 	image, err := os.Open("./inventory-images/625830/2025-08-11-163114-image-689a61236e8844.70187376.jpeg")
 	if err != nil {
