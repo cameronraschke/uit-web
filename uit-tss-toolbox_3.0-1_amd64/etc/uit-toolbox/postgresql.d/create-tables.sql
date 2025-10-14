@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS locations (
     system_serial VARCHAR(64) DEFAULT NULL,
     location VARCHAR(128) DEFAULT NULL,
     working BOOLEAN DEFAULT NULL,
-    status BOOLEAN DEFAULT NULL,
+    status client_location_status DEFAULT NULL,
     disk_removed BOOLEAN DEFAULT NULL,
     department VARCHAR(24) DEFAULT NULL,
     domain VARCHAR(24) DEFAULT NULL,

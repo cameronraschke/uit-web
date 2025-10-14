@@ -256,7 +256,7 @@ func IsPrintableASCII(b []byte) bool {
 func IsAlphanumericAscii(b []byte) bool {
 	for i := range b {
 		char := b[i]
-		if (char < '0' || char > '9') && (char < 'A' || char > 'Z') && (char < 'a' || char > 'z') {
+		if (char < '0' || char > '9') && (char < 'A' || char > 'Z') && (char < 'a' || char > 'z') && char != '_' && char != '-' {
 			return false
 		}
 	}

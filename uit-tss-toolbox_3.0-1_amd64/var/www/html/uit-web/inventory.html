@@ -52,10 +52,10 @@
           </form>
         <div class="vertical-spacer"></div>
         <div id="inventory-update-section">
+          <div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
           <form id="inventory-update-form" enctype="multipart/form-data" method="POST" action="/api/update_inventory">
             <input type="hidden" id="csrf-token" value="" />
             <div class="grid-container inventory inventory-update-form">
-              <div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
               <div class="inventory-lookup-label"><p>Location, Manufacturer, and Model:</p></div>
               <div><p>Location:</p></div>
               <div><p>Manufacturer/Model:</p></div>
