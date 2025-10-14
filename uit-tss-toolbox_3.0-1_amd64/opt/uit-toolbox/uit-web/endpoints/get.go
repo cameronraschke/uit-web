@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -454,4 +455,56 @@ func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	middleware.WriteJson(w, http.StatusOK, inventorySummary)
+}
+
+func GetClientImages(w http.ResponseWriter, r *http.Request) {
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
+	tagnumber, ok := ConvertRequestTagnumber(r)
+	if tagnumber == 0 || !ok {
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	// repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	// images, err := repo.GetClientImages(ctx, tagnumber)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.Info("Client images query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+	}
+
+	image, err := os.Open("./inventory-images/625830/2025-08-11-163114-image-689a61236e8844.70187376.jpeg")
+	if err != nil {
+		log.Info("Client image open error: " + requestIP + " (" + requestURL + "): " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	defer image.Close()
+
+	imageStat, err := image.Stat()
+	if err != nil {
+		log.Info("Client image stat error: " + requestIP + " (" + requestURL + "): " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	http.ServeContent(w, r, imageStat.Name(), imageStat.ModTime(), image)
 }

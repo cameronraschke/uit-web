@@ -240,7 +240,7 @@ async function populateLocationForm(tag) {
     if (locationFormData.department) inventoryUpdateForm.querySelector("#department").value = locationFormData.department;
     if (locationFormData.domain) inventoryUpdateForm.querySelector("#domain").value = locationFormData.domain;
     if (typeof locationFormData.working === "boolean") inventoryUpdateForm.querySelector("#working").value = locationFormData.working;
-    if (typeof locationFormData.status === "boolean") inventoryUpdateForm.querySelector("#status").value = locationFormData.status;
+    if (typeof locationFormData.status === "string") inventoryUpdateForm.querySelector("#status").value = locationFormData.status;
     if (locationFormData.note) inventoryUpdateForm.querySelector("#note").value = locationFormData.note;
   }
 }
