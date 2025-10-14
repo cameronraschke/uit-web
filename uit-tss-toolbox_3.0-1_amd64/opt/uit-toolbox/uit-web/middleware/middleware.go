@@ -502,7 +502,7 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 		// Check Content-Type for POST/PUT
 		if req.Method == http.MethodPost || req.Method == http.MethodPut {
 			contentType := req.Header.Get("Content-Type")
-			if contentType != "application/x-www-form-urlencoded" && contentType != "application/json" {
+			if contentType != "application/x-www-form-urlencoded" && contentType != "application/json" && !strings.HasPrefix(contentType, "multipart/form-data") {
 				log.Warning("Invalid Content-Type header: " + contentType + " (" + requestIP + ": " + req.Method + " " + requestURL + ")")
 				http.Error(w, FormatHttpError("Invalid content type"), http.StatusUnsupportedMediaType)
 				return
