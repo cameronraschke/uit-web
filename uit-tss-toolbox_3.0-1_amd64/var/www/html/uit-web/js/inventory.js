@@ -209,7 +209,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     if (!returnedJson) {
       throw new Error("No return data from inventory update");
     }
-    await populateLocationForm(lookupTag);
+    await populateLocationForm(Number(returnedJson.tagnumber));
     console.log("Inventory updated successfully");
   } catch (error) {
     console.error("Error updating inventory:", error);

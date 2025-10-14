@@ -342,23 +342,22 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		log.Warning("No system model provided for inventory update: " + requestIP)
 	}
 
-	// Department (required, max 24 chars)
-	if inventoryUpdate.Department == nil || strings.TrimSpace(*inventoryUpdate.Department) == "" {
+	// Department (optional, max 24 chars)
+	if inventoryUpdate.Department != nil && strings.TrimSpace(*inventoryUpdate.Department) != "" {
+		if utf8.RuneCountInString(*inventoryUpdate.Department) < 1 || utf8.RuneCountInString(*inventoryUpdate.Department) > 24 {
+			log.Warning("Invalid department length for inventory update: " + requestIP)
+			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+			return
+		}
+		if !middleware.IsPrintableASCII([]byte(*inventoryUpdate.Department)) {
+			log.Warning("Non-printable ASCII characters in department field for inventory update: " + requestIP)
+			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+			return
+		}
+		*inventoryUpdate.Department = strings.TrimSpace(*inventoryUpdate.Department)
+	} else {
 		log.Warning("No department provided for inventory update: " + requestIP)
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-		return
 	}
-	if utf8.RuneCountInString(*inventoryUpdate.Department) < 1 || utf8.RuneCountInString(*inventoryUpdate.Department) > 24 {
-		log.Warning("Invalid department length for inventory update: " + requestIP)
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-		return
-	}
-	if !middleware.IsPrintableASCII([]byte(*inventoryUpdate.Department)) {
-		log.Warning("Non-printable ASCII characters in department field for inventory update: " + requestIP)
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-		return
-	}
-	*inventoryUpdate.Department = strings.TrimSpace(*inventoryUpdate.Department)
 
 	// Domain (optional, min 1 char, max 24 chars)
 	if inventoryUpdate.Domain != nil && strings.TrimSpace(*inventoryUpdate.Domain) != "" {
