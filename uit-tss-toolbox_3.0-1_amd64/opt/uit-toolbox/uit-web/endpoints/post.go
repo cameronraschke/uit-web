@@ -472,9 +472,15 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	updateRepo := database.NewRepo(dbConn)
 	// No pointers here, pointers in repo
 	// tagnumber and working are converted above
-	err = updateRepo.InsertInventory(ctx, tagnumber, inventoryUpdate.SystemSerial, inventoryUpdate.Location, inventoryUpdate.SystemManufacturer, inventoryUpdate.SystemModel, inventoryUpdate.Department, inventoryUpdate.Domain, workingBool, inventoryUpdate.Status, inventoryUpdate.Note, inventoryUpdate.Image)
+	err = updateRepo.InsertInventory(ctx, tagnumber, inventoryUpdate.SystemSerial, inventoryUpdate.Location, inventoryUpdate.Department, inventoryUpdate.Domain, workingBool, inventoryUpdate.Status, inventoryUpdate.Note, inventoryUpdate.Image)
 	if err != nil {
-		log.Error("Failed to update inventory: " + err.Error() + " (" + requestIP + ")")
+		log.Error("Failed to update inventory data: " + err.Error() + " (" + requestIP + ")")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	err = updateRepo.UpdateSystemData(ctx, tagnumber, inventoryUpdate.SystemManufacturer, inventoryUpdate.SystemModel)
+	if err != nil {
+		log.Error("Failed to update system data: " + err.Error() + " (" + requestIP + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
