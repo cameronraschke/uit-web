@@ -175,19 +175,8 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
   if (updatingInventory) return;
   updatingInventory = true;
 
-  const formData = new FormData();
   const jsonObject = {};
   if (inventoryLookupTagInput && inventoryLookupSerialInput) {
-    // inventoryLookupForm.querySelector("#inventory-tag-lookup").value ? formData.append("tagnumber", Number(inventoryLookupForm.querySelector("#inventory-tag-lookup").value)) : formData.append("tagnumber", null);
-    // inventoryLookupForm.querySelector("#inventory-serial-lookup").value ? formData.append("system_serial", String(inventoryLookupForm.querySelector("#inventory-serial-lookup").value)) : formData.append("system_serial", null);
-    // inventoryUpdateForm.querySelector("#location").value ? formData.append("location", String(inventoryUpdateForm.querySelector("#location").value)) : formData.append("location", null);
-    // inventoryUpdateForm.querySelector("#system_manufacturer").value ? formData.append("system_manufacturer", String(inventoryUpdateForm.querySelector("#system_manufacturer").value)) : formData.append("system_manufacturer", null);
-    // inventoryUpdateForm.querySelector("#system_model").value ? formData.append("system_model", String(inventoryUpdateForm.querySelector("#system_model").value)) : formData.append("system_model", null);
-    // inventoryUpdateForm.querySelector("#department").value ? formData.append("department", String(inventoryUpdateForm.querySelector("#department").value)) : formData.append("department", null);
-    // inventoryUpdateForm.querySelector("#domain").value ? formData.append("domain", String(inventoryUpdateForm.querySelector("#domain").value)) : formData.append("domain", null);
-    // inventoryUpdateForm.querySelector("#working").value ? formData.append("working", new Boolean(inventoryUpdateForm.querySelector("#working").value)) : formData.append("working", null);
-    // inventoryUpdateForm.querySelector("#status").value ? formData.append("status", String(inventoryUpdateForm.querySelector("#status").value)) : formData.append("status", null);
-    // inventoryUpdateForm.querySelector("#note").value ? formData.append("note", String(inventoryUpdateForm.querySelector("#note").value)) : formData.append("note", null);
 
     inventoryLookupForm.querySelector("#inventory-tag-lookup").value ? jsonObject["tagnumber"] = Number(inventoryLookupForm.querySelector("#inventory-tag-lookup").value) : jsonObject["tagnumber"] = null;
     inventoryLookupForm.querySelector("#inventory-serial-lookup").value ? jsonObject["system_serial"] = String(inventoryLookupForm.querySelector("#inventory-serial-lookup").value) : jsonObject["system_serial"] = null;
@@ -208,8 +197,8 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
   } else {
     throw new Error("No tag or serial input fields found in DOM");
   }
-  // const jsonData = Object.fromEntries(formData.entries());
-  const jsonData = jsonObject;
+
+  jsonPayload = jsonToBase64(JSON.stringify(jsonObject));
 
   try {
     const response = await fetch("/api/update_inventory", {
@@ -217,18 +206,23 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(jsonData)
+      body: jsonPayload
     });
-
-    console.log(JSON.stringify(jsonData));
 
     const data = await response.json();
 
     if (!response.ok) {
       throw new Error("Failed to update inventory");
     }
-    console.log(JSON.stringify(jsonData));
-    console.log("Inventory updated successfully:", data.message);
+    const returnBase64 = JSON.parse(base64ToJson(data));
+    if (returnBase64) {
+      if (returnBase64 != jsonPayload) {
+        throw new Error("Returned inventory data does not match submitted data");
+      }
+    } else {
+      throw new Error("No return data from inventory update");
+    }
+    console.log("Inventory updated successfully");
   } catch (error) {
     console.error("Error updating inventory:", error);
   } finally {
