@@ -66,8 +66,8 @@ func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 		hardwareData, err = repo.ClientLookupBySerial(ctx, systemSerial)
 	}
 	if err != nil {
-		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
 		if err != sql.ErrNoRows {
+			log.Info("Client lookup query error: " + requestIP + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
@@ -99,9 +99,11 @@ func GetAllTags(w http.ResponseWriter, r *http.Request) {
 
 	allTags, err := repo.GetAllTags(ctx)
 	if err != nil {
-		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
+		if err != sql.ErrNoRows {
+			log.Info("All tags query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 	}
 	middleware.WriteJson(w, http.StatusOK, allTags)
 }
@@ -136,9 +138,11 @@ func GetHardwareIdentifiers(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	hardwareData, err := repo.GetHardwareIdentifiers(ctx, tagnumber)
 	if err != nil {
-		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
+		if err != sql.ErrNoRows {
+			log.Info("Hardware ID query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 	}
 	middleware.WriteJson(w, http.StatusOK, hardwareData)
 }
@@ -174,9 +178,11 @@ func GetBiosData(w http.ResponseWriter, r *http.Request) {
 
 	biosData, err := repo.GetBiosData(ctx, tagnumber)
 	if err != nil {
-		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
+		if err != sql.ErrNoRows {
+			log.Info("Bios data query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 	}
 
 	middleware.WriteJson(w, http.StatusOK, biosData)
@@ -213,9 +219,11 @@ func GetOSData(w http.ResponseWriter, r *http.Request) {
 
 	osData, err := repo.GetOsData(ctx, tagnumber)
 	if err != nil {
-		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
+		if err != sql.ErrNoRows {
+			log.Info("OS data query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 	}
 
 	middleware.WriteJson(w, http.StatusOK, osData)
@@ -252,9 +260,11 @@ func GetClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
 
 	activeJobs, err := repo.GetActiveJobs(ctx, tagnumber)
 	if err != nil {
-		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
+		if err != sql.ErrNoRows {
+			log.Info("Queued client jobs query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 	}
 
 	middleware.WriteJson(w, http.StatusOK, activeJobs)
@@ -291,9 +301,11 @@ func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
 
 	availableJobs, err := repo.GetAvailableJobs(ctx, tagnumber)
 	if err != nil {
-		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
+		if err != sql.ErrNoRows {
+			log.Info("Available jobs query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 	}
 
 	middleware.WriteJson(w, http.StatusOK, availableJobs)
@@ -329,9 +341,11 @@ func GetNotes(w http.ResponseWriter, r *http.Request) {
 
 	notesData, err := repo.GetNotes(ctx, noteType)
 	if err != nil {
-		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
+		if err != sql.ErrNoRows {
+			log.Info("Get notes query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 	}
 	middleware.WriteJson(w, http.StatusOK, notesData)
 }
@@ -365,9 +379,11 @@ func GetLocationFormData(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	locationData, err := repo.GetLocationFormData(ctx, tagnumber)
 	if err != nil {
-		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
+		if err != sql.ErrNoRows {
+			log.Info("Location form data query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 	}
 	middleware.WriteJson(w, http.StatusOK, locationData)
 }
@@ -397,9 +413,11 @@ func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
 
 	jobQueueOverview, err := repo.GetJobQueueOverview(ctx)
 	if err != nil {
-		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
+		if err != sql.ErrNoRows {
+			log.Info("Job queue overview query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 	}
 
 	middleware.WriteJson(w, http.StatusOK, jobQueueOverview)
@@ -429,9 +447,11 @@ func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
 
 	inventorySummary, err := repo.GetDashboardInventorySummary(ctx)
 	if err != nil {
-		log.Warning("Database lookup failed for: " + requestIP + " (" + requestURL + "): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
+		if err != sql.ErrNoRows {
+			log.Info("Inventory summary query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 	}
 	middleware.WriteJson(w, http.StatusOK, inventorySummary)
 }

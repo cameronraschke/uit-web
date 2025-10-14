@@ -84,7 +84,7 @@ type InventoryFormAutofill struct {
 	Location           *string    `json:"location"`
 	SystemManufacturer *string    `json:"system_manufacturer"`
 	SystemModel        *string    `json:"system_model"`
-	Status             *bool      `json:"status"`
+	Status             *string    `json:"status"`
 	Working            *bool      `json:"working"`
 	DiskRemoved        *bool      `json:"disk_removed"`
 	Department         *string    `json:"department"`
