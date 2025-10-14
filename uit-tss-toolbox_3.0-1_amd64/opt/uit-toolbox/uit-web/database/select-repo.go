@@ -340,7 +340,7 @@ func (repo *Repo) GetLocationFormData(ctx context.Context, tag int) (*InventoryF
 		&inventoryUpdateForm.SystemModel,
 		&inventoryUpdateForm.Department,
 		&inventoryUpdateForm.Domain,
-		&inventoryUpdateForm.StatusWorking,
+		&inventoryUpdateForm.Working,
 		&inventoryUpdateForm.Status,
 		&inventoryUpdateForm.DiskRemoved,
 		&inventoryUpdateForm.Note,

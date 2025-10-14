@@ -226,8 +226,7 @@ async function getLocationFormData(tag) {
     if (!response) {
       throw new Error("Cannot parse json from /api/client/location_form_data");
     }
-    jsonData = await response.json();
-    return jsonData;
+    return response;
   } catch (error) {
     console.log("Error fetching location form data: " + error.message);
     return null;
