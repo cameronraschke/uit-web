@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS locations (
     system_serial VARCHAR(64) DEFAULT NULL,
     location VARCHAR(128) DEFAULT NULL,
     working BOOLEAN DEFAULT NULL,
-    status client_location_status DEFAULT NULL,
+    status VARCHAR(24) REFERENCES client_location_status(status) DEFAULT NULL,
     disk_removed BOOLEAN DEFAULT NULL,
     department VARCHAR(24) DEFAULT NULL,
     domain VARCHAR(24) DEFAULT NULL,
@@ -342,21 +342,20 @@ INSERT INTO static_tags (
 -- );
 
 CREATE TABLE IF NOT EXISTS client_images (
-    uuid VARCHAR(64) UNIQUE NOT NULL,
+    uuid VARCHAR(128) UNIQUE NOT NULL,
     time TIMESTAMP(3) NOT NULL,
     tagnumber INTEGER NOT NULL, 
-    filename VARCHAR(64) DEFAULT NULL,
-    filesize DECIMAL(5,2) DEFAULT NULL,
-    image TEXT DEFAULT NULL,
-    thumbnail TEXT DEFAULT NULL,
+    filename VARCHAR(128) DEFAULT NULL,
+    filepath TEXT DEFAULT NULL,
+    filesize DECIMAL(8,2) DEFAULT NULL,
     sha256_hash BYTEA DEFAULT NULL,
     mime_type VARCHAR(24) DEFAULT NULL,
     exif_timestamp TIMESTAMP(3) DEFAULT NULL,
-    resolution VARCHAR(24) DEFAULT NULL,
+    resolution_x INTEGER DEFAULT NULL,
+    resolution_y INTEGER DEFAULT NULL,
     note VARCHAR(256) DEFAULT NULL,
     hidden BOOLEAN DEFAULT FALSE,
-    primary_image BOOLEAN DEFAULT FALSE,
-    filepath TEXT DEFAULT NULL
+    primary_image BOOLEAN DEFAULT FALSE
 );
 
 -- CREATE OR REPLACE FUNCTION live_images_function
@@ -546,3 +545,15 @@ INSERT INTO static_emojis (keyword, regex, replacement, text_bool, case_sensitiv
     ('eyes', '\:eyes', '👀', TRUE, TRUE),
     ('looking', '\:looking', '👀', TRUE, TRUE)
 ;
+
+DROP TABLE IF EXISTS client_location_status;
+CREATE TABLE client_location_status (
+    status VARCHAR(24) UNIQUE NOT NULL
+);
+INSERT INTO client_location_status (status) VALUES
+  ('storage'), 
+  ('checked-out'), 
+  ('needs-repair'), 
+  ('retired'), 
+  ('lost'), 
+  ('other');

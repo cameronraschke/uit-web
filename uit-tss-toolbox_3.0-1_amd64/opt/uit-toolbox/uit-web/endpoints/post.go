@@ -1,6 +1,7 @@
 package endpoints
 
 import (
+	"crypto"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -442,6 +443,15 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	// Establish DB connection before processing files
+	dbConn := config.GetDatabaseConn()
+	if dbConn == nil {
+		log.Error("No database connection available for inventory update: " + requestIP)
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	updateRepo := database.NewRepo(dbConn)
+
 	const maxFileSize = 64 << 20 // 64 MB
 	for _, fileHeader := range files {
 		for _, char := range fileHeader.Filename {
@@ -462,53 +472,67 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 			return
 		}
-		func() {
-			defer file.Close()
+		defer file.Close()
 
-			lr := &io.LimitedReader{R: file, N: maxFileSize + 1}
-			fileData, err := io.ReadAll(lr)
-			if err != nil {
-				log.Warning("Failed to read uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
-				middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-				return
-			}
-			if int64(len(fileData)) > maxFileSize {
-				log.Warning("Uploaded file too large for inventory update: " + requestIP + " (" + strconv.Itoa(len(fileData)) + " bytes)")
-				middleware.WriteJsonError(w, http.StatusBadRequest, "File too large")
-				return
-			}
-			if len(fileData) == 0 {
-				log.Warning("Empty file uploaded for inventory update: " + requestIP)
-				middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-				return
-			}
-			var fileSize int64 = int64(len(fileData))
-			if fileSize < 512 {
-				log.Warning("Uploaded file too small for inventory update: " + requestIP + " (" + strconv.FormatInt(fileSize, 10) + " bytes)")
-				middleware.WriteJsonError(w, http.StatusBadRequest, "File too small")
-				return
-			}
-			contentType := http.DetectContentType(fileData[:fileSize])
-			if !strings.HasPrefix(contentType, "image/") {
-				log.Warning("Uploaded file is not an image for inventory update: " + requestIP + " (Content-Type: " + contentType + ")")
-				middleware.WriteJsonError(w, http.StatusUnsupportedMediaType, "Unsupported media type")
-				return
-			}
+		lr := &io.LimitedReader{R: file, N: maxFileSize + 1}
+		fileData, err := io.ReadAll(lr)
+		if err != nil {
+			log.Warning("Failed to read uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
+			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+			return
+		}
+		fileSize := int64(len(fileData))
+		if fileSize > maxFileSize {
+			log.Warning("Uploaded file too large for inventory update: " + requestIP + " (" + strconv.FormatInt(fileSize, 10) + " bytes)")
+			middleware.WriteJsonError(w, http.StatusBadRequest, "File too large")
+			return
+		}
+		if len(fileData) == 0 {
+			log.Warning("Empty file uploaded for inventory update: " + requestIP)
+			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+			return
+		}
+		if fileSize < 512 {
+			log.Warning("Uploaded file too small for inventory update: " + requestIP + " (" + strconv.FormatInt(fileSize, 10) + " bytes)")
+			middleware.WriteJsonError(w, http.StatusBadRequest, "File too small")
+			return
+		}
+		mimeType := http.DetectContentType(fileData[:fileSize])
+		if !strings.HasPrefix(mimeType, "image/") {
+			log.Warning("Uploaded file is not an image for inventory update: " + requestIP + " (Content-Type: " + mimeType + ")")
+			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType, "Unsupported media type")
+			return
+		}
 
-			fileTimeStamp := time.Now().Format("2006-01-02-150405")
-			fileUUID := uuid.New()
-			savePath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), fileTimeStamp+"-"+fileUUID.String()+".jpeg")
-			if err := os.WriteFile(savePath, fileData, 0644); err != nil {
-				log.Warning("Failed to save uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
-				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-				return
-			}
-		}()
+		fileTimeStamp := time.Now().Format("2006-01-02-150405")
+		fileUUID := uuid.New()
+		fileName := fileTimeStamp + "-" + fileUUID.String() + ".jpeg"
+		fullFilePath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), fileName)
+		if err := os.WriteFile(fullFilePath, fileData, 0644); err != nil {
+			log.Error("Failed to save uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		fileHash := crypto.SHA256.New()
+		if _, err := fileHash.Write(fileData); err != nil {
+			log.Error("Failed to compute hash of uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		fileHashBytes := fileHash.Sum(nil)
+
+		fileSizeMB := float64(fileSize) / (1 << 20)
+		err = updateRepo.UpdateClientImages(ctx, tagnumber, fileUUID.String(), &fileName, fullFilePath, &fileSizeMB, &fileHashBytes, &mimeType, nil, nil, nil, nil, nil, nil)
+		if err != nil {
+			log.Error("Failed to update inventory image data: " + err.Error() + " (" + requestIP + ")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		log.Info(fmt.Sprintf("Uploaded file details - Name: %s, Size: %.2f MB, MIME Type: %s", fileName, fileSizeMB, mimeType) + " (" + requestIP + ")")
+		file.Close()
 	}
-
 	// Update db
-	dbConn := config.GetDatabaseConn()
-	updateRepo := database.NewRepo(dbConn)
+
 	// No pointers here, pointers in repo
 	// tagnumber and working are converted above
 	err = updateRepo.InsertInventory(ctx, tagnumber, inventoryUpdate.SystemSerial, inventoryUpdate.Location, inventoryUpdate.Department, inventoryUpdate.Domain, workingBool, inventoryUpdate.Status, inventoryUpdate.Note)

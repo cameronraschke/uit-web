@@ -1,1 +1,0 @@
-CREATE TYPE client_location_status AS ENUM ('storage', 'checked-out', 'needs-repair', 'retired', 'lost', 'other');
