@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -566,8 +567,8 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 	requestIP := requestInfo.IP
 	requestURL := requestInfo.URL
 
-	requestFileName := strings.TrimPrefix(r.URL.Path, "/api/images/")
-	if requestFileName == "" {
+	requestFilePath := strings.TrimPrefix(r.URL.Path, "/api/images/")
+	if requestFilePath == "" {
 		log.Warning("No image path provided in request from: " + requestIP + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
@@ -581,6 +582,13 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 	repo := database.NewRepo(db)
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+	requestFileName := path.Base(requestFilePath)
+	if requestFileName == "" {
+		log.Warning("No image file name provided in request from: " + requestIP + " (" + requestURL + ")")
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	log.Info("Serving image request for: " + requestFileName + " from " + requestIP + " (" + requestURL + ")")
 	imagePath, _, err := repo.GetClientImageFilePathByFileName(ctx, requestFileName)
 	if err != nil {
 		if err == sql.ErrNoRows {
