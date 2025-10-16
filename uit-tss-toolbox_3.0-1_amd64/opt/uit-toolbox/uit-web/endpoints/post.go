@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image"
 	"image/jpeg"
 	_ "image/png"
 	"io"
@@ -483,13 +484,14 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 			return
 		}
+
 		fileSize := int64(len(fileData))
 		if fileSize > maxFileSize {
 			log.Warning("Uploaded file too large for inventory update: " + requestIP + " (" + strconv.FormatInt(fileSize, 10) + " bytes)")
 			middleware.WriteJsonError(w, http.StatusBadRequest, "File too large")
 			return
 		}
-		if len(fileData) == 0 {
+		if fileSize == 0 {
 			log.Warning("Empty file uploaded for inventory update: " + requestIP)
 			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 			return
@@ -505,15 +507,31 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType, "Unsupported media type")
 			return
 		}
+		decodedImage, imageFormat, err := image.Decode(bytes.NewReader(fileData))
+		if err != nil {
+			log.Error("Failed to decode uploaded image for thumbnail creation for inventory update: " + err.Error() + " (" + requestIP + ")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 
 		fileTimeStamp := time.Now().Format("2006-01-02-150405")
 		fileUUID := uuid.New()
 		var fileName string
 		baseFileName := fileTimeStamp + "-" + fileUUID.String()
 		switch mimeType {
-		case "image/jpeg":
+		case "image/jpeg", "image/jpg":
+			if imageFormat != "jpeg" {
+				log.Warning("MIME type and image format mismatch for uploaded file for inventory update: " + requestIP + " (MIME: " + mimeType + ", Format: " + imageFormat + ")")
+				middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+				return
+			}
 			fileName = baseFileName + ".jpeg"
 		case "image/png":
+			if imageFormat != "png" {
+				log.Warning("MIME type and image format mismatch for uploaded file for inventory update: " + requestIP + " (MIME: " + mimeType + ", Format: " + imageFormat + ")")
+				middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+				return
+			}
 			fileName = baseFileName + ".png"
 		default:
 			log.Warning("Unsupported image MIME type for inventory update: " + requestIP + " (Content-Type: " + mimeType + ")")
@@ -535,12 +553,6 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		fullThumbnailPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), "thumbnail-"+baseFileName+".jpeg")
-		thumbnail, err := jpeg.Decode(bytes.NewReader(fileData))
-		if err != nil {
-			log.Error("Failed to decode uploaded image for thumbnail creation for inventory update: " + err.Error() + " (" + requestIP + ")")
-			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-			return
-		}
 		thumbnailFile, err := os.Create(fullThumbnailPath)
 		if err != nil {
 			log.Error("Failed to create thumbnail file for inventory update: " + err.Error() + " (" + requestIP + ")")
@@ -548,7 +560,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		defer thumbnailFile.Close()
-		err = jpeg.Encode(thumbnailFile, thumbnail, &jpeg.Options{Quality: 50})
+		err = jpeg.Encode(thumbnailFile, decodedImage, &jpeg.Options{Quality: 50})
 		if err != nil {
 			log.Error("Failed to encode thumbnail image for inventory update: " + err.Error() + " (" + requestIP + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
@@ -557,7 +569,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		thumbnailFile.Close()
 
 		// Insert image metadata into database
-		fileSizeMB := float64(fileSize) / (1024 * 1024)
+		fileSizeMB := float64(fileSize) / (2 << 20)
 		err = updateRepo.UpdateClientImages(ctx, tagnumber, fileUUID.String(), &fileName, fullFilePath, &fullThumbnailPath, &fileSizeMB, &fileHashBytes, &mimeType, nil, nil, nil, nil, nil, nil)
 		if err != nil {
 			log.Error("Failed to update inventory image data: " + err.Error() + " (" + requestIP + ")")
