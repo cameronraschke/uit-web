@@ -547,14 +547,14 @@ INSERT INTO static_emojis (keyword, regex, replacement, text_bool, case_sensitiv
     ('looking', '\:looking', '👀', TRUE, TRUE)
 ;
 
-DROP TABLE IF EXISTS client_location_status;
-CREATE TABLE client_location_status (
-    status VARCHAR(24) UNIQUE NOT NULL
-);
-INSERT INTO client_location_status (status) VALUES
-  ('storage'), 
-  ('checked-out'), 
-  ('needs-repair'), 
-  ('retired'), 
-  ('lost'), 
-  ('other');
+-- DROP TABLE IF EXISTS client_location_status;
+-- CREATE TABLE client_location_status (
+--     status VARCHAR(24) UNIQUE NOT NULL
+-- );
+-- INSERT INTO client_location_status (status) VALUES
+--   ('storage'), 
+--   ('checked-out'), 
+--   ('needs-repair'), 
+--   ('retired'), 
+--   ('lost'), 
+--   ('other');
