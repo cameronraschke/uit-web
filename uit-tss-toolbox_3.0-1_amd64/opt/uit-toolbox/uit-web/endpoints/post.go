@@ -18,6 +18,8 @@ import (
 	middleware "uit-toolbox/middleware"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/google/uuid"
 )
 
 type RemoteTable struct {
@@ -493,7 +495,9 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 
-			savePath := filepath.Join("./inventory-images", fmt.Sprintf("%06d_%s", tagnumber, fileHeader.Filename))
+			fileTimeStamp := time.Now().Format("2006-01-02-150405")
+			fileUUID := uuid.New()
+			savePath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), fileTimeStamp+"-"+fileUUID.String()+".jpeg")
 			if err := os.WriteFile(savePath, fileData, 0644); err != nil {
 				log.Warning("Failed to save uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
