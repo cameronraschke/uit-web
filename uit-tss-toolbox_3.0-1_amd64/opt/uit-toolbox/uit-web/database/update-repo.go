@@ -32,9 +32,9 @@ func (repo *Repo) UpdateSystemData(ctx context.Context, tagnumber int64, systemM
 	return err
 }
 
-func (repo *Repo) UpdateClientImages(ctx context.Context, tagnumber int64, uuid string, filename *string, filePath string, filesize *float64, sha256Hash *[]byte, mimeType *string, exifTimestamp *time.Time, resolutionX *int, resolutionY *int, note *string, hidden *bool, primaryImage *bool) error {
-	sqlCode := `INSERT INTO client_images (uuid, time, tagnumber, filename, filepath, filesize, sha256_hash, mime_type, exif_timestamp, resolution_x, resolution_y, note, hidden, primary_image)
-		VALUES ($1, CURRENT_TIMESTAMP, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
-	_, err := repo.DB.ExecContext(ctx, sqlCode, uuid, tagnumber, filename, filePath, filesize, sha256Hash, mimeType, exifTimestamp, resolutionX, resolutionY, note, hidden, primaryImage)
+func (repo *Repo) UpdateClientImages(ctx context.Context, tagnumber int64, uuid string, filename *string, filePath string, thumbnailFilePath *string, filesize *float64, sha256Hash *[]byte, mimeType *string, exifTimestamp *time.Time, resolutionX *int, resolutionY *int, note *string, hidden *bool, primaryImage *bool) error {
+	sqlCode := `INSERT INTO client_images (uuid, time, tagnumber, filename, filepath, thumbnail_filepath, filesize, sha256_hash, mime_type, exif_timestamp, resolution_x, resolution_y, note, hidden, primary_image)
+		VALUES ($1, CURRENT_TIMESTAMP, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`
+	_, err := repo.DB.ExecContext(ctx, sqlCode, uuid, tagnumber, filename, filePath, thumbnailFilePath, filesize, sha256Hash, mimeType, exifTimestamp, resolutionX, resolutionY, note, hidden, primaryImage)
 	return err
 }

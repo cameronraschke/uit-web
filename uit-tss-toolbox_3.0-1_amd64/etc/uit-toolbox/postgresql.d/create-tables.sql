@@ -347,6 +347,7 @@ CREATE TABLE IF NOT EXISTS client_images (
     tagnumber INTEGER NOT NULL, 
     filename VARCHAR(128) DEFAULT NULL,
     filepath TEXT DEFAULT NULL,
+    thumbnail_filepath TEXT DEFAULT NULL,
     filesize DECIMAL(8,2) DEFAULT NULL,
     sha256_hash BYTEA DEFAULT NULL,
     mime_type VARCHAR(24) DEFAULT NULL,

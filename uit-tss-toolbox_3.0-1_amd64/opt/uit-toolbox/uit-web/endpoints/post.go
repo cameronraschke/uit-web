@@ -1,10 +1,12 @@
 package endpoints
 
 import (
+	"bytes"
 	"crypto"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"image/jpeg"
 	_ "image/png"
 	"io"
 	"mime/multipart"
@@ -506,11 +508,16 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 
 		fileTimeStamp := time.Now().Format("2006-01-02-150405")
 		fileUUID := uuid.New()
-		fileName := fileTimeStamp + "-" + fileUUID.String() + ".jpeg"
-		fullFilePath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), fileName)
-		if err := os.WriteFile(fullFilePath, fileData, 0644); err != nil {
-			log.Error("Failed to save uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
-			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		var fileName string
+		baseFileName := fileTimeStamp + "-" + fileUUID.String()
+		switch mimeType {
+		case "image/jpeg":
+			fileName = baseFileName + ".jpeg"
+		case "image/png":
+			fileName = baseFileName + ".png"
+		default:
+			log.Warning("Unsupported image MIME type for inventory update: " + requestIP + " (Content-Type: " + mimeType + ")")
+			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType, "Unsupported media type")
 			return
 		}
 		fileHash := crypto.SHA256.New()
@@ -521,8 +528,37 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		}
 		fileHashBytes := fileHash.Sum(nil)
 
-		fileSizeMB := float64(fileSize) / (1 << 20)
-		err = updateRepo.UpdateClientImages(ctx, tagnumber, fileUUID.String(), &fileName, fullFilePath, &fileSizeMB, &fileHashBytes, &mimeType, nil, nil, nil, nil, nil, nil)
+		fullFilePath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), fileName)
+		if err := os.WriteFile(fullFilePath, fileData, 0644); err != nil {
+			log.Error("Failed to save uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		fullThumbnailPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), "thumbnail-"+baseFileName+".jpeg")
+		thumbnail, err := jpeg.Decode(bytes.NewReader(fileData))
+		if err != nil {
+			log.Error("Failed to decode uploaded image for thumbnail creation for inventory update: " + err.Error() + " (" + requestIP + ")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		thumbnailFile, err := os.Create(fullThumbnailPath)
+		if err != nil {
+			log.Error("Failed to create thumbnail file for inventory update: " + err.Error() + " (" + requestIP + ")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		defer thumbnailFile.Close()
+		err = jpeg.Encode(thumbnailFile, thumbnail, &jpeg.Options{Quality: 50})
+		if err != nil {
+			log.Error("Failed to encode thumbnail image for inventory update: " + err.Error() + " (" + requestIP + ")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		thumbnailFile.Close()
+
+		// Insert image metadata into database
+		fileSizeMB := float64(fileSize) / (1024 * 1024)
+		err = updateRepo.UpdateClientImages(ctx, tagnumber, fileUUID.String(), &fileName, fullFilePath, &fullThumbnailPath, &fileSizeMB, &fileHashBytes, &mimeType, nil, nil, nil, nil, nil, nil)
 		if err != nil {
 			log.Error("Failed to update inventory image data: " + err.Error() + " (" + requestIP + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
