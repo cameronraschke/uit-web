@@ -400,9 +400,9 @@ func (repo *Repo) GetClientImageByUUID(ctx context.Context, uuid string) (*Clien
 	return clientImage, nil
 }
 
-func (repo *Repo) GetClientImageFilePathByUUID(ctx context.Context, uuid string) (*string, *string, error) {
-	sqlQuery := `SELECT filepath, thumbnail_filepath FROM client_images WHERE uuid = $1;`
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, uuid)
+func (repo *Repo) GetClientImageFilePathByFileName(ctx context.Context, filename string) (*string, *string, error) {
+	sqlQuery := `SELECT filepath, thumbnail_filepath FROM client_images WHERE filename = $1;`
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, filename)
 	var filepath string
 	var thumbnailFilepath string
 	if err := row.Scan(

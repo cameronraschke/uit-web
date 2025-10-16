@@ -6,6 +6,7 @@ import (
 	"image"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -532,7 +533,12 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 
 		var imageConfig ImageConfig
 		imageConfig.Name = imageStat.Name()
-		imageConfig.URL = "/client/images/" + strconv.Itoa(tagnumber) + "/" + imageStat.Name()
+		imageConfig.URL, err = url.JoinPath("inventory-images", strconv.Itoa(tagnumber), imageStat.Name())
+		if err != nil {
+			log.Info("Client image URL join error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 		imageConfig.Width = decodedImage.Width
 		imageConfig.Height = decodedImage.Height
 		imageConfig.Size = imageStat.Size()
@@ -560,15 +566,8 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 	requestIP := requestInfo.IP
 	requestURL := requestInfo.URL
 
-	requestedTag := r.URL.Query().Get("tagnumber")
-	tagnumber, err := strconv.Atoi(requestedTag)
-	if err != nil || tagnumber <= 0 {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-		return
-	}
-	requestUUID := strings.TrimPrefix(r.URL.Path, "/images/")
-	if requestUUID == "" {
+	requestFileName := strings.TrimPrefix(r.URL.Path, "/api/images/")
+	if requestFileName == "" {
 		log.Warning("No image path provided in request from: " + requestIP + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
@@ -582,7 +581,7 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 	repo := database.NewRepo(db)
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	imagePath, _, err := repo.GetClientImageFilePathByUUID(ctx, requestUUID)
+	imagePath, _, err := repo.GetClientImageFilePathByFileName(ctx, requestFileName)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Info("Image not found: " + requestIP + " (" + requestURL + "): " + err.Error())
