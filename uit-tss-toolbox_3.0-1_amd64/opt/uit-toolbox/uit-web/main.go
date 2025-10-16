@@ -173,7 +173,8 @@ func main() {
 	httpsMux.Handle("GET /api/client/location_form_data", httpsFullAPIChain.thenFunc(endpoints.GetLocationFormData))
 	httpsMux.Handle("GET /api/notes", httpsFullAPIChain.thenFunc(endpoints.GetNotes))
 	httpsMux.Handle("GET /api/dashboard/inventory_summary", httpsFullAPIChain.thenFunc(endpoints.GetDashboardInventorySummary))
-	httpsMux.Handle("GET /api/images", httpsFullAPIChain.thenFunc(endpoints.GetClientImages))
+	httpsMux.Handle("GET /api/images/manifest", httpsFullAPIChain.thenFunc(endpoints.GetClientImagesManifest))
+	httpsMux.Handle("GET /api/images/", httpsFullAPIChain.thenFunc(endpoints.GetImage))
 
 	httpsMux.Handle("POST /api/notes", httpsFullAPIChain.thenFunc(endpoints.InsertNewNote))
 	httpsMux.Handle("POST /api/update_inventory", httpsFullAPIChain.thenFunc(endpoints.UpdateInventory))

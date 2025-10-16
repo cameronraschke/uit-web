@@ -507,12 +507,27 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType, "Unsupported media type")
 			return
 		}
-		decodedImage, imageFormat, err := image.Decode(bytes.NewReader(fileData))
+		imageReader := bytes.NewReader(fileData)
+		_, err = imageReader.Seek(0, io.SeekStart)
+		if err != nil {
+			log.Error("Failed to seek to start of uploaded image for inventory update: " + err.Error() + " (" + requestIP + ")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		decodedImage, imageFormat, err := image.Decode(imageReader)
 		if err != nil {
 			log.Error("Failed to decode uploaded image for thumbnail creation for inventory update: " + err.Error() + " (" + requestIP + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
+		decodedImageConfig, _, err := image.DecodeConfig(imageReader)
+		if err != nil {
+			log.Error("Failed to decode uploaded image config for inventory update: " + err.Error() + " (" + requestIP + ")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		resolutionX := decodedImageConfig.Width
+		resolutionY := decodedImageConfig.Height
 
 		fileTimeStamp := time.Now().Format("2006-01-02-150405")
 		fileUUID := uuid.New()
@@ -570,7 +585,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 
 		// Insert image metadata into database
 		fileSizeMB := float64(fileSize) / (2 << 20)
-		err = updateRepo.UpdateClientImages(ctx, tagnumber, fileUUID.String(), &fileName, fullFilePath, &fullThumbnailPath, &fileSizeMB, &fileHashBytes, &mimeType, nil, nil, nil, nil, nil, nil)
+		err = updateRepo.UpdateClientImages(ctx, tagnumber, fileUUID.String(), &fileName, fullFilePath, &fullThumbnailPath, &fileSizeMB, &fileHashBytes, &mimeType, nil, &resolutionX, &resolutionY, nil, nil, nil)
 		if err != nil {
 			log.Error("Failed to update inventory image data: " + err.Error() + " (" + requestIP + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")

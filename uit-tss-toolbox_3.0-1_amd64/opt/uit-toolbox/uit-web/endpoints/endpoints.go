@@ -270,18 +270,23 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
+		urlTag := req.URL.Query().Get("tagnumber")
+		urlTag = strings.TrimSpace(urlTag)
+
 		templateData := struct {
 			JsNonce        string
 			WebmasterName  string
 			WebmasterEmail string
 			Departments    map[string]string
 			Domains        map[string]string
+			ClientTag      string
 		}{
 			JsNonce:        nonce,
 			WebmasterName:  webmasterName,
 			WebmasterEmail: webmasterEmail,
 			Departments:    departments,
 			Domains:        domains,
+			ClientTag:      urlTag,
 		}
 
 		// Execute the template

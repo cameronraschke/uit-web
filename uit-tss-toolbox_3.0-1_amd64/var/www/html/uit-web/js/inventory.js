@@ -12,6 +12,7 @@ const inventoryLocationInput = document.getElementById('location');
 const inventoryUpdateSubmitButton = document.getElementById('inventory-update-submit-button');
 const inventoryUpdateCancelButton = document.getElementById('inventory-update-cancel-button');
 const tagDatalist = document.getElementById('inventory-tag-suggestions');
+const clientImagesLink = document.getElementById('client_images_link');
 
 function postInventoryData() {
   return null;
@@ -92,6 +93,13 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
   inventoryLookupSubmitButton.style.cursor = "not-allowed";
   inventoryLookupSubmitButton.style.border = "1px solid gray";
   inventoryLookupResetButton.style.display = "inline-block";
+  if (lookupTag) {
+    clientImagesLink.href = `/client_images.html?tagnumber=${lookupTag || ''}`;
+    clientImagesLink.target = "_blank";
+    clientImagesLink.style.display = "inline";
+  } else {
+    clientImagesLink.style.display = "none";
+  }
 });
 
 function resetInventoryForm() {

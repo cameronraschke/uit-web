@@ -350,3 +350,66 @@ func (repo *Repo) GetLocationFormData(ctx context.Context, tag int) (*InventoryF
 
 	return inventoryUpdateForm, nil
 }
+
+func (repo *Repo) GetClientImagePaths(ctx context.Context, tag int) ([]string, error) {
+	sqlQuery := `SELECT filepath FROM client_images WHERE tagnumber = $1 ORDER BY time DESC;`
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery, tag)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var filepaths []string
+	for rows.Next() {
+		var filepath string
+		if err := rows.Scan(&filepath); err != nil {
+			return nil, err
+		}
+		filepaths = append(filepaths, filepath)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return filepaths, nil
+}
+
+func (repo *Repo) GetClientImageByUUID(ctx context.Context, uuid string) (*ClientImagesTable, error) {
+	sqlQuery := `SELECT uuid, time, tagnumber, filename, filepath, thumbnail_filepath, filesize, mime_type, exif_timestamp, resolution_x, resolution_y, note, hidden, primary_image
+	FROM client_images WHERE uuid = $1;`
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, uuid)
+	clientImage := &ClientImagesTable{}
+	if err := row.Scan(
+		&clientImage.UUID,
+		&clientImage.Time,
+		&clientImage.Tagnumber,
+		&clientImage.Filename,
+		&clientImage.FilePath,
+		&clientImage.ThumbnailFilePath,
+		&clientImage.Filesize,
+		&clientImage.MimeType,
+		&clientImage.ExifTimestamp,
+		&clientImage.ResolutionX,
+		&clientImage.ResolutionY,
+		&clientImage.Note,
+		&clientImage.Hidden,
+		&clientImage.PrimaryImage,
+	); err != nil {
+		return nil, err
+	}
+	return clientImage, nil
+}
+
+func (repo *Repo) GetClientImageFilePathByUUID(ctx context.Context, uuid string) (*string, *string, error) {
+	sqlQuery := `SELECT filepath, thumbnail_filepath FROM client_images WHERE uuid = $1;`
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, uuid)
+	var filepath string
+	var thumbnailFilepath string
+	if err := row.Scan(
+		&filepath,
+		&thumbnailFilepath,
+	); err != nil {
+		return nil, nil, err
+	}
+	return &filepath, &thumbnailFilepath, nil
+}

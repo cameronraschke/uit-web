@@ -101,6 +101,8 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
   min-width: fit-content;
   justify-content: space-evenly;
   align-content: space-between;
+  overflow-x: auto;
+  overflow-y: auto;
 }
 
 .flex-container.nav {

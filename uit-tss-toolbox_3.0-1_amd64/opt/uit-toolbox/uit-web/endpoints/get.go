@@ -3,7 +3,7 @@ package endpoints
 import (
 	"context"
 	"database/sql"
-	"image/jpeg"
+	"image"
 	"log"
 	"net/http"
 	"os"
@@ -459,14 +459,22 @@ func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, inventorySummary)
 }
 
-func GetClientImages(w http.ResponseWriter, r *http.Request) {
+type ImageConfig struct {
+	Name   string
+	URL    string
+	Width  int
+	Height int
+	Size   int64
+}
+
+func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)
 	if err != nil {
 		log.Println("Cannot get request info error: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	// ctx := requestInfo.Ctx
+	ctx := requestInfo.Ctx
 	log := requestInfo.Log
 	requestIP := requestInfo.IP
 	requestURL := requestInfo.URL
@@ -482,40 +490,122 @@ func GetClientImages(w http.ResponseWriter, r *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	// repo := database.NewRepo(db)
-	// ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	// defer cancel()
-	// images, err := repo.GetClientImages(ctx, tagnumber)
-	// if err != nil {
-	// 	if err != sql.ErrNoRows {
-	// 		log.Info("Client images query error: " + requestIP + " (" + requestURL + "): " + err.Error())
-	// 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-	// 		return
-	// 	}
-	// }
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	images, err := repo.GetClientImagePaths(ctx, tagnumber)
+	if err != nil && err != sql.ErrNoRows {
+		log.Info("Client images query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
 
-	image, err := os.Open("./inventory-images/625830/2025-08-11-163114-image-689a61236e8844.70187376.jpeg")
+	var imageList []ImageConfig
+	for _, imageFilePath := range images {
+		img, err := os.Open(imageFilePath)
+		if err != nil {
+			log.Info("Client image open error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		defer img.Close()
+
+		imageStat, err := img.Stat()
+		if err != nil {
+			log.Info("Client image stat error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+
+		imageReader := http.MaxBytesReader(w, img, 64<<20)
+		decodedImage, imageType, err := image.DecodeConfig(imageReader)
+		if err != nil {
+			log.Info("Client image decode error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		if imageType != "jpeg" && imageType != "png" {
+			log.Info("Client image has invalid type: " + requestIP + " (" + requestURL + "): " + imageType)
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+
+		var imageConfig ImageConfig
+		imageConfig.Name = imageStat.Name()
+		imageConfig.URL = "/client/images/" + strconv.Itoa(tagnumber) + "/" + imageStat.Name()
+		imageConfig.Width = decodedImage.Width
+		imageConfig.Height = decodedImage.Height
+		imageConfig.Size = imageStat.Size()
+
+		if imageConfig.Width == 0 || imageConfig.Height == 0 {
+			log.Info("Client image has invalid dimensions: " + requestIP + " (" + requestURL + ")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		imageList = append(imageList, imageConfig)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	middleware.WriteJson(w, http.StatusOK, imageList)
+}
+
+func GetImage(w http.ResponseWriter, r *http.Request) {
+	requestInfo, err := GetRequestInfo(r)
 	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
+
+	requestedTag := r.URL.Query().Get("tagnumber")
+	tagnumber, err := strconv.Atoi(requestedTag)
+	if err != nil || tagnumber <= 0 {
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	requestUUID := strings.TrimPrefix(r.URL.Path, "/images/")
+	if requestUUID == "" {
+		log.Warning("No image path provided in request from: " + requestIP + " (" + requestURL + ")")
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	imagePath, _, err := repo.GetClientImageFilePathByUUID(ctx, requestUUID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			log.Info("Image not found: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusNotFound, "Image not found")
+			return
+		}
+		log.Info("Client image query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	imageFile, err := os.Open(*imagePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Info("Image not found: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusNotFound, "Image not found")
+			return
+		}
 		log.Info("Client image open error: " + requestIP + " (" + requestURL + "): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
-	defer image.Close()
+	defer imageFile.Close()
 
-	imageStat, err := image.Stat()
-	if err != nil {
-		log.Info("Client image stat error: " + requestIP + " (" + requestURL + "): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-
-	imageConfig, err := jpeg.DecodeConfig(image)
-	if err != nil {
-		log.Info("Client image decode config error: " + requestIP + " (" + requestURL + "): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-	log.Info("Serving image " + imageStat.Name() + " (" + strconv.Itoa(imageConfig.Width) + "x" + strconv.Itoa(imageConfig.Height) + ") to " + requestIP + " (" + requestURL + ")")
-	w.Header().Set("Content-Type", "image/jpeg")
-	http.ServeContent(w, r, imageStat.Name(), imageStat.ModTime(), image)
+	http.ServeContent(w, r, imageFile.Name(), time.Time{}, imageFile)
 }
