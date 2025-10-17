@@ -19,9 +19,9 @@ function loadClientImages(clientTag) {
             console.log(typeof data);
             console.log(data);
             data.forEach(imgUrl => {
-                console.log(imgUrl.URL);
+                console.log(imgUrl.UUID);
                 const img = document.createElement('img');
-                img.src = imgUrl.URL;
+                img.src = `/api/images/${imgUrl.UUID}`;
                 img.alt = `Image for ${clientTag}`;
                 img.className = 'client-image';
                 container.appendChild(img);

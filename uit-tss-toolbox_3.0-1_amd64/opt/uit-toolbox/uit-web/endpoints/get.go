@@ -505,9 +505,21 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 
 	var imageList []ImageConfig
 	for _, imageUUID := range imageUUIDs {
-		img, err := os.Open(imageUUID)
+		fp, _, err := repo.GetClientImagePathByUUID(ctx, imageUUID)
 		if err != nil {
-			log.Info("Client image open error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			if err == sql.ErrNoRows {
+				log.Info("Image not found in database: " + requestIP + " (" + requestURL + "): " + err.Error())
+				middleware.WriteJsonError(w, http.StatusNotFound, "Image not found")
+				return
+			}
+			log.Info("Client image query error (manifest): " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		filepath := *fp
+		img, err := os.Open(filepath)
+		if err != nil {
+			log.Info("Client image open error (manifest): " + requestIP + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
