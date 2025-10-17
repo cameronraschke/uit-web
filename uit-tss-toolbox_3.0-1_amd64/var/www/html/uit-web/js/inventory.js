@@ -136,8 +136,14 @@ function renderTagOptions(tags) {
     console.warn("No tag datalist found");
     return;
   }
+  
   tagDatalist.innerHTML = '';
-  (tags || []).slice(0, 20).forEach(tag => {
+  let maxTags = 20;
+  if (checkMobile()) {
+    maxTags = 0;
+    return;
+  }
+  (tags || []).slice(0, maxTags).forEach(tag => {
     const option = document.createElement('option');
     option.value = tag;
     tagDatalist.appendChild(option);

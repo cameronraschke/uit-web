@@ -196,6 +196,24 @@ async function getAllTags(fetchOptions = {}) {
   }
 }
 
+function checkMobile() {
+  const mediaQuery = window.matchMedia("(width <= 768px)");
+  let isMobile = false;
+  let mobileScreen = false;
+  let touchScreen = false;
+  if (mediaQuery.matches) {
+    mobileScreen = true;
+  }
+
+  if (navigator.maxTouchPoints > 1 || 'ontouchstart' in window || 'ontouchstart' in document.documentElement) {
+    touchScreen = true;
+  }
+
+  if (touchScreen) {
+    isMobile = true;
+  }
+  return isMobile;
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   getAllTags()

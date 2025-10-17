@@ -226,7 +226,6 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 					return
 				}
 			}
-
 		}
 
 		// Check URL path
@@ -357,7 +356,7 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if requestURL == "/login" || requestURL == "/logout" || requestURL == "/dashboard" || requestURL == "/inventory" {
+		if requestURL == "/login" || requestURL == "/logout" || requestURL == "/dashboard" || requestURL == "/inventory" || requestURL == "/client_images" {
 			requestURL = requestURL + ".html"
 		}
 
@@ -373,7 +372,15 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 		}
 
 		fullPath := path.Join(basePath, requestURL)
-		_, fileRequested := path.Split(fullPath)
+		_, fileRequestedWithQuery := path.Split(fullPath)
+
+		parsedRequestedFile, err := url.Parse(fileRequestedWithQuery)
+		if err != nil {
+			log.Warning("Failed to parse requested file URL: " + err.Error())
+			http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
+			return
+		}
+		fileRequested := parsedRequestedFile.Path
 
 		if !config.IsFileAllowed(fileRequested) {
 			log.Warning("File not in whitelist: " + fileRequested)
