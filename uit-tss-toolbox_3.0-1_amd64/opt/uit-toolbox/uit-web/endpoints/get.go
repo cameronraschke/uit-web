@@ -471,6 +471,7 @@ type ImageConfig struct {
 	Size         int64
 	Hidden       *bool
 	PrimaryImage *bool
+	Note         *string
 }
 
 func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
@@ -508,7 +509,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 
 	var imageList []ImageConfig
 	for _, imageUUID := range imageUUIDs {
-		timestamp, fp, _, hidden, primaryImage, err := repo.GetClientImageManifestByUUID(ctx, imageUUID)
+		timestamp, fp, _, hidden, primaryImage, note, err := repo.GetClientImageManifestByUUID(ctx, imageUUID)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				log.Info("Image not found in database: " + requestIP + " (" + requestURL + "): " + err.Error())
@@ -537,7 +538,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 
 		imageReader := http.MaxBytesReader(w, img, 64<<20)
 		decodedImage, imageType, err := image.DecodeConfig(imageReader)
-		if err != nil {
+		if err != nil && err != image.ErrFormat && !strings.HasPrefix(imageType, "video/") {
 			log.Info("Client image decode error: " + requestIP + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 			return
@@ -554,6 +555,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 		imageConfig.PrimaryImage = primaryImage
 		imageConfig.Name = imageStat.Name()
 		imageConfig.UUID = imageUUID
+		imageConfig.Note = note
 		imageConfig.URL, err = url.JoinPath("/api/images/", strconv.Itoa(tagnumber), imageStat.Name())
 		if err != nil {
 			log.Info("Client image URL join error: " + requestIP + " (" + requestURL + "): " + err.Error())
@@ -609,7 +611,7 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Debug("Serving image request for: " + requestImageUUID + " from " + requestIP + " (" + requestURL + ")")
-	_, imagePath, _, hidden, _, err := repo.GetClientImageManifestByUUID(ctx, requestImageUUID)
+	_, imagePath, _, hidden, _, _, err := repo.GetClientImageManifestByUUID(ctx, requestImageUUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Info("Image not found: " + requestIP + " (" + requestURL + "): " + err.Error())
