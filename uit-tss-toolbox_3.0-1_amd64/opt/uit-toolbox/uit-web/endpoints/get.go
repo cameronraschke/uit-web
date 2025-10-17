@@ -463,6 +463,7 @@ func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
 
 type ImageConfig struct {
 	Name   string
+	UUID   string
 	URL    string
 	Width  int
 	Height int
@@ -495,7 +496,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 	repo := database.NewRepo(db)
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	images, err := repo.GetClientImagePaths(ctx, tagnumber)
+	imageUUIDs, err := repo.GetClientImageUUIDs(ctx, tagnumber)
 	if err != nil && err != sql.ErrNoRows {
 		log.Info("Client images query error: " + requestIP + " (" + requestURL + "): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
@@ -503,8 +504,8 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var imageList []ImageConfig
-	for _, imageFilePath := range images {
-		img, err := os.Open(imageFilePath)
+	for _, imageUUID := range imageUUIDs {
+		img, err := os.Open(imageUUID)
 		if err != nil {
 			log.Info("Client image open error: " + requestIP + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
@@ -534,6 +535,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 
 		var imageConfig ImageConfig
 		imageConfig.Name = imageStat.Name()
+		imageConfig.UUID = imageUUID
 		imageConfig.URL, err = url.JoinPath("/api/images/", strconv.Itoa(tagnumber), imageStat.Name())
 		if err != nil {
 			log.Info("Client image URL join error: " + requestIP + " (" + requestURL + "): " + err.Error())
@@ -582,14 +584,14 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 	repo := database.NewRepo(db)
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	requestFileName := path.Base(requestFilePath)
-	if requestFileName == "" {
+	requestImageUUID := path.Base(requestFilePath)
+	if requestImageUUID == "" {
 		log.Warning("No image file name provided in request from: " + requestIP + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	log.Info("Serving image request for: " + requestFileName + " from " + requestIP + " (" + requestURL + ")")
-	imagePath, _, err := repo.GetClientImageFilePathByFileName(ctx, requestFileName)
+	log.Info("Serving image request for: " + requestImageUUID + " from " + requestIP + " (" + requestURL + ")")
+	imagePath, _, err := repo.GetClientImagePathByUUID(ctx, requestImageUUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Info("Image not found: " + requestIP + " (" + requestURL + "): " + err.Error())

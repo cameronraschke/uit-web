@@ -374,6 +374,29 @@ func (repo *Repo) GetClientImagePaths(ctx context.Context, tag int) ([]string, e
 	return filepaths, nil
 }
 
+func (repo *Repo) GetClientImageUUIDs(ctx context.Context, tag int) ([]string, error) {
+	sqlQuery := `SELECT uuid FROM client_images WHERE tagnumber = $1 ORDER BY time DESC;`
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery, tag)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var uuids []string
+	for rows.Next() {
+		var uuid string
+		if err := rows.Scan(&uuid); err != nil {
+			return nil, err
+		}
+		uuids = append(uuids, uuid)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return uuids, nil
+}
+
 func (repo *Repo) GetClientImageByUUID(ctx context.Context, uuid string) (*ClientImagesTable, error) {
 	sqlQuery := `SELECT uuid, time, tagnumber, filename, filepath, thumbnail_filepath, filesize, mime_type, exif_timestamp, resolution_x, resolution_y, note, hidden, primary_image
 	FROM client_images WHERE uuid = $1;`
@@ -400,9 +423,9 @@ func (repo *Repo) GetClientImageByUUID(ctx context.Context, uuid string) (*Clien
 	return clientImage, nil
 }
 
-func (repo *Repo) GetClientImageFilePathByFileName(ctx context.Context, filename string) (*string, *string, error) {
-	sqlQuery := `SELECT filepath, thumbnail_filepath FROM client_images WHERE filename = $1;`
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, filename)
+func (repo *Repo) GetClientImagePathByUUID(ctx context.Context, uuid string) (*string, *string, error) {
+	sqlQuery := `SELECT filepath, thumbnail_filepath FROM client_images WHERE uuid = $1;`
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, uuid)
 	var filepath string
 	var thumbnailFilepath string
 	if err := row.Scan(
