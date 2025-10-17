@@ -462,12 +462,15 @@ func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
 }
 
 type ImageConfig struct {
-	Name   string
-	UUID   string
-	URL    string
-	Width  int
-	Height int
-	Size   int64
+	Time         time.Time
+	Name         string
+	UUID         string
+	URL          string
+	Width        int
+	Height       int
+	Size         int64
+	Hidden       *bool
+	PrimaryImage *bool
 }
 
 func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
@@ -505,7 +508,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 
 	var imageList []ImageConfig
 	for _, imageUUID := range imageUUIDs {
-		fp, _, err := repo.GetClientImagePathByUUID(ctx, imageUUID)
+		timestamp, fp, _, hidden, primaryImage, err := repo.GetClientImageManifestByUUID(ctx, imageUUID)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				log.Info("Image not found in database: " + requestIP + " (" + requestURL + "): " + err.Error())
@@ -546,6 +549,9 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var imageConfig ImageConfig
+		imageConfig.Time = *timestamp
+		imageConfig.Hidden = hidden
+		imageConfig.PrimaryImage = primaryImage
 		imageConfig.Name = imageStat.Name()
 		imageConfig.UUID = imageUUID
 		imageConfig.URL, err = url.JoinPath("/api/images/", strconv.Itoa(tagnumber), imageStat.Name())
@@ -602,8 +608,8 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	log.Info("Serving image request for: " + requestImageUUID + " from " + requestIP + " (" + requestURL + ")")
-	imagePath, _, err := repo.GetClientImagePathByUUID(ctx, requestImageUUID)
+	log.Debug("Serving image request for: " + requestImageUUID + " from " + requestIP + " (" + requestURL + ")")
+	_, imagePath, _, hidden, _, err := repo.GetClientImageManifestByUUID(ctx, requestImageUUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Info("Image not found: " + requestIP + " (" + requestURL + "): " + err.Error())
@@ -615,6 +621,11 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if hidden != nil && *hidden {
+		log.Info("Attempt to access hidden image: " + requestIP + " (" + requestURL + ")")
+		middleware.WriteJsonError(w, http.StatusNotFound, "Image not found")
+		return
+	}
 	imageFile, err := os.Open(*imagePath)
 	if err != nil {
 		if os.IsNotExist(err) {

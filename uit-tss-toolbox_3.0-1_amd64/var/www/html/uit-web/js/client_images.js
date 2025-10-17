@@ -16,15 +16,15 @@ function loadClientImages(clientTag) {
                 container.innerHTML = '<p>No images found for this client tag.</p>';
                 return;
             }
-            console.log(typeof data);
-            console.log(data);
             data.forEach(imgUrl => {
-                console.log(imgUrl.UUID);
-                const img = document.createElement('img');
-                img.src = `/api/images/${imgUrl.UUID}`;
-                img.alt = `Image for ${clientTag}`;
-                img.className = 'client-image';
-                container.appendChild(img);
+              const imgDiv = document.createElement('div');
+              imgDiv.className = 'image-box';
+              const img = document.createElement('img');
+              img.src = `/api/images/${imgUrl.UUID}`;
+              img.alt = `Image for ${clientTag}`;
+              img.className = 'client-image';
+              imgDiv.appendChild(img);
+              container.appendChild(imgDiv);
             });
         })
         .catch(err => {

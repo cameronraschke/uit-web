@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 type Repo struct {
@@ -423,16 +424,17 @@ func (repo *Repo) GetClientImageByUUID(ctx context.Context, uuid string) (*Clien
 	return clientImage, nil
 }
 
-func (repo *Repo) GetClientImagePathByUUID(ctx context.Context, uuid string) (*string, *string, error) {
-	sqlQuery := `SELECT filepath, thumbnail_filepath FROM client_images WHERE uuid = $1;`
+func (repo *Repo) GetClientImageManifestByUUID(ctx context.Context, uuid string) (timestamp *time.Time, filepath *string, thumbnailFilepath *string, hidden *bool, primaryImage *bool, err error) {
+	sqlQuery := `SELECT time, filepath, thumbnail_filepath, hidden, primary_image FROM client_images WHERE uuid = $1;`
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, uuid)
-	var filepath *string
-	var thumbnailFilepath *string
 	if err := row.Scan(
+		&timestamp,
 		&filepath,
 		&thumbnailFilepath,
+		&hidden,
+		&primaryImage,
 	); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, nil, err
 	}
-	return filepath, thumbnailFilepath, nil
+	return timestamp, filepath, thumbnailFilepath, hidden, primaryImage, nil
 }
