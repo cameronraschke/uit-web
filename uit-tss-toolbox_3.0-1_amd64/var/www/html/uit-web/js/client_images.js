@@ -16,9 +16,12 @@ function loadClientImages(clientTag) {
                 container.innerHTML = '<p>No images found for this client tag.</p>';
                 return;
             }
+            console.log(typeof data);
+            console.log(data);
             data.forEach(imgUrl => {
+                console.log(imgUrl.URL);
                 const img = document.createElement('img');
-                img.src = imgUrl;
+                img.src = imgUrl.URL;
                 img.alt = `Image for ${clientTag}`;
                 img.className = 'client-image';
                 container.appendChild(img);

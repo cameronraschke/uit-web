@@ -269,7 +269,13 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Split URL path into path + file name
-		_, fileRequested := path.Split(fullPath)
+		fileRequestedWithQuery, err := url.Parse(fullPath)
+		if err != nil {
+			log.Warning("Failed to parse URL path: " + err.Error())
+			http.Error(w, "Bad request", http.StatusBadRequest)
+			return
+		}
+		_, fileRequested := path.Split(fileRequestedWithQuery.Path)
 		if strings.HasPrefix(fileRequested, ".") ||
 			strings.HasPrefix(fileRequested, "~") ||
 			strings.HasSuffix(fileRequested, ".tmp") ||
@@ -349,38 +355,44 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
 			return
 		}
-		requestURL, ok := GetRequestURL(req)
+		requestURLString, ok := GetRequestURL(req)
 		if !ok {
 			log.Warning("no URL stored in context")
 			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
 			return
 		}
 
-		if requestURL == "/login" || requestURL == "/logout" || requestURL == "/dashboard" || requestURL == "/inventory" || requestURL == "/client_images" {
-			requestURL = requestURL + ".html"
+		requestURLParsed, err := url.Parse(requestURLString)
+		if err != nil {
+			log.Warning("Failed to parse request URL: " + err.Error())
+			http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
+			return
+		}
+		requestURLPath := requestURLParsed.Path
+		if requestURLPath == "/login" || requestURLPath == "/logout" || requestURLPath == "/dashboard" || requestURLPath == "/inventory" || requestURLPath == "/client_images" {
+			requestURLPath = requestURLPath + ".html"
 		}
 
-		if requestURL == "" || requestURL == "/" {
-			requestURL = "/dashboard.html"
+		if requestURLPath == "" || requestURLPath == "/" {
+			requestURLPath = "/dashboard.html"
 		}
 
 		var basePath string
-		if strings.HasPrefix(requestURL, "/client/") {
+		if strings.HasPrefix(requestURLString, "/client/") {
 			basePath = "/srv/uit-toolbox/"
 		} else {
 			basePath = "/var/www/html/uit-web/"
 		}
 
-		fullPath := path.Join(basePath, requestURL)
-		_, fileRequestedWithQuery := path.Split(fullPath)
-
-		parsedRequestedFile, err := url.Parse(fileRequestedWithQuery)
-		if err != nil {
-			log.Warning("Failed to parse requested file URL: " + err.Error())
-			http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
+		fullPath := path.Join(basePath, requestURLPath)
+		fileRequested := path.Base(requestURLPath)
+		if !path.IsAbs(fullPath) ||
+			strings.TrimSpace(fullPath) == "." ||
+			strings.TrimSpace(fullPath) == "/" {
+			log.Warning("Invalid file path: " + fullPath)
+			http.Error(w, FormatHttpError("Forbidden"), http.StatusForbidden)
 			return
 		}
-		fileRequested := parsedRequestedFile.Path
 
 		if !config.IsFileAllowed(fileRequested) {
 			log.Warning("File not in whitelist: " + fileRequested)

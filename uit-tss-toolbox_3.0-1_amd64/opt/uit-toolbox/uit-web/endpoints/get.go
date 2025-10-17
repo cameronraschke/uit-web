@@ -534,7 +534,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 
 		var imageConfig ImageConfig
 		imageConfig.Name = imageStat.Name()
-		imageConfig.URL, err = url.JoinPath("inventory-images", strconv.Itoa(tagnumber), imageStat.Name())
+		imageConfig.URL, err = url.JoinPath("/api/images/", strconv.Itoa(tagnumber), imageStat.Name())
 		if err != nil {
 			log.Info("Client image URL join error: " + requestIP + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
