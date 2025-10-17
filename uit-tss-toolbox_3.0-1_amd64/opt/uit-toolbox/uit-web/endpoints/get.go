@@ -538,7 +538,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 
 		imageReader := http.MaxBytesReader(w, img, 64<<20)
 		decodedImage, imageType, err := image.DecodeConfig(imageReader)
-		if err != nil && err != image.ErrFormat && !strings.HasPrefix(imageType, "video/") {
+		if err != nil {
 			log.Info("Client image decode error: " + requestIP + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 			return
