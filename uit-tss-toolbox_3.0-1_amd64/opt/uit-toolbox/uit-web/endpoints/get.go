@@ -573,7 +573,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			imageList = append(imageList, imageConfig)
-		} else if strings.HasSuffix(strings.ToLower(filepath), ".mp4") {
+		} else if strings.HasSuffix(strings.ToLower(filepath), ".mp4") || strings.HasSuffix(strings.ToLower(filepath), ".mov") {
 			imageStat, err := img.Stat()
 			if err != nil {
 				log.Info("Client image stat error: " + requestIP + " (" + requestURL + "): " + err.Error())
