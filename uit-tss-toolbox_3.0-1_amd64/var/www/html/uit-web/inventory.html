@@ -57,8 +57,8 @@
             <input type="hidden" id="csrf-token" value="" />
             <div class="grid-container inventory inventory-update-form">
               <div class="inventory-lookup-label"><p>Location, Manufacturer, and Model:</p></div>
-              <div><p>Location:</p></div>
-              <div><p>Manufacturer/Model:</p></div>
+              <div><p class="required-field">Location:</p></div>
+              <div><p class="required-field">Manufacturer/Model:</p></div>
               <div><input type="text" id="location" name="location"
                 placeholder="Location" 
                 maxlength="128"
@@ -66,7 +66,7 @@
                 autocorrect="off"
                 autocapitalize="off" /></div>
               <div>
-                <input type="text" id="system_manufacturer" name="system_manufacturer" 
+                <input type="text" id="system_manufacturer" name="system_manufacturer"
                   placeholder="Manufacturer" 
                   maxlength="128" 
                   autocomplete="off"
@@ -75,7 +75,7 @@
               </div>
               <div></div>
               <div>
-                <input type="text" id="system_model" name="system_model" 
+                <input type="text" id="system_model" name="system_model"
                   placeholder="Model" 
                   maxlength="128" 
                   autocomplete="off"
@@ -86,7 +86,7 @@
             <div class="vertical-spacer"></div>
             <div class="grid-container inventory inventory-update-form">
               <div class="inventory-lookup-label"><p>Department and AD Domain:</p></div>
-              <div><label for="department">Department:</label></div>
+              <div><label for="department" class="required-field">Department:</label></div>
               <div><select id="department" name="department">
                 <option value="" disabled selected>Select Department</option>
                 <option value="">None</option>
@@ -94,7 +94,7 @@
                 <option value="{{ $department }}">{{ $departmentReadable }}</option>
                 {{- end }}
               </select></div>
-              <div><label for="domain">AD Domain:</label></div>
+              <div><label for="domain" class="required-field">AD Domain:</label></div>
               <div><select id="domain" name="domain">
                 <option value="" disabled selected>Select AD Domain</option>
                 <option value="">None</option>
@@ -106,13 +106,13 @@
             <div class="vertical-spacer"></div>
             <div class="grid-container inventory inventory-update-form">
               <div class="inventory-lookup-label"><p>Health and Status:</p></div>
-              <label for="working">Is it Working?</label>
+              <label for="working" class="required-field">Is it Working?</label>
               <select id="working" name="working">
                 <option value="" disabled selected>Is it Working?</option>
                 <option value="true">Yes, it works</option>
                 <option value="false">No, it doesn't</option>
               </select>
-              <label for="status">Status:</label>
+              <label for="status" class="required-field">Status:</label>
               <select id="status" name="status">
                 <option value="" disabled selected>Select Status</option>
                 <option value="storage">Storage</option>
