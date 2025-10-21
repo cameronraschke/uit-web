@@ -23,7 +23,12 @@ async function loadClientImages(clientTag) {
 			container.innerHTML = '<p>No images found for this client tag.</p>';
 			return;
 		}
+    let imageIndex = 1;
 		data.forEach(imgJsonManifest => {
+      const div = document.createElement('div');
+      div.className = 'image-entry';
+      div.setAttribute('id', `${imgJsonManifest.UUID}`);
+
 			const imgDiv = document.createElement('div');
 			imgDiv.className = 'image-box';
 
@@ -37,6 +42,8 @@ async function loadClientImages(clientTag) {
 			img.alt = `Image for ${clientTag}`;
 			img.className = 'client-image';
 
+      const captionDiv = document.createElement('div');
+      captionDiv.className = 'image-caption';
 			const timeStampCaption = document.createElement('p');
 			const timeStamp = new Date(imgJsonManifest.Time);
 			timeStampCaption.textContent = `Uploaded on: ${timeStamp.toLocaleDateString()} ${timeStamp.toLocaleTimeString()}`;
@@ -47,11 +54,59 @@ async function loadClientImages(clientTag) {
 				noteCaption.style.fontStyle = "italic";
 			}
 
+      const deleteIcon = document.createElement('span');
+      deleteIcon.dataset.uuid = imgJsonManifest.UUID;
+      deleteIcon.className = 'delete-icon';
+      deleteIcon.innerHTML = '&times;';
+      deleteIcon.title = 'Delete Image';
+
+      const imageCount = document.createElement('span');
+      imageCount.className = 'image-count';
+      imageCount.textContent = imageIndex++ + "/" + data.length || '';
+
 			imgLink.appendChild(img);
 			imgDiv.appendChild(imgLink);
-			imgDiv.appendChild(timeStampCaption);
-			imgDiv.appendChild(noteCaption);
-			container.appendChild(imgDiv);
+			captionDiv.appendChild(timeStampCaption);
+			captionDiv.appendChild(noteCaption);
+      captionDiv.appendChild(deleteIcon);
+      captionDiv.appendChild(imageCount);
+			div.appendChild(imgDiv);
+			div.appendChild(captionDiv);
+			container.appendChild(div);
+
+      deleteIcon.addEventListener('click', async (event) => {
+        const uuidToDelete = event.target.dataset.uuid;
+        const div = document.getElementById(uuidToDelete);
+
+        if (div) {
+          div.style.transition = div.style.transition || 'opacity 150ms ease';
+          div.style.opacity = '0.5';
+          await waitForNextPaint(2);
+        }
+
+        const ok = window.confirm('Are you sure you want to delete this image?');
+        if (!ok) {
+          if (div) div.style.opacity = '1';
+          return;
+        }
+
+        try {
+          const deleteResponse = await fetch(`/api/images/${uuidToDelete}`, {
+            method: 'DELETE',
+            credentials: 'same-origin'
+          });
+          if (!deleteResponse.ok) {
+            console.error(`Failed to delete image: ${deleteResponse.statusText}`);
+            if (div) div.style.opacity = '1';
+            return;
+          }
+          if (div) div.remove();
+        } catch (error) {
+          alert(`Error deleting image: ${error.message}`);
+        } finally {
+          if (div) div.style.opacity = '1';
+        }
+      });
 		});
 	} catch (err) {
 		container.innerHTML = `<p>Error fetching images: ${err.message}</p>`;

@@ -226,3 +226,9 @@ document.addEventListener("DOMContentLoaded", () => {
       window.availableTags = [];
     });
 });
+
+async function waitForNextPaint(frames = 1) {
+  while (frames-- > 0) {
+    await new Promise(requestAnimationFrame);
+  }
+}
