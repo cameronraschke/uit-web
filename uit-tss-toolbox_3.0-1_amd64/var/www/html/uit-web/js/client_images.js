@@ -56,6 +56,7 @@ async function loadClientImages(clientTag) {
 
       const deleteIcon = document.createElement('span');
       deleteIcon.dataset.uuid = imgJsonManifest.UUID;
+      deleteIcon.dataset.imageCount = imageIndex + "/" + data.length;
       deleteIcon.className = 'delete-icon';
       deleteIcon.innerHTML = '&times;';
       deleteIcon.title = 'Delete Image';
@@ -84,7 +85,7 @@ async function loadClientImages(clientTag) {
           await waitForNextPaint(2);
         }
 
-        const ok = window.confirm('Are you sure you want to delete this image?');
+        const ok = window.confirm(`Are you sure you want to delete this image (${event.target.dataset.imageCount})?`);
         if (!ok) {
           if (div) div.style.opacity = '1';
           return;
