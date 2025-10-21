@@ -213,6 +213,24 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     const fileInput = inventoryUpdateForm.querySelector("#inventory-file-input");
     if (fileInput && fileInput.files && fileInput.files.length > 0) {
       for (const file of fileInput.files) {
+        if (!file) continue;
+        if (file.size > 64 * 1024 * 1024) {
+          throw new Error(`File ${file.name} exceeds the maximum allowed size of 64 MB`);
+        }
+        if (file.name.length > 100) {
+          throw new Error(`File name ${file.name} exceeds the maximum allowed length of 100 characters`);
+        }
+        const allowedRegex = /^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$/;
+        if (!allowedRegex.test(file.name)) {
+          throw new Error(`File name ${file.name} contains invalid characters`);
+        }
+        const disallowedExtensions = [".exe", ".bat", ".sh", ".js", ".html", ".zip", ".rar", ".7z", ".tar", ".gz", ".dll", ".sys", ".ps1", ".cmd"];
+        if (disallowedExtensions.some(ext => file.name.endsWith(ext))) {
+          throw new Error(`File name ${file.name} has a forbidden extension`);
+        }
+        if (file.name.endsWith(".jfif")) {
+          file.name = file.name.replace(/\.jfif$/i, ".jpeg");
+        }
         formData.append("inventory-file-input", file, file.name);
       }
     }

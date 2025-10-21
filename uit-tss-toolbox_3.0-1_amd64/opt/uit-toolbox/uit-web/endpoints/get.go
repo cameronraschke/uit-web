@@ -529,7 +529,9 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 		}
 		defer img.Close()
 
-		if strings.HasSuffix(strings.ToLower(filepath), ".jpg") || strings.HasSuffix(strings.ToLower(filepath), ".jpeg") || strings.HasSuffix(strings.ToLower(filepath), ".png") {
+		if strings.HasSuffix(strings.ToLower(filepath), ".jpg") ||
+			strings.HasSuffix(strings.ToLower(filepath), ".jpeg") ||
+			strings.HasSuffix(strings.ToLower(filepath), ".png") {
 			imageStat, err := img.Stat()
 			if err != nil {
 				log.Info("Client image stat error: " + requestIP + " (" + requestURL + "): " + err.Error())
@@ -550,12 +552,20 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
+			fileExtension := strings.ToLower(path.Ext(imageStat.Name()))
+			if (imageType == "jpeg" && fileExtension != ".jpg" && fileExtension != ".jpeg") ||
+				(imageType == "png" && fileExtension != ".png") {
+				log.Info("Client image file extension does not match image type: " + requestIP + " (" + requestURL + "): " + imageStat.Name())
+				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
+
 			var imageConfig ImageConfig
 			imageConfig.Time = *timestamp
 			imageConfig.Hidden = hidden
 			imageConfig.PrimaryImage = primaryImage
 			imageConfig.Name = imageStat.Name()
-			imageConfig.UUID = imageUUID
+			imageConfig.UUID = imageUUID + fileExtension
 			imageConfig.Note = note
 			imageConfig.URL, err = url.JoinPath("/api/images/", strconv.Itoa(tagnumber), imageStat.Name())
 			if err != nil {
@@ -573,19 +583,29 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			imageList = append(imageList, imageConfig)
-		} else if strings.HasSuffix(strings.ToLower(filepath), ".mp4") || strings.HasSuffix(strings.ToLower(filepath), ".mov") {
+		} else if strings.HasSuffix(strings.ToLower(filepath), ".mp4") ||
+			strings.HasSuffix(strings.ToLower(filepath), ".mov") {
 			imageStat, err := img.Stat()
 			if err != nil {
 				log.Info("Client image stat error: " + requestIP + " (" + requestURL + "): " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
+
+			fileExtension := strings.ToLower(path.Ext(imageStat.Name()))
+			if (strings.HasSuffix(strings.ToLower(filepath), ".mp4") && fileExtension != ".mp4") ||
+				(strings.HasSuffix(strings.ToLower(filepath), ".mov") && fileExtension != ".mov") {
+				log.Info("Client image file extension does not match image type: " + requestIP + " (" + requestURL + "): " + imageStat.Name())
+				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
+
 			var imageConfig ImageConfig
 			imageConfig.Time = *timestamp
 			imageConfig.Hidden = hidden
 			imageConfig.PrimaryImage = primaryImage
 			imageConfig.Name = imageStat.Name()
-			imageConfig.UUID = imageUUID
+			imageConfig.UUID = imageUUID + fileExtension
 			imageConfig.Note = note
 			imageConfig.URL, err = url.JoinPath("/api/images/", strconv.Itoa(tagnumber), imageStat.Name())
 			if err != nil {
@@ -618,6 +638,10 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 	requestURL := requestInfo.URL
 
 	requestFilePath := strings.TrimPrefix(r.URL.Path, "/api/images/")
+	requestFilePath = strings.ReplaceAll(requestFilePath, ".jpeg", "")
+	requestFilePath = strings.ReplaceAll(requestFilePath, ".png", "")
+	requestFilePath = strings.ReplaceAll(requestFilePath, ".mp4", "")
+	requestFilePath = strings.ReplaceAll(requestFilePath, ".mov", "")
 	if requestFilePath == "" {
 		log.Warning("No image path provided in request from: " + requestIP + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")

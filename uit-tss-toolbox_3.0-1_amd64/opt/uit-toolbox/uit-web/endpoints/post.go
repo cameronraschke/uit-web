@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -458,7 +459,8 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	const maxFileSize = 64 << 20 // 64 MB
 	for _, fileHeader := range files {
 		for _, char := range fileHeader.Filename {
-			if !(unicode.IsLetter(char) || unicode.IsDigit(char) || char == '.' || char == '-' || char == '_') {
+			if !(unicode.IsLetter(char) || unicode.IsDigit(char) ||
+				char == '.' || char == '-' || char == '_' || char == ' ' || char == '(' || char == ')') {
 				log.Warning("Invalid characters in uploaded file name for inventory update: " + requestIP)
 				middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 				return
@@ -501,6 +503,21 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusBadRequest, "File too small")
 			return
 		}
+		allowedRegex := regexp.MustCompile(`^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$`)
+		if !allowedRegex.MatchString(fileHeader.Filename) {
+			log.Warning("Invalid characters in uploaded file name for inventory update: " + requestIP)
+			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+			return
+		}
+		disallowedExtensions := []string{".exe", ".bat", ".sh", ".js", ".html", ".zip", ".rar", ".7z", ".tar", ".gz", ".dll", ".sys", ".ps1", ".cmd"}
+		lowerFileName := strings.ToLower(fileHeader.Filename)
+		for _, ext := range disallowedExtensions {
+			if strings.HasSuffix(lowerFileName, ext) {
+				log.Warning("Uploaded file has disallowed extension for inventory update: " + requestIP + " (" + fileHeader.Filename + ")")
+				middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+				return
+			}
+		}
 		mimeType := http.DetectContentType(fileData[:fileSize])
 		if !strings.HasPrefix(mimeType, "image/") {
 			log.Warning("Uploaded file is not an image for inventory update: " + requestIP + " (Content-Type: " + mimeType + ")")
@@ -517,14 +534,10 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		decodedImage, imageFormat, err := image.Decode(imageReader)
 		if err != nil {
 			log.Error("Failed to decode uploaded image for thumbnail creation for inventory update: " + err.Error() + " (" + requestIP + ")")
-			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-			return
 		}
 		decodedImageConfig, _, err := image.DecodeConfig(imageReader)
 		if err != nil {
-			log.Error("Failed to decode uploaded image config for inventory update: " + err.Error() + " (" + requestIP + ")")
-			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-			return
+			log.Error("Failed to decode uploaded image config for inventory update: " + err.Error() + ": " + fileHeader.Filename + " (" + requestIP + ")")
 		}
 		resolutionX := decodedImageConfig.Width
 		resolutionY := decodedImageConfig.Height
@@ -548,6 +561,10 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 			fileName = baseFileName + ".png"
+		case "video/mp4":
+			fileName = baseFileName + ".mp4"
+		case "video/quicktime":
+			fileName = baseFileName + ".mov"
 		default:
 			log.Warning("Unsupported image MIME type for inventory update: " + requestIP + " (Content-Type: " + mimeType + ")")
 			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType, "Unsupported media type")
@@ -567,21 +584,25 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		fullThumbnailPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), "thumbnail-"+baseFileName+".jpeg")
-		thumbnailFile, err := os.Create(fullThumbnailPath)
-		if err != nil {
-			log.Error("Failed to create thumbnail file for inventory update: " + err.Error() + " (" + requestIP + ")")
-			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-			return
+
+		var fullThumbnailPath string
+		if mimeType != "image/jpeg" && mimeType != "image/jpg" && mimeType != "image/png" {
+			fullThumbnailPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), "thumbnail-"+baseFileName+".jpeg")
+			thumbnailFile, err := os.Create(fullThumbnailPath)
+			if err != nil {
+				log.Error("Failed to create thumbnail file for inventory update: " + err.Error() + " (" + requestIP + ")")
+				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
+			defer thumbnailFile.Close()
+			err = jpeg.Encode(thumbnailFile, decodedImage, &jpeg.Options{Quality: 50})
+			if err != nil {
+				log.Error("Failed to encode thumbnail image for inventory update: " + err.Error() + " (" + requestIP + ")")
+				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+				return
+			}
+			thumbnailFile.Close()
 		}
-		defer thumbnailFile.Close()
-		err = jpeg.Encode(thumbnailFile, decodedImage, &jpeg.Options{Quality: 50})
-		if err != nil {
-			log.Error("Failed to encode thumbnail image for inventory update: " + err.Error() + " (" + requestIP + ")")
-			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-			return
-		}
-		thumbnailFile.Close()
 
 		// Insert image metadata into database
 		fileSizeMB := float64(fileSize) / (2 << 20)
