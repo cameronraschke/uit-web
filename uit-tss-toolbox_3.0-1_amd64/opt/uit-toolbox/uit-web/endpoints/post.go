@@ -550,6 +550,12 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		if err != nil {
 			log.Error("Failed to decode uploaded image for thumbnail creation for inventory update: " + err.Error() + " (" + requestIP + ")")
 		}
+		_, err = imageReader.Seek(0, io.SeekStart)
+		if err != nil {
+			log.Error("Failed to seek to start of uploaded image for inventory update: " + err.Error() + " (" + requestIP + ")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
 		decodedImageConfig, _, err := image.DecodeConfig(imageReader)
 		if err != nil {
 			log.Error("Failed to decode uploaded image config for inventory update: " + err.Error() + ": " + fileHeader.Filename + " (" + requestIP + ")")
@@ -594,6 +600,10 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		fileHashBytes := fileHash.Sum(nil)
 
 		fullFilePath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), fileName)
+		err = os.MkdirAll(filepath.Dir(fullFilePath), os.ModePerm)
+		if err != nil {
+			log.Error("Failed to create directories for uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
+		}
 		if err := os.WriteFile(fullFilePath, fileData, 0644); err != nil {
 			log.Error("Failed to save uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
