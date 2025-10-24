@@ -599,11 +599,13 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		}
 		fileHashBytes := fileHash.Sum(nil)
 
-		fullFilePath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), fileName)
-		err = os.MkdirAll(filepath.Dir(fullFilePath), os.ModePerm)
+		imageDirectoryPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber))
+		err = os.MkdirAll(imageDirectoryPath, 0755)
 		if err != nil {
 			log.Error("Failed to create directories for uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
 		}
+
+		fullFilePath := filepath.Join(imageDirectoryPath, fileName)
 		if err := os.WriteFile(fullFilePath, fileData, 0644); err != nil {
 			log.Error("Failed to save uploaded file for inventory update: " + err.Error() + " (" + requestIP + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
