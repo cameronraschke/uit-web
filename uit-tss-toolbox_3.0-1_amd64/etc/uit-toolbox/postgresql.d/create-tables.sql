@@ -355,8 +355,8 @@ CREATE TABLE IF NOT EXISTS client_images (
     resolution_x INTEGER DEFAULT NULL,
     resolution_y INTEGER DEFAULT NULL,
     note VARCHAR(256) DEFAULT NULL,
-    hidden BOOLEAN DEFAULT FALSE,
-    primary_image BOOLEAN DEFAULT FALSE
+    hidden BOOLEAN DEFAULT FALSE NOT NULL,
+    primary_image BOOLEAN DEFAULT FALSE NOT NULL
 );
 
 -- CREATE OR REPLACE FUNCTION live_images_function

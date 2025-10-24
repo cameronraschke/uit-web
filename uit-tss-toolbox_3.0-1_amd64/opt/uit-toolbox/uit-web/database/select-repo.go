@@ -424,7 +424,7 @@ func (repo *Repo) GetClientImageByUUID(ctx context.Context, uuid string) (*Clien
 	return clientImage, nil
 }
 
-func (repo *Repo) GetClientImageManifestByUUID(ctx context.Context, uuid string) (timestamp time.Time, tagnumber int64, filepath string, thumbnailFilepath string, hidden bool, primaryImage bool, note string, err error) {
+func (repo *Repo) GetClientImageManifestByUUID(ctx context.Context, uuid string) (timestamp *time.Time, tagnumber *int64, filepath *string, thumbnailFilepath *string, hidden *bool, primaryImage *bool, note *string, err error) {
 	sqlQuery := `SELECT time, tagnumber, filepath, thumbnail_filepath, hidden, primary_image, note FROM client_images WHERE uuid = $1 AND hidden = FALSE;`
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, uuid)
 	if err := row.Scan(
@@ -436,7 +436,7 @@ func (repo *Repo) GetClientImageManifestByUUID(ctx context.Context, uuid string)
 		&primaryImage,
 		&note,
 	); err != nil {
-		return time.Time{}, 0, "", "", false, false, "", err
+		return nil, nil, nil, nil, nil, nil, nil, err
 	}
 	return timestamp, tagnumber, filepath, thumbnailFilepath, hidden, primaryImage, note, nil
 }

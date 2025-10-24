@@ -507,7 +507,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		img, err := os.Open(filepath)
+		img, err := os.Open(*filepath)
 		if err != nil {
 			log.Info("Client image open error (manifest): " + requestIP + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
@@ -515,9 +515,9 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 		}
 		defer img.Close()
 
-		if strings.HasSuffix(strings.ToLower(filepath), ".jpg") ||
-			strings.HasSuffix(strings.ToLower(filepath), ".jpeg") ||
-			strings.HasSuffix(strings.ToLower(filepath), ".png") {
+		if strings.HasSuffix(strings.ToLower(*filepath), ".jpg") ||
+			strings.HasSuffix(strings.ToLower(*filepath), ".jpeg") ||
+			strings.HasSuffix(strings.ToLower(*filepath), ".png") {
 			imageStat, err := img.Stat()
 			if err != nil {
 				log.Info("Client image stat error: " + requestIP + " (" + requestURL + "): " + err.Error())
@@ -547,14 +547,14 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 			}
 
 			var imageConfig ImageManifest
-			imageConfig.Time = timestamp
-			imageConfig.Tagnumber = sqlTag
-			imageConfig.Hidden = hidden
-			imageConfig.PrimaryImage = primaryImage
+			imageConfig.Time = *timestamp
+			imageConfig.Tagnumber = *sqlTag
+			imageConfig.Hidden = *hidden
+			imageConfig.PrimaryImage = *primaryImage
 			imageConfig.Name = imageStat.Name()
 			imageConfig.UUID = imageUUID + fileExtension
-			imageConfig.Note = note
-			imageConfig.URL, err = url.JoinPath("/api/images/", fmt.Sprintf("%d", sqlTag), imageStat.Name())
+			imageConfig.Note = *note
+			imageConfig.URL, err = url.JoinPath("/api/images/", fmt.Sprintf("%d", *sqlTag), imageStat.Name())
 			if err != nil {
 				log.Info("Client image URL join error: " + requestIP + " (" + requestURL + "): " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
@@ -570,8 +570,8 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			imageManifest = append(imageManifest, imageConfig)
-		} else if strings.HasSuffix(strings.ToLower(filepath), ".mp4") ||
-			strings.HasSuffix(strings.ToLower(filepath), ".mov") {
+		} else if strings.HasSuffix(strings.ToLower(*filepath), ".mp4") ||
+			strings.HasSuffix(strings.ToLower(*filepath), ".mov") {
 			imageStat, err := img.Stat()
 			if err != nil {
 				log.Info("Client image stat error: " + requestIP + " (" + requestURL + "): " + err.Error())
@@ -580,22 +580,22 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 			}
 
 			fileExtension := strings.ToLower(path.Ext(imageStat.Name()))
-			if (strings.HasSuffix(strings.ToLower(filepath), ".mp4") && fileExtension != ".mp4") ||
-				(strings.HasSuffix(strings.ToLower(filepath), ".mov") && fileExtension != ".mov") {
+			if (strings.HasSuffix(strings.ToLower(*filepath), ".mp4") && fileExtension != ".mp4") ||
+				(strings.HasSuffix(strings.ToLower(*filepath), ".mov") && fileExtension != ".mov") {
 				log.Info("Client image file extension does not match image type: " + requestIP + " (" + requestURL + "): " + imageStat.Name())
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
 
 			var imageConfig ImageManifest
-			imageConfig.Time = timestamp
-			imageConfig.Tagnumber = tagnumber
-			imageConfig.Hidden = hidden
-			imageConfig.PrimaryImage = primaryImage
+			imageConfig.Time = *timestamp
+			imageConfig.Tagnumber = *sqlTag
+			imageConfig.Hidden = *hidden
+			imageConfig.PrimaryImage = *primaryImage
 			imageConfig.Name = imageStat.Name()
 			imageConfig.UUID = imageUUID + fileExtension
-			imageConfig.Note = note
-			imageConfig.URL, err = url.JoinPath("/api/images/", fmt.Sprintf("%d", tagnumber), imageStat.Name())
+			imageConfig.Note = *note
+			imageConfig.URL, err = url.JoinPath("/api/images/", fmt.Sprintf("%d", *sqlTag), imageStat.Name())
 			if err != nil {
 				log.Info("Client image URL join error: " + requestIP + " (" + requestURL + "): " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
@@ -604,7 +604,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 			imageConfig.Size = imageStat.Size()
 			imageManifest = append(imageManifest, imageConfig)
 		} else {
-			log.Info("Client image has unsupported file type: " + requestIP + " (" + requestURL + "): " + filepath)
+			log.Info("Client image has unsupported file type: " + requestIP + " (" + requestURL + "): " + *filepath)
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
@@ -663,17 +663,17 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.TrimSpace(imagePath) == "" {
+	if strings.TrimSpace(*imagePath) == "" {
 		log.Info("Image path is empty: " + requestIP + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusNotFound, "Image not found")
 		return
 	}
-	if hidden {
+	if *hidden {
 		log.Info("Attempt to access hidden image: " + requestIP + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusNotFound, "Image not found")
 		return
 	}
-	imageFile, err := os.Open(imagePath)
+	imageFile, err := os.Open(*imagePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			log.Info("Image not found: " + requestIP + " (" + requestURL + "): " + err.Error())
