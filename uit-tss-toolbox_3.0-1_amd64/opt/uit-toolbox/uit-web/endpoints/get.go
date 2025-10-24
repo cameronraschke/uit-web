@@ -393,74 +393,6 @@ func GetLocationFormData(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, locationData)
 }
 
-// Overview section
-func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
-
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.Warning("no database connection available")
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	jobQueueOverview, err := repo.GetJobQueueOverview(ctx)
-	if err != nil {
-		if err != sql.ErrNoRows {
-			log.Info("Job queue overview query error: " + requestIP + " (" + requestURL + "): " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-			return
-		}
-	}
-
-	middleware.WriteJson(w, http.StatusOK, jobQueueOverview)
-}
-
-func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
-
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.Warning("no database connection available")
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	inventorySummary, err := repo.GetDashboardInventorySummary(ctx)
-	if err != nil {
-		if err != sql.ErrNoRows {
-			log.Info("Inventory summary query error: " + requestIP + " (" + requestURL + "): " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-			return
-		}
-	}
-	middleware.WriteJson(w, http.StatusOK, inventorySummary)
-}
-
 func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)
 	if err != nil {
@@ -691,4 +623,104 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 	defer imageFile.Close()
 
 	http.ServeContent(w, r, imageFile.Name(), time.Time{}, imageFile)
+}
+
+// Overview section
+func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
+
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	jobQueueOverview, err := repo.GetJobQueueOverview(ctx)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.Info("Job queue overview query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+	}
+
+	middleware.WriteJson(w, http.StatusOK, jobQueueOverview)
+}
+
+func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
+
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	inventorySummary, err := repo.GetDashboardInventorySummary(ctx)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.Info("Inventory summary query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+	}
+	middleware.WriteJson(w, http.StatusOK, inventorySummary)
+}
+
+func GetInventoryTableData(w http.ResponseWriter, r *http.Request) {
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	repo := database.NewRepo(db)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	inventoryTableData, err := repo.GetInventoryTableData(ctx)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.Info("Inventory table data query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+	}
+	middleware.WriteJson(w, http.StatusOK, inventoryTableData)
 }

@@ -121,3 +121,22 @@ type ImageManifest struct {
 	Note              *string    `json:"note"`
 	FileType          *string    `json:"file_type"`
 }
+
+type InventoryTableData struct {
+	Tagnumber           *int64     `json:"tagnumber"`
+	SystemSerial        *string    `json:"system_serial"`
+	Location            *string    `json:"location"`
+	LocationFormatted   *string    `json:"location_formatted"`
+	SystemManufacturer  *string    `json:"system_manufacturer"`
+	SystemModel         *string    `json:"system_model"`
+	Department          *string    `json:"department"`
+	DepartmentFormatted *string    `json:"department_formatted"`
+	Domain              *string    `json:"domain"`
+	DomainFormatted     *string    `json:"domain_formatted"`
+	OsInstalled         *bool      `json:"os_installed"`
+	OsName              *string    `json:"os_name"`
+	Status              *string    `json:"status"`
+	Functional          *bool      `json:"functional"`
+	Note                *string    `json:"note"`
+	LastUpdated         *time.Time `json:"last_updated"`
+}

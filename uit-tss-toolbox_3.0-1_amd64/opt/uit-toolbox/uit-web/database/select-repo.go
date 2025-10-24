@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 )
 
@@ -449,4 +450,59 @@ func (repo *Repo) GetClientImageManifestByUUID(ctx context.Context, uuid string)
 		return nil, nil, nil, nil, nil, nil, nil, err
 	}
 	return ptrTime(time), ptrInt64(tagnumber), ptrString(filepath), ptrString(thumbnailFilepath), ptrBool(hidden), ptrBool(primaryImage), ptrString(note), nil
+}
+
+func (repo *Repo) GetInventoryTableData(ctx context.Context) ([]*InventoryTableData, error) {
+	sqlCode := `SELECT locations.tagnumber, locations.system_serial, locations.location, 
+		locationFormatting(locations.location) AS location_formatted,
+		system_data.system_manufacturer, system_data.system_model, locations.department, static_departments.department_readable,
+		locations.domain, static_domains.domain_readable, client_health.os_installed,  client_health.os_name, locations.status,
+		locations.functional, locations.note, locations.time AS 'last_updated'
+		FROM locations
+		LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
+		LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
+		LEFT JOIN static_departments ON locations.department = static_departments.department
+		LEFT JOIN static_domains ON locations.domain = static_domains.domain
+		WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
+		ORDER BY locations.tagnumber DESC`
+
+	rows, err := repo.DB.QueryContext(ctx, sqlCode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []*InventoryTableData
+	for rows.Next() {
+		row := &InventoryTableData{}
+		if err = rows.Err(); err != nil {
+			return nil, errors.New("Query error: " + err.Error())
+		}
+		if err = ctx.Err(); err != nil {
+			return nil, errors.New("Context error: " + err.Error())
+		}
+		err = rows.Scan(
+			&row.Tagnumber,
+			&row.SystemSerial,
+			&row.Location,
+			&row.LocationFormatted,
+			&row.SystemManufacturer,
+			&row.SystemModel,
+			&row.Department,
+			&row.DepartmentFormatted,
+			&row.Domain,
+			&row.DomainFormatted,
+			&row.OsInstalled,
+			&row.OsName,
+			&row.Status,
+			&row.Functional,
+			&row.Note,
+			&row.LastUpdated,
+		)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, row)
+	}
+	return results, nil
 }

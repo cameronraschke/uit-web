@@ -60,6 +60,41 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:foc
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }
 
+table {
+  width: 90dvw;
+  border-collapse: collapse;
+  margin: auto;
+  table-layout: fixed;
+  overflow: auto;
+}
+
+thead {
+  top: 0;
+  border: 1px solid black;
+  background-color: #C8102E;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border-bottom: 1px solid #888B8D;
+}
+
+tr {
+  border-bottom: 1px solid #ddd;
+}
+tbody > tr:nth-child(even) {
+  background: #fafafa;
+}
+
+th {
+  padding: 1rem 0rem 1rem 0rem;
+}
+
+td {
+  vertical-align: middle;
+  text-align: left;
+  padding: 0.5rem 0rem 0.5rem 0rem;
+}
+
 .vertical-spacer {
   margin: 5dvh 0 0 0;
 }
@@ -209,6 +244,11 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
   background: #f1f1f1;
 }
 
+.required-field::after {
+  content: " *";
+  color: red;
+}
+
 .grid-container {
   display: grid;
   border: 1px solid #ccc;
@@ -224,47 +264,4 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
   align-content: end;
   margin: 0;
   padding: 0;
-}
-
-.grid-container div {
-  margin: 0;
-  padding: 0;
-}
-
-.grid-item {
-  display: grid;
-  grid-template-columns: subgrid;
-  grid-row: auto;
-  background-color: white;
-  word-wrap: break-word;
-}
-
-.grid-item div, .grid-item p, .grid-item h3 {
-  margin: 0;
-  padding: 0;
-  align-content: end;
-}
-
-.grid-item.row {
-  border: 1px solid #ccc;
-}
-
-.grid-item.row.header {
-  position: sticky;
-  font-weight: bold;
-  border-bottom: 2px solid black;
-  z-index: 1;
-}
-
-.grid-item.row.footer {
-  position: sticky;
-  font-weight: bold;
-  border-top: 2px solid black;
-  border-bottom: 2px solid black;
-  z-index: 1;
-}
-
-.required-field::after {
-  content: " *";
-  color: red;
 }

@@ -36,14 +36,12 @@
   padding: 1dvw;
   border: 1px solid #960C22;
   border-radius: 1rem;
-  /* background-color: #FFF9D9; */
 }
 
 .grid-container.inventory.inventory-update-form {
   grid-template-columns: 1fr 1fr;
   gap: 0.5dvw;
   padding: 1dvw;
-  /* border: 1px solid #960C22; */
   border-radius: 1rem;
   background-color: whitesmoke;
 }

@@ -175,6 +175,7 @@ func main() {
 	httpsMux.Handle("GET /api/dashboard/inventory_summary", httpsFullAPIChain.thenFunc(endpoints.GetDashboardInventorySummary))
 	httpsMux.Handle("GET /api/images/manifest", httpsFullAPIChain.thenFunc(endpoints.GetClientImagesManifest))
 	httpsMux.Handle("GET /api/images/", httpsFullAPIChain.thenFunc(endpoints.GetImage))
+	httpsMux.Handle("GET /api/inventory", httpsFullAPIChain.thenFunc(endpoints.GetInventoryTableData))
 
 	httpsMux.Handle("POST /api/notes", httpsFullAPIChain.thenFunc(endpoints.InsertNewNote))
 	httpsMux.Handle("POST /api/update_inventory", httpsFullAPIChain.thenFunc(endpoints.UpdateInventory))

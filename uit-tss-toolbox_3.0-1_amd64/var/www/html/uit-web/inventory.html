@@ -159,31 +159,31 @@
       </div>
     </div>
 
-        <div id="inventory-search-container">
-          <input id="inventory-search" type="text" placeholder="Filter inventory...">
-        </div>
-    <div class="flex-box inventory inventory-summary">
-        <table id="inventory-summary-table">
-          <thead id="inventory-table-head">
-            <tr>
-              <th>Tag Number</th>
-              <th>Live View</th>
-              <th>Serial Number</th>
-              <th>Model</th>
-              <th>Location</th>
-              <th>Status</th>
-              <th>Time of Entry</th>
-            </tr>
-          </thead>
-          <tbody id="inventory-table-body"></tbody>
-          <tfoot>
-            <tr>
-              <td colspan="7">End of Inventory</td>
-            </tr>
-          </tfoot>
-        </table>
-    </div>
+    <section>
+      <div id="inventory-search-container">
+        <input id="inventory-search" type="text" placeholder="Filter inventory...">
+      </div>
+      <table id="inventory-table">
+        <thead>
+          <tr>
+            <th>Tag</th>
+            <th>Serial</th>
+            <th>Location</th>
+            <th>Manufacturer/Model</th>
+            <th>Department</th>
+            <th>AD Domain</th>
+            <th>Status</th>
+            <th>Functional?</th>
+            <th>Notes</th>
+            <th>Last Entry</th>
+          </tr>
+        </thead>
+        <tbody id="inventory-table-body">
+          <tr><td colspan="10">Loading inventory...</td></tr>
+        </tbody>
+      </table>
 
+    </section>
 
     <div id="uit-footer" class="flex-container footer"></div>
     <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/footer.js"></script>
