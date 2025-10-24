@@ -323,7 +323,7 @@ func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]Dashboard
 
 func (repo *Repo) GetLocationFormData(ctx context.Context, tag int64) (*InventoryFormAutofill, error) {
 	sqlQuery := `SELECT locations.time, locations.tagnumber, locations.system_serial, locations.location, system_data.system_manufacturer, system_data.system_model,
-	locations.department, locations.domain, locations.working, locations.status, locations.disk_removed, locations.note
+	locations.department, locations.domain, locations.functional, locations.status, locations.disk_removed, locations.note
 	FROM locations
 	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)

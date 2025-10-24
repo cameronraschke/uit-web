@@ -357,7 +357,7 @@ func GetRemoteOfflineTable(ctx context.Context) (string, error) {
 	db := config.GetDatabaseConn()
 
 	sqlCode = `SELECT remote.tagnumber, TO_CHAR(remote.present, 'MM/DD/YY HH12:MI:SS AM') AS time_formatted, 
-        remote.status, locations.working AS locations_status, locationFormatting(locations.location) AS location_formatted, CONCAT(remote.battery_charge, '%', ' - ', remote.battery_status) AS battery_charge_formatted, 
+        remote.status, locations.functional AS locations_status, locationFormatting(locations.location) AS location_formatted, CONCAT(remote.battery_charge, '%', ' - ', remote.battery_status) AS battery_charge_formatted, 
         CONCAT(remote.cpu_temp, '°C') AS cpu_temp_formatted, 
         CONCAT(remote.disk_temp, '°C') AS disk_temp_formatted, CONCAT(remote.watts_now, ' watts') AS watts_now_formatted,
         client_health.os_name AS os_installed_formatted, client_health.os_installed, 
@@ -590,7 +590,7 @@ func GetTagnumberData(ctx context.Context, tagnumber int) (string, error) {
     (CASE WHEN t3.time = t10.time THEN 1 ELSE 0 END) AS placeholder_bool,
     jobstats.time AS jobstatsTime, locations.tagnumber, locations.system_serial, locations.department, 
     locationFormatting(locations.location) AS location, 
-    (CASE WHEN locations.working = TRUE THEN 'Broken' ELSE 'Yes' END) AS remote_status_formatted, locations.working AS locations_status, t2.department_readable, t3.note AS most_recent_note,
+    (CASE WHEN locations.functional = TRUE THEN 'Broken' ELSE 'Yes' END) AS remote_status_formatted, locations.functional AS locations_status, t2.department_readable, t3.note AS most_recent_note,
     locations.note, TO_CHAR(t3.time, 'MM/DD/YY HH12:MI:SS AM') AS note_time_formatted, 
     (CASE WHEN locations.disk_removed = TRUE THEN 'Yes' ELSE 'No' END) AS disk_removed_formatted, locations.disk_removed,
     (CASE 
