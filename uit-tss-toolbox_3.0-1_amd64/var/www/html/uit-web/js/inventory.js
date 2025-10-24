@@ -197,10 +197,10 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     jsonObject["system_model"] = getInputValue("#system_model");
     jsonObject["department"] = getInputValue("#department");
     jsonObject["domain"] = getInputValue("#domain");
-    const workingBool = getInputValue("#working");
-      if (workingBool === "true") jsonObject["working"] = true;
-      else if (workingBool === "false") jsonObject["working"] = false;
-      else jsonObject["working"] = null;
+    const functionalBool = getInputValue("#functional");
+      if (functionalBool === "true") jsonObject["functional"] = true;
+      else if (functionalBool === "false") jsonObject["functional"] = false;
+      else jsonObject["functional"] = null;
     jsonObject["status"] = getInputValue("#status");
     jsonObject["note"] = getInputValue("#note");
 
@@ -285,7 +285,7 @@ async function populateLocationForm(tag) {
     if (locationFormData.system_model) inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model;
     if (locationFormData.department) inventoryUpdateForm.querySelector("#department").value = locationFormData.department;
     if (locationFormData.domain) inventoryUpdateForm.querySelector("#domain").value = locationFormData.domain;
-    if (typeof locationFormData.working === "boolean") inventoryUpdateForm.querySelector("#working").value = locationFormData.working;
+    if (typeof locationFormData.functional === "boolean") inventoryUpdateForm.querySelector("#functional").value = locationFormData.functional;
     if (typeof locationFormData.status === "string") inventoryUpdateForm.querySelector("#status").value = locationFormData.status;
     if (locationFormData.note) inventoryUpdateForm.querySelector("#note").value = locationFormData.note;
   }

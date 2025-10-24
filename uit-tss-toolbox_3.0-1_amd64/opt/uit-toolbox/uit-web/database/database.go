@@ -259,7 +259,7 @@ func GetRemoteOnlineTable(ctx context.Context) (string, error) {
       remote.disk_temp, CONCAT(remote.disk_temp, '°C') AS disk_temp_formatted, static_disk_stats.max_temp AS max_disk_temp, 
       CONCAT(remote.watts_now, ' watts') AS watts_now, remote.job_active
     FROM remote 
-    LEFT JOIN (SELECT s1.time, s1.tagnumber, s1.domain, s1.working AS locations_status FROM (SELECT time, tagnumber, domain, working, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS row_nums FROM locations) s1 WHERE s1.row_nums = 1) t1
+    LEFT JOIN (SELECT s1.time, s1.tagnumber, s1.domain, s1.functional AS locations_status FROM (SELECT time, tagnumber, domain, functional, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS row_nums FROM locations) s1 WHERE s1.row_nums = 1) t1
       ON remote.tagnumber = t1.tagnumber
     LEFT JOIN client_health ON remote.tagnumber = client_health.tagnumber
     LEFT JOIN (SELECT tagnumber, location, row_nums FROM (SELECT tagnumber, location, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS row_nums FROM locations) s3 WHERE s3.row_nums = 1) t3

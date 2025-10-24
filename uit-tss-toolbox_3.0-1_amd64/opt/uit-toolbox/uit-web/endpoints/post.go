@@ -221,7 +221,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	// Field system_model: optional (string), min 1 char, max 64 chars, alphanumeric ASCII only
 	// Field department: optional (string), must match existing department in database
 	// Field domain: optional (string), must match existing domain in database
-	// Field working: optional (bool)
+	// Field functional: optional (bool)
 	// Field status: mandatory (string), must match existing status in database table client_location_status, printable ASCII only
 	// Field note: optional (string), max 2000 chars, printable ASCII only
 	requestInfo, err := GetRequestInfo(req)
@@ -398,24 +398,24 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		log.Info("No domain provided for inventory update: " + requestIP)
 	}
 
-	// Working (optional, bool)
-	var workingBool bool
-	if inventoryUpdate.Working != nil {
-		workingBool, err = strconv.ParseBool(strconv.FormatBool(*inventoryUpdate.Working))
+	// Functional (optional, bool)
+	var functionalBool bool
+	if inventoryUpdate.Functional != nil {
+		functionalBool, err = strconv.ParseBool(strconv.FormatBool(*inventoryUpdate.Functional))
 		if err != nil {
-			log.Warning("Cannot parse working bool value for inventory update: " + requestIP)
+			log.Warning("Cannot parse functional bool value for inventory update: " + requestIP)
 			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 			return
 		}
-		if !workingBool && workingBool {
-			log.Warning("Invalid working bool value for inventory update: " + requestIP)
+		if !functionalBool && functionalBool {
+			log.Warning("Invalid functional bool value for inventory update: " + requestIP)
 			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 			return
 		}
 	} else {
-		log.Info("No working bool value provided for inventory update: " + requestIP)
+		log.Info("No functional bool value provided for inventory update: " + requestIP)
 	}
-	*inventoryUpdate.Working = workingBool
+	*inventoryUpdate.Functional = functionalBool
 
 	// Status (mandatory, max 64 chars)
 	if inventoryUpdate.Status == nil || strings.TrimSpace(*inventoryUpdate.Status) == "" {
@@ -633,8 +633,8 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	// Update db
 
 	// No pointers here, pointers in repo
-	// tagnumber and working are converted above
-	err = updateRepo.InsertInventory(ctx, tagnumber, inventoryUpdate.SystemSerial, inventoryUpdate.Location, inventoryUpdate.Department, inventoryUpdate.Domain, inventoryUpdate.Working, inventoryUpdate.Status, inventoryUpdate.Note)
+	// tagnumber and functional are converted above
+	err = updateRepo.InsertInventory(ctx, tagnumber, inventoryUpdate.SystemSerial, inventoryUpdate.Location, inventoryUpdate.Department, inventoryUpdate.Domain, inventoryUpdate.Functional, inventoryUpdate.Status, inventoryUpdate.Note)
 	if err != nil {
 		log.Error("Failed to update inventory data: " + err.Error() + " (" + requestIP + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
