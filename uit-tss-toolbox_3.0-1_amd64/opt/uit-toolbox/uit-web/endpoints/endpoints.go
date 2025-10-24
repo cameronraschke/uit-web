@@ -27,9 +27,9 @@ type ImageManifest struct {
 	Width        int
 	Height       int
 	Size         int64
-	Hidden       *bool
-	PrimaryImage *bool
-	Note         *string
+	Hidden       bool
+	PrimaryImage bool
+	Note         string
 }
 
 type RequestInfo struct {

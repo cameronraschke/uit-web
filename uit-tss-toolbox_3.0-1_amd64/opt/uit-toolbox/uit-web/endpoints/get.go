@@ -494,9 +494,9 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var imageList []ImageManifest
+	var imageManifest []ImageManifest
 	for _, imageUUID := range imageUUIDs {
-		timestamp, fp, _, hidden, primaryImage, note, err := repo.GetClientImageManifestByUUID(ctx, imageUUID)
+		timestamp, sqlTag, filepath, _, hidden, primaryImage, note, err := repo.GetClientImageManifestByUUID(ctx, imageUUID)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				log.Info("Image not found in database: " + requestIP + " (" + requestURL + "): " + err.Error())
@@ -507,7 +507,6 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
-		filepath := *fp
 		img, err := os.Open(filepath)
 		if err != nil {
 			log.Info("Client image open error (manifest): " + requestIP + " (" + requestURL + "): " + err.Error())
@@ -548,14 +547,14 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 			}
 
 			var imageConfig ImageManifest
-			imageConfig.Time = *timestamp
-			imageConfig.Tagnumber = tagnumber
+			imageConfig.Time = timestamp
+			imageConfig.Tagnumber = sqlTag
 			imageConfig.Hidden = hidden
 			imageConfig.PrimaryImage = primaryImage
 			imageConfig.Name = imageStat.Name()
 			imageConfig.UUID = imageUUID + fileExtension
 			imageConfig.Note = note
-			imageConfig.URL, err = url.JoinPath("/api/images/", fmt.Sprintf("%d", tagnumber), imageStat.Name())
+			imageConfig.URL, err = url.JoinPath("/api/images/", fmt.Sprintf("%d", sqlTag), imageStat.Name())
 			if err != nil {
 				log.Info("Client image URL join error: " + requestIP + " (" + requestURL + "): " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
@@ -570,7 +569,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
-			imageList = append(imageList, imageConfig)
+			imageManifest = append(imageManifest, imageConfig)
 		} else if strings.HasSuffix(strings.ToLower(filepath), ".mp4") ||
 			strings.HasSuffix(strings.ToLower(filepath), ".mov") {
 			imageStat, err := img.Stat()
@@ -589,7 +588,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 			}
 
 			var imageConfig ImageManifest
-			imageConfig.Time = *timestamp
+			imageConfig.Time = timestamp
 			imageConfig.Tagnumber = tagnumber
 			imageConfig.Hidden = hidden
 			imageConfig.PrimaryImage = primaryImage
@@ -603,7 +602,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			imageConfig.Size = imageStat.Size()
-			imageList = append(imageList, imageConfig)
+			imageManifest = append(imageManifest, imageConfig)
 		} else {
 			log.Info("Client image has unsupported file type: " + requestIP + " (" + requestURL + "): " + filepath)
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
@@ -611,7 +610,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	middleware.WriteJson(w, http.StatusOK, imageList)
+	middleware.WriteJson(w, http.StatusOK, imageManifest)
 }
 
 func GetImage(w http.ResponseWriter, r *http.Request) {
@@ -652,7 +651,7 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Debug("Serving image request for: " + requestImageUUID + " from " + requestIP + " (" + requestURL + ")")
-	_, imagePath, _, hidden, _, _, err := repo.GetClientImageManifestByUUID(ctx, requestImageUUID)
+	_, _, imagePath, _, hidden, _, _, err := repo.GetClientImageManifestByUUID(ctx, requestImageUUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			log.Info("Image not found: " + requestIP + " (" + requestURL + "): " + err.Error())
@@ -664,12 +663,17 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if hidden != nil && *hidden {
+	if strings.TrimSpace(imagePath) == "" {
+		log.Info("Image path is empty: " + requestIP + " (" + requestURL + ")")
+		middleware.WriteJsonError(w, http.StatusNotFound, "Image not found")
+		return
+	}
+	if hidden {
 		log.Info("Attempt to access hidden image: " + requestIP + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusNotFound, "Image not found")
 		return
 	}
-	imageFile, err := os.Open(*imagePath)
+	imageFile, err := os.Open(imagePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			log.Info("Image not found: " + requestIP + " (" + requestURL + "): " + err.Error())
