@@ -47,7 +47,7 @@ async function loadClientImages(clientTag) {
 			imgDiv.className = 'image-box';
 
 			const imgLink = document.createElement('a');
-			imgLink.href = `/api/images/${imgJsonManifest.url}`;
+			imgLink.href = `${imgJsonManifest.url}`;
 			imgLink.target = '_blank';
 			imgLink.rel = 'noopener noreferrer';
 
@@ -61,7 +61,7 @@ async function loadClientImages(clientTag) {
         console.warn(`Unsupported media type: ${imgJsonManifest.file_type} for image UUID: ${imgJsonManifest.uuid}`);
         continue;
       }
-      media.src = `/api/images/${imgJsonManifest.url}`;
+      media.src = `${imgJsonManifest.url}`;
 			media.alt = `Media for ${clientTag}`;
 			media.className = 'client-image';
 
@@ -128,7 +128,7 @@ async function loadClientImages(clientTag) {
         }
 
         try {
-          const deleteResponse = await fetch(`/api/images/${uuidToDelete}`, {
+          const deleteResponse = await fetch(`/api/images/${clientTag}/${uuidToDelete}`, {
             method: 'DELETE',
             credentials: 'same-origin'
           });
