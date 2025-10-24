@@ -688,18 +688,29 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	requestFilePath := strings.TrimPrefix(req.URL.Path, "/api/images/toggle_pin/")
-	requestFilePath = strings.TrimSuffix(requestFilePath, ".jpeg")
-	requestFilePath = strings.TrimSuffix(requestFilePath, ".png")
-	requestFilePath = strings.TrimSuffix(requestFilePath, ".mp4")
-	requestFilePath = strings.TrimSuffix(requestFilePath, ".mov")
-	if requestFilePath == "" {
+	// Decode JSON body
+	var body struct {
+		UUID      string `json:"uuid"`
+		Tagnumber int64  `json:"tagnumber"`
+	}
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		log.Error("Failed to decode JSON body: " + err.Error() + " (" + requestIP + ")")
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+
+	body.UUID = strings.TrimPrefix(body.UUID, "/api/images/toggle_pin/")
+	body.UUID = strings.TrimSuffix(body.UUID, ".jpeg")
+	body.UUID = strings.TrimSuffix(body.UUID, ".png")
+	body.UUID = strings.TrimSuffix(body.UUID, ".mp4")
+	body.UUID = strings.TrimSuffix(body.UUID, ".mov")
+	if body.UUID == "" {
 		log.Warning("No image path provided in request from: " + requestIP + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
 
-	uuid := strings.TrimSpace(requestFilePath)
+	uuid := strings.TrimSpace(body.UUID)
 
 	db := config.GetDatabaseConn()
 	if db == nil {

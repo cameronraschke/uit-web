@@ -118,11 +118,8 @@ async function loadClientImages(clientTag) {
 			captionDiv.appendChild(timeStampCaption);
 			captionDiv.appendChild(noteCaption);
       
-      if (imgJsonManifest.primary_image) {
-        captionDiv.appendChild(unpinIcon);
-      } else {
-        captionDiv.appendChild(deleteIcon);
-      }
+      captionDiv.appendChild(unpinIcon);
+      captionDiv.appendChild(deleteIcon);
       captionDiv.appendChild(imageCount);
 			div.appendChild(imgDiv);
 			div.appendChild(captionDiv);
@@ -141,17 +138,19 @@ async function loadClientImages(clientTag) {
           alert('Error: No UUID found for this image.');
           return;
         }
+        const entry = document.getElementById(uuidToUnpin);
         try {
           const unpinURL = new URL(`/api/images/toggle_pin/${clientTag}/${uuidToUnpin}`, window.location.origin);
           unpinURL.searchParams.append('tagnumber', clientTag);
           const unpinResponse = await fetch(unpinURL, {
             method: 'POST',
-            credentials: 'same-origin'
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: json.stringify({uuid: uuidToUnpin, tagnumber: clientTag})
           });
           if (!unpinResponse.ok) {
             throw new Error (`Failed to unpin image: ${unpinResponse.status} ${unpinResponse.statusText}`);
           }
-          const entry = document.getElementById(uuidToUnpin);
           if (entry) {
             entry.style.transition = entry.style.transition || 'opacity 150ms ease';
             entry.style.opacity = '0.5';
