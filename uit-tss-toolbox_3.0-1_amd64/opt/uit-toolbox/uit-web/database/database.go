@@ -16,6 +16,31 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+func ptrTime(v sql.NullTime) *time.Time {
+	if v.Valid {
+		return &v.Time
+	}
+	return nil
+}
+func ptrInt64(v sql.NullInt64) *int64 {
+	if v.Valid {
+		return &v.Int64
+	}
+	return nil
+}
+func ptrString(v sql.NullString) *string {
+	if v.Valid {
+		return &v.String
+	}
+	return nil
+}
+func ptrBool(v sql.NullBool) *bool {
+	if v.Valid {
+		return &v.Bool
+	}
+	return nil
+}
+
 func CreateAdminUser() error {
 	db := config.GetDatabaseConn()
 	if db == nil {

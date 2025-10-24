@@ -494,9 +494,10 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var imageManifest []ImageManifest
+	var imageManifests []database.ImageManifest
 	for _, imageUUID := range imageUUIDs {
-		timestamp, sqlTag, filepath, _, hidden, primaryImage, note, err := repo.GetClientImageManifestByUUID(ctx, imageUUID)
+		var imageData database.ImageManifest
+		time, tag, filepath, _, hidden, primaryImage, note, err := repo.GetClientImageManifestByUUID(ctx, imageUUID)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				log.Info("Image not found in database: " + requestIP + " (" + requestURL + "): " + err.Error())
@@ -507,6 +508,13 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
+
+		if filepath == nil || strings.TrimSpace(*filepath) == "" {
+			log.Info("Client image has no filepath in database: " + requestIP + " (" + requestURL + ")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+
 		img, err := os.Open(*filepath)
 		if err != nil {
 			log.Info("Client image open error (manifest): " + requestIP + " (" + requestURL + "): " + err.Error())
@@ -515,102 +523,87 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 		}
 		defer img.Close()
 
-		if strings.HasSuffix(strings.ToLower(*filepath), ".jpg") ||
-			strings.HasSuffix(strings.ToLower(*filepath), ".jpeg") ||
-			strings.HasSuffix(strings.ToLower(*filepath), ".png") {
-			imageStat, err := img.Stat()
-			if err != nil {
-				log.Info("Client image stat error: " + requestIP + " (" + requestURL + "): " + err.Error())
-				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-				return
-			}
+		imageStat, err := img.Stat()
+		if err != nil {
+			log.Info("Client image stat error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		fileExtension := strings.ToLower(path.Ext(imageStat.Name()))
+
+		filePathLower := strings.ToLower(*filepath)
+		if strings.HasSuffix(filePathLower, ".jpg") ||
+			strings.HasSuffix(filePathLower, ".jpeg") ||
+			strings.HasSuffix(filePathLower, ".png") {
 
 			imageReader := http.MaxBytesReader(w, img, 64<<20)
-			decodedImage, imageType, err := image.DecodeConfig(imageReader)
+			imageConfig, imageType, err := image.DecodeConfig(imageReader)
 			if err != nil {
+				_ = img.Close()
 				log.Info("Client image decode error: " + requestIP + " (" + requestURL + "): " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
 			if imageType != "jpeg" && imageType != "png" {
+				_ = img.Close()
 				log.Info("Client image has invalid type: " + requestIP + " (" + requestURL + "): " + imageType)
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
-
-			fileExtension := strings.ToLower(path.Ext(imageStat.Name()))
 			if (imageType == "jpeg" && fileExtension != ".jpg" && fileExtension != ".jpeg") ||
 				(imageType == "png" && fileExtension != ".png") {
+				_ = img.Close()
 				log.Info("Client image file extension does not match image type: " + requestIP + " (" + requestURL + "): " + imageStat.Name())
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
-
-			var imageConfig ImageManifest
-			imageConfig.Time = *timestamp
-			imageConfig.Tagnumber = *sqlTag
-			imageConfig.Hidden = *hidden
-			imageConfig.PrimaryImage = *primaryImage
-			imageConfig.Name = imageStat.Name()
-			imageConfig.UUID = imageUUID + fileExtension
-			imageConfig.Note = *note
-			imageConfig.URL, err = url.JoinPath("/api/images/", fmt.Sprintf("%d", *sqlTag), imageStat.Name())
-			if err != nil {
-				log.Info("Client image URL join error: " + requestIP + " (" + requestURL + "): " + err.Error())
-				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-				return
-			}
-			imageConfig.Width = decodedImage.Width
-			imageConfig.Height = decodedImage.Height
-			imageConfig.Size = imageStat.Size()
-
-			if imageConfig.Width == 0 || imageConfig.Height == 0 {
+			imageData.Width = &imageConfig.Width
+			imageData.Height = &imageConfig.Height
+			if imageData.Width == nil || imageData.Height == nil || *imageData.Width <= 0 || *imageData.Height <= 0 {
 				log.Info("Client image has invalid dimensions: " + requestIP + " (" + requestURL + ")")
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
-			imageManifest = append(imageManifest, imageConfig)
-		} else if strings.HasSuffix(strings.ToLower(*filepath), ".mp4") ||
-			strings.HasSuffix(strings.ToLower(*filepath), ".mov") {
-			imageStat, err := img.Stat()
-			if err != nil {
-				log.Info("Client image stat error: " + requestIP + " (" + requestURL + "): " + err.Error())
-				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-				return
-			}
+		}
 
-			fileExtension := strings.ToLower(path.Ext(imageStat.Name()))
-			if (strings.HasSuffix(strings.ToLower(*filepath), ".mp4") && fileExtension != ".mp4") ||
-				(strings.HasSuffix(strings.ToLower(*filepath), ".mov") && fileExtension != ".mov") {
-				log.Info("Client image file extension does not match image type: " + requestIP + " (" + requestURL + "): " + imageStat.Name())
-				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-				return
-			}
+		_ = img.Close()
 
-			var imageConfig ImageManifest
-			imageConfig.Time = *timestamp
-			imageConfig.Tagnumber = *sqlTag
-			imageConfig.Hidden = *hidden
-			imageConfig.PrimaryImage = *primaryImage
-			imageConfig.Name = imageStat.Name()
-			imageConfig.UUID = imageUUID + fileExtension
-			imageConfig.Note = *note
-			imageConfig.URL, err = url.JoinPath("/api/images/", fmt.Sprintf("%d", *sqlTag), imageStat.Name())
-			if err != nil {
-				log.Info("Client image URL join error: " + requestIP + " (" + requestURL + "): " + err.Error())
-				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-				return
-			}
-			imageConfig.Size = imageStat.Size()
-			imageManifest = append(imageManifest, imageConfig)
+		var tagStr string
+		if tag != nil && *tag == 0 {
+			tagStr = fmt.Sprintf("%d", *tag)
 		} else {
-			log.Info("Client image has unsupported file type: " + requestIP + " (" + requestURL + "): " + *filepath)
+			log.Warning("Client image has no or invalid tag in database: " + requestIP + " (" + requestURL + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
+		imageData.Tagnumber = tag
+		imageData.Time = time
+		imageData.Hidden = hidden
+		imageData.PrimaryImage = primaryImage
+
+		imgFileName := imageStat.Name()
+		imageData.Name = &imgFileName
+
+		clientImgUUIDPath := imageUUID + fileExtension
+		imageData.UUID = &clientImgUUIDPath
+
+		imageData.Note = note
+
+		imgSize := imageStat.Size()
+		imageData.Size = &imgSize
+
+		urlStr, err := url.JoinPath("/api/images/", tagStr, clientImgUUIDPath)
+		if err != nil {
+			log.Info("Client image URL join error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+		imageData.URL = &urlStr
+
+		imageManifests = append(imageManifests, imageData)
 	}
 	w.Header().Set("Content-Type", "application/json")
-	middleware.WriteJson(w, http.StatusOK, imageManifest)
+	middleware.WriteJson(w, http.StatusOK, imageManifests)
 }
 
 func GetImage(w http.ResponseWriter, r *http.Request) {

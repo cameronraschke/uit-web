@@ -104,3 +104,19 @@ type InventoryUpdateFormInput struct {
 	Status             *string `json:"status"`
 	Note               *string `json:"note"`
 }
+
+type ImageManifest struct {
+	Time              *time.Time `json:"time"`
+	Tagnumber         *int64     `json:"tagnumber"`
+	Name              *string    `json:"name"`
+	UUID              *string    `json:"uuid"`
+	Filepath          *string    `json:"filepath"`
+	ThumbnailFilepath *string    `json:"thumbnail_filepath"`
+	URL               *string    `json:"url"`
+	Width             *int       `json:"width"`
+	Height            *int       `json:"height"`
+	Size              *int64     `json:"size"`
+	Hidden            *bool      `json:"hidden"`
+	PrimaryImage      *bool      `json:"primary_image"`
+	Note              *string    `json:"note"`
+}
