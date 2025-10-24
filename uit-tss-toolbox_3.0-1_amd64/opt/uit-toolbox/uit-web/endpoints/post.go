@@ -633,7 +633,9 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 
 		// Insert image metadata into database
 		fileSizeMB := float64(fileSize) / (2 << 20)
-		err = updateRepo.UpdateClientImages(ctx, tagnumber, fileUUID.String(), &fileName, fullFilePath, &fullThumbnailPath, &fileSizeMB, &fileHashBytes, &mimeType, nil, &resolutionX, &resolutionY, nil, nil, nil)
+		hidden := false
+		primaryImage := false
+		err = updateRepo.UpdateClientImages(ctx, tagnumber, fileUUID.String(), &fileName, fullFilePath, &fullThumbnailPath, &fileSizeMB, &fileHashBytes, &mimeType, nil, &resolutionX, &resolutionY, nil, &hidden, &primaryImage)
 		if err != nil {
 			log.Error("Failed to update inventory image data: " + err.Error() + " (" + requestIP + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
