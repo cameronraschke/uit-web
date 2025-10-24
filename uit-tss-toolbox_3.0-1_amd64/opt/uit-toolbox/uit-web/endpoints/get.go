@@ -501,16 +501,19 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			if err == sql.ErrNoRows {
 				log.Info("Image not found in database: " + requestIP + " (" + requestURL + "): " + err.Error())
-				middleware.WriteJsonError(w, http.StatusNotFound, "Image not found")
+			} else {
+				log.Info("Client image query error (manifest): " + requestIP + " (" + requestURL + "): " + err.Error())
+				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
-			log.Info("Client image query error (manifest): " + requestIP + " (" + requestURL + "): " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-			return
+		}
+
+		if hidden != nil && *hidden {
+			continue
 		}
 
 		if filepath == nil || strings.TrimSpace(*filepath) == "" {
-			log.Info("Client image has no filepath in database: " + requestIP + " (" + requestURL + ")")
+			log.Info("Client image filepath is empty: " + requestIP + " (" + requestURL + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}

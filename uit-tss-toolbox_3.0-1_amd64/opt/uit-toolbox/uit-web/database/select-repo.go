@@ -425,7 +425,7 @@ func (repo *Repo) GetClientImageByUUID(ctx context.Context, uuid string) (*Clien
 }
 
 func (repo *Repo) GetClientImageManifestByUUID(ctx context.Context, uuid string) (*time.Time, *int64, *string, *string, *bool, *bool, *string, error) {
-	sqlQuery := `SELECT time, tagnumber, filepath, thumbnail_filepath, hidden, primary_image, note FROM client_images WHERE uuid = $1 AND hidden = FALSE;`
+	sqlQuery := `SELECT time, tagnumber, filepath, thumbnail_filepath, hidden, primary_image, note FROM client_images WHERE uuid = $1;`
 
 	var (
 		time              sql.NullTime

@@ -128,7 +128,9 @@ async function loadClientImages(clientTag) {
         }
 
         try {
-          const deleteResponse = await fetch(`/api/images/${clientTag}/${uuidToDelete}`, {
+          const deleteURL = new URL(`/api/images/${clientTag}/${uuidToDelete}`, window.location.origin);
+          deleteURL.searchParams.append('tagnumber', clientTag);
+          const deleteResponse = await fetch(deleteURL, {
             method: 'DELETE',
             credentials: 'same-origin'
           });

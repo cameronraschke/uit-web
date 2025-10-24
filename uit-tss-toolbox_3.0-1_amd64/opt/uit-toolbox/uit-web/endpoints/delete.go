@@ -47,6 +47,7 @@ func DeleteImage(w http.ResponseWriter, r *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
+	uuid = strings.SplitN(uuid, "/", 2)[1]
 
 	db := config.GetDatabaseConn()
 	if db == nil {
