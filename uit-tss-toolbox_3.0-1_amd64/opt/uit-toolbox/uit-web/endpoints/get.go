@@ -537,21 +537,21 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 			strings.HasSuffix(filePathLower, ".png") {
 
 			imageReader := http.MaxBytesReader(w, img, 64<<20)
-			imageConfig, imageType, err := image.DecodeConfig(imageReader)
+			imageConfig, fileType, err := image.DecodeConfig(imageReader)
 			if err != nil {
 				_ = img.Close()
 				log.Info("Client image decode error: " + requestIP + " (" + requestURL + "): " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
-			if imageType != "jpeg" && imageType != "png" {
+			if fileType != "jpeg" && fileType != "png" {
 				_ = img.Close()
-				log.Info("Client image has invalid type: " + requestIP + " (" + requestURL + "): " + imageType)
+				log.Info("Client image has invalid type: " + requestIP + " (" + requestURL + "): " + fileType)
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
-			if (imageType == "jpeg" && fileExtension != ".jpg" && fileExtension != ".jpeg") ||
-				(imageType == "png" && fileExtension != ".png") {
+			if (fileType == "jpeg" && fileExtension != ".jpg" && fileExtension != ".jpeg") ||
+				(fileType == "png" && fileExtension != ".png") {
 				_ = img.Close()
 				log.Info("Client image file extension does not match image type: " + requestIP + " (" + requestURL + "): " + imageStat.Name())
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
@@ -564,12 +564,19 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
+			imageData.FileType = &fileType
+		} else if strings.HasSuffix(filePathLower, ".mp4") {
+			fileType := "video/mp4"
+			imageData.FileType = &fileType
+		} else if strings.HasSuffix(filePathLower, ".mov") {
+			fileType := "video/quicktime"
+			imageData.FileType = &fileType
 		}
 
 		_ = img.Close()
 
 		var tagStr string
-		if tag != nil && *tag == 0 {
+		if tag != nil && *tag >= 1 {
 			tagStr = fmt.Sprintf("%d", *tag)
 		} else {
 			log.Warning("Client image has no or invalid tag in database: " + requestIP + " (" + requestURL + ")")

@@ -18,20 +18,6 @@ import (
 	middleware "uit-toolbox/middleware"
 )
 
-type ImageManifest struct {
-	Time         *time.Time
-	Tagnumber    *int64
-	Name         *string
-	UUID         *string
-	URL          *string
-	Width        *int
-	Height       *int
-	Size         *int64
-	Hidden       *bool
-	PrimaryImage *bool
-	Note         *string
-}
-
 type RequestInfo struct {
 	Ctx context.Context
 	IP  string

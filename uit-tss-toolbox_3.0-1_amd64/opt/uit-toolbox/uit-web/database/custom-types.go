@@ -119,4 +119,5 @@ type ImageManifest struct {
 	Hidden            *bool      `json:"hidden"`
 	PrimaryImage      *bool      `json:"primary_image"`
 	Note              *string    `json:"note"`
+	FileType          *string    `json:"file_type"`
 }

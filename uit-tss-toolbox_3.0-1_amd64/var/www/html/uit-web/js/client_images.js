@@ -41,26 +41,35 @@ async function loadClientImages(clientTag) {
     for (const imgJsonManifest of items) {
       const div = document.createElement('div');
       div.className = 'image-entry';
-      div.setAttribute('id', `${imgJsonManifest.UUID}`);
+      div.setAttribute('id', `${imgJsonManifest.uuid}`);
 
 			const imgDiv = document.createElement('div');
 			imgDiv.className = 'image-box';
 
 			const imgLink = document.createElement('a');
-			imgLink.href = `/api/images/${imgJsonManifest.UUID}`;
+			imgLink.href = `/api/images/${imgJsonManifest.url}`;
 			imgLink.target = '_blank';
 			imgLink.rel = 'noopener noreferrer';
 
-			const img = document.createElement('img');
-			img.src = `/api/images/${imgJsonManifest.UUID}`;
-			img.alt = `Image for ${clientTag}`;
-			img.className = 'client-image';
+      let media = null;
+      if (imgJsonManifest.file_type && imgJsonManifest.file_type.startsWith('video/')) {
+			  media = document.createElement('video');
+			media.controls = true;
+      } else if (imgJsonManifest.file_type && imgJsonManifest.file_type.startsWith('image/')) {
+        media = document.createElement('img');
+      } else {
+        console.warn(`Unsupported media type: ${imgJsonManifest.file_type} for image UUID: ${imgJsonManifest.uuid}`);
+        continue;
+      }
+      media.src = `/api/images/${imgJsonManifest.url}`;
+			media.alt = `Media for ${clientTag}`;
+			media.className = 'client-image';
 
       const captionDiv = document.createElement('div');
       captionDiv.className = 'image-caption';
 
 			const timeStampCaption = document.createElement('p');
-			const timeStamp = new Date(imgJsonManifest.Time);
+			const timeStamp = new Date(imgJsonManifest.time);
       if (isNaN(timeStamp.getTime())) {
         timeStampCaption.textContent = 'Uploaded on: Unknown date';
       } else {
@@ -68,13 +77,13 @@ async function loadClientImages(clientTag) {
       }
 
 			const noteCaption = document.createElement('p');
-			noteCaption.textContent = imgJsonManifest.Note || "No description";
+			noteCaption.textContent = imgJsonManifest.note || "No description";
 			if (noteCaption.textContent === "No description") {
 				noteCaption.style.fontStyle = "italic";
 			}
 
       const deleteIcon = document.createElement('span');
-      deleteIcon.dataset.uuid = imgJsonManifest.UUID;
+      deleteIcon.dataset.uuid = imgJsonManifest.uuid;
       deleteIcon.dataset.imageCount = imageIndex + "/" + items.length;
       deleteIcon.className = 'delete-icon';
       deleteIcon.innerHTML = '&times;';
@@ -84,7 +93,7 @@ async function loadClientImages(clientTag) {
       imageCount.className = 'image-count';
       imageCount.textContent = imageIndex++ + "/" + items.length || '';
 
-			imgLink.appendChild(img);
+			imgLink.appendChild(media);
 			imgDiv.appendChild(imgLink);
 			captionDiv.appendChild(timeStampCaption);
 			captionDiv.appendChild(noteCaption);
