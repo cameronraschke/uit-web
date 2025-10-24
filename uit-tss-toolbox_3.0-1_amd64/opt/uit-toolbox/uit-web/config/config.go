@@ -373,6 +373,7 @@ func InitApp() (*AppState, error) {
 		{Filename: "logout.js", Allowed: true},
 		{Filename: "inventory.html", Allowed: true},
 		{Filename: "inventory.js", Allowed: true},
+		{Filename: "inventory_table.js", Allowed: true},
 		{Filename: "inventory.css", Allowed: true},
 		{Filename: "client_images.html", Allowed: true},
 		{Filename: "client_images.js", Allowed: true},
