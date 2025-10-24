@@ -537,21 +537,21 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 			strings.HasSuffix(filePathLower, ".png") {
 
 			imageReader := http.MaxBytesReader(w, img, 64<<20)
-			imageConfig, fileType, err := image.DecodeConfig(imageReader)
+			imageConfig, imageType, err := image.DecodeConfig(imageReader)
 			if err != nil {
 				_ = img.Close()
 				log.Info("Client image decode error: " + requestIP + " (" + requestURL + "): " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
-			if fileType != "jpeg" && fileType != "png" {
+			if imageType != "jpeg" && imageType != "png" {
 				_ = img.Close()
-				log.Info("Client image has invalid type: " + requestIP + " (" + requestURL + "): " + fileType)
+				log.Info("Client image has invalid type: " + requestIP + " (" + requestURL + "): " + imageType)
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
-			if (fileType == "jpeg" && fileExtension != ".jpg" && fileExtension != ".jpeg") ||
-				(fileType == "png" && fileExtension != ".png") {
+			if (imageType == "jpeg" && fileExtension != ".jpg" && fileExtension != ".jpeg") ||
+				(imageType == "png" && fileExtension != ".png") {
 				_ = img.Close()
 				log.Info("Client image file extension does not match image type: " + requestIP + " (" + requestURL + "): " + imageStat.Name())
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
@@ -564,6 +564,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
 				return
 			}
+			fileType := "image/" + imageType
 			imageData.FileType = &fileType
 		} else if strings.HasSuffix(filePathLower, ".mp4") {
 			fileType := "video/mp4"
