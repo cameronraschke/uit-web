@@ -96,7 +96,7 @@ func (repo *Repo) GetDomains(ctx context.Context) (map[string]string, error) {
 	return domainMap, nil
 }
 
-func (repo *Repo) ClientLookupByTag(ctx context.Context, tag int) (*ClientLookup, error) {
+func (repo *Repo) ClientLookupByTag(ctx context.Context, tag int64) (*ClientLookup, error) {
 	var clientLookup ClientLookup
 	row := repo.DB.QueryRowContext(ctx, "SELECT tagnumber, system_serial FROM locations WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1;", tag)
 	if err := row.Scan(&clientLookup.Tagnumber, &clientLookup.SystemSerial); err != nil {
@@ -114,7 +114,7 @@ func (repo *Repo) ClientLookupBySerial(ctx context.Context, serial string) (*Cli
 	return &clientLookup, nil
 }
 
-func (repo *Repo) GetHardwareIdentifiers(ctx context.Context, tag int) (*HardwareData, error) {
+func (repo *Repo) GetHardwareIdentifiers(ctx context.Context, tag int64) (*HardwareData, error) {
 	sqlQuery := `SELECT locations.tagnumber, locations.system_serial, jobstats.etheraddress, system_data.wifi_mac,
 	system_data.system_model, system_data.system_uuid, system_data.system_sku, system_data.chassis_type, 
 	system_data.motherboard_manufacturer, system_data.motherboard_serial, system_data.system_manufacturer
@@ -144,7 +144,7 @@ func (repo *Repo) GetHardwareIdentifiers(ctx context.Context, tag int) (*Hardwar
 	return &hardwareData, nil
 }
 
-func (repo *Repo) GetBiosData(ctx context.Context, tag int) (*BiosData, error) {
+func (repo *Repo) GetBiosData(ctx context.Context, tag int64) (*BiosData, error) {
 	sqlQuery := `SELECT client_health.tagnumber, client_health.bios_version, client_health.bios_updated, 
 	client_health.bios_date, client_health.tpm_version 
 	FROM client_health WHERE client_health.tagnumber = $1;`
@@ -163,7 +163,7 @@ func (repo *Repo) GetBiosData(ctx context.Context, tag int) (*BiosData, error) {
 	return &biosData, nil
 }
 
-func (repo *Repo) GetOsData(ctx context.Context, tag int) (*OsData, error) {
+func (repo *Repo) GetOsData(ctx context.Context, tag int64) (*OsData, error) {
 	sqlQuery := `SELECT locations.tagnumber, client_health.os_installed, client_health.os_name,
 	client_health.last_imaged_time AT TIME ZONE 'America/Chicago', client_health.tpm_version, jobstats.boot_time
 	FROM locations
@@ -187,7 +187,7 @@ func (repo *Repo) GetOsData(ctx context.Context, tag int) (*OsData, error) {
 	return &osData, nil
 }
 
-func (repo *Repo) GetActiveJobs(ctx context.Context, tag int) (*ActiveJobs, error) {
+func (repo *Repo) GetActiveJobs(ctx context.Context, tag int64) (*ActiveJobs, error) {
 	sqlQuery := `SELECT remote.tagnumber, remote.job_queued, remote.job_active, t1.queue_position
 	FROM remote
 	LEFT JOIN (SELECT tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS queue_position FROM job_queue) AS t1 
@@ -207,7 +207,7 @@ func (repo *Repo) GetActiveJobs(ctx context.Context, tag int) (*ActiveJobs, erro
 	return &activeJobs, nil
 }
 
-func (repo *Repo) GetAvailableJobs(ctx context.Context, tag int) (*AvailableJobs, error) {
+func (repo *Repo) GetAvailableJobs(ctx context.Context, tag int64) (*AvailableJobs, error) {
 	sqlQuery := `SELECT 
 	remote.tagnumber,
 	(CASE 
@@ -320,7 +320,7 @@ func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]Dashboard
 	return dashboardInventorySummary, nil
 }
 
-func (repo *Repo) GetLocationFormData(ctx context.Context, tag int) (*InventoryFormAutofill, error) {
+func (repo *Repo) GetLocationFormData(ctx context.Context, tag int64) (*InventoryFormAutofill, error) {
 	sqlQuery := `SELECT locations.time, locations.tagnumber, locations.system_serial, locations.location, system_data.system_manufacturer, system_data.system_model,
 	locations.department, locations.domain, locations.working, locations.status, locations.disk_removed, locations.note
 	FROM locations
@@ -352,7 +352,7 @@ func (repo *Repo) GetLocationFormData(ctx context.Context, tag int) (*InventoryF
 	return inventoryUpdateForm, nil
 }
 
-func (repo *Repo) GetClientImagePaths(ctx context.Context, tag int) ([]string, error) {
+func (repo *Repo) GetClientImagePaths(ctx context.Context, tag int64) ([]string, error) {
 	sqlQuery := `SELECT filepath FROM client_images WHERE tagnumber = $1 ORDER BY time DESC;`
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery, tag)
 	if err != nil {
@@ -375,7 +375,7 @@ func (repo *Repo) GetClientImagePaths(ctx context.Context, tag int) ([]string, e
 	return filepaths, nil
 }
 
-func (repo *Repo) GetClientImageUUIDs(ctx context.Context, tag int) ([]string, error) {
+func (repo *Repo) GetClientImageUUIDs(ctx context.Context, tag int64) ([]string, error) {
 	sqlQuery := `SELECT uuid FROM client_images WHERE tagnumber = $1 ORDER BY time DESC;`
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery, tag)
 	if err != nil {
@@ -425,7 +425,7 @@ func (repo *Repo) GetClientImageByUUID(ctx context.Context, uuid string) (*Clien
 }
 
 func (repo *Repo) GetClientImageManifestByUUID(ctx context.Context, uuid string) (timestamp *time.Time, filepath *string, thumbnailFilepath *string, hidden *bool, primaryImage *bool, note *string, err error) {
-	sqlQuery := `SELECT time, filepath, thumbnail_filepath, hidden, primary_image, note FROM client_images WHERE uuid = $1;`
+	sqlQuery := `SELECT time, filepath, thumbnail_filepath, hidden, primary_image, note FROM client_images WHERE uuid = $1 AND hidden = FALSE;`
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, uuid)
 	if err := row.Scan(
 		&timestamp,

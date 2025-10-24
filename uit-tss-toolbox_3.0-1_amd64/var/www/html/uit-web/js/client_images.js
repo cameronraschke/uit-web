@@ -124,7 +124,7 @@ async function loadClientImages(clientTag) {
             credentials: 'same-origin'
           });
           if (!deleteResponse.ok) {
-            throw new Error (`Failed to delete image: ${deleteResponse.statusText}`);
+            throw new Error (`Failed to delete image: ${deleteResponse.status} ${deleteResponse.statusText}`);
           }
           if (entry) entry.remove();
         } catch (deleteError) {

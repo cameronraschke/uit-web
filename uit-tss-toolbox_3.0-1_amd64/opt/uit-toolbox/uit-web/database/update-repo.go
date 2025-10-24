@@ -6,6 +6,19 @@ import (
 	"time"
 )
 
+func toNullString(p *string) any {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
+func toNullBool(p *bool) any {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
+
 func (repo *Repo) InsertNewNote(ctx context.Context, time time.Time, noteType, note string) error {
 	sqlCode := `INSERT INTO notes (time, note_type, note) VALUES ($1, $2, $3);`
 
@@ -17,17 +30,30 @@ func (repo *Repo) InsertNewNote(ctx context.Context, time time.Time, noteType, n
 	return err
 }
 
-func (repo *Repo) InsertInventory(ctx context.Context, tagnumber int64, systemSerial string, location string, department *string, domain *string, working bool, status *string, note *string) error {
+func (repo *Repo) InsertInventory(ctx context.Context, tagnumber int64, systemSerial *string, location *string, department *string, domain *string, working *bool, status *string, note *string) error {
 	sqlCode := `INSERT INTO locations (time, tagnumber, system_serial, location, department, domain, working, status, note) 
 		VALUES 
 	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8);`
 
-	_, err := repo.DB.ExecContext(ctx, sqlCode, tagnumber, systemSerial, location, department, domain, working, status, note)
+	_, err := repo.DB.ExecContext(ctx, sqlCode,
+		tagnumber,
+		toNullString(systemSerial),
+		toNullString(location),
+		toNullString(department),
+		toNullString(domain),
+		toNullBool(working),
+		toNullString(status),
+		toNullString(note),
+	)
 	return err
 }
 
 func (repo *Repo) UpdateSystemData(ctx context.Context, tagnumber int64, systemManufacturer *string, systemModel *string) error {
-	sqlCode := `UPDATE system_data SET  system_manufacturer = $2, system_model = $3 WHERE tagnumber = $1;`
+	sqlCode := `UPDATE system_data 
+			SET 
+				system_manufacturer = COALESCE($2, system_manufacturer), 
+				system_model = COALESCE($3, system_model)
+			WHERE tagnumber = $1;`
 	_, err := repo.DB.ExecContext(ctx, sqlCode, tagnumber, systemManufacturer, systemModel)
 	return err
 }
@@ -36,5 +62,11 @@ func (repo *Repo) UpdateClientImages(ctx context.Context, tagnumber int64, uuid 
 	sqlCode := `INSERT INTO client_images (uuid, time, tagnumber, filename, filepath, thumbnail_filepath, filesize, sha256_hash, mime_type, exif_timestamp, resolution_x, resolution_y, note, hidden, primary_image)
 		VALUES ($1, CURRENT_TIMESTAMP, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`
 	_, err := repo.DB.ExecContext(ctx, sqlCode, uuid, tagnumber, filename, filePath, thumbnailFilePath, filesize, sha256Hash, mimeType, exifTimestamp, resolutionX, resolutionY, note, hidden, primaryImage)
+	return err
+}
+
+func (repo *Repo) HideClientImageByUUID(ctx context.Context, tagnumber int64, uuid string) (err error) {
+	sqlQuery := `UPDATE client_images SET hidden = TRUE WHERE tagnumber = $1 AND uuid = $2;`
+	_, err = repo.DB.ExecContext(ctx, sqlQuery, tagnumber, uuid)
 	return err
 }

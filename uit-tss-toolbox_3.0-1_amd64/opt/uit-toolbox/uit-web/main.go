@@ -179,6 +179,8 @@ func main() {
 	httpsMux.Handle("POST /api/notes", httpsFullAPIChain.thenFunc(endpoints.InsertNewNote))
 	httpsMux.Handle("POST /api/update_inventory", httpsFullAPIChain.thenFunc(endpoints.UpdateInventory))
 
+	httpsMux.Handle("DELETE /api/images", httpsFullAPIChain.thenFunc(endpoints.DeleteImage))
+
 	httpsMux.Handle("GET /login", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
 	httpsMux.Handle("GET /login.html", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
 	httpsMux.Handle("POST /login.html", httpsFullLoginChain.thenFunc(endpoints.WebAuthEndpoint))

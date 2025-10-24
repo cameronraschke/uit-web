@@ -18,6 +18,20 @@ import (
 	middleware "uit-toolbox/middleware"
 )
 
+type ImageManifest struct {
+	Time         time.Time
+	Tagnumber    int64
+	Name         string
+	UUID         string
+	URL          string
+	Width        int
+	Height       int
+	Size         int64
+	Hidden       *bool
+	PrimaryImage *bool
+	Note         *string
+}
+
 type RequestInfo struct {
 	Ctx context.Context
 	IP  string
@@ -58,10 +72,13 @@ func GetRequestInfo(r *http.Request) (RequestInfo, error) {
 	return RequestInfo{Ctx: ctx, IP: ip, URL: url, Log: log}, nil
 }
 
-func ConvertRequestTagnumber(r *http.Request) (int, bool) {
+func ConvertRequestTagnumber(r *http.Request) (int64, bool) {
 	tag := r.URL.Query().Get("tagnumber")
-	tagnumber, convErr := strconv.Atoi(tag)
-	if convErr != nil || tagnumber <= 0 {
+	tagnumber, err := strconv.ParseInt(tag, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	if tagnumber < 1 || tagnumber > 999999 {
 		return 0, false
 	}
 	return tagnumber, true

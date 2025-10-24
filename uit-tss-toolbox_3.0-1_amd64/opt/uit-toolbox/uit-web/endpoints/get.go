@@ -3,13 +3,13 @@ package endpoints
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"image"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 	"time"
 
@@ -461,19 +461,6 @@ func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, inventorySummary)
 }
 
-type ImageConfig struct {
-	Time         time.Time
-	Name         string
-	UUID         string
-	URL          string
-	Width        int
-	Height       int
-	Size         int64
-	Hidden       *bool
-	PrimaryImage *bool
-	Note         *string
-}
-
 func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)
 	if err != nil {
@@ -507,7 +494,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var imageList []ImageConfig
+	var imageList []ImageManifest
 	for _, imageUUID := range imageUUIDs {
 		timestamp, fp, _, hidden, primaryImage, note, err := repo.GetClientImageManifestByUUID(ctx, imageUUID)
 		if err != nil {
@@ -560,14 +547,15 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			var imageConfig ImageConfig
+			var imageConfig ImageManifest
 			imageConfig.Time = *timestamp
+			imageConfig.Tagnumber = tagnumber
 			imageConfig.Hidden = hidden
 			imageConfig.PrimaryImage = primaryImage
 			imageConfig.Name = imageStat.Name()
 			imageConfig.UUID = imageUUID + fileExtension
 			imageConfig.Note = note
-			imageConfig.URL, err = url.JoinPath("/api/images/", strconv.Itoa(tagnumber), imageStat.Name())
+			imageConfig.URL, err = url.JoinPath("/api/images/", fmt.Sprintf("%d", tagnumber), imageStat.Name())
 			if err != nil {
 				log.Info("Client image URL join error: " + requestIP + " (" + requestURL + "): " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
@@ -600,14 +588,15 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			var imageConfig ImageConfig
+			var imageConfig ImageManifest
 			imageConfig.Time = *timestamp
+			imageConfig.Tagnumber = tagnumber
 			imageConfig.Hidden = hidden
 			imageConfig.PrimaryImage = primaryImage
 			imageConfig.Name = imageStat.Name()
 			imageConfig.UUID = imageUUID + fileExtension
 			imageConfig.Note = note
-			imageConfig.URL, err = url.JoinPath("/api/images/", strconv.Itoa(tagnumber), imageStat.Name())
+			imageConfig.URL, err = url.JoinPath("/api/images/", fmt.Sprintf("%d", tagnumber), imageStat.Name())
 			if err != nil {
 				log.Info("Client image URL join error: " + requestIP + " (" + requestURL + "): " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
@@ -638,10 +627,10 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 	requestURL := requestInfo.URL
 
 	requestFilePath := strings.TrimPrefix(r.URL.Path, "/api/images/")
-	requestFilePath = strings.ReplaceAll(requestFilePath, ".jpeg", "")
-	requestFilePath = strings.ReplaceAll(requestFilePath, ".png", "")
-	requestFilePath = strings.ReplaceAll(requestFilePath, ".mp4", "")
-	requestFilePath = strings.ReplaceAll(requestFilePath, ".mov", "")
+	requestFilePath = strings.TrimSuffix(requestFilePath, ".jpeg")
+	requestFilePath = strings.TrimSuffix(requestFilePath, ".png")
+	requestFilePath = strings.TrimSuffix(requestFilePath, ".mp4")
+	requestFilePath = strings.TrimSuffix(requestFilePath, ".mov")
 	if requestFilePath == "" {
 		log.Warning("No image path provided in request from: " + requestIP + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")

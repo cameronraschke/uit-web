@@ -214,6 +214,16 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 }
 
 func UpdateInventory(w http.ResponseWriter, req *http.Request) {
+	// Field tagnumber: required (int64), 6 digits, cannot be below 1 or above 999999, numeric ASCII only
+	// Field system_serial: required (string), min 4 chars, max 64 chars, alphanumeric ASCII only
+	// Field location: required (string), min 1 char, max 128 chars, printable ASCII only
+	// Field system_manufacturer: optional (string), min 1 char, max 24 chars, alphanumeric ASCII only
+	// Field system_model: optional (string), min 1 char, max 64 chars, alphanumeric ASCII only
+	// Field department: optional (string), must match existing department in database
+	// Field domain: optional (string), must match existing domain in database
+	// Field working: optional (bool)
+	// Field status: mandatory (string), must match existing status in database table client_location_status, printable ASCII only
+	// Field note: optional (string), max 2000 chars, printable ASCII only
 	requestInfo, err := GetRequestInfo(req)
 	if err != nil {
 		fmt.Println("Cannot get request info error: " + err.Error())
@@ -257,17 +267,22 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 
 	// Validate and sanitize input data
 	// Tag number (required, 6 digits)
-	if !middleware.IsNumericAscii([]byte(strconv.Itoa(inventoryUpdate.Tagnumber))) {
+	if inventoryUpdate.Tagnumber == nil || *inventoryUpdate.Tagnumber == 0 {
+		log.Warning("No tag number provided for inventory update: " + requestIP)
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	if !middleware.IsNumericAscii([]byte(strconv.FormatInt(*inventoryUpdate.Tagnumber, 10))) {
 		log.Warning("Non-digit characters in tag number field for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	if utf8.RuneCountInString(strconv.Itoa(inventoryUpdate.Tagnumber)) != 6 {
+	if utf8.RuneCountInString(strconv.FormatInt(*inventoryUpdate.Tagnumber, 10)) != 6 {
 		log.Warning("Tag number not 6 digits for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	tagnumber, err := strconv.ParseInt(strconv.Itoa(inventoryUpdate.Tagnumber), 10, 64)
+	tagnumber, err := strconv.ParseInt(strconv.FormatInt(*inventoryUpdate.Tagnumber, 10), 10, 64)
 	if err != nil {
 		log.Warning("Cannot parse tag number for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
@@ -280,40 +295,40 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// System serial (required, min 4 chars, max 64 chars)
-	if inventoryUpdate.SystemSerial == "" {
+	if inventoryUpdate.SystemSerial == nil || strings.TrimSpace(*inventoryUpdate.SystemSerial) == "" {
 		log.Warning("Invalid system serial provided for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	if utf8.RuneCountInString(inventoryUpdate.SystemSerial) < 4 || utf8.RuneCountInString(inventoryUpdate.SystemSerial) > 64 {
+	if utf8.RuneCountInString(*inventoryUpdate.SystemSerial) < 4 || utf8.RuneCountInString(*inventoryUpdate.SystemSerial) > 64 {
 		log.Warning("Invalid system serial length provided for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	if !middleware.IsAlphanumericAscii([]byte(inventoryUpdate.SystemSerial)) {
+	if !middleware.IsAlphanumericAscii([]byte(*inventoryUpdate.SystemSerial)) {
 		log.Warning("Non-alphanumeric characters in system serial field for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	inventoryUpdate.SystemSerial = strings.TrimSpace(inventoryUpdate.SystemSerial)
+	*inventoryUpdate.SystemSerial = strings.TrimSpace(*inventoryUpdate.SystemSerial)
 
 	// Location (required, min 1 char, max 128 chars)
-	if inventoryUpdate.Location == "" {
+	if inventoryUpdate.Location == nil || strings.TrimSpace(*inventoryUpdate.Location) == "" {
 		log.Warning("No location provided for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	if utf8.RuneCountInString(inventoryUpdate.Location) < 1 || utf8.RuneCountInString(inventoryUpdate.Location) > 128 {
+	if utf8.RuneCountInString(*inventoryUpdate.Location) < 1 || utf8.RuneCountInString(*inventoryUpdate.Location) > 128 {
 		log.Warning("Invalid location length for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	if !middleware.IsPrintableASCII([]byte(inventoryUpdate.Location)) {
+	if !middleware.IsPrintableASCII([]byte(*inventoryUpdate.Location)) {
 		log.Warning("Non-printable ASCII characters in location field for inventory update: " + requestIP)
 		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
-	inventoryUpdate.Location = strings.TrimSpace(inventoryUpdate.Location)
+	*inventoryUpdate.Location = strings.TrimSpace(*inventoryUpdate.Location)
 
 	// System manufacturer (optional, min 1 char, max 24 chars)
 	if inventoryUpdate.SystemManufacturer != nil && strings.TrimSpace(*inventoryUpdate.SystemManufacturer) != "" {
@@ -329,7 +344,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		}
 		*inventoryUpdate.SystemManufacturer = strings.TrimSpace(*inventoryUpdate.SystemManufacturer)
 	} else {
-		log.Warning("No system manufacturer provided for inventory update: " + requestIP)
+		log.Info("No system manufacturer provided for inventory update: " + requestIP)
 	}
 
 	// System model (optional, min 1 char, max 64 chars)
@@ -346,7 +361,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		}
 		*inventoryUpdate.SystemModel = strings.TrimSpace(*inventoryUpdate.SystemModel)
 	} else {
-		log.Warning("No system model provided for inventory update: " + requestIP)
+		log.Info("No system model provided for inventory update: " + requestIP)
 	}
 
 	// Department (optional, max 24 chars)
@@ -363,7 +378,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		}
 		*inventoryUpdate.Department = strings.TrimSpace(*inventoryUpdate.Department)
 	} else {
-		log.Warning("No department provided for inventory update: " + requestIP)
+		log.Info("No department provided for inventory update: " + requestIP)
 	}
 
 	// Domain (optional, min 1 char, max 24 chars)
@@ -380,27 +395,27 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		}
 		*inventoryUpdate.Domain = strings.TrimSpace(*inventoryUpdate.Domain)
 	} else {
-		log.Warning("No domain provided for inventory update: " + requestIP)
+		log.Info("No domain provided for inventory update: " + requestIP)
 	}
 
-	// Working (mandatory, bool)
-	if inventoryUpdate.Working == nil {
-		log.Warning("No working bool value provided for inventory update: " + requestIP)
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-		return
-	}
+	// Working (optional, bool)
 	var workingBool bool
-	workingBool, err = strconv.ParseBool(strconv.FormatBool(*inventoryUpdate.Working))
-	if err != nil {
-		log.Warning("Cannot parse working bool value for inventory update: " + requestIP)
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-		return
+	if inventoryUpdate.Working != nil {
+		workingBool, err = strconv.ParseBool(strconv.FormatBool(*inventoryUpdate.Working))
+		if err != nil {
+			log.Warning("Cannot parse working bool value for inventory update: " + requestIP)
+			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+			return
+		}
+		if !workingBool && workingBool {
+			log.Warning("Invalid working bool value for inventory update: " + requestIP)
+			middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+			return
+		}
+	} else {
+		log.Info("No working bool value provided for inventory update: " + requestIP)
 	}
-	if !workingBool && workingBool {
-		log.Warning("Invalid working bool value for inventory update: " + requestIP)
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
-		return
-	}
+	*inventoryUpdate.Working = workingBool
 
 	// Status (mandatory, max 64 chars)
 	if inventoryUpdate.Status == nil || strings.TrimSpace(*inventoryUpdate.Status) == "" {
@@ -619,7 +634,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 
 	// No pointers here, pointers in repo
 	// tagnumber and working are converted above
-	err = updateRepo.InsertInventory(ctx, tagnumber, inventoryUpdate.SystemSerial, inventoryUpdate.Location, inventoryUpdate.Department, inventoryUpdate.Domain, workingBool, inventoryUpdate.Status, inventoryUpdate.Note)
+	err = updateRepo.InsertInventory(ctx, tagnumber, inventoryUpdate.SystemSerial, inventoryUpdate.Location, inventoryUpdate.Department, inventoryUpdate.Domain, inventoryUpdate.Working, inventoryUpdate.Status, inventoryUpdate.Note)
 	if err != nil {
 		log.Error("Failed to update inventory data: " + err.Error() + " (" + requestIP + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
@@ -632,22 +647,5 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	retMap := database.InventoryUpdateFormInput{}
-	retMap.Tagnumber = int(tagnumber)
-	retMap.SystemSerial = inventoryUpdate.SystemSerial
-	retMap.Location = inventoryUpdate.Location
-	retMap.SystemManufacturer = inventoryUpdate.SystemManufacturer
-	retMap.SystemModel = inventoryUpdate.SystemModel
-	retMap.Department = inventoryUpdate.Department
-	retMap.Domain = inventoryUpdate.Domain
-	retMap.Working = &workingBool
-	retMap.Status = inventoryUpdate.Status
-	retMap.Note = inventoryUpdate.Note
-	retMapJson, err := json.Marshal(retMap)
-	if err != nil {
-		log.Error("Failed to marshal inventory update response JSON: " + err.Error() + " (" + requestIP + ")")
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
-		return
-	}
-	middleware.WriteJson(w, http.StatusOK, retMapJson)
+	middleware.WriteJson(w, http.StatusOK, "Update successful")
 }
