@@ -64,6 +64,20 @@
   color: darkred;
 }
 
+.unpin-icon {
+  position: absolute;
+  top: 0.3rem;
+  margin-left: auto;
+  margin-right: auto;
+  cursor: pointer;
+  color: #007BFF;
+  font-size: 1.5rem;
+}
+
+.unpin-icon:hover {
+  color: #0056b3;
+}
+
 .image-count {
   position: absolute;
   top: 0.5rem;

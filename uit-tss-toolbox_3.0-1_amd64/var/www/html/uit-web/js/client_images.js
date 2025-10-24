@@ -104,7 +104,7 @@ async function loadClientImages(clientTag) {
 
       const unpinIcon = document.createElement('span');
       unpinIcon.dataset.uuid = imgJsonManifest.uuid;
-      unpinIcon.className = 'delete-icon';
+      unpinIcon.className = 'unpin-icon';
       unpinIcon.innerHTML = '&#128204;';
       unpinIcon.style.fontSize = '1rem';
       unpinIcon.title = 'Unpin Image';
@@ -132,47 +132,45 @@ async function loadClientImages(clientTag) {
         container.insertBefore(primaryImageDiv, container.firstChild);
       }
 
-      if (imgJsonManifest.primary_image) {
-        unpinIcon.addEventListener('click', async (event) => {
-          const button = event.currentTarget;
-          if (!(button instanceof HTMLElement)) return;
-          button.disabled = true;
-          const uuidToUnpin = button.dataset.uuid;
-          if (!uuidToUnpin) {
-            alert('Error: No UUID found for this image.');
-            return;
+      unpinIcon.addEventListener('click', async (event) => {
+        const button = event.currentTarget;
+        if (!(button instanceof HTMLElement)) return;
+        button.disabled = true;
+        const uuidToUnpin = button.dataset.uuid;
+        if (!uuidToUnpin) {
+          alert('Error: No UUID found for this image.');
+          return;
+        }
+        try {
+          const unpinURL = new URL(`/api/images/toggle_pin/${clientTag}/${uuidToUnpin}`, window.location.origin);
+          unpinURL.searchParams.append('tagnumber', clientTag);
+          const unpinResponse = await fetch(unpinURL, {
+            method: 'POST',
+            credentials: 'same-origin'
+          });
+          if (!unpinResponse.ok) {
+            throw new Error (`Failed to unpin image: ${unpinResponse.status} ${unpinResponse.statusText}`);
           }
-          try {
-            const unpinURL = new URL(`/api/images/pin/${clientTag}/${uuidToUnpin}`, window.location.origin);
-            unpinURL.searchParams.append('tagnumber', clientTag);
-            const unpinResponse = await fetch(unpinURL, {
-              method: 'POST',
-              credentials: 'same-origin'
-            });
-            if (!unpinResponse.ok) {
-              throw new Error (`Failed to unpin image: ${unpinResponse.status} ${unpinResponse.statusText}`);
+          const entry = document.getElementById(uuidToUnpin);
+          if (entry) {
+            entry.style.transition = entry.style.transition || 'opacity 150ms ease';
+            entry.style.opacity = '0.5';
+            await waitForNextPaint(2);
+            entry.removeAttribute('data-primary-image');
+            entry.style.border = 'none';
+            entry.style.backgroundColor = 'transparent';
+            const pinnedMsg = entry.querySelector('p');
+            if (pinnedMsg) {
+              pinnedMsg.textContent = "Pinned";
+              pinnedMsg.style.fontStyle = "italic";
             }
-            const entry = document.getElementById(uuidToUnpin);
-            if (entry) {
-              entry.style.transition = entry.style.transition || 'opacity 150ms ease';
-              entry.style.opacity = '0.5';
-              await waitForNextPaint(2);
-              entry.removeAttribute('data-primary-image');
-              entry.style.border = 'none';
-              entry.style.backgroundColor = 'transparent';
-              const pinnedMsg = entry.querySelector('p');
-              if (pinnedMsg) {
-                pinnedMsg.textContent = "Pinned";
-                pinnedMsg.style.fontStyle = "italic";
-              }
-            }
-          } catch (unpinError) {
-            alert(`Error unpinning image: ${unpinError.message}`);
-          } finally {
-            if (entry) entry.style.opacity = '1';
           }
-        });
-      }
+        } catch (unpinError) {
+          alert(`Error unpinning image: ${unpinError.message}`);
+        } finally {
+          if (entry) entry.style.opacity = '1';
+        }
+      });
 
       deleteIcon.addEventListener('click', async (event) => {
         const button = event.currentTarget;

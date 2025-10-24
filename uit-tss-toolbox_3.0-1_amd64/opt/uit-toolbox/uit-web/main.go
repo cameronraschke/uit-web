@@ -179,6 +179,7 @@ func main() {
 
 	httpsMux.Handle("POST /api/notes", httpsFullAPIChain.thenFunc(endpoints.InsertNewNote))
 	httpsMux.Handle("POST /api/update_inventory", httpsFullAPIChain.thenFunc(endpoints.UpdateInventory))
+	httpsMux.Handle("POST /api/images/toggle_pin/", httpsFullAPIChain.thenFunc(endpoints.TogglePinImage))
 
 	httpsMux.Handle("DELETE /api/images/", httpsFullAPIChain.thenFunc(endpoints.DeleteImage))
 

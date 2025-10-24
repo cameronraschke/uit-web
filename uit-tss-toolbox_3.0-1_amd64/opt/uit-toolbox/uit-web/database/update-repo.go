@@ -70,3 +70,9 @@ func (repo *Repo) HideClientImageByUUID(ctx context.Context, tagnumber int64, uu
 	_, err = repo.DB.ExecContext(ctx, sqlQuery, tagnumber, uuid)
 	return err
 }
+
+func (repo *Repo) TogglePinImage(ctx context.Context, uuid string, tagnumber int64) (err error) {
+	sqlQuery := `UPDATE client_images SET primary_image = NOT COALESCE(primary_image, FALSE) WHERE uuid = $1 AND tagnumber = $2;`
+	_, err = repo.DB.ExecContext(ctx, sqlQuery, uuid, tagnumber)
+	return err
+}

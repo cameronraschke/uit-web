@@ -663,3 +663,56 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 
 	middleware.WriteJson(w, http.StatusOK, "Update successful")
 }
+
+func TogglePinImage(w http.ResponseWriter, req *http.Request) {
+	requestInfo, err := GetRequestInfo(req)
+	if err != nil {
+		fmt.Println("Cannot get request info error: " + err.Error())
+		http.Error(w, middleware.FormatHttpError("Internal server error"), http.StatusInternalServerError)
+		return
+	}
+	ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
+	requestMethod := req.Method
+	if requestMethod != http.MethodPost || !(strings.HasPrefix(requestURL, "/api/images/toggle_pin/")) {
+		log.Warning("Invalid method or URL for toggle pin image: " + requestIP + " ( " + requestURL + ")")
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+	tagnumber, ok := ConvertRequestTagnumber(req)
+	if tagnumber == 0 || !ok {
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+
+	requestFilePath := strings.TrimPrefix(req.URL.Path, "/api/images/toggle_pin/")
+	requestFilePath = strings.TrimSuffix(requestFilePath, ".jpeg")
+	requestFilePath = strings.TrimSuffix(requestFilePath, ".png")
+	requestFilePath = strings.TrimSuffix(requestFilePath, ".mp4")
+	requestFilePath = strings.TrimSuffix(requestFilePath, ".mov")
+	if requestFilePath == "" {
+		log.Warning("No image path provided in request from: " + requestIP + " (" + requestURL + ")")
+		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		return
+	}
+
+	uuid := strings.TrimSpace(requestFilePath)
+
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.Warning("no database connection available")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	repo := database.NewRepo(db)
+	err = repo.TogglePinImage(ctx, uuid, tagnumber)
+	if err != nil {
+		log.Error("Failed to toggle pin image: " + err.Error() + " (" + requestIP + ")")
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, "Image pin toggled successfully")
+}
