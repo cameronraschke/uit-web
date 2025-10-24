@@ -21,6 +21,18 @@
   object-fit: contain;
 }
 
+@media (max-width: 750px) {
+  .image-entry {
+    width: 80dvw;
+  }
+}
+
+@media (max-width: 1200px) and (min-width: 751px) {
+  .image-entry {
+    width: 30dvw;
+  }
+}
+
 .image-box {
   margin-top: 1rem;
   padding: 0.5rem;
