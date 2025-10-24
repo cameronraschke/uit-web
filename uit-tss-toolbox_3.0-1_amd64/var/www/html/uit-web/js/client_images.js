@@ -146,7 +146,7 @@ async function loadClientImages(clientTag) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: json.stringify({uuid: uuidToUnpin, tagnumber: clientTag})
+            body: JSON.stringify({uuid: uuidToUnpin, tagnumber: clientTag})
           });
           if (!unpinResponse.ok) {
             throw new Error (`Failed to unpin image: ${unpinResponse.status} ${unpinResponse.statusText}`);
