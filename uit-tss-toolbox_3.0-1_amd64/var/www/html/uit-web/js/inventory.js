@@ -301,10 +301,7 @@ async function populateLocationForm(tag) {
 }
 
 
-const inventoryFilterForm = document.getElementById('inventory-filter-form');
-inventoryFilterForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  // Inventory filter form
+async function fetchFilteredInventoryData() {
   const filterTag = document.getElementById('inventory-filter-tagnumber').value.trim() || null;
   const filterSerial = document.getElementById('inventory-filter-serial').value.trim() || null;
   const filterLocation = document.getElementById('inventory-filter-location').value.trim() || null;
@@ -322,4 +319,13 @@ inventoryFilterForm.addEventListener("submit", async (event) => {
   } catch (error) {
     console.error("Error fetching inventory data:", error);
   }
+}
+
+const inventoryFilterForm = document.getElementById('inventory-filter-form');
+inventoryFilterForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  await fetchFilteredInventoryData();
 });
+
+Promise.all([fetchFilteredInventoryData()]);
+

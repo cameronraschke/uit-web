@@ -205,5 +205,3 @@ async function renderInventoryTable(tableData = null) {
     return;
   }
 }
-
-Promise.all([renderInventoryTable()]);
