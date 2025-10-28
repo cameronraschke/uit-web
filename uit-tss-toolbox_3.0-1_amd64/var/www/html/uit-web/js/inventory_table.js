@@ -35,9 +35,14 @@ async function renderInventoryTable() {
       if (row.tagnumber) {
         tagCell.dataset.tagnumber = row.tagnumber;
         const tagCellLink = document.createElement('a');
-        tagCellLink.setAttribute('href', `/client/${encodeURIComponent(row.tagnumber)}`);
+        tagCellLink.setAttribute('href', `inventory_form`);
         tagCellLink.textContent = row.tagnumber;
         tagCell.appendChild(tagCellLink);
+        tagCell.addEventListener('click', () => {
+          const tagLookupInput = document.getElementById('inventory-tag-lookup');
+          tagLookupInput.value = row.tagnumber;
+          inventoryLookupForm.submit();
+        });
       } else {
         tagCell.dataset.tagnumber = null;
         tagCell.textContent = 'N/A';
