@@ -323,7 +323,7 @@ func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]Dashboard
 
 func (repo *Repo) GetLocationFormData(ctx context.Context, tag int64) (*InventoryFormAutofill, error) {
 	sqlQuery := `SELECT locations.time, locations.tagnumber, locations.system_serial, locations.location, system_data.system_manufacturer, system_data.system_model,
-	locations.department, locations.domain, locations.functional, locations.status, locations.disk_removed, locations.note
+	locations.department, locations.domain, locations.broken, locations.status, locations.disk_removed, locations.note
 	FROM locations
 	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
@@ -342,7 +342,7 @@ func (repo *Repo) GetLocationFormData(ctx context.Context, tag int64) (*Inventor
 		&inventoryUpdateForm.SystemModel,
 		&inventoryUpdateForm.Department,
 		&inventoryUpdateForm.Domain,
-		&inventoryUpdateForm.Functional,
+		&inventoryUpdateForm.Broken,
 		&inventoryUpdateForm.Status,
 		&inventoryUpdateForm.DiskRemoved,
 		&inventoryUpdateForm.Note,
@@ -457,7 +457,7 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context) ([]*InventoryTableD
 		locationFormatting(locations.location) AS location_formatted,
 		system_data.system_manufacturer, system_data.system_model, locations.department, static_departments.department_formatted,
 		locations.domain, static_domains.domain_formatted, client_health.os_installed, client_health.os_name, locations.status,
-		locations.functional, locations.note, locations.time AS last_updated
+		locations.broken, locations.note, locations.time AS last_updated
 		FROM locations
 		LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
 		LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
@@ -495,7 +495,7 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context) ([]*InventoryTableD
 			&row.OsInstalled,
 			&row.OsName,
 			&row.Status,
-			&row.Functional,
+			&row.Broken,
 			&row.Note,
 			&row.LastUpdated,
 		)

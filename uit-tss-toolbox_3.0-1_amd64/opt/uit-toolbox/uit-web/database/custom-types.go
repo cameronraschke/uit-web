@@ -85,7 +85,7 @@ type InventoryFormAutofill struct {
 	SystemManufacturer *string    `json:"system_manufacturer"`
 	SystemModel        *string    `json:"system_model"`
 	Status             *string    `json:"status"`
-	Functional         *bool      `json:"functional"`
+	Broken             *bool      `json:"broken"`
 	DiskRemoved        *bool      `json:"disk_removed"`
 	Department         *string    `json:"department"`
 	Domain             *string    `json:"domain"`
@@ -100,7 +100,7 @@ type InventoryUpdateFormInput struct {
 	SystemModel        *string `json:"system_model"`
 	Department         *string `json:"department"`
 	Domain             *string `json:"domain"`
-	Functional         *bool   `json:"functional"`
+	Broken             *bool   `json:"broken"`
 	Status             *string `json:"status"`
 	Note               *string `json:"note"`
 }
@@ -136,7 +136,7 @@ type InventoryTableData struct {
 	OsInstalled         *bool      `json:"os_installed"`
 	OsName              *string    `json:"os_name"`
 	Status              *string    `json:"status"`
-	Functional          *bool      `json:"functional"`
+	Broken              *bool      `json:"broken"`
 	Note                *string    `json:"note"`
 	LastUpdated         *time.Time `json:"last_updated"`
 }

@@ -122,10 +122,18 @@ async function renderInventoryTable() {
       statusCell.dataset.status = row.status || null;
       tr.appendChild(statusCell);
 
-      const functionalCell = document.createElement('td');
-      functionalCell.textContent = row.functional_status || 'N/A';
-      functionalCell.dataset.functional_status = row.functional_status || null;
-      tr.appendChild(functionalCell);
+      const brokenCell = document.createElement('td');
+      if (row.broken === true) {
+        brokenCell.textContent = 'Broken';
+        brokenCell.dataset.broken = 'true';
+      } else if (row.broken === false) {
+        brokenCell.textContent = 'Functional';
+        brokenCell.dataset.broken = 'false';
+      } else {
+        brokenCell.textContent = 'N/A';
+        brokenCell.dataset.broken = null;
+      }
+      tr.appendChild(brokenCell);
 
       const noteCell = document.createElement('td');
       if (row.note) {

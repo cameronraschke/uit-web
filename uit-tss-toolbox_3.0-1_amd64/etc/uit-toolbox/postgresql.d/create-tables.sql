@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS locations (
     tagnumber INTEGER DEFAULT NULL,
     system_serial VARCHAR(64) DEFAULT NULL,
     location VARCHAR(128) DEFAULT NULL,
-    functional BOOLEAN DEFAULT NULL,
+    broken BOOLEAN DEFAULT NULL,
     status VARCHAR(24) REFERENCES client_location_status(status) DEFAULT NULL,
     disk_removed BOOLEAN DEFAULT NULL,
     department VARCHAR(24) DEFAULT NULL,

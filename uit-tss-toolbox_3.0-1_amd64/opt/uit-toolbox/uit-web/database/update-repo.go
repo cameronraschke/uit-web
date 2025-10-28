@@ -30,8 +30,8 @@ func (repo *Repo) InsertNewNote(ctx context.Context, time time.Time, noteType, n
 	return err
 }
 
-func (repo *Repo) InsertInventory(ctx context.Context, tagnumber int64, systemSerial *string, location *string, department *string, domain *string, functional *bool, status *string, note *string) error {
-	sqlCode := `INSERT INTO locations (time, tagnumber, system_serial, location, department, domain, functional, status, note) 
+func (repo *Repo) InsertInventory(ctx context.Context, tagnumber int64, systemSerial *string, location *string, department *string, domain *string, broken *bool, status *string, note *string) error {
+	sqlCode := `INSERT INTO locations (time, tagnumber, system_serial, location, department, domain, broken, status, note) 
 		VALUES 
 	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8);`
 
@@ -41,7 +41,7 @@ func (repo *Repo) InsertInventory(ctx context.Context, tagnumber int64, systemSe
 		toNullString(location),
 		toNullString(department),
 		toNullString(domain),
-		toNullBool(functional),
+		toNullBool(broken),
 		toNullString(status),
 		toNullString(note),
 	)
