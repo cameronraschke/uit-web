@@ -558,3 +558,18 @@ INSERT INTO static_emojis (keyword, regex, replacement, text_bool, case_sensitiv
 --   ('retired'), 
 --   ('lost'), 
 --   ('other');
+
+DROP TABLE IF EXISTS static_client_statuses;
+CREATE TABLE IF NOT EXISTS static_client_statuses (
+    status VARCHAR(24) UNIQUE NOT NULL,
+    status_readable VARCHAR(36) DEFAULT NULL,
+    sort_order SMALLINT DEFAULT NULL
+);
+
+INSERT INTO static_client_statuses (status, status_readable, sort_order) VALUES
+  ('storage', 'Storage', 10),
+  ('checked-out', 'Checked Out', 20),
+  ('needs-repair', 'Needs Repair', 30),
+  ('retired', 'Retired', 40),
+  ('lost', 'Lost', 50),
+  ('other', 'Other', 60);

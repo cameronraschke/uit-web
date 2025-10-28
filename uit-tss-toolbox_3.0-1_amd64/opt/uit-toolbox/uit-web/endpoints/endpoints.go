@@ -273,6 +273,12 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
+		statuses, err := db.GetStatuses(ctx)
+		if err != nil {
+			log.Error("Cannot get status list from database: " + err.Error())
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 		urlTag := req.URL.Query().Get("tagnumber")
 		urlTag = strings.TrimSpace(urlTag)
 
@@ -283,6 +289,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			Departments    map[string]string
 			Domains        map[string]string
 			ClientTag      string
+			Statuses       map[string]string
 		}{
 			JsNonce:        nonce,
 			WebmasterName:  webmasterName,
@@ -290,6 +297,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			Departments:    departments,
 			Domains:        domains,
 			ClientTag:      urlTag,
+			Statuses:       statuses,
 		}
 
 		// Execute the template

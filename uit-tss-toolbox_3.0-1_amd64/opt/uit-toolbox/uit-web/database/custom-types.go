@@ -63,16 +63,6 @@ type DashboardInventorySummary struct {
 	AvailableForCheckout int    `json:"available_for_checkout"`
 }
 
-type DepartmentList struct {
-	Department          string `json:"department"`
-	DepartmentFormatted string `json:"department_formatted"`
-}
-
-type DomainList struct {
-	Domain          string `json:"domain"`
-	DomainFormatted string `json:"domain_formatted"`
-}
-
 type AllTags struct {
 	Tagnumber int `json:"tagnumber"`
 }

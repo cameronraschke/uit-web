@@ -50,24 +50,19 @@ func (repo *Repo) GetDepartments(ctx context.Context) (map[string]string, error)
 	}
 	defer rows.Close()
 
-	var departments []DepartmentList
+	var departmentMap = make(map[string]string)
 	for rows.Next() {
-		var department DepartmentList
-		if err := rows.Scan(&department.Department, &department.DepartmentFormatted); err != nil {
+		var department, departmentFormatted string
+		if err := rows.Scan(&department, &departmentFormatted); err != nil {
 			return nil, err
 		}
-		departments = append(departments, department)
+		departmentMap[department] = departmentFormatted
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	deptMap := make(map[string]string)
-	for i := range departments {
-		deptMap[departments[i].Department] = departments[i].DepartmentFormatted
-	}
-
-	return deptMap, nil
+	return departmentMap, nil
 }
 
 func (repo *Repo) GetDomains(ctx context.Context) (map[string]string, error) {
@@ -77,24 +72,41 @@ func (repo *Repo) GetDomains(ctx context.Context) (map[string]string, error) {
 	}
 	defer rows.Close()
 
-	var domains []DomainList
+	var domainMap = make(map[string]string)
 	for rows.Next() {
-		var domain DomainList
-		if err := rows.Scan(&domain.Domain, &domain.DomainFormatted); err != nil {
+		var domain, domainFormatted string
+		if err := rows.Scan(&domain, &domainFormatted); err != nil {
 			return nil, err
 		}
-		domains = append(domains, domain)
+		domainMap[domain] = domainFormatted
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	domainMap := make(map[string]string)
-	for i := range domains {
-		domainMap[domains[i].Domain] = domains[i].DomainFormatted
+	return domainMap, nil
+}
+
+func (repo *Repo) GetStatuses(ctx context.Context) (map[string]string, error) {
+	rows, err := repo.DB.QueryContext(ctx, "SELECT status, status_formatted FROM static_statuses ORDER BY status;")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var statusMap = make(map[string]string)
+	for rows.Next() {
+		var status, statusFormatted string
+		if err := rows.Scan(&status, &statusFormatted); err != nil {
+			return nil, err
+		}
+		statusMap[status] = statusFormatted
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
-	return domainMap, nil
+	return statusMap, nil
 }
 
 func (repo *Repo) ClientLookupByTag(ctx context.Context, tag int64) (*ClientLookup, error) {
