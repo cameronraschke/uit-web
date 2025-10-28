@@ -140,3 +140,16 @@ type InventoryTableData struct {
 	Note                *string    `json:"note"`
 	LastUpdated         *time.Time `json:"last_updated"`
 }
+
+type InventoryFilterOptions struct {
+	Tagnumber          *int64  `json:"tagnumber"`
+	SystemSerial       *string `json:"system_serial"`
+	Location           *string `json:"location"`
+	SystemManufacturer *string `json:"system_manufacturer"`
+	SystemModel        *string `json:"system_model"`
+	Department         *string `json:"department"`
+	Domain             *string `json:"domain"`
+	Status             *string `json:"status"`
+	Broken             *bool   `json:"broken"`
+	HasImages          *bool   `json:"has_images"`
+}

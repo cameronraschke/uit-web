@@ -1,6 +1,17 @@
-async function getInventoryTableData() {
+async function getInventoryTableData(filterTag, filterSerial, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages) {
+  const query = new URLSearchParams();
+  if (filterTag) query.append("tagnumber", filterTag);
+  if (filterSerial) query.append("system_serial", filterSerial);
+  if (filterLocation) query.append("location", filterLocation);
+  if (filterDepartment) query.append("department", filterDepartment);
+  if (filterManufacturer) query.append("system_manufacturer", filterManufacturer);
+  if (filterModel) query.append("system_model", filterModel);
+  if (filterDomain) query.append("domain", filterDomain);
+  if (filterStatus) query.append("status", filterStatus);
+  if (filterBroken) query.append("broken", filterBroken);
+  if (filterHasImages) query.append("has_images", filterHasImages);
   try {
-    const response = await fetch('/api/inventory');
+    const response = await fetch(`/api/inventory/filter?${query.toString()}`);
     const rawData = await response.text();
     const jsonData = rawData.trim() ? JSON.parse(rawData) : [];
     if (jsonData && typeof jsonData === 'object' && !Array.isArray(jsonData) && Object.prototype.hasOwnProperty.call(jsonData, 'error')) {
@@ -13,10 +24,12 @@ async function getInventoryTableData() {
   }
 }
 
-async function renderInventoryTable() {
+async function renderInventoryTable(tableData = null) {
   const tableBody = document.getElementById('inventory-table-body')
   try {
-    const tableData = await getInventoryTableData();
+    if (!tableData) {
+      tableData = await getInventoryTableData();
+    }
     if (!Array.isArray(tableData) || tableData.length === 0) {
       throw new Error('Table data is empty or invalid.');
     }
@@ -41,7 +54,6 @@ async function renderInventoryTable() {
         tagCell.addEventListener('click', () => {
           const tagLookupInput = document.getElementById('inventory-tag-lookup');
           tagLookupInput.value = row.tagnumber;
-          inventoryLookupForm.submit();
         });
       } else {
         tagCell.dataset.tagnumber = null;
@@ -56,6 +68,9 @@ async function renderInventoryTable() {
           serialCell.textContent = row.system_serial.substring(0, 12) + '...';
           serialCell.title = row.system_serial;
           serialCell.style.cursor = 'pointer';
+          serialCell.addEventListener('click', () => {
+            serialCell.textContent = row.system_serial;
+          }, { once: true });
         } else {
           serialCell.textContent = row.system_serial;
         }

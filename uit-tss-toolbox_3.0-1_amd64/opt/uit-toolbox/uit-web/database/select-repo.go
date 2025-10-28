@@ -452,7 +452,7 @@ func (repo *Repo) GetClientImageManifestByUUID(ctx context.Context, uuid string)
 	return ptrTime(time), ptrInt64(tagnumber), ptrString(filepath), ptrString(thumbnailFilepath), ptrBool(hidden), ptrBool(primaryImage), ptrString(note), nil
 }
 
-func (repo *Repo) GetInventoryTableData(ctx context.Context) ([]*InventoryTableData, error) {
+func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *InventoryFilterOptions) ([]*InventoryTableData, error) {
 	sqlCode := `SELECT locations.tagnumber, locations.system_serial, locations.location, 
 		locationFormatting(locations.location) AS location_formatted,
 		system_data.system_manufacturer, system_data.system_model, locations.department, static_departments.department_formatted,
@@ -464,9 +464,29 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context) ([]*InventoryTableD
 		LEFT JOIN static_departments ON locations.department = static_departments.department
 		LEFT JOIN static_domains ON locations.domain = static_domains.domain
 		WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-		ORDER BY locations.time DESC`
+		AND ($1 IS NULL OR locations.tagnumber = $1)
+		AND ($2 IS NULL OR locations.system_serial ILIKE '%' || $2 || '%')
+		AND ($3 IS NULL OR locations.location ILIKE '%' || $3 || '%')
+		AND ($4 IS NULL OR system_data.system_manufacturer ILIKE '%' || $4 || '%')
+		AND ($5 IS NULL OR system_data.system_model ILIKE '%' || $5 || '%')
+		AND ($6 IS NULL OR locations.department = $6)
+		AND ($7 IS NULL OR locations.domain = $7)
+		AND ($8 IS NULL OR locations.status = $8)
+		AND ($9 IS NULL OR locations.broken = CASE WHEN $9 = TRUE THEN TRUE WHEN $9 = FALSE THEN FALSE END)
+		AND ($10 IS NULL OR EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber))
+		ORDER BY locations.time DESC;`
 
-	rows, err := repo.DB.QueryContext(ctx, sqlCode)
+	rows, err := repo.DB.QueryContext(ctx, sqlCode,
+		filterOptions.Tagnumber,
+		filterOptions.SystemSerial,
+		filterOptions.Location,
+		filterOptions.SystemManufacturer,
+		filterOptions.SystemModel,
+		filterOptions.Department,
+		filterOptions.Domain,
+		filterOptions.Status,
+		filterOptions.Broken,
+		filterOptions.HasImages)
 	if err != nil {
 		return nil, err
 	}

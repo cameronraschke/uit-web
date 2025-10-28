@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -714,7 +715,39 @@ func GetInventoryTableData(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	inventoryTableData, err := repo.GetInventoryTableData(ctx)
+	filterTag, err := strconv.ParseInt(strings.TrimSpace(r.URL.Query().Get("tagnumber")), 10, 64)
+	if err != nil {
+		log.Info("Invalid tagnumber filter provided: " + requestIP + " (" + requestURL + "): " + err.Error())
+	}
+	filterSerial := strings.TrimSpace(r.URL.Query().Get("system_serial"))
+	filterLocation := strings.TrimSpace(r.URL.Query().Get("location"))
+	filterManufacturer := strings.TrimSpace(r.URL.Query().Get("manufacturer"))
+	filterModel := strings.TrimSpace(r.URL.Query().Get("model"))
+	filterDepartment := strings.TrimSpace(r.URL.Query().Get("department"))
+	filterDomain := strings.TrimSpace(r.URL.Query().Get("domain"))
+	filterStatus := strings.TrimSpace(r.URL.Query().Get("status"))
+	filterBroken, err := strconv.ParseBool(strings.TrimSpace(r.URL.Query().Get("broken")))
+	if err != nil {
+		log.Info("Invalid broken filter provided: " + requestIP + " (" + requestURL + "): " + err.Error())
+	}
+	filterHasImages, err := strconv.ParseBool(strings.TrimSpace(r.URL.Query().Get("has_images")))
+	if err != nil {
+		log.Info("Invalid has_images filter provided: " + requestIP + " (" + requestURL + "): " + err.Error())
+	}
+	filterOptions := &database.InventoryFilterOptions{
+		Tagnumber:          &filterTag,
+		SystemSerial:       &filterSerial,
+		Location:           &filterLocation,
+		SystemManufacturer: &filterManufacturer,
+		SystemModel:        &filterModel,
+		Department:         &filterDepartment,
+		Domain:             &filterDomain,
+		Status:             &filterStatus,
+		Broken:             &filterBroken,
+		HasImages:          &filterHasImages,
+	}
+
+	inventoryTableData, err := repo.GetInventoryTableData(ctx, filterOptions)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.Info("Inventory table data query error: " + requestIP + " (" + requestURL + "): " + err.Error())

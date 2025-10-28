@@ -143,25 +143,41 @@
       </div>
 
       <div class="flex-box inventory">
-        <form id="inventory-search-form">
-          <div>
-            <div><label for="inventory-search-tagnumber">Search Inventory:</label></div>
-            <div><button type="button" id="inventory-refresh-button">Refresh Inventory</button></div>
-            <div><input type="text" id="inventory-search-tagnumber" name="tagnumber" 
-            form="inventory-search-form" 
+        <form id="inventory-filter-form">
+          <div class="inventory-lookup-label"><h3>Advanced Search</h3></div>
+          <input type="text" id="inventory-filter-tagnumber" name="tagnumber"
+            form="inventory-filter-form"
             placeholder="Tag Number"
-            pattern="[0-9]*" /></div>
-          </div>
-          <div><select id="inventory-search-model" name="model" form="inventory-search-form"></select></div>
-          <div><select id="inventory-search-location" name="location" form="inventory-search-form"></select></div>
-          <div><select id="inventory-search-status" name="status" form="inventory-search-form"></select></div>
+            minlength="0"
+            maxlength="6"
+            pattern="[0-9]{6}" /></div>
+          <input type="text" id="inventory-filter-serial" name="serial"
+            form="inventory-filter-form"
+            placeholder="Serial Number"
+            minlength="0"
+            maxlength="64"
+            pattern="[A-Za-z0-9\-_]{1,64}" />
+          <select id="inventory-filter-location" name="location" form="inventory-filter-form"></select>
+          <select id="inventory-filter-department" name="department" form="inventory-filter-form"></select>
+          <select id="inventory-filter-manufacturer" name="manufacturer" form="inventory-filter-form"></select>
+          <select id="inventory-filter-model" name="model" form="inventory-filter-form"></select>
+          <select id="inventory-filter-domain" name="domain" form="inventory-filter-form"></select>
+          <select id="inventory-filter-status" name="status" form="inventory-filter-form"></select>
+          <select id="inventory-filter-broken" name="broken" form="inventory-filter-form"></select>
+          <select id="inventory-filter-has_images" name="has_images" form="inventory-filter-form">
+            <option value="" selected>Has Images?</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+          <button type="submit" id="inventory-submit-button">Reset Search</button>
+          <button type="reset" id="inventory-reset-button">Reset Search</button>
         </form>
       </div>
     </div>
 
     <section>
-      <div id="inventory-search-container">
-        <input id="inventory-search" type="text" placeholder="Filter inventory...">
+      <div id="inventory-filter-container">
+        <input id="inventory-filter" type="text" placeholder="Filter inventory...">
       </div>
       <table id="inventory-table">
         <thead>

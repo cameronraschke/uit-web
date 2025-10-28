@@ -1,5 +1,6 @@
 let updatingInventory = false;
 
+// Inventory update form (and lookup)
 const inventoryLookupWarningMessage = document.getElementById('existing-inventory-message');
 const inventoryLookupForm = document.getElementById('inventory-lookup-form');
 const inventoryLookupTagInput = document.getElementById('inventory-tag-lookup');
@@ -14,10 +15,6 @@ const inventoryUpdateSubmitButton = document.getElementById('inventory-update-su
 const inventoryUpdateCancelButton = document.getElementById('inventory-update-cancel-button');
 const tagDatalist = document.getElementById('inventory-tag-suggestions');
 const clientImagesLink = document.getElementById('client_images_link');
-
-function postInventoryData() {
-  return null;
-}
 
 async function getTagOrSerial(tagnumber, serial) {
   const query = new URLSearchParams();
@@ -302,3 +299,26 @@ async function populateLocationForm(tag) {
     if (locationFormData.note) inventoryUpdateForm.querySelector("#note").value = locationFormData.note;
   }
 }
+
+
+const inventoryFilterForm = document.getElementById('inventory-filter-form');
+inventoryFilterForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  // Inventory filter form
+  const filterTag = document.getElementById('inventory-filter-tagnumber').value.trim() || null;
+  const filterSerial = document.getElementById('inventory-filter-serial').value.trim() || null;
+  const filterLocation = document.getElementById('inventory-filter-location').value.trim() || null;
+  const filterDepartment = document.getElementById('inventory-filter-department').value.trim() || null;
+  const filterManufacturer = document.getElementById('inventory-filter-manufacturer').value.trim() || null;
+  const filterModel = document.getElementById('inventory-filter-model').value.trim() || null;
+  const filterDomain = document.getElementById('inventory-filter-domain').value.trim() || null;
+  const filterStatus = document.getElementById('inventory-filter-status').value.trim() || null;
+  const filterBroken = document.getElementById('inventory-filter-broken').value.trim() || null;
+  const filterHasImages = document.getElementById('inventory-filter-has_images').value.trim() || null;
+
+  try {
+    await renderInventoryTable(await getInventoryTableData(filterTag, filterSerial, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages));
+  } catch (error) {
+    console.error("Error fetching inventory data:", error);
+  }
+});
