@@ -109,6 +109,52 @@ func (repo *Repo) GetStatuses(ctx context.Context) (map[string]string, error) {
 	return statusMap, nil
 }
 
+func (repo *Repo) GetLocations(ctx context.Context) (map[string]string, error) {
+	sqlCode := `SELECT location, locationFormatting(location) AS location_formatted FROM locations WHERE time > NOW() - INTERVAL '6 MONTH' AND location IS NOT NULL GROUP BY location ORDER BY location ASC;`
+	rows, err := repo.DB.QueryContext(ctx, sqlCode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var locationMap = make(map[string]string)
+
+	for rows.Next() {
+		var location, locationFormatted string
+		if err := rows.Scan(&location, &locationFormatted); err != nil {
+			return nil, err
+		}
+		locationMap[location] = locationFormatted
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return locationMap, nil
+}
+
+func (repo *Repo) GetManufacturersAndModels(ctx context.Context) (map[string]string, error) {
+	rows, err := repo.DB.QueryContext(ctx, "SELECT system_manufacturer, system_model FROM system_data WHERE system_manufacturer IS NOT NULL AND system_model IS NOT NULL GROUP BY system_manufacturer, system_model ORDER BY system_manufacturer ASC, system_model ASC;")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var manufacturerModelMap = make(map[string]string)
+	for rows.Next() {
+		var manufacturer, model string
+		if err := rows.Scan(&manufacturer, &model); err != nil {
+			return nil, err
+		}
+		manufacturerModelMap[model] = manufacturer
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return manufacturerModelMap, nil
+}
+
 func (repo *Repo) ClientLookupByTag(ctx context.Context, tag int64) (*ClientLookup, error) {
 	var clientLookup ClientLookup
 	row := repo.DB.QueryRowContext(ctx, "SELECT tagnumber, system_serial FROM locations WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1;", tag)

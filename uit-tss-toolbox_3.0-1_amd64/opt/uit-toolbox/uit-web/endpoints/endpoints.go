@@ -279,25 +279,35 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
+		ManufacturersAndModels, err := db.GetManufacturersAndModels(ctx)
+		if err != nil {
+			log.Error("Cannot get manufacturer and model list from database: " + err.Error())
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
 		urlTag := req.URL.Query().Get("tagnumber")
 		urlTag = strings.TrimSpace(urlTag)
 
 		templateData := struct {
-			JsNonce        string
-			WebmasterName  string
-			WebmasterEmail string
-			Departments    map[string]string
-			Domains        map[string]string
-			ClientTag      string
-			Statuses       map[string]string
+			JsNonce                   string
+			WebmasterName             string
+			WebmasterEmail            string
+			Departments               map[string]string
+			Domains                   map[string]string
+			ClientTag                 string
+			Statuses                  map[string]string
+			GetManufacturersAndModels map[string]string
 		}{
-			JsNonce:        nonce,
-			WebmasterName:  webmasterName,
-			WebmasterEmail: webmasterEmail,
-			Departments:    departments,
-			Domains:        domains,
-			ClientTag:      urlTag,
-			Statuses:       statuses,
+			JsNonce:                   nonce,
+			WebmasterName:             webmasterName,
+			WebmasterEmail:            webmasterEmail,
+			Departments:               departments,
+			Domains:                   domains,
+			ClientTag:                 urlTag,
+			Statuses:                  statuses,
+			GetManufacturersAndModels: ManufacturersAndModels,
 		}
 
 		// Execute the template

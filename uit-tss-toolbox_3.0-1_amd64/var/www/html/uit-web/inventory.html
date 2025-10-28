@@ -161,12 +161,18 @@
             <span>
               <select id="inventory-filter-location" name="location" form="inventory-filter-form">
                 <option value="" selected>Location</option>
+                {{ - range $location, $locationReadable := .Locations }}
+                  <option value="{{ $location }}">{{ $locationReadable }}</option>
+                {{ - end }}
               </select>
               <a id="inventory-filter-location-reset" href="">x</a>
             </span>
             <span>
               <select id="inventory-filter-department" name="department" form="inventory-filter-form">
                 <option value="" selected>Department</option>
+                {{ - range $department, $departmentReadable := .Departments }}
+                  <option value="{{ $department }}">{{ $departmentReadable }}</option>
+                {{ - end }}
               </select>
               <a id="inventory-filter-department-reset" href="">x</a>
             </span>
@@ -179,16 +185,25 @@
             <span>
               <select id="inventory-filter-model" name="model" form="inventory-filter-form">
                 <option value="" selected>Model</option>
+                {{ - range $model, $manufacturer := .GetManufacturersAndModels }}
+                  <option value="{{ $model }}">{{ $manufacturer }} - {{ $model }}</option>
+                {{ - end }}
               </select>
               <a id="inventory-filter-model-reset" href="">x</a></span>
             <span>
               <select id="inventory-filter-domain" name="domain" form="inventory-filter-form">
                 <option value="" selected>AD Domain</option>
+                {{ - range $domain, $domainReadable := .GetManufacturersAndModels }}
+                  <option value="{{ $domain }}">{{ $domainReadable }}</option>
+                {{ - end }}
               </select>
               <a id="inventory-filter-domain-reset" href="">x</a></span>
             <span>
               <select id="inventory-filter-status" name="status" form="inventory-filter-form">
                 <option value="" selected>Status</option>
+                {{ - range $status, $statusReadable := .Statuses }}
+                  <option value="{{ $status }}">{{ $statusReadable }}</option>
+                {{ - end }}
               </select>
               <a id="inventory-filter-status-reset" href="">x</a></span>
             <span>
