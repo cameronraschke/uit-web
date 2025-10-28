@@ -715,36 +715,49 @@ func GetInventoryTableData(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	filterTag, err := strconv.ParseInt(strings.TrimSpace(r.URL.Query().Get("tagnumber")), 10, 64)
-	if err != nil {
-		log.Info("Invalid tagnumber filter provided: " + requestIP + " (" + requestURL + "): " + err.Error())
+	getStr := func(key string) *string {
+		s := strings.TrimSpace(r.URL.Query().Get(key))
+		if s == "" {
+			return nil
+		}
+		return &s
 	}
-	filterSerial := strings.TrimSpace(r.URL.Query().Get("system_serial"))
-	filterLocation := strings.TrimSpace(r.URL.Query().Get("location"))
-	filterManufacturer := strings.TrimSpace(r.URL.Query().Get("manufacturer"))
-	filterModel := strings.TrimSpace(r.URL.Query().Get("model"))
-	filterDepartment := strings.TrimSpace(r.URL.Query().Get("department"))
-	filterDomain := strings.TrimSpace(r.URL.Query().Get("domain"))
-	filterStatus := strings.TrimSpace(r.URL.Query().Get("status"))
-	filterBroken, err := strconv.ParseBool(strings.TrimSpace(r.URL.Query().Get("broken")))
-	if err != nil {
-		log.Info("Invalid broken filter provided: " + requestIP + " (" + requestURL + "): " + err.Error())
+	getInt64 := func(key string) *int64 {
+		raw := strings.TrimSpace(r.URL.Query().Get(key))
+		if raw == "" {
+			return nil
+		}
+		v, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			log.Info("Invalid " + key + " filter provided: " + requestIP + " (" + requestURL + "): " + err.Error())
+			return nil
+		}
+		return &v
 	}
-	filterHasImages, err := strconv.ParseBool(strings.TrimSpace(r.URL.Query().Get("has_images")))
-	if err != nil {
-		log.Info("Invalid has_images filter provided: " + requestIP + " (" + requestURL + "): " + err.Error())
+	getBool := func(key string) *bool {
+		raw := strings.TrimSpace(r.URL.Query().Get(key))
+		if raw == "" {
+			return nil
+		}
+		v, err := strconv.ParseBool(raw)
+		if err != nil {
+			log.Info("Invalid " + key + " filter provided: " + requestIP + " (" + requestURL + "): " + err.Error())
+			return nil
+		}
+		return &v
 	}
+
 	filterOptions := &database.InventoryFilterOptions{
-		Tagnumber:          &filterTag,
-		SystemSerial:       &filterSerial,
-		Location:           &filterLocation,
-		SystemManufacturer: &filterManufacturer,
-		SystemModel:        &filterModel,
-		Department:         &filterDepartment,
-		Domain:             &filterDomain,
-		Status:             &filterStatus,
-		Broken:             &filterBroken,
-		HasImages:          &filterHasImages,
+		Tagnumber:          getInt64("tagnumber"),
+		SystemSerial:       getStr("system_serial"),
+		Location:           getStr("location"),
+		SystemManufacturer: getStr("manufacturer"),
+		SystemModel:        getStr("model"),
+		Department:         getStr("department"),
+		Domain:             getStr("domain"),
+		Status:             getStr("status"),
+		Broken:             getBool("broken"),
+		HasImages:          getBool("has_images"),
 	}
 
 	inventoryTableData, err := repo.GetInventoryTableData(ctx, filterOptions)
