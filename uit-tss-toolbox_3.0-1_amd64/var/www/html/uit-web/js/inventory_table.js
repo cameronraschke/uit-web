@@ -194,13 +194,14 @@ async function renderInventoryTable(tableData = null) {
     }
     tableBody.appendChild(fragment);
   } catch (error) {
-    console.error('Error rendering inventory table:', error);
+    console.error('Error rendering inventory table:', error.message);
+    tableBody.innerHTML = '';
     const errRow = document.createElement('tr');
     const errCell = document.createElement('td');
     errCell.colSpan = 10;
-    errCell.textContent = 'No inventory data available: ' + error.message;
+    errCell.textContent = 'No results found.';
     errRow.appendChild(errCell);
-    tableBody.replaceChild(errRow, tableBody.firstChild);
+    tableBody.appendChild(errRow);
     return;
   }
 }

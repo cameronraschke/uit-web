@@ -189,7 +189,7 @@
               <select id="inventory-filter-model" name="model" form="inventory-filter-form">
                 <option value="" selected>Model</option>
                 {{ range $model, $modelFormatted := .Models }}
-                  <option value="{{ $model }}">{{ $modelFormatted }} - {{ $model }}</option>
+                  <option value="{{ $model }}">{{ $modelFormatted }}</option>
                 {{ end }}
               </select>
               <a id="inventory-filter-model-reset" href="">x</a></span>
