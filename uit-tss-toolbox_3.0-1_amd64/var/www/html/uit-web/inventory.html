@@ -179,21 +179,24 @@
             <span>
               <select id="inventory-filter-manufacturer" name="manufacturer" form="inventory-filter-form">
                 <option value="" selected>Manufacturer</option>
+                {{ range $manufacturer, $manufacturerFormatted := .Manufacturers }}
+                  <option value="{{ $manufacturer }}">{{ $manufacturerFormatted }}</option>
+                {{ end }}
               </select>
               <a id="inventory-filter-manufacturer-reset" href="">x</a>
             </span>
             <span>
               <select id="inventory-filter-model" name="model" form="inventory-filter-form">
                 <option value="" selected>Model</option>
-                {{ range $model, $manufacturer := .GetManufacturersAndModels }}
-                  <option value="{{ $model }}">{{ $manufacturer }} - {{ $model }}</option>
+                {{ range $model, $modelFormatted := .Models }}
+                  <option value="{{ $model }}">{{ $modelFormatted }} - {{ $model }}</option>
                 {{ end }}
               </select>
               <a id="inventory-filter-model-reset" href="">x</a></span>
             <span>
               <select id="inventory-filter-domain" name="domain" form="inventory-filter-form">
                 <option value="" selected>AD Domain</option>
-                {{ range $domain, $domainReadable := .GetManufacturersAndModels }}
+                {{ range $domain, $domainReadable := .Domains }}
                   <option value="{{ $domain }}">{{ $domainReadable }}</option>
                 {{ end }}
               </select>

@@ -133,26 +133,61 @@ func (repo *Repo) GetLocations(ctx context.Context) (map[string]string, error) {
 	return locationMap, nil
 }
 
-func (repo *Repo) GetManufacturersAndModels(ctx context.Context) (map[string]string, error) {
-	rows, err := repo.DB.QueryContext(ctx, "SELECT system_manufacturer, system_model FROM system_data WHERE system_manufacturer IS NOT NULL AND system_model IS NOT NULL GROUP BY system_manufacturer, system_model ORDER BY system_manufacturer ASC, system_model ASC;")
+func (repo *Repo) GetModels(ctx context.Context) (map[string]string, error) {
+	sqlCode := `SELECT system_model, (CASE WHEN LENGTH(system_model) > 17 THEN CONCAT(LEFT(system_model, 8), '...', RIGHT(system_model, 9)) ELSE system_model END) AS system_model_formatted 
+		FROM system_data 
+		WHERE system_manufacturer IS NOT NULL 
+			AND system_model IS NOT NULL
+		GROUP BY system_manufacturer, system_model 
+		ORDER BY system_manufacturer ASC, system_model ASC;`
+
+	rows, err := repo.DB.QueryContext(ctx, sqlCode)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var manufacturerModelMap = make(map[string]string)
+	var modelMap = make(map[string]string)
 	for rows.Next() {
-		var manufacturer, model string
-		if err := rows.Scan(&manufacturer, &model); err != nil {
+		var model, modelFormatted string
+		if err := rows.Scan(&model, &modelFormatted); err != nil {
 			return nil, err
 		}
-		manufacturerModelMap[model] = manufacturer
+		modelMap[model] = modelFormatted
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return manufacturerModelMap, nil
+	return modelMap, nil
+}
+
+func (repo *Repo) GetManufacturers(ctx context.Context) (map[string]string, error) {
+	sqlCode := `SELECT system_manufacturer, (CASE WHEN LENGTH(system_manufacturer) > 10 THEN CONCAT(LEFT(system_manufacturer, 10), '...') ELSE system_manufacturer END) AS system_manufacturer_formatted
+		FROM system_data 
+		WHERE system_manufacturer IS NOT NULL 
+			AND system_model IS NOT NULL 
+		GROUP BY system_manufacturer, system_model 
+		ORDER BY system_manufacturer ASC, system_model ASC;`
+	rows, err := repo.DB.QueryContext(ctx, sqlCode)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var manufacturerMap = make(map[string]string)
+	for rows.Next() {
+		var manufacturer, manufacturerFormatted string
+		if err := rows.Scan(&manufacturer, &manufacturerFormatted); err != nil {
+			return nil, err
+		}
+		manufacturerMap[manufacturer] = manufacturerFormatted
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return manufacturerMap, nil
 }
 
 func (repo *Repo) ClientLookupByTag(ctx context.Context, tag int64) (*ClientLookup, error) {

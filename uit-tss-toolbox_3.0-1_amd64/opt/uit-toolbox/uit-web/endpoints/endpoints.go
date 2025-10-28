@@ -280,9 +280,16 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		manufacturersAndModels, err := db.GetManufacturersAndModels(ctx)
+		manufacturers, err := db.GetManufacturers(ctx)
 		if err != nil {
-			log.Error("Cannot get manufacturer and model list from database: " + err.Error())
+			log.Error("Cannot get manufacturer list from database: " + err.Error())
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		models, err := db.GetModels(ctx)
+		if err != nil {
+			log.Error("Cannot get model list from database: " + err.Error())
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -298,25 +305,27 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		urlTag = strings.TrimSpace(urlTag)
 
 		templateData := struct {
-			JsNonce                   string
-			WebmasterName             string
-			WebmasterEmail            string
-			Departments               map[string]string
-			Domains                   map[string]string
-			ClientTag                 string
-			Statuses                  map[string]string
-			GetManufacturersAndModels map[string]string
-			Locations                 map[string]string
+			JsNonce        string
+			WebmasterName  string
+			WebmasterEmail string
+			Departments    map[string]string
+			Domains        map[string]string
+			ClientTag      string
+			Statuses       map[string]string
+			Manufacturers  map[string]string
+			Models         map[string]string
+			Locations      map[string]string
 		}{
-			JsNonce:                   nonce,
-			WebmasterName:             webmasterName,
-			WebmasterEmail:            webmasterEmail,
-			Departments:               departments,
-			Domains:                   domains,
-			ClientTag:                 urlTag,
-			Statuses:                  statuses,
-			GetManufacturersAndModels: manufacturersAndModels,
-			Locations:                 locations,
+			JsNonce:        nonce,
+			WebmasterName:  webmasterName,
+			WebmasterEmail: webmasterEmail,
+			Departments:    departments,
+			Domains:        domains,
+			ClientTag:      urlTag,
+			Statuses:       statuses,
+			Manufacturers:  manufacturers,
+			Models:         models,
+			Locations:      locations,
 		}
 
 		// Execute the template
