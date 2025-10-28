@@ -28,6 +28,7 @@ async function renderInventoryTable(tableData = null) {
   const tableBody = document.getElementById('inventory-table-body')
   try {
     if (!tableData) {
+      console.log('No table data provided, fetching all inventory data.');
       tableData = await getInventoryTableData();
     }
     if (!Array.isArray(tableData) || tableData.length === 0) {

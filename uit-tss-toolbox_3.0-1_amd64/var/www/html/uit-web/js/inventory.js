@@ -317,7 +317,8 @@ inventoryFilterForm.addEventListener("submit", async (event) => {
   const filterHasImages = document.getElementById('inventory-filter-has_images').value.trim() || null;
 
   try {
-    await renderInventoryTable(await getInventoryTableData(filterTag, filterSerial, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages));
+    const tableData = await getInventoryTableData(filterTag, filterSerial, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages);
+    await renderInventoryTable(tableData);
   } catch (error) {
     console.error("Error fetching inventory data:", error);
   }

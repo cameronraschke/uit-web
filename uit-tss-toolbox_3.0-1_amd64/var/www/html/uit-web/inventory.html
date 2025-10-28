@@ -145,39 +145,98 @@
       <div class="flex-box inventory">
         <form id="inventory-filter-form">
           <div class="inventory-lookup-label"><h3>Advanced Search</h3></div>
-          <input type="text" id="inventory-filter-tagnumber" name="tagnumber"
-            form="inventory-filter-form"
-            placeholder="Tag Number"
-            minlength="0"
-            maxlength="6"
-            pattern="[0-9]{6}" /></div>
-          <input type="text" id="inventory-filter-serial" name="serial"
-            form="inventory-filter-form"
-            placeholder="Serial Number"
-            minlength="0"
-            maxlength="64"
-            pattern="[A-Za-z0-9\-_]{1,64}" />
-          <select id="inventory-filter-location" name="location" form="inventory-filter-form"></select>
-          <select id="inventory-filter-department" name="department" form="inventory-filter-form"></select>
-          <select id="inventory-filter-manufacturer" name="manufacturer" form="inventory-filter-form"></select>
-          <select id="inventory-filter-model" name="model" form="inventory-filter-form"></select>
-          <select id="inventory-filter-domain" name="domain" form="inventory-filter-form"></select>
-          <select id="inventory-filter-status" name="status" form="inventory-filter-form"></select>
-          <select id="inventory-filter-broken" name="broken" form="inventory-filter-form"></select>
-          <select id="inventory-filter-has_images" name="has_images" form="inventory-filter-form">
-            <option value="" selected>Has Images?</option>
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-          </select>
-          <button type="submit" id="inventory-submit-button">Reset Search</button>
-          <button type="reset" id="inventory-reset-button">Reset Search</button>
-        </form>
+          <div class="grid-container inventory inventory-filter-form">
+            <input type="text" id="inventory-filter-tagnumber" name="tagnumber"
+              form="inventory-filter-form"
+              placeholder="Tag Number"
+              minlength="0"
+              maxlength="6"
+              pattern="[0-9]{6}" />
+            <input type="text" id="inventory-filter-serial" name="serial"
+              form="inventory-filter-form"
+              placeholder="Serial Number"
+              minlength="0"
+              maxlength="64"
+              pattern="[A-Za-z0-9\-_]{1,64}" />
+            <span>
+              <select id="inventory-filter-location" name="location" form="inventory-filter-form">
+                <option value="" selected>Location</option>
+              </select>
+              <a id="inventory-filter-location-reset" href="">x</a>
+            </span>
+            <span>
+              <select id="inventory-filter-department" name="department" form="inventory-filter-form">
+                <option value="" selected>Department</option>
+              </select>
+              <a id="inventory-filter-department-reset" href="">x</a>
+            </span>
+            <span>
+              <select id="inventory-filter-manufacturer" name="manufacturer" form="inventory-filter-form">
+                <option value="" selected>Manufacturer</option>
+              </select>
+              <a id="inventory-filter-manufacturer-reset" href="">x</a>
+            </span>
+            <span>
+              <select id="inventory-filter-model" name="model" form="inventory-filter-form">
+                <option value="" selected>Model</option>
+              </select>
+              <a id="inventory-filter-model-reset" href="">x</a></span>
+            <span>
+              <select id="inventory-filter-domain" name="domain" form="inventory-filter-form">
+                <option value="" selected>AD Domain</option>
+              </select>
+              <a id="inventory-filter-domain-reset" href="">x</a></span>
+            <span>
+              <select id="inventory-filter-status" name="status" form="inventory-filter-form">
+                <option value="" selected>Status</option>
+              </select>
+              <a id="inventory-filter-status-reset" href="">x</a></span>
+            <span>
+              <select id="inventory-filter-broken" name="broken" form="inventory-filter-form">
+                <option value="" selected>Broken?</option>
+                <option value="true">Yes - Is broken</option>
+                <option value="false">No - Is functional</option>
+              </select>
+              <a id="inventory-filter-broken-reset" href="">x</a></span>
+            <span>
+              <select id="inventory-filter-has_images" name="has_images" form="inventory-filter-form">
+                <option value="" selected>Has Images?</option>
+                <option value="true">Yes - Has images</option>
+                <option value="false">No - Missing images</option>
+              </select>
+              <a id="inventory-filter-has_images-reset" href="">x</a>
+            </span>
+            <button type="submit" class="submit" id="inventory-submit-button">Search</button>
+            <button type="reset" class="cancel" id="inventory-reset-button">Reset Search</button>
+          </form>
+        </div>
       </div>
     </div>
 
     <section>
-      <div id="inventory-filter-container">
-        <input id="inventory-filter" type="text" placeholder="Filter inventory...">
+      <div id="inventory-sort-container" class="flex-container inventory-sort">
+        <input id="inventory-sort-tagnumber" type="text" placeholder="Search tags...">
+        <input id="inventory-sort-serial" type="text" placeholder="Search serial...">
+        <select id="inventory-sort-time">
+          <option value="time-desc" selected>Sort by Last Entry (Newest First)</option>
+          <option value="time-asc">Sort by Last Entry (Oldest First)</option>
+        </select>
+        <select id="inventory-sort-by">
+          <option value="tagnumber-asc" selected>Sort by Tag # (Asc)</option>
+          <option value="tagnumber-desc">Sort by Tag # (Desc)</option>
+          <option value="location-asc">Sort by Location (A-Z)</option>
+          <option value="location-desc">Sort by Location (Z-A)</option>
+          <option value="manufacturer-asc">Sort by Manufacturer (A-Z)</option>
+          <option value="manufacturer-desc">Sort by Manufacturer (Z-A)</option>
+          <option value="model-asc">Sort by Model (A-Z)</option>
+          <option value="model-desc">Sort by Model (Z-A)</option>
+          <option value="department-asc">Sort by Department (A-Z)</option>
+          <option value="department-desc">Sort by Department (Z-A)</option>
+          <option value="domain-asc">Sort by AD Domain (A-Z)</option>
+          <option value="domain-desc">Sort by AD Domain (Z-A)</option>
+          <option value="status-asc">Sort by Status (A-Z)</option>
+          <option value="status-desc">Sort by Status (Z-A)</option>
+        </select>
       </div>
       <table id="inventory-table">
         <thead>
