@@ -6,6 +6,7 @@ const inventoryLookupTagInput = document.getElementById('inventory-tag-lookup');
 const inventoryLookupSerialInput = document.getElementById('inventory-serial-lookup');
 const inventoryLookupSubmitButton = document.getElementById('inventory-lookup-submit-button');
 const inventoryLookupResetButton = document.getElementById('inventory-lookup-reset-button');
+const clientMoreDetailsButton = document.getElementById('client-more-details');
 const inventoryUpdateForm = document.getElementById('inventory-update-form');
 const inventoryUpdateSection = document.getElementById('inventory-update-section');
 const inventoryLocationInput = document.getElementById('location');
@@ -93,6 +94,7 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
   inventoryLookupSubmitButton.style.cursor = "not-allowed";
   inventoryLookupSubmitButton.style.border = "1px solid gray";
   inventoryLookupResetButton.style.display = "inline-block";
+  clientMoreDetailsButton.style.display = "inline-block";
   if (lookupTag) {
     clientImagesLink.href = `/client_images.html?tagnumber=${lookupTag || ''}`;
     clientImagesLink.target = "_blank";
@@ -115,6 +117,7 @@ function resetInventoryForm() {
   inventoryLookupSubmitButton.style.border = "1px solid black";
   inventoryLookupSubmitButton.disabled = false;
   inventoryLookupResetButton.style.display = "none";
+  clientMoreDetailsButton.style.display = "none";
   inventoryUpdateSection.style.display = "none";
   inventoryLookupWarningMessage.style.display = "none";
   inventoryLookupWarningMessage.textContent = "";
@@ -124,6 +127,14 @@ function resetInventoryForm() {
 inventoryLookupResetButton.addEventListener("click", (event) => {
   event.preventDefault();
   resetInventoryForm();
+});
+
+clientMoreDetailsButton.addEventListener("click", (event) => {
+  event.preventDefault();
+  const tag = inventoryLookupTagInput.value;
+  if (tag) {
+    window.location.href = `/client/${tag}`;
+  }
 });
 
 inventoryUpdateCancelButton.addEventListener("click", (event) => {

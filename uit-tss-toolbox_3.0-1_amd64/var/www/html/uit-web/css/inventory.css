@@ -12,6 +12,13 @@
   border: 1px solid black;
 }
 
+#client-more-details {
+  display: none;
+  margin-left: 1rem;
+  background-color: #00b3897e;
+  border: 1px solid black;
+}
+
 #inventory-update-section {
   display: none;
 }

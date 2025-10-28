@@ -119,6 +119,10 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
   flex-direction: column;
 }
 
+.bold {
+  font-weight: bold;
+}
+
 .error-message {
   display: none;
   max-width: 70%;

@@ -14,14 +14,12 @@
     <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/header.js"></script>
     <div><h1>UIT - ITSC Inventory Management</h1></div>
     <div id="main-content"><h2>Update and View Inventory</h2></div>
-
-    <div class="flex-container inventory">
+    <div id="inventory-section" class="flex-container inventory">
       <div class="flex-box inventory">
         <div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
           <form id="inventory-lookup-form">
             <div class="inventory-lookup-label"><h3>Update Client Information</h3></div>
             <div class="grid-container inventory inventory-lookup-form">
-            <a href="#inventory_form"></a>
             <div class="inventory-lookup-label"><p>Tag Number/Serial Number Lookup:</p></div>
             <div><p>Search Tag Number:</p></div>
             <div><p>Search Serial Number:</p></div>
@@ -48,6 +46,7 @@
               <div>
                 <button type="submit" id="inventory-lookup-submit-button">Search for Client</button>
                 <button type="reset" id="inventory-lookup-reset-button">Reset Search</button>
+                <button type="button" id="client-more-details">More Details</button>
               </div>
             </div>
           </form>
@@ -57,7 +56,7 @@
           <form id="inventory-update-form" enctype="multipart/form-data" method="POST" action="/api/update_inventory">
             <input type="hidden" id="csrf-token" value="" />
             <div class="grid-container inventory inventory-update-form">
-              <div class="inventory-lookup-label"><p>Location, Manufacturer, and Model:</p></div>
+              <div class="inventory-lookup-label"><p class="bold">Location, Manufacturer, and Model:</p></div>
               <div><p class="required-field">Location:</p></div>
               <div><p class="required-field">Manufacturer/Model:</p></div>
               <div><input type="text" id="location" name="location"
@@ -86,7 +85,7 @@
             </div>
             <div class="vertical-spacer"></div>
             <div class="grid-container inventory inventory-update-form">
-              <div class="inventory-lookup-label"><p>Department and AD Domain:</p></div>
+              <div class="inventory-lookup-label"><p class="bold">Department and AD Domain:</p></div>
               <div><label for="department" class="required-field">Department:</label></div>
               <div><select id="department" name="department">
                 <option value="" disabled selected>Select Department</option>
@@ -106,7 +105,7 @@
             </div>
             <div class="vertical-spacer"></div>
             <div class="grid-container inventory inventory-update-form">
-              <div class="inventory-lookup-label"><p>Health and Status:</p></div>
+              <div class="inventory-lookup-label"><p class="bold">Health and Status:</p></div>
               <label for="broken" class="required-field">Is it Broken?</label>
               <select id="broken" name="broken">
                 <option value="" disabled selected>Is it Broken?</option>

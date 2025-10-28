@@ -35,7 +35,7 @@ async function renderInventoryTable() {
       if (row.tagnumber) {
         tagCell.dataset.tagnumber = row.tagnumber;
         const tagCellLink = document.createElement('a');
-        tagCellLink.setAttribute('href', `inventory_form`);
+        tagCellLink.setAttribute('href', `#inventory-section`);
         tagCellLink.textContent = row.tagnumber;
         tagCell.appendChild(tagCellLink);
         tagCell.addEventListener('click', () => {
