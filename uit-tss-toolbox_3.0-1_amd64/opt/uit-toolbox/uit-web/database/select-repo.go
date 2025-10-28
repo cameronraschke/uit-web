@@ -44,7 +44,7 @@ func (repo *Repo) GetAllTags(ctx context.Context) ([]int, error) {
 }
 
 func (repo *Repo) GetDepartments(ctx context.Context) (map[string]string, error) {
-	rows, err := repo.DB.QueryContext(ctx, "SELECT department, department_readable FROM static_departments ORDER BY department_readable;")
+	rows, err := repo.DB.QueryContext(ctx, "SELECT department, department_formatted FROM static_departments ORDER BY department_formatted;")
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (repo *Repo) GetDepartments(ctx context.Context) (map[string]string, error)
 	var departments []DepartmentList
 	for rows.Next() {
 		var department DepartmentList
-		if err := rows.Scan(&department.Department, &department.DepartmentReadable); err != nil {
+		if err := rows.Scan(&department.Department, &department.DepartmentFormatted); err != nil {
 			return nil, err
 		}
 		departments = append(departments, department)
@@ -64,14 +64,14 @@ func (repo *Repo) GetDepartments(ctx context.Context) (map[string]string, error)
 
 	deptMap := make(map[string]string)
 	for i := range departments {
-		deptMap[departments[i].Department] = departments[i].DepartmentReadable
+		deptMap[departments[i].Department] = departments[i].DepartmentFormatted
 	}
 
 	return deptMap, nil
 }
 
 func (repo *Repo) GetDomains(ctx context.Context) (map[string]string, error) {
-	rows, err := repo.DB.QueryContext(ctx, "SELECT domain, domain_readable FROM static_domains ORDER BY domain_readable;")
+	rows, err := repo.DB.QueryContext(ctx, "SELECT domain, domain_formatted FROM static_domains ORDER BY domain_formatted;")
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (repo *Repo) GetDomains(ctx context.Context) (map[string]string, error) {
 	var domains []DomainList
 	for rows.Next() {
 		var domain DomainList
-		if err := rows.Scan(&domain.Domain, &domain.DomainReadable); err != nil {
+		if err := rows.Scan(&domain.Domain, &domain.DomainFormatted); err != nil {
 			return nil, err
 		}
 		domains = append(domains, domain)
@@ -91,7 +91,7 @@ func (repo *Repo) GetDomains(ctx context.Context) (map[string]string, error) {
 
 	domainMap := make(map[string]string)
 	for i := range domains {
-		domainMap[domains[i].Domain] = domains[i].DomainReadable
+		domainMap[domains[i].Domain] = domains[i].DomainFormatted
 	}
 
 	return domainMap, nil
@@ -455,8 +455,8 @@ func (repo *Repo) GetClientImageManifestByUUID(ctx context.Context, uuid string)
 func (repo *Repo) GetInventoryTableData(ctx context.Context) ([]*InventoryTableData, error) {
 	sqlCode := `SELECT locations.tagnumber, locations.system_serial, locations.location, 
 		locationFormatting(locations.location) AS location_formatted,
-		system_data.system_manufacturer, system_data.system_model, locations.department, static_departments.department_readable,
-		locations.domain, static_domains.domain_readable, client_health.os_installed,  client_health.os_name, locations.status,
+		system_data.system_manufacturer, system_data.system_model, locations.department, static_departments.department_formatted,
+		locations.domain, static_domains.domain_formatted, client_health.os_installed, client_health.os_name, locations.status,
 		locations.functional, locations.note, locations.time AS last_updated
 		FROM locations
 		LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
@@ -464,7 +464,7 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context) ([]*InventoryTableD
 		LEFT JOIN static_departments ON locations.department = static_departments.department
 		LEFT JOIN static_domains ON locations.domain = static_domains.domain
 		WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-		ORDER BY locations.tagnumber DESC`
+		ORDER BY locations.time DESC`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlCode)
 	if err != nil {

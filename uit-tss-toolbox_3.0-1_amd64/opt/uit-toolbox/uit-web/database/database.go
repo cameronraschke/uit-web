@@ -535,7 +535,7 @@ type TagnumberData struct {
 	Location               *string    `json:"location"`
 	RemoteStatus           *string    `json:"remote_status_formatted"`
 	LocationsStatus        *bool      `json:"locations_status"`
-	DepartmentReadable     *string    `json:"department_readable"`
+	DepartmentFormatted    *string    `json:"department_formatted"`
 	MostRecentNote         *string    `json:"most_recent_note"`
 	Note                   *string    `json:"note"`
 	NoteTime               *string    `json:"note_time_formatted"`
@@ -569,7 +569,7 @@ type TagnumberData struct {
 	DiskPowerCycles        *int       `json:"disk_power_cycles"`
 	DiskErrors             *int       `json:"disk_errors"`
 	Domain                 *string    `json:"domain"`
-	DomainReadable         *string    `json:"domain_readable"`
+	DomainFormatted        *string    `json:"domain_formatted"`
 	OsInstalledFormatted   *string    `json:"os_installed_formatted"`
 	CustomerName           *string    `json:"customer_name"`
 	CheckoutDate           *time.Time `json:"checkout_date"`
@@ -590,7 +590,7 @@ func GetTagnumberData(ctx context.Context, tagnumber int) (string, error) {
     (CASE WHEN t3.time = t10.time THEN 1 ELSE 0 END) AS placeholder_bool,
     jobstats.time AS jobstatsTime, locations.tagnumber, locations.system_serial, locations.department, 
     locationFormatting(locations.location) AS location, 
-    (CASE WHEN locations.functional = TRUE THEN 'Broken' ELSE 'Yes' END) AS remote_status_formatted, locations.functional AS locations_status, t2.department_readable, t3.note AS most_recent_note,
+    (CASE WHEN locations.functional = TRUE THEN 'Broken' ELSE 'Yes' END) AS remote_status_formatted, locations.functional AS locations_status, t2.department_formatted, t3.note AS most_recent_note,
     locations.note, TO_CHAR(t3.time, 'MM/DD/YY HH12:MI:SS AM') AS note_time_formatted, 
     (CASE WHEN locations.disk_removed = TRUE THEN 'Yes' ELSE 'No' END) AS disk_removed_formatted, locations.disk_removed,
     (CASE 
@@ -644,7 +644,7 @@ func GetTagnumberData(ctx context.Context, tagnumber int) (string, error) {
       ELSE 'Unknown BIOS Version' 
       END) AS bios_updated_formatted, 
     t4.disk_writes, t4.disk_reads, t4.disk_power_on_hours,
-    t4.disk_power_cycles, t4.disk_errors, locations.domain, (CASE WHEN locations.domain IS NOT NULL THEN static_domains.domain_readable ELSE 'Not Joined' END) AS domain_readable,
+    t4.disk_power_cycles, t4.disk_errors, locations.domain, (CASE WHEN locations.domain IS NOT NULL THEN static_domains.domain_formatted ELSE 'Not Joined' END) AS domain_formatted,
     (CASE 
       WHEN client_health.os_installed = FALSE AND client_health.os_name IS NOT NULL AND client_health.os_name = 'Image Job Failed' THEN CONCAT(client_health.os_name, ' (Failed on ', TO_CHAR(t6.time, 'MM/DD/YY HH12:MI:SS AM'), ')')
       WHEN client_health.os_installed = TRUE AND client_health.os_name IS NOT NULL AND NOT client_health.os_name = 'Unknown OS' THEN CONCAT(client_health.os_name, ' (Imaged on ', TO_CHAR(t6.time, 'MM/DD/YY HH12:MI:SS AM'), ')') 
@@ -657,7 +657,7 @@ func GetTagnumberData(ctx context.Context, tagnumber int) (string, error) {
     LEFT JOIN jobstats ON (locations.tagnumber = jobstats.tagnumber AND jobstats.time IN (SELECT MAX(time) AS time FROM jobstats WHERE tagnumber IS NOT NULL AND system_serial IS NOT NULL AND (host_connected = TRUE OR (uuid LIKE 'techComm-%' AND etheraddress IS NOT NULL)) GROUP BY tagnumber))
     LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
     LEFT JOIN remote ON locations.tagnumber = remote.tagnumber
-    LEFT JOIN (SELECT department, department_readable FROM static_departments) t2
+    LEFT JOIN (SELECT department, department_formatted FROM static_departments) t2
     ON locations.department = t2.department
     LEFT JOIN (SELECT tagnumber, time, note FROM locations WHERE time IN (SELECT MAX(time) FROM locations WHERE note IS NOT NULL GROUP BY tagnumber)) t3
     ON locations.tagnumber = t3.tagnumber
@@ -702,7 +702,7 @@ func GetTagnumberData(ctx context.Context, tagnumber int) (string, error) {
 			&row.Location,
 			&row.RemoteStatus,
 			&row.LocationsStatus,
-			&row.DepartmentReadable,
+			&row.DepartmentFormatted,
 			&row.MostRecentNote,
 			&row.Note,
 			&row.NoteTime,
@@ -736,7 +736,7 @@ func GetTagnumberData(ctx context.Context, tagnumber int) (string, error) {
 			&row.DiskPowerCycles,
 			&row.DiskErrors,
 			&row.Domain,
-			&row.DomainReadable,
+			&row.DomainFormatted,
 			&row.OsInstalledFormatted,
 			&row.CustomerName,
 			&row.CheckoutDate,

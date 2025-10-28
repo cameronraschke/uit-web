@@ -64,13 +64,13 @@ type DashboardInventorySummary struct {
 }
 
 type DepartmentList struct {
-	Department         string `json:"department"`
-	DepartmentReadable string `json:"department_readable"`
+	Department          string `json:"department"`
+	DepartmentFormatted string `json:"department_formatted"`
 }
 
 type DomainList struct {
-	Domain         string `json:"domain"`
-	DomainReadable string `json:"domain_readable"`
+	Domain          string `json:"domain"`
+	DomainFormatted string `json:"domain_formatted"`
 }
 
 type AllTags struct {

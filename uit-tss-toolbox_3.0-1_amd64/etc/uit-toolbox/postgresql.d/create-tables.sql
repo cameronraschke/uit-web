@@ -370,14 +370,14 @@ CREATE TABLE IF NOT EXISTS live_images (
 DROP TABLE IF EXISTS static_departments;
 CREATE TABLE IF NOT EXISTS static_departments (
   department VARCHAR(128) UNIQUE NOT NULL,
-  department_readable VARCHAR(128) NOT NULL,
+  department_formatted VARCHAR(128) NOT NULL,
   owner VARCHAR(64) NOT NULL,
   department_bool BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 INSERT INTO static_departments (
   department,
-  department_readable,
+  department_formatted,
   owner,
   department_bool
 ) VALUES
@@ -422,11 +422,11 @@ VALUES
 DROP TABLE IF EXISTS static_domains;
 CREATE TABLE IF NOT EXISTS static_domains (
   domain VARCHAR(24) UNIQUE NOT NULL,
-  domain_readable VARCHAR(36) DEFAULT NULL
+  domain_formatted VARCHAR(36) DEFAULT NULL
 );
 
 INSERT INTO 
-    static_domains (domain, domain_readable)
+    static_domains (domain, domain_formatted)
 VALUES
     ('IT-TSS-CheckOut', 'TSS Laptop Checkout'),
     ('IT-TSS-Teamleads', 'TSS ITSC Team Leads')

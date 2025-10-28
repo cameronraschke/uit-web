@@ -60,11 +60,14 @@ input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:foc
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }
 
+section {
+  overflow-x: auto;
+}
+
 table {
   width: 90dvw;
   border-collapse: collapse;
   margin: auto;
-  table-layout: fixed;
   overflow: auto;
 }
 
@@ -86,7 +89,7 @@ tbody > tr:nth-child(even) {
 }
 
 th {
-  padding: 1rem 0rem 1rem 0rem;
+  padding: 1rem 0.5rem 1rem 0.5rem;
 }
 
 td {
