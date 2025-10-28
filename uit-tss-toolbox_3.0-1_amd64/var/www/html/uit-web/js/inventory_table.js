@@ -50,6 +50,7 @@ async function renderInventoryTable() {
         if (row.system_serial.length > 12) {
           serialCell.textContent = row.system_serial.substring(0, 12) + '...';
           serialCell.title = row.system_serial;
+          serialCell.style.cursor = 'pointer';
         } else {
           serialCell.textContent = row.system_serial;
         }
@@ -74,10 +75,13 @@ async function renderInventoryTable() {
 
       const manufacturerCell = document.createElement('td');
       if (row.system_manufacturer && row.system_model) {
-        if (row.system_manufacturer.length > 9) {
+        manufacturerCell.dataset.system_manufacturer = row.system_manufacturer;
+        manufacturerCell.dataset.system_model = row.system_model;
+        if (row.system_manufacturer.length > 10) {
           const manufacturerText = document.createElement('span');
-          manufacturerText.textContent = row.system_manufacturer.substring(0, 9) + '...';
+          manufacturerText.textContent = row.system_manufacturer.substring(0, 10) + '...';
           manufacturerText.title = row.system_manufacturer;
+          manufacturerText.style.cursor = 'pointer';
           manufacturerCell.appendChild(manufacturerText);
         } else {
           manufacturerCell.textContent = row.system_manufacturer;
@@ -85,18 +89,77 @@ async function renderInventoryTable() {
 
         manufacturerCell.textContent += '/';
 
-        if (row.system_model.length > 15) {
+        if (row.system_model.length > 17) {
           const modelText = document.createElement('span');
-          modelText.textContent = row.system_model.substring(0, 15) + '...';
+          modelText.textContent = row.system_model.substring(0, 17) + '...';
           modelText.title = row.system_model;
+          modelText.style.cursor = 'pointer';
           manufacturerCell.appendChild(modelText);
         } else {
           manufacturerCell.textContent += row.system_model;
         }
+
+        manufacturerCell.addEventListener('click', () => {
+          manufacturerCell.textContent = `${row.system_manufacturer}/${row.system_model}`;
+        }, { once: true });
       } else {
         manufacturerCell.textContent = 'N/A';
       }
       tr.appendChild(manufacturerCell);
+
+      const departmentCell = document.createElement('td');
+      departmentCell.textContent = row.department_formatted || 'N/A';
+      departmentCell.dataset.department_formatted = row.department_formatted || null;
+      tr.appendChild(departmentCell);
+
+      const domainCell = document.createElement('td');
+      domainCell.textContent = row.domain_formatted || 'N/A';
+      domainCell.dataset.domain_formatted = row.domain_formatted || null;
+      tr.appendChild(domainCell);
+
+      const statusCell = document.createElement('td');
+      statusCell.textContent = row.status || 'N/A';
+      statusCell.dataset.status = row.status || null;
+      tr.appendChild(statusCell);
+
+      const functionalCell = document.createElement('td');
+      functionalCell.textContent = row.functional_status || 'N/A';
+      functionalCell.dataset.functional_status = row.functional_status || null;
+      tr.appendChild(functionalCell);
+
+      const noteCell = document.createElement('td');
+      if (row.note) {
+        noteCell.dataset.note = row.note;
+        if (row.note.length > 61) {
+          noteCell.textContent = row.note.substring(0, 61) + '...';
+          noteCell.title = row.note;
+          noteCell.style.cursor = 'pointer';
+        } else {
+          noteCell.textContent = row.note;
+        }
+        noteCell.addEventListener('click', () => {
+          noteCell.textContent = row.note;
+        }, { once: true });
+      } else {
+        noteCell.dataset.note = null;
+        noteCell.textContent = 'N/A';
+      }
+      tr.appendChild(noteCell);
+
+      const lastUpdateCell = document.createElement('td');
+      if (row.last_updated) {
+        const lastUpdateDate = new Date(row.last_updated);
+        if (isNaN(lastUpdateDate.getTime())) {
+          lastUpdateCell.textContent = 'Unknown date';
+        } else {
+          const timeFormatted = lastUpdateDate.toLocaleDateString() + ' ' + lastUpdateDate.toLocaleTimeString();
+          lastUpdateCell.dataset.last_updated = timeFormatted;
+          lastUpdateCell.textContent = timeFormatted;
+        }
+      } else {
+        lastUpdateCell.textContent = 'N/A';
+      }
+      tr.appendChild(lastUpdateCell);
 
       fragment.appendChild(tr);
     }

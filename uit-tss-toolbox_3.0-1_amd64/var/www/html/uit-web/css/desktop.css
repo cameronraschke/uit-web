@@ -89,12 +89,13 @@ tbody > tr:nth-child(even) {
 }
 
 th {
+  text-align: left;
   padding: 1rem 0.5rem 1rem 0.5rem;
 }
 
 td {
   vertical-align: middle;
-  text-align: center;
+  text-align: left;
   padding: 0.5rem 0rem 0.5rem 0rem;
 }
 
