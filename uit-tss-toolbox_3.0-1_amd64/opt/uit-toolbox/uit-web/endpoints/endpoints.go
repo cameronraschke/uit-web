@@ -280,9 +280,16 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		ManufacturersAndModels, err := db.GetManufacturersAndModels(ctx)
+		manufacturersAndModels, err := db.GetManufacturersAndModels(ctx)
 		if err != nil {
 			log.Error("Cannot get manufacturer and model list from database: " + err.Error())
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		locations, err := db.GetLocations(ctx)
+		if err != nil {
+			log.Error("Cannot get location list from database: " + err.Error())
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -299,6 +306,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			ClientTag                 string
 			Statuses                  map[string]string
 			GetManufacturersAndModels map[string]string
+			Locations                 map[string]string
 		}{
 			JsNonce:                   nonce,
 			WebmasterName:             webmasterName,
@@ -307,7 +315,8 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			Domains:                   domains,
 			ClientTag:                 urlTag,
 			Statuses:                  statuses,
-			GetManufacturersAndModels: ManufacturersAndModels,
+			GetManufacturersAndModels: manufacturersAndModels,
+			Locations:                 locations,
 		}
 
 		// Execute the template
