@@ -6,19 +6,6 @@ import (
 	"time"
 )
 
-func toNullString(p *string) any {
-	if p == nil {
-		return nil
-	}
-	return *p
-}
-func toNullBool(p *bool) any {
-	if p == nil {
-		return nil
-	}
-	return *p
-}
-
 func (repo *Repo) InsertNewNote(ctx context.Context, time time.Time, noteType, note string) error {
 	sqlCode := `INSERT INTO notes (time, note_type, note) VALUES ($1, $2, $3);`
 

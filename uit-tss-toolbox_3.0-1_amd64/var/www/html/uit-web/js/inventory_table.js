@@ -11,7 +11,7 @@ async function getInventoryTableData(filterTag, filterSerial, filterLocation, fi
   if (filterBroken) query.append("broken", filterBroken);
   if (filterHasImages) query.append("has_images", filterHasImages);
   try {
-    const response = await fetch(`/api/inventory/filter?${query.toString()}`);
+    const response = await fetch(`/api/inventory?${query.toString()}`);
     const rawData = await response.text();
     const jsonData = rawData.trim() ? JSON.parse(rawData) : [];
     if (jsonData && typeof jsonData === 'object' && !Array.isArray(jsonData) && Object.prototype.hasOwnProperty.call(jsonData, 'error')) {

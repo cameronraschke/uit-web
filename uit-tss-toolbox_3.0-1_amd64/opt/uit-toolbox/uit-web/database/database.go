@@ -41,6 +41,32 @@ func ptrBool(v sql.NullBool) *bool {
 	return nil
 }
 
+func toNullString(p *string) any {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
+func toNullBool(p *bool) any {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
+func toNullInt64(p *int64) any {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
+
+func toNullTime(p *time.Time) any {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
+
 func CreateAdminUser() error {
 	db := config.GetDatabaseConn()
 	if db == nil {

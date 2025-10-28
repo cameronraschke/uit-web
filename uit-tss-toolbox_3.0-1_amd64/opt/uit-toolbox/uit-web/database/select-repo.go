@@ -472,21 +472,21 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *Inve
 		AND ($6 IS NULL OR locations.department = $6)
 		AND ($7 IS NULL OR locations.domain = $7)
 		AND ($8 IS NULL OR locations.status = $8)
-		AND ($9 IS NULL OR locations.broken = CASE WHEN $9 = TRUE THEN TRUE WHEN $9 = FALSE THEN FALSE END)
+		AND ($9 IS NULL OR locations.broken = $9)
 		AND ($10 IS NULL OR EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber))
 		ORDER BY locations.time DESC;`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlCode,
-		filterOptions.Tagnumber,
-		filterOptions.SystemSerial,
-		filterOptions.Location,
-		filterOptions.SystemManufacturer,
-		filterOptions.SystemModel,
-		filterOptions.Department,
-		filterOptions.Domain,
-		filterOptions.Status,
-		filterOptions.Broken,
-		filterOptions.HasImages)
+		toNullInt64(filterOptions.Tagnumber),
+		toNullString(filterOptions.SystemSerial),
+		toNullString(filterOptions.Location),
+		toNullString(filterOptions.SystemManufacturer),
+		toNullString(filterOptions.SystemModel),
+		toNullString(filterOptions.Department),
+		toNullString(filterOptions.Domain),
+		toNullString(filterOptions.Status),
+		toNullBool(filterOptions.Broken),
+		toNullBool(filterOptions.HasImages))
 	if err != nil {
 		return nil, err
 	}
