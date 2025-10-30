@@ -2,10 +2,12 @@ package config
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
 	"net"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
@@ -17,31 +19,77 @@ import (
 	"golang.org/x/time/rate"
 )
 
+type ConfigFile struct {
+	UIT_SERVER_LOG_LEVEL            string `json:"UIT_SERVER_LOG_LEVEL"`
+	UIT_SERVER_ADMIN_PASSWD         string `json:"UIT_SERVER_ADMIN_PASSWD"`
+	UIT_SERVER_DB_NAME              string `json:"UIT_SERVER_DB_NAME"`
+	UIT_SERVER_HOSTNAME             string `json:"UIT_SERVER_HOSTNAME"`
+	UIT_SERVER_WAN_IP_ADDRESS       string `json:"UIT_SERVER_WAN_IP_ADDRESS"`
+	UIT_SERVER_LAN_IP_ADDRESS       string `json:"UIT_SERVER_LAN_IP_ADDRESS"`
+	UIT_SERVER_WAN_IF               string `json:"UIT_SERVER_WAN_IF"`
+	UIT_SERVER_LAN_IF               string `json:"UIT_SERVER_LAN_IF"`
+	UIT_SERVER_WAN_ALLOWED_IP       string `json:"UIT_SERVER_WAN_ALLOWED_IP"`
+	UIT_SERVER_LAN_ALLOWED_IP       string `json:"UIT_SERVER_LAN_ALLOWED_IP"`
+	UIT_WEB_USER_DEFAULT_PASSWD     string `json:"UIT_WEB_USER_DEFAULT_PASSWD"`
+	UIT_WEB_DB_USERNAME             string `json:"UIT_WEB_DB_USERNAME"`
+	UIT_WEB_DB_PASSWD               string `json:"UIT_WEB_DB_PASSWD"`
+	UIT_WEB_DB_NAME                 string `json:"UIT_WEB_DB_NAME"`
+	UIT_WEB_DB_HOST                 string `json:"UIT_WEB_DB_HOST"`
+	UIT_WEB_DB_PORT                 string `json:"UIT_WEB_DB_PORT"`
+	UIT_WEB_HTTP_PORT               string `json:"UIT_WEB_HTTP_PORT"`
+	UIT_WEB_HTTPS_PORT              string `json:"UIT_WEB_HTTPS_PORT"`
+	UIT_WEB_TLS_CERT_FILE           string `json:"UIT_WEB_TLS_CERT_FILE"`
+	UIT_WEB_TLS_KEY_FILE            string `json:"UIT_WEB_TLS_KEY_FILE"`
+	UIT_WEB_RATE_LIMIT_BURST        string `json:"UIT_WEB_RATE_LIMIT_BURST"`
+	UIT_WEB_RATE_LIMIT_INTERVAL     string `json:"UIT_WEB_RATE_LIMIT_INTERVAL"`
+	UIT_WEB_RATE_LIMIT_BAN_DURATION string `json:"UIT_WEB_RATE_LIMIT_BAN_DURATION"`
+	UIT_CLIENT_DB_USER              string `json:"UIT_CLIENT_DB_USER"`
+	UIT_CLIENT_DB_PASSWD            string `json:"UIT_CLIENT_DB_PASSWD"`
+	UIT_CLIENT_DB_NAME              string `json:"UIT_CLIENT_DB_NAME"`
+	UIT_CLIENT_DB_HOST              string `json:"UIT_CLIENT_DB_HOST"`
+	UIT_CLIENT_DB_PORT              string `json:"UIT_CLIENT_DB_PORT"`
+	UIT_CLIENT_NTP_HOST             string `json:"UIT_CLIENT_NTP_HOST"`
+	UIT_CLIENT_PING_HOST            string `json:"UIT_CLIENT_PING_HOST"`
+	UIT_PRINTER_IP                  string `json:"UIT_PRINTER_IP"`
+	UIT_WEBMASTER_NAME              string `json:"UIT_WEBMASTER_NAME"`
+	UIT_WEBMASTER_EMAIL             string `json:"UIT_WEBMASTER_EMAIL"`
+}
+
 type AppConfig struct {
-	UIT_WAN_IF                  string
-	UIT_WAN_IP_ADDRESS          string
-	UIT_LAN_IF                  string
-	UIT_LAN_IP_ADDRESS          string
-	UIT_WAN_ALLOWED_IP          []string
-	UIT_LAN_ALLOWED_IP          []string
-	UIT_ALL_ALLOWED_IP          []string
-	UIT_WEB_DB_DBNAME           string
-	UIT_WEB_DB_HOST             string
-	UIT_WEB_DB_PORT             string
-	UIT_WEB_DB_USERNAME         string
-	UIT_WEB_DB_PASSWD           string
-	UIT_DB_CLIENT_PASSWD        string
-	UIT_WEB_USER_DEFAULT_PASSWD string
-	UIT_WEBMASTER_NAME          string
-	UIT_WEBMASTER_EMAIL         string
-	UIT_PRINTER_IP              string
-	UIT_HTTP_PORT               string
-	UIT_HTTPS_PORT              string
-	UIT_TLS_CERT_FILE           string
-	UIT_TLS_KEY_FILE            string
-	UIT_RATE_LIMIT_BURST        int
-	UIT_RATE_LIMIT_INTERVAL     float64
-	UIT_RATE_LIMIT_BAN_DURATION time.Duration
+	UIT_SERVER_LOG_LEVEL            string         `json:"UIT_SERVER_LOG_LEVEL"`
+	UIT_SERVER_ADMIN_PASSWD         string         `json:"UIT_SERVER_ADMIN_PASSWD"`
+	UIT_SERVER_DB_NAME              string         `json:"UIT_SERVER_DB_NAME"`
+	UIT_SERVER_HOSTNAME             string         `json:"UIT_SERVER_HOSTNAME"`
+	UIT_SERVER_WAN_IP_ADDRESS       netip.Addr     `json:"UIT_SERVER_WAN_IP_ADDRESS"`
+	UIT_SERVER_LAN_IP_ADDRESS       netip.Addr     `json:"UIT_SERVER_LAN_IP_ADDRESS"`
+	UIT_SERVER_WAN_IF               string         `json:"UIT_SERVER_WAN_IF"`
+	UIT_SERVER_LAN_IF               string         `json:"UIT_SERVER_LAN_IF"`
+	UIT_SERVER_WAN_ALLOWED_IP       []netip.Prefix `json:"UIT_SERVER_WAN_ALLOWED_IP"`
+	UIT_SERVER_LAN_ALLOWED_IP       []netip.Prefix `json:"UIT_SERVER_LAN_ALLOWED_IP"`
+	UIT_SERVER_ANY_ALLOWED_IP       []netip.Prefix `json:"UIT_SERVER_ANY_ALLOWED_IP"`
+	UIT_WEB_USER_DEFAULT_PASSWD     string         `json:"UIT_WEB_USER_DEFAULT_PASSWD"`
+	UIT_WEB_DB_USERNAME             string         `json:"UIT_WEB_DB_USERNAME"`
+	UIT_WEB_DB_PASSWD               string         `json:"UIT_WEB_DB_PASSWD"`
+	UIT_WEB_DB_NAME                 string         `json:"UIT_WEB_DB_NAME"`
+	UIT_WEB_DB_HOST                 netip.Addr     `json:"UIT_WEB_DB_HOST"`
+	UIT_WEB_DB_PORT                 netip.AddrPort `json:"UIT_WEB_DB_PORT"`
+	UIT_WEB_HTTP_PORT               netip.AddrPort `json:"UIT_WEB_HTTP_PORT"`
+	UIT_WEB_HTTPS_PORT              netip.AddrPort `json:"UIT_WEB_HTTPS_PORT"`
+	UIT_WEB_TLS_CERT_FILE           string         `json:"UIT_WEB_TLS_CERT_FILE"`
+	UIT_WEB_TLS_KEY_FILE            string         `json:"UIT_WEB_TLS_KEY_FILE"`
+	UIT_WEB_RATE_LIMIT_BURST        int            `json:"UIT_WEB_RATE_LIMIT_BURST"`
+	UIT_WEB_RATE_LIMIT_INTERVAL     float64        `json:"UIT_WEB_RATE_LIMIT_INTERVAL"`
+	UIT_WEB_RATE_LIMIT_BAN_DURATION time.Duration  `json:"UIT_WEB_RATE_LIMIT_BAN_DURATION"`
+	UIT_CLIENT_DB_USER              string         `json:"UIT_CLIENT_DB_USER"`
+	UIT_CLIENT_DB_PASSWD            string         `json:"UIT_CLIENT_DB_PASSWD"`
+	UIT_CLIENT_DB_NAME              string         `json:"UIT_CLIENT_DB_NAME"`
+	UIT_CLIENT_DB_HOST              netip.Addr     `json:"UIT_CLIENT_DB_HOST"`
+	UIT_CLIENT_DB_PORT              netip.AddrPort `json:"UIT_CLIENT_DB_PORT"`
+	UIT_CLIENT_NTP_HOST             netip.Addr     `json:"UIT_CLIENT_NTP_HOST"`
+	UIT_CLIENT_PING_HOST            netip.Addr     `json:"UIT_CLIENT_PING_HOST"`
+	UIT_PRINTER_IP                  netip.Addr     `json:"UIT_PRINTER_IP"`
+	UIT_WEBMASTER_NAME              string         `json:"UIT_WEBMASTER_NAME"`
+	UIT_WEBMASTER_EMAIL             string         `json:"UIT_WEBMASTER_EMAIL"`
 }
 
 type LimiterEntry struct {
@@ -60,13 +108,26 @@ type BlockedMap struct {
 	BanPeriod time.Duration
 }
 
+type ClientConfig struct {
+	DBUser         string `json:"UIT_DB_CLIENT_USER"`
+	DBPass         string `json:"UIT_DB_CLIENT_PASSWD"`
+	DBName         string `json:"UIT_DB_CLIENT_DBNAME"`
+	DBHost         string `json:"UIT_DB_CLIENT_HOST"`
+	DBPort         string `json:"UIT_DB_CLIENT_PORT"`
+	NTPHost        string `json:"UIT_NTP_SERVER"`
+	PingHost       string `json:"UIT_PING_HOST"`
+	WebHost        string `json:"UIT_WEB_HOST"`
+	WebPort        string `json:"UIT_WEB_PORT"`
+	ServerHostname string `json:"UIT_TOOLBOX_SERVER_HOSTNAME"`
+}
+
 type FileList struct {
 	Filename string `json:"filename"`
 	Allowed  bool   `json:"allowed"`
 }
 
 type AppState struct {
-	AppConfig         AppConfig
+	AppConfig         *AppConfig
 	DBConn            atomic.Pointer[sql.DB]
 	AuthMap           sync.Map
 	AuthMapEntryCount atomic.Int64
@@ -127,206 +188,164 @@ type AuthSession struct {
 var (
 	appStateInstance *AppState
 	appStateMutex    sync.RWMutex
-	defaultLogger    logger.Logger = logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_API_LOG_LEVEL")))
+	defaultLogger    logger.Logger = logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_SERVER_LOG_LEVEL")))
 )
 
-func LoadConfig() (AppConfig, error) {
+func LoadConfig() (*AppConfig, error) {
 	var appConfig AppConfig
+	var configFile ConfigFile
+
+	// Decode JSON
+	file, err := os.ReadFile("/etc/uit-toolbox/uit-toolbox.json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
+	}
+	if err := json.Unmarshal(file, &configFile); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config JSON: %w", err)
+	}
+
+	// Server section
+	appConfig.UIT_SERVER_LOG_LEVEL = configFile.UIT_SERVER_LOG_LEVEL
+	appConfig.UIT_SERVER_ADMIN_PASSWD = configFile.UIT_SERVER_ADMIN_PASSWD
+	appConfig.UIT_SERVER_DB_NAME = configFile.UIT_SERVER_DB_NAME
+	appConfig.UIT_SERVER_HOSTNAME = configFile.UIT_SERVER_HOSTNAME
 
 	// WAN interface, IP, and allowed IPs
-	wanIf, ok := os.LookupEnv("UIT_WAN_IF")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_WAN_IF: not found")
+	wanIPAddr, err := netip.ParseAddr(configFile.UIT_SERVER_WAN_IP_ADDRESS)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_SERVER_WAN_IP_ADDRESS: %w", err)
 	}
-	wanIP, ok := os.LookupEnv("UIT_WAN_IP_ADDRESS")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_WAN_IP_ADDRESS: not found")
-	}
-	envWanAllowedIPStr, ok := os.LookupEnv("UIT_WAN_ALLOWED_IP")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_WAN_ALLOWED_IP: not found")
-	}
+	appConfig.UIT_SERVER_WAN_IP_ADDRESS = wanIPAddr
 
-	envWanAllowedIPs := strings.Split(envWanAllowedIPStr, ",")
-	wanAllowedIP := make([]string, 0, len(envWanAllowedIPs))
-	for _, cidr := range envWanAllowedIPs {
-		cidr = strings.TrimSpace(cidr)
-		if cidr != "" {
-			wanAllowedIP = append(wanAllowedIP, cidr)
+	lanIPAddr, err := netip.ParseAddr(configFile.UIT_SERVER_LAN_IP_ADDRESS)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_SERVER_LAN_IP_ADDRESS: %w", err)
+	}
+	appConfig.UIT_SERVER_LAN_IP_ADDRESS = lanIPAddr
+
+	appConfig.UIT_SERVER_WAN_IF = configFile.UIT_SERVER_WAN_IF
+	appConfig.UIT_SERVER_LAN_IF = configFile.UIT_SERVER_LAN_IF
+
+	for wanIPStr := range strings.SplitSeq(configFile.UIT_SERVER_WAN_ALLOWED_IP, ",") {
+		var ip netip.Prefix
+		ipStr := strings.TrimSpace(wanIPStr)
+		ip, err := netip.ParsePrefix(ipStr)
+		if err != nil {
+			fmt.Println("Skipping invalid UIT_SERVER_WAN_ALLOWED_IP entry: " + ipStr)
+		} else {
+			appConfig.UIT_SERVER_WAN_ALLOWED_IP = append(appConfig.UIT_SERVER_WAN_ALLOWED_IP, ip)
+			appConfig.UIT_SERVER_ANY_ALLOWED_IP = append(appConfig.UIT_SERVER_ANY_ALLOWED_IP, ip)
 		}
 	}
 
-	// LAN interface, IP, and allowed IPs
-	lanIf, ok := os.LookupEnv("UIT_LAN_IF")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_LAN_IF: not found")
-	}
-	lanIP, ok := os.LookupEnv("UIT_LAN_IP_ADDRESS")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_LAN_IP_ADDRESS: not found")
-	}
-	envAllowedLanIPStr, ok := os.LookupEnv("UIT_LAN_ALLOWED_IP")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_LAN_ALLOWED_IP: not found")
-	}
-
-	envLanAllowedIPs := strings.Split(envAllowedLanIPStr, ",")
-	lanAllowedIP := make([]string, 0, len(envLanAllowedIPs))
-	for _, cidr := range envLanAllowedIPs {
-		cidr = strings.TrimSpace(cidr)
-		if cidr != "" {
-			lanAllowedIP = append(lanAllowedIP, cidr)
+	for lanIPStr := range strings.SplitSeq(configFile.UIT_SERVER_LAN_ALLOWED_IP, ",") {
+		var ip netip.Prefix
+		ipStr := strings.TrimSpace(lanIPStr)
+		ip, err := netip.ParsePrefix(ipStr)
+		if err != nil {
+			fmt.Println("Skipping invalid UIT_SERVER_LAN_ALLOWED_IP entry: " + ipStr)
+		} else {
+			appConfig.UIT_SERVER_LAN_ALLOWED_IP = append(appConfig.UIT_SERVER_LAN_ALLOWED_IP, ip)
+			appConfig.UIT_SERVER_ANY_ALLOWED_IP = append(appConfig.UIT_SERVER_ANY_ALLOWED_IP, ip)
 		}
 	}
 
-	envAllAllowedIPStr := envAllowedLanIPStr + "," + envWanAllowedIPStr
-	envAllAllowedIPs := strings.Split(envAllAllowedIPStr, ",")
-	allAllowedIPs := make([]string, 0, len(envAllAllowedIPs))
-	for _, cidr := range envAllAllowedIPs {
-		cidr = strings.TrimSpace(cidr)
-		if cidr != "" {
-			allAllowedIPs = append(allAllowedIPs, cidr)
-		}
-	}
+	// Webserver section
+	appConfig.UIT_WEB_USER_DEFAULT_PASSWD = configFile.UIT_WEB_USER_DEFAULT_PASSWD
+	appConfig.UIT_WEB_DB_USERNAME = configFile.UIT_WEB_DB_USERNAME
+	appConfig.UIT_WEB_DB_PASSWD = configFile.UIT_WEB_DB_PASSWD
+	appConfig.UIT_WEB_DB_NAME = configFile.UIT_WEB_DB_NAME
 
-	// Database credentials
-	dbName, ok := os.LookupEnv("UIT_WEB_DB_DBNAME")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_WEB_DB_DBNAME: not found")
+	dbHostAddr, err := netip.ParseAddr(configFile.UIT_WEB_DB_HOST)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_WEB_DB_HOST: %w", err)
 	}
-	dbHost, ok := os.LookupEnv("UIT_WEB_DB_HOST")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_WEB_DB_HOST: not found")
-	}
-	dbPort, ok := os.LookupEnv("UIT_WEB_DB_PORT")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_WEB_DB_PORT: not found")
-	}
-	dbUser, ok := os.LookupEnv("UIT_WEB_DB_USERNAME")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_WEB_DB_USERNAME: not found")
-	}
-	uitWebDbPasswd, ok := os.LookupEnv("UIT_WEB_DB_PASSWD")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_WEB_DB_PASSWD: not found")
-	}
-	uitWebDbPasswd = strings.TrimSpace(uitWebDbPasswd)
+	appConfig.UIT_WEB_DB_HOST = dbHostAddr
 
-	dbClientPasswd, ok := os.LookupEnv("UIT_DB_CLIENT_PASSWD")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_DB_CLIENT_PASSWD: not found")
+	dbPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_DB_PORT)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_WEB_DB_PORT: %w", err)
 	}
-	webUserDefaultPasswd, ok := os.LookupEnv("UIT_WEB_USER_DEFAULT_PASSWD")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_WEB_USER_DEFAULT_PASSWD: not found")
-	}
+	appConfig.UIT_WEB_DB_PORT = dbPortAddr
 
-	// Website config
-	webmasterName, ok := os.LookupEnv("UIT_WEBMASTER_NAME")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_WEBMASTER_NAME: not found")
+	httpPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_HTTP_PORT)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_WEB_HTTP_PORT: %w", err)
 	}
-	webmasterEmail, ok := os.LookupEnv("UIT_WEBMASTER_EMAIL")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_WEBMASTER_EMAIL: not found")
+	appConfig.UIT_WEB_HTTP_PORT = httpPortAddr
+
+	httpsPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_HTTPS_PORT)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_WEB_HTTPS_PORT: %w", err)
 	}
+	appConfig.UIT_WEB_HTTPS_PORT = httpsPortAddr
+	appConfig.UIT_WEB_TLS_CERT_FILE = configFile.UIT_WEB_TLS_CERT_FILE
+	appConfig.UIT_WEB_TLS_KEY_FILE = configFile.UIT_WEB_TLS_KEY_FILE
+
+	rateLimitBurst, err := strconv.Atoi(configFile.UIT_WEB_RATE_LIMIT_BURST)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_WEB_RATE_LIMIT_BURST: %w", err)
+	}
+	appConfig.UIT_WEB_RATE_LIMIT_BURST = rateLimitBurst
+
+	rateLimitInterval, err := strconv.ParseFloat(configFile.UIT_WEB_RATE_LIMIT_INTERVAL, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_WEB_RATE_LIMIT_INTERVAL: %w", err)
+	}
+	appConfig.UIT_WEB_RATE_LIMIT_INTERVAL = rateLimitInterval
+
+	banDurationSeconds, err := strconv.ParseInt(configFile.UIT_WEB_RATE_LIMIT_BAN_DURATION, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_WEB_RATE_LIMIT_BAN_DURATION: %w", err)
+	}
+	appConfig.UIT_WEB_RATE_LIMIT_BAN_DURATION = time.Duration(banDurationSeconds) * time.Second
+
+	// Client section
+	appConfig.UIT_CLIENT_DB_USER = configFile.UIT_CLIENT_DB_USER
+	appConfig.UIT_CLIENT_DB_PASSWD = configFile.UIT_CLIENT_DB_PASSWD
+	appConfig.UIT_CLIENT_DB_NAME = configFile.UIT_CLIENT_DB_NAME
+
+	clientDBHostAddr, err := netip.ParseAddr(configFile.UIT_CLIENT_DB_HOST)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_CLIENT_DB_HOST: %w", err)
+	}
+	appConfig.UIT_CLIENT_DB_HOST = clientDBHostAddr
+
+	clientDBPortAddr, err := netip.ParseAddrPort(configFile.UIT_CLIENT_DB_PORT)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_CLIENT_DB_PORT: %w", err)
+	}
+	appConfig.UIT_CLIENT_DB_PORT = clientDBPortAddr
+
+	clientNTPHostAddr, err := netip.ParseAddr(configFile.UIT_CLIENT_NTP_HOST)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_CLIENT_NTP_HOST: %w", err)
+	}
+	appConfig.UIT_CLIENT_NTP_HOST = clientNTPHostAddr
+
+	clientPingHostAddr, err := netip.ParseAddr(configFile.UIT_CLIENT_PING_HOST)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_CLIENT_PING_HOST: %w", err)
+	}
+	appConfig.UIT_CLIENT_PING_HOST = clientPingHostAddr
 
 	// Printer IP
-	printerIP, ok := os.LookupEnv("UIT_PRINTER_IP")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_PRINTER_IP: not found")
-	}
-
-	// Webserver config
-	httpPort, ok := os.LookupEnv("UIT_HTTP_PORT")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_HTTP_PORT: not found")
-	}
-	httpsPort, ok := os.LookupEnv("UIT_HTTPS_PORT")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_HTTPS_PORT: not found")
-	}
-	tlsCertFile, ok := os.LookupEnv("UIT_TLS_CERT_FILE")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_TLS_CERT_FILE: not found")
-	}
-	tlsKeyFile, ok := os.LookupEnv("UIT_TLS_KEY_FILE")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_TLS_KEY_FILE: not found")
-	}
-
-	// Rate limiting config
-	//Burst
-	rateLimitBurstStr, ok := os.LookupEnv("UIT_RATE_LIMIT_BURST")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_RATE_LIMIT_BURST: not found")
-	}
-	parsedBurst, err := strconv.Atoi(rateLimitBurstStr)
+	printerIPAddr, err := netip.ParseAddr(configFile.UIT_PRINTER_IP)
 	if err != nil {
-		return appConfig, fmt.Errorf("invalid UIT_RATE_LIMIT_BURST: %w", err)
+		return nil, fmt.Errorf("invalid UIT_PRINTER_IP: %w", err)
 	}
-	if parsedBurst <= 0 {
-		return appConfig, errors.New("UIT_RATE_LIMIT_BURST must be > 0")
-	}
+	appConfig.UIT_PRINTER_IP = printerIPAddr
 
-	// Interval
-	rateLimitIntervalStr, ok := os.LookupEnv("UIT_RATE_LIMIT_INTERVAL")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_RATE_LIMIT_INTERVAL: not found")
-	}
-	parsedInterval, err := strconv.ParseFloat(rateLimitIntervalStr, 64)
-	if err != nil {
-		return appConfig, fmt.Errorf("invalid UIT_RATE_LIMIT_INTERVAL: %w", err)
-	}
-	if parsedInterval <= 0 {
-		return appConfig, errors.New("UIT_RATE_LIMIT_INTERVAL must be > 0")
-	}
+	// Webmaster email
+	appConfig.UIT_WEBMASTER_NAME = configFile.UIT_WEBMASTER_NAME
+	appConfig.UIT_WEBMASTER_EMAIL = configFile.UIT_WEBMASTER_EMAIL
 
-	// Ban duration
-	rateLimitBanDurationStr, ok := os.LookupEnv("UIT_RATE_LIMIT_BAN_DURATION")
-	if !ok {
-		return appConfig, errors.New("error getting UIT_RATE_LIMIT_BAN_DURATION: not found")
-	}
-	banSeconds, err := strconv.ParseInt(rateLimitBanDurationStr, 10, 64)
-	if err != nil {
-		return appConfig, fmt.Errorf("invalid UIT_RATE_LIMIT_BAN_DURATION: %w", err)
-	}
-	if banSeconds <= 0 {
-		return appConfig, errors.New("UIT_RATE_LIMIT_BAN_DURATION must be > 0")
-	}
-	rateLimitBanDuration := time.Duration(banSeconds) * time.Second
-
-	appConfig.UIT_WAN_IF = wanIf
-	appConfig.UIT_WAN_IP_ADDRESS = wanIP
-	appConfig.UIT_LAN_IF = lanIf
-	appConfig.UIT_LAN_IP_ADDRESS = lanIP
-	appConfig.UIT_WAN_ALLOWED_IP = wanAllowedIP
-	appConfig.UIT_LAN_ALLOWED_IP = lanAllowedIP
-	appConfig.UIT_ALL_ALLOWED_IP = allAllowedIPs
-	appConfig.UIT_WEB_DB_DBNAME = dbName
-	appConfig.UIT_WEB_DB_HOST = dbHost
-	appConfig.UIT_WEB_DB_PORT = dbPort
-	appConfig.UIT_WEB_DB_USERNAME = dbUser
-	appConfig.UIT_WEB_DB_PASSWD = uitWebDbPasswd
-	appConfig.UIT_DB_CLIENT_PASSWD = dbClientPasswd
-	appConfig.UIT_WEB_USER_DEFAULT_PASSWD = webUserDefaultPasswd
-	appConfig.UIT_WEBMASTER_NAME = webmasterName
-	appConfig.UIT_WEBMASTER_EMAIL = webmasterEmail
-	appConfig.UIT_PRINTER_IP = printerIP
-	appConfig.UIT_HTTP_PORT = httpPort
-	appConfig.UIT_HTTPS_PORT = httpsPort
-	appConfig.UIT_TLS_CERT_FILE = tlsCertFile
-	appConfig.UIT_TLS_KEY_FILE = tlsKeyFile
-	appConfig.UIT_RATE_LIMIT_BURST = parsedBurst
-	appConfig.UIT_RATE_LIMIT_INTERVAL = parsedInterval
-	appConfig.UIT_RATE_LIMIT_BAN_DURATION = rateLimitBanDuration
-
-	return appConfig, nil
+	return &appConfig, nil
 }
 
 func InitApp() (*AppState, error) {
 	appConfig, err := LoadConfig()
-	if err != nil {
+	if err != nil || appConfig == nil {
 		return nil, errors.New("failed to load app config: " + err.Error())
 	}
 
@@ -335,12 +354,12 @@ func InitApp() (*AppState, error) {
 		DBConn:            atomic.Pointer[sql.DB]{},
 		AuthMap:           sync.Map{},
 		AuthMapEntryCount: atomic.Int64{},
-		Log:               logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_API_LOG_LEVEL"))),
-		WebServerLimiter:  &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_RATE_LIMIT_BURST},
-		FileLimiter:       &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 4, Burst: appConfig.UIT_RATE_LIMIT_BURST / 4},
-		APILimiter:        &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_RATE_LIMIT_BURST},
-		AuthLimiter:       &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_RATE_LIMIT_INTERVAL / 10, Burst: appConfig.UIT_RATE_LIMIT_BURST / 10},
-		BlockedIPs:        &BlockedMap{M: sync.Map{}, BanPeriod: appConfig.UIT_RATE_LIMIT_BAN_DURATION},
+		Log:               logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_SERVER_LOG_LEVEL"))),
+		WebServerLimiter:  &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST},
+		FileLimiter:       &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 4, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST / 4},
+		APILimiter:        &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST},
+		AuthLimiter:       &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 10, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST / 10},
+		BlockedIPs:        &BlockedMap{M: sync.Map{}, BanPeriod: appConfig.UIT_WEB_RATE_LIMIT_BAN_DURATION},
 		AllowedWANIPs:     sync.Map{},
 		AllowedLANIPs:     sync.Map{},
 		AllowedIPs:        sync.Map{},
@@ -394,88 +413,16 @@ func InitApp() (*AppState, error) {
 	}
 	appState.AllowedFiles.Store(allowed)
 
-	for _, wanIP := range appConfig.UIT_WAN_ALLOWED_IP {
-		// Convert to CIDR notation
-		wanIP = strings.TrimSpace(wanIP)
-		if wanIP == "" {
-			continue
-		}
-		var ipNet *net.IPNet
-		if strings.Contains(wanIP, "/") {
-			_, parsedNet, err := net.ParseCIDR(wanIP)
-			if err != nil {
-				continue
-			}
-			ipNet = parsedNet
-		} else {
-			ip := net.ParseIP(wanIP)
-			if ip == nil {
-				continue
-			}
-			if ip4 := ip.To4(); ip4 != nil {
-				ipNet = &net.IPNet{IP: ip4, Mask: net.CIDRMask(32, 32)}
-			} else {
-				ip16 := ip.To16()
-				ipNet = &net.IPNet{IP: ip16, Mask: net.CIDRMask(128, 128)}
-			}
-		}
-		appState.AllowedWANIPs.Store(ipNet, true)
+	for _, wanIP := range appConfig.UIT_SERVER_WAN_ALLOWED_IP {
+		appState.AllowedWANIPs.Store(wanIP, true)
 	}
 
-	for _, lanIP := range appConfig.UIT_LAN_ALLOWED_IP {
-		// Convert to CIDR notation
-		lanIP = strings.TrimSpace(lanIP)
-		if lanIP == "" {
-			continue
-		}
-		var ipNet *net.IPNet
-		if strings.Contains(lanIP, "/") {
-			_, parsedNet, err := net.ParseCIDR(lanIP)
-			if err != nil {
-				continue
-			}
-			ipNet = parsedNet
-		} else {
-			ip := net.ParseIP(lanIP)
-			if ip == nil {
-				continue
-			}
-			if ip4 := ip.To4(); ip4 != nil {
-				ipNet = &net.IPNet{IP: ip4, Mask: net.CIDRMask(32, 32)}
-			} else {
-				ip16 := ip.To16()
-				ipNet = &net.IPNet{IP: ip16, Mask: net.CIDRMask(128, 128)}
-			}
-		}
-		appState.AllowedLANIPs.Store(ipNet, true)
+	for _, lanIP := range appConfig.UIT_SERVER_LAN_ALLOWED_IP {
+		appState.AllowedLANIPs.Store(lanIP, true)
 	}
 
-	for _, allIP := range appConfig.UIT_ALL_ALLOWED_IP {
-		// Convert to CIDR notation
-		allIP = strings.TrimSpace(allIP)
-		if allIP == "" {
-			continue
-		}
-		var ipNet *net.IPNet
-		if strings.Contains(allIP, "/") {
-			_, parsedNet, err := net.ParseCIDR(allIP)
-			if err != nil {
-				continue
-			}
-			ipNet = parsedNet
-		} else {
-			ip := net.ParseIP(allIP)
-			if ip == nil {
-				continue
-			}
-			if ip4 := ip.To4(); ip4 != nil {
-				ipNet = &net.IPNet{IP: ip4, Mask: net.CIDRMask(32, 32)}
-			} else {
-				ip16 := ip.To16()
-				ipNet = &net.IPNet{IP: ip16, Mask: net.CIDRMask(128, 128)}
-			}
-		}
-		appState.AllowedIPs.Store(ipNet, true)
+	for _, allIP := range appConfig.UIT_SERVER_ANY_ALLOWED_IP {
+		appState.AllowedIPs.Store(allIP, true)
 	}
 
 	// Generate server-side secret for HMAC
@@ -520,7 +467,7 @@ func GetDatabaseCredentials() (string, string, string, string, string) {
 	if appState == nil {
 		return "", "", "", "", ""
 	}
-	return appState.AppConfig.UIT_WEB_DB_DBNAME, appState.AppConfig.UIT_WEB_DB_HOST, appState.AppConfig.UIT_WEB_DB_PORT, appState.AppConfig.UIT_WEB_DB_USERNAME, appState.AppConfig.UIT_WEB_DB_PASSWD
+	return appState.AppConfig.UIT_WEB_DB_NAME, appState.AppConfig.UIT_WEB_DB_HOST.String(), appState.AppConfig.UIT_WEB_DB_PORT.String(), appState.AppConfig.UIT_WEB_DB_USERNAME, appState.AppConfig.UIT_WEB_DB_PASSWD
 }
 
 func GetDatabaseConn() *sql.DB {
@@ -623,24 +570,24 @@ func RemoveAllowedFile(filename string) {
 }
 
 // IP address checks
-func IsIPAllowed(source string, ipAddress string) bool {
+func IsIPAllowed(source string, ip string) bool {
 	appState := GetAppState()
 	if appState == nil {
 		return false
 	}
-	ip := net.ParseIP(ipAddress)
-	if ip == nil {
+	ipAddr, err := netip.ParseAddr(ip)
+	if err != nil {
 		return false
 	}
 	allowed := false
 	switch source {
 	case "wan":
 		appState.AllowedWANIPs.Range(func(k, v any) bool {
-			cidr, ok := k.(*net.IPNet)
-			if !ok || cidr == nil {
+			ipRange, ok := k.(*netip.Prefix)
+			if !ok || ipRange == nil {
 				return true
 			}
-			if cidr.Contains(ip) {
+			if ipRange.Contains(ipAddr) {
 				allowed = true
 				return false
 			}
@@ -648,11 +595,11 @@ func IsIPAllowed(source string, ipAddress string) bool {
 		})
 	case "lan":
 		appState.AllowedLANIPs.Range(func(k, v any) bool {
-			cidr, ok := k.(*net.IPNet)
-			if !ok || cidr == nil {
+			ipRange, ok := k.(*netip.Prefix)
+			if !ok || ipRange == nil {
 				return true
 			}
-			if cidr.Contains(ip) {
+			if ipRange.Contains(ipAddr) {
 				allowed = true
 				return false
 			}
@@ -660,11 +607,11 @@ func IsIPAllowed(source string, ipAddress string) bool {
 		})
 	case "any":
 		appState.AllowedIPs.Range(func(k, v any) bool {
-			cidr, ok := k.(*net.IPNet)
-			if !ok || cidr == nil {
+			ipRange, ok := k.(*netip.Prefix)
+			if !ok || ipRange == nil {
 				return true
 			}
-			if cidr.Contains(ip) {
+			if ipRange.Contains(ipAddr) {
 				allowed = true
 				return false
 			}
@@ -720,9 +667,9 @@ func GetWebServerIPs() (string, string, error) {
 	if appState == nil {
 		return "", "", errors.New("app state is not initialized")
 	}
-	lanIP := appState.AppConfig.UIT_LAN_IP_ADDRESS
-	wanIP := appState.AppConfig.UIT_WAN_IP_ADDRESS
-	return lanIP, wanIP, nil
+	lanIP := appState.AppConfig.UIT_SERVER_LAN_IP_ADDRESS
+	wanIP := appState.AppConfig.UIT_SERVER_WAN_IP_ADDRESS
+	return lanIP.String(), wanIP.String(), nil
 }
 
 func GetServerIPAddressByInterface(ifName string) (string, error) {
@@ -758,4 +705,24 @@ func GetWebmasterContact() (string, string, error) {
 		return "", "", errors.New("app state is not initialized")
 	}
 	return appState.AppConfig.UIT_WEBMASTER_NAME, appState.AppConfig.UIT_WEBMASTER_EMAIL, nil
+}
+
+func GetClientConfig() (*ClientConfig, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return nil, errors.New("app state is not initialized")
+	}
+	clientConfig := &ClientConfig{
+		DBUser:         appState.AppConfig.UIT_CLIENT_DB_USER,
+		DBPass:         appState.AppConfig.UIT_CLIENT_DB_PASSWD,
+		DBName:         appState.AppConfig.UIT_CLIENT_DB_NAME,
+		DBHost:         appState.AppConfig.UIT_CLIENT_DB_HOST.String(),
+		DBPort:         appState.AppConfig.UIT_CLIENT_DB_PORT.String(),
+		NTPHost:        appState.AppConfig.UIT_CLIENT_NTP_HOST.String(),
+		PingHost:       appState.AppConfig.UIT_CLIENT_PING_HOST.String(),
+		WebHost:        appState.AppConfig.UIT_SERVER_HOSTNAME,
+		WebPort:        strconv.Itoa(int(appState.AppConfig.UIT_WEB_HTTP_PORT.Port())),
+		ServerHostname: appState.AppConfig.UIT_SERVER_HOSTNAME,
+	}
+	return clientConfig, nil
 }

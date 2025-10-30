@@ -1,8 +1,8 @@
 #!/bin/bash
-wanif='UIT_WAN_IF'
-wan='UIT_WAN_ALLOWED_IP'
-lanif='UIT_LAN_IF'
-lan='UIT_LAN_ALLOWED_IP'
+wanif='UIT_SERVER_WAN_IF'
+wan='UIT_SERVER_WAN_ALLOWED_IP'
+lanif='UIT_SERVER_LAN_IF'
+lan='UIT_SERVER_LAN_ALLOWED_IP'
 printer='UIT_PRINTER_IP'
 
 # Disable IP forwarding and IPv6

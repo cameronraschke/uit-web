@@ -123,7 +123,7 @@ async function checkToken(bearerToken = null) {
       headers: headers
     };
 
-    fetch('https://UIT_WAN_IP_ADDRESS:31411/api/auth?type=check-token', requestOptions)
+    fetch('https://UIT_SERVER_WAN_IP_ADDRESS:31411/api/auth?type=check-token', requestOptions)
       .then(response => {
         if (!response.ok) {
           console.log("Web server error while checking token: " + response.statusText);
@@ -173,7 +173,7 @@ async function newToken() {
         }
         const basicToken = basicTokenObj.value;
 
-        fetch('https://UIT_WAN_IP_ADDRESS:31411/api/auth?type=new-token', {
+        fetch('https://UIT_SERVER_WAN_IP_ADDRESS:31411/api/auth?type=new-token', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

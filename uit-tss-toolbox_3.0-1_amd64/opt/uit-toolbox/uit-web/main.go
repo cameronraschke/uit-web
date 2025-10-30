@@ -34,7 +34,7 @@ func (chain muxChain) then(handle http.Handler) http.Handler {
 func main() {
 	debug.PrintStack()
 
-	bootLog := logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_API_LOG_LEVEL")))
+	bootLog := logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_SERVER_LOG_LEVEL")))
 	bootLog.Info("Server time: " + time.Now().Format("01-02-2006 15:04:05"))
 	bootLog.Info("UIT API Starting...")
 
@@ -181,6 +181,8 @@ func main() {
 	httpsMux.Handle("POST /api/update_inventory", httpsFullAPIChain.thenFunc(endpoints.UpdateInventory))
 	httpsMux.Handle("POST /api/images/toggle_pin/", httpsFullAPIChain.thenFunc(endpoints.TogglePinImage))
 
+	httpsMux.Handle("GET /api/configs/uit-client", httpsFullAPIChain.thenFunc(endpoints.GetClientConfig))
+
 	httpsMux.Handle("DELETE /api/images/", httpsFullAPIChain.thenFunc(endpoints.DeleteImage))
 
 	httpsMux.Handle("GET /login", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
@@ -234,14 +236,14 @@ func main() {
 
 	log.Info("Web server ready and listening for requests on https://*:31411")
 
-	webCertFile, ok := os.LookupEnv("UIT_TLS_CERT_FILE")
+	webCertFile, ok := os.LookupEnv("UIT_WEB_TLS_CERT_FILE")
 	if !ok {
-		log.Error("Error getting UIT_TLS_CERT_FILE: variable not set")
+		log.Error("Error getting UIT_WEB_TLS_CERT_FILE: variable not set")
 		os.Exit(1)
 	}
-	webKeyFile, ok := os.LookupEnv("UIT_TLS_KEY_FILE")
+	webKeyFile, ok := os.LookupEnv("UIT_WEB_TLS_KEY_FILE")
 	if !ok {
-		log.Error("Error getting UIT_TLS_KEY_FILE: variable not set")
+		log.Error("Error getting UIT_WEB_TLS_KEY_FILE: variable not set")
 		os.Exit(1)
 	}
 

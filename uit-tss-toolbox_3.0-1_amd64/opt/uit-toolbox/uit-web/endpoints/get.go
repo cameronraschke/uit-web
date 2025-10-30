@@ -770,3 +770,46 @@ func GetInventoryTableData(w http.ResponseWriter, r *http.Request) {
 	}
 	middleware.WriteJson(w, http.StatusOK, inventoryTableData)
 }
+
+func GetClientConfig(w http.ResponseWriter, r *http.Request) {
+	requestInfo, err := GetRequestInfo(r)
+	if err != nil {
+		log.Println("Cannot get request info error: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+	// ctx := requestInfo.Ctx
+	log := requestInfo.Log
+	requestIP := requestInfo.IP
+	requestURL := requestInfo.URL
+
+	clientConfig, err := config.GetClientConfig()
+	if err != nil {
+		log.Error("Error getting client config: " + requestIP + " (" + requestURL + "): " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		return
+	}
+
+	clientConfigMap := map[string]string{
+		"UIT_DB_CLIENT_USER":          clientConfig.DBUser,
+		"UIT_DB_CLIENT_PASSWD":        clientConfig.DBPass,
+		"UIT_DB_CLIENT_DBNAME":        clientConfig.DBName,
+		"UIT_DB_CLIENT_HOST":          clientConfig.DBHost,
+		"UIT_DB_CLIENT_PORT":          clientConfig.DBPort,
+		"UIT_NTP_SERVER":              clientConfig.NTPHost,
+		"UIT_PING_HOST":               clientConfig.PingHost,
+		"UIT_WEB_HOST":                clientConfig.WebHost,
+		"UIT_WEB_PORT":                clientConfig.WebPort,
+		"UIT_TOOLBOX_SERVER_HOSTNAME": clientConfig.ServerHostname,
+	}
+
+	var response string
+	for k, v := range clientConfigMap {
+		if v == "" {
+			log.Warning("Client config value for " + k + " is empty: " + requestIP + " (" + requestURL + ")")
+		}
+		response += fmt.Sprintf("%s=%s\n", k, v)
+	}
+
+	middleware.WriteJson(w, http.StatusOK, response)
+}

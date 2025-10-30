@@ -200,6 +200,7 @@ fbgrab
 php-gd
 ffmpeg
 fbset
+jq
 EOF
 
 mkdir -p /tmp/uit-toolbox-live-iso/config/includes.chroot/root/
