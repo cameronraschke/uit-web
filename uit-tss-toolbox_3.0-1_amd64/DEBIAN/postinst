@@ -51,9 +51,7 @@ getConfigValue() {
 
 # Load config values (values that need spaces preserved are marked with 'false')
 configArr[UIT_DB_ADMIN_PASSWD]=$(getConfigValue "UIT_DB_ADMIN_PASSWD")
-configArr[UIT_DB_CLIENT_USER]=$(getConfigValue "UIT_DB_CLIENT_USER")
 configArr[UIT_DB_CLIENT_PASSWD]=$(getConfigValue "UIT_DB_CLIENT_PASSWD")
-configArr[UIT_DB_CLIENT_DB]=$(getConfigValue "UIT_DB_CLIENT_DB")
 configArr[UIT_WEB_USER_DEFAULT_PASSWD]=$(getConfigValue "UIT_WEB_USER_DEFAULT_PASSWD")
 configArr[UIT_WEBMASTER_NAME]=$(getConfigValue "UIT_WEBMASTER_NAME" false)
 configArr[UIT_WEBMASTER_EMAIL]=$(getConfigValue "UIT_WEBMASTER_EMAIL")
