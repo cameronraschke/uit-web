@@ -22,7 +22,7 @@ mkdir -p /srv/nfs/uit-toolbox/images
 mkdir -p /etc/uit-toolbox/certs.d/
 mkdir -p /etc/uit-toolbox/clients.d/
 mkdir -p /etc/uit-toolbox/server/postgresql.d/
-cp /etc/uit-toolbox/clients.d/uit-config.conf /srv/uit-toolbox/client/configs/uit-config.conf
+cp /etc/uit-toolbox/clients.d/uit-client.conf /srv/uit-toolbox/client/configs/uit-client.conf
 
 # Client package - download .deb
 rm -rf /srv/uit-toolbox/client/src/uit-client/
@@ -51,7 +51,9 @@ getConfigValue() {
 
 # Load config values (values that need spaces preserved are marked with 'false')
 configArr[UIT_DB_ADMIN_PASSWD]=$(getConfigValue "UIT_DB_ADMIN_PASSWD")
+configArr[UIT_DB_CLIENT_USER]=$(getConfigValue "UIT_DB_CLIENT_USER")
 configArr[UIT_DB_CLIENT_PASSWD]=$(getConfigValue "UIT_DB_CLIENT_PASSWD")
+configArr[UIT_DB_CLIENT_DB]=$(getConfigValue "UIT_DB_CLIENT_DB")
 configArr[UIT_WEB_USER_DEFAULT_PASSWD]=$(getConfigValue "UIT_WEB_USER_DEFAULT_PASSWD")
 configArr[UIT_WEBMASTER_NAME]=$(getConfigValue "UIT_WEBMASTER_NAME" false)
 configArr[UIT_WEBMASTER_EMAIL]=$(getConfigValue "UIT_WEBMASTER_EMAIL")
