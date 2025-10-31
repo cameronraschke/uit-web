@@ -275,11 +275,23 @@ func LoadConfig() (*AppConfig, error) {
 	}
 	appConfig.UIT_WEB_DB_PORT = dbPortAddr.Port()
 
+	httpHostAddr, err := netip.ParseAddr(configFile.UIT_WEB_HTTP_HOST)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_WEB_HTTP_HOST: %w", err)
+	}
+	appConfig.UIT_WEB_HTTP_HOST = httpHostAddr
+
 	httpPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_HTTP_HOST + ":" + configFile.UIT_WEB_HTTP_PORT)
 	if err != nil {
 		return nil, fmt.Errorf("invalid UIT_WEB_HTTP_PORT: %w", err)
 	}
 	appConfig.UIT_WEB_HTTP_PORT = httpPortAddr.Port()
+
+	httpsHostAddr, err := netip.ParseAddr(configFile.UIT_WEB_HTTPS_HOST)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_WEB_HTTPS_HOST: %w", err)
+	}
+	appConfig.UIT_WEB_HTTPS_HOST = httpsHostAddr
 
 	httpsPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_HTTPS_HOST + ":" + configFile.UIT_WEB_HTTPS_PORT)
 	if err != nil {
@@ -585,17 +597,18 @@ func RemoveAllowedFile(filename string) {
 }
 
 // IP address checks
-func IsIPAllowed(source string, ip string) bool {
+func IsIPAllowed(trafficType string, ip string) (allowed bool, err error) {
 	appState := GetAppState()
 	if appState == nil {
-		return false
+		return false, fmt.Errorf("app state is not initialized")
 	}
 	ipAddr, err := netip.ParseAddr(ip)
 	if err != nil {
-		return false
+		return false, fmt.Errorf("invalid IP address: %w", err)
 	}
-	allowed := false
-	switch source {
+
+	allowed = false
+	switch trafficType {
 	case "wan":
 		appState.AllowedWANIPs.Range(func(k, v any) bool {
 			ipRange, ok := k.(*netip.Prefix)
@@ -633,9 +646,9 @@ func IsIPAllowed(source string, ip string) bool {
 			return true
 		})
 	default:
-		return false
+		return false, errors.New("invalid traffic type, must be 'wan', 'lan', or 'any'")
 	}
-	return allowed
+	return allowed, nil
 }
 
 func IsIPBlocked(ipAddress string) bool {
@@ -682,9 +695,7 @@ func GetWebServerIPs() (string, string, error) {
 	if appState == nil {
 		return "", "", errors.New("app state is not initialized")
 	}
-	lanIP := appState.AppConfig.UIT_WEB_HTTP_HOST
-	wanIP := appState.AppConfig.UIT_WEB_HTTPS_HOST
-	return lanIP.String(), wanIP.String(), nil
+	return appState.AppConfig.UIT_WEB_HTTP_HOST.String(), appState.AppConfig.UIT_WEB_HTTPS_HOST.String(), nil
 }
 
 func GetServerIPAddressByInterface(ifName string) (string, error) {

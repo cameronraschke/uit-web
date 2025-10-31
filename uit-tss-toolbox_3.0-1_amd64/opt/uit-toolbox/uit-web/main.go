@@ -83,7 +83,7 @@ func main() {
 	}
 
 	httpHost, _, err := config.GetWebServerIPs()
-	if err != nil || httpHost == "" {
+	if err != nil || strings.TrimSpace(httpHost) == "" {
 		log.Error("Cannot get HTTP server IP: " + err.Error())
 		os.Exit(1)
 	}
@@ -124,6 +124,7 @@ func main() {
 		log.Info("HTTP server listening on http://" + httpHost + ":8080")
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("HTTP server error: " + err.Error())
+			os.Exit(1)
 		}
 	}()
 

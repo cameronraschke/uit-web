@@ -117,7 +117,12 @@ func AllowIPRangeMiddleware(source string) func(http.Handler) http.Handler {
 				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
 				return
 			}
-			allowed := config.IsIPAllowed(source, requestIP)
+			allowed, err := config.IsIPAllowed(source, requestIP)
+			if err != nil {
+				log.Error("Error checking if IP is allowed: " + err.Error())
+				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+				return
+			}
 			if !allowed {
 				log.Warning("IP address not in allowed range: " + requestIP)
 				http.Error(w, "Forbidden", http.StatusForbidden)
@@ -616,15 +621,15 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Get web server IP for CORS
-		_, webserverWanIP, err := config.GetWebServerIPs()
-		if err != nil || strings.TrimSpace(webserverWanIP) == "" {
+		_, httpsServerIP, err := config.GetWebServerIPs()
+		if err != nil || strings.TrimSpace(httpsServerIP) == "" {
 			log.Error("Cannot get web server IP for CORS: " + err.Error())
 			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
 			return
 		}
 		// Check CORS policy
 		cors := http.NewCrossOriginProtection()
-		cors.AddTrustedOrigin("https://" + webserverWanIP + ":1411")
+		cors.AddTrustedOrigin("https://" + httpsServerIP + ":1411")
 		if err := cors.Check(req); err != nil {
 			log.Warning("Request to " + requestURL + " blocked from " + requestIP)
 			http.Error(w, FormatHttpError("CORS policy violation"), http.StatusForbidden)
@@ -634,7 +639,7 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 		// Handle OPTIONS early
 		if req.Method == http.MethodOptions {
 			// Headers for OPTIONS request
-			w.Header().Set("Access-Control-Allow-Origin", "https://"+webserverWanIP+":1411")
+			w.Header().Set("Access-Control-Allow-Origin", "https://"+httpsServerIP+":1411")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Set-Cookie, credentials")
@@ -642,7 +647,7 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		w.Header().Set("Access-Control-Allow-Origin", "https://"+webserverWanIP+":1411")
+		w.Header().Set("Access-Control-Allow-Origin", "https://"+httpsServerIP+":1411")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
