@@ -234,8 +234,10 @@ func LoadConfig() (*AppConfig, error) {
 	appConfig.UIT_SERVER_LAN_IF = configFile.UIT_SERVER_LAN_IF
 
 	for wanIPStr := range strings.SplitSeq(configFile.UIT_SERVER_WAN_ALLOWED_IP, ",") {
-		var ip netip.Prefix
 		ipStr := strings.TrimSpace(wanIPStr)
+		if ipStr == "" {
+			continue
+		}
 		ip, err := netip.ParsePrefix(ipStr)
 		if err != nil {
 			fmt.Println("Skipping invalid UIT_SERVER_WAN_ALLOWED_IP entry: " + ipStr)
@@ -246,8 +248,10 @@ func LoadConfig() (*AppConfig, error) {
 	}
 
 	for lanIPStr := range strings.SplitSeq(configFile.UIT_SERVER_LAN_ALLOWED_IP, ",") {
-		var ip netip.Prefix
 		ipStr := strings.TrimSpace(lanIPStr)
+		if ipStr == "" {
+			continue
+		}
 		ip, err := netip.ParsePrefix(ipStr)
 		if err != nil {
 			fmt.Println("Skipping invalid UIT_SERVER_LAN_ALLOWED_IP entry: " + ipStr)
@@ -611,8 +615,8 @@ func IsIPAllowed(trafficType string, ip string) (allowed bool, err error) {
 	switch trafficType {
 	case "wan":
 		appState.AllowedWANIPs.Range(func(k, v any) bool {
-			ipRange, ok := k.(*netip.Prefix)
-			if !ok || ipRange == nil {
+			ipRange, ok := k.(netip.Prefix)
+			if !ok || ipRange == (netip.Prefix{}) {
 				return true
 			}
 			if ipRange.Contains(ipAddr) {
@@ -623,8 +627,8 @@ func IsIPAllowed(trafficType string, ip string) (allowed bool, err error) {
 		})
 	case "lan":
 		appState.AllowedLANIPs.Range(func(k, v any) bool {
-			ipRange, ok := k.(*netip.Prefix)
-			if !ok || ipRange == nil {
+			ipRange, ok := k.(netip.Prefix)
+			if !ok || ipRange == (netip.Prefix{}) {
 				return true
 			}
 			if ipRange.Contains(ipAddr) {
@@ -635,8 +639,8 @@ func IsIPAllowed(trafficType string, ip string) (allowed bool, err error) {
 		})
 	case "any":
 		appState.AllowedIPs.Range(func(k, v any) bool {
-			ipRange, ok := k.(*netip.Prefix)
-			if !ok || ipRange == nil {
+			ipRange, ok := k.(netip.Prefix)
+			if !ok || ipRange == (netip.Prefix{}) {
 				return true
 			}
 			if ipRange.Contains(ipAddr) {
