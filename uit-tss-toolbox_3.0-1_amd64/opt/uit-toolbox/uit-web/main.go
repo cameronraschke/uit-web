@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime/debug"
 	"slices"
+	"strings"
 	"time"
 	config "uit-toolbox/config"
 	"uit-toolbox/database"
@@ -240,14 +241,9 @@ func main() {
 
 	log.Info("Web server ready and listening for requests on https://*:31411")
 
-	webCertFile, ok := os.LookupEnv("UIT_WEB_TLS_CERT_FILE")
-	if !ok {
-		log.Error("Error getting UIT_WEB_TLS_CERT_FILE: variable not set")
-		os.Exit(1)
-	}
-	webKeyFile, ok := os.LookupEnv("UIT_WEB_TLS_KEY_FILE")
-	if !ok {
-		log.Error("Error getting UIT_WEB_TLS_KEY_FILE: variable not set")
+	webCertFile, webKeyFile, err := config.GetTLSCertFiles()
+	if err != nil || strings.TrimSpace(webCertFile) == "" || strings.TrimSpace(webKeyFile) == "" {
+		log.Error("Error getting TLS cert files: " + err.Error())
 		os.Exit(1)
 	}
 

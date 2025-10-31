@@ -744,3 +744,11 @@ func GetClientConfig() (*ClientConfig, error) {
 	}
 	return clientConfig, nil
 }
+
+func GetTLSCertFiles() (certFile string, keyFile string, err error) {
+	appState := GetAppState()
+	if appState == nil {
+		return "", "", errors.New("app state is not initialized")
+	}
+	return appState.AppConfig.UIT_WEB_TLS_CERT_FILE, appState.AppConfig.UIT_WEB_TLS_KEY_FILE, nil
+}
