@@ -72,7 +72,7 @@ type AppConfig struct {
 	UIT_WEB_DB_PASSWD               string         `json:"UIT_WEB_DB_PASSWD"`
 	UIT_WEB_DB_NAME                 string         `json:"UIT_WEB_DB_NAME"`
 	UIT_WEB_DB_HOST                 netip.Addr     `json:"UIT_WEB_DB_HOST"`
-	UIT_WEB_DB_PORT                 netip.AddrPort `json:"UIT_WEB_DB_PORT"`
+	UIT_WEB_DB_PORT                 uint16         `json:"UIT_WEB_DB_PORT"`
 	UIT_WEB_HTTP_PORT               netip.AddrPort `json:"UIT_WEB_HTTP_PORT"`
 	UIT_WEB_HTTPS_PORT              netip.AddrPort `json:"UIT_WEB_HTTPS_PORT"`
 	UIT_WEB_TLS_CERT_FILE           string         `json:"UIT_WEB_TLS_CERT_FILE"`
@@ -84,7 +84,7 @@ type AppConfig struct {
 	UIT_CLIENT_DB_PASSWD            string         `json:"UIT_CLIENT_DB_PASSWD"`
 	UIT_CLIENT_DB_NAME              string         `json:"UIT_CLIENT_DB_NAME"`
 	UIT_CLIENT_DB_HOST              netip.Addr     `json:"UIT_CLIENT_DB_HOST"`
-	UIT_CLIENT_DB_PORT              netip.AddrPort `json:"UIT_CLIENT_DB_PORT"`
+	UIT_CLIENT_DB_PORT              uint16         `json:"UIT_CLIENT_DB_PORT"`
 	UIT_CLIENT_NTP_HOST             netip.Addr     `json:"UIT_CLIENT_NTP_HOST"`
 	UIT_CLIENT_PING_HOST            netip.Addr     `json:"UIT_CLIENT_PING_HOST"`
 	UIT_PRINTER_IP                  netip.Addr     `json:"UIT_PRINTER_IP"`
@@ -264,11 +264,11 @@ func LoadConfig() (*AppConfig, error) {
 	}
 	appConfig.UIT_WEB_DB_HOST = dbHostAddr
 
-	dbPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_DB_PORT)
+	dbPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_DB_HOST + ":" + configFile.UIT_WEB_DB_PORT)
 	if err != nil {
 		return nil, fmt.Errorf("invalid UIT_WEB_DB_PORT: %w", err)
 	}
-	appConfig.UIT_WEB_DB_PORT = dbPortAddr
+	appConfig.UIT_WEB_DB_PORT = dbPortAddr.Port()
 
 	httpPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_HTTP_PORT)
 	if err != nil {
@@ -313,11 +313,11 @@ func LoadConfig() (*AppConfig, error) {
 	}
 	appConfig.UIT_CLIENT_DB_HOST = clientDBHostAddr
 
-	clientDBPortAddr, err := netip.ParseAddrPort(configFile.UIT_CLIENT_DB_PORT)
+	clientDBPortAddr, err := netip.ParseAddrPort(configFile.UIT_CLIENT_DB_HOST + ":" + configFile.UIT_CLIENT_DB_PORT)
 	if err != nil {
 		return nil, fmt.Errorf("invalid UIT_CLIENT_DB_PORT: %w", err)
 	}
-	appConfig.UIT_CLIENT_DB_PORT = clientDBPortAddr
+	appConfig.UIT_CLIENT_DB_PORT = clientDBPortAddr.Port()
 
 	clientNTPHostAddr, err := netip.ParseAddr(configFile.UIT_CLIENT_NTP_HOST)
 	if err != nil {
@@ -469,7 +469,7 @@ func GetDatabaseCredentials() (dbName string, dbHost string, dbPort string, dbUs
 	if appState == nil {
 		return "", "", "", "", "", errors.New("app state is not initialized")
 	}
-	return appState.AppConfig.UIT_WEB_DB_NAME, appState.AppConfig.UIT_WEB_DB_HOST.String(), appState.AppConfig.UIT_WEB_DB_PORT.String(), appState.AppConfig.UIT_WEB_DB_USERNAME, appState.AppConfig.UIT_WEB_DB_PASSWD, nil
+	return appState.AppConfig.UIT_WEB_DB_NAME, appState.AppConfig.UIT_WEB_DB_HOST.String(), strconv.FormatUint(uint64(appState.AppConfig.UIT_WEB_DB_PORT), 10), appState.AppConfig.UIT_WEB_DB_USERNAME, appState.AppConfig.UIT_WEB_DB_PASSWD, nil
 }
 
 func GetWebServerUserDBCredentials() (dbName string, dbHost string, dbPort string, dbUsername string, dbPassword string, err error) {
@@ -477,7 +477,7 @@ func GetWebServerUserDBCredentials() (dbName string, dbHost string, dbPort strin
 	if appState == nil {
 		return "", "", "", "", "", errors.New("app state is not initialized")
 	}
-	return appState.AppConfig.UIT_WEB_DB_NAME, appState.AppConfig.UIT_WEB_DB_HOST.String(), appState.AppConfig.UIT_WEB_DB_PORT.String(), appState.AppConfig.UIT_WEB_DB_USERNAME, appState.AppConfig.UIT_WEB_DB_PASSWD, nil
+	return appState.AppConfig.UIT_WEB_DB_NAME, appState.AppConfig.UIT_WEB_DB_HOST.String(), strconv.FormatUint(uint64(appState.AppConfig.UIT_WEB_DB_PORT), 10), appState.AppConfig.UIT_WEB_DB_USERNAME, appState.AppConfig.UIT_WEB_DB_PASSWD, nil
 }
 
 func GetDatabaseConn() *sql.DB {
@@ -727,7 +727,7 @@ func GetClientConfig() (*ClientConfig, error) {
 		UIT_CLIENT_DB_PASSWD:      appState.AppConfig.UIT_CLIENT_DB_PASSWD,
 		UIT_CLIENT_DB_NAME:        appState.AppConfig.UIT_CLIENT_DB_NAME,
 		UIT_CLIENT_DB_HOST:        appState.AppConfig.UIT_CLIENT_DB_HOST.String(),
-		UIT_CLIENT_DB_PORT:        appState.AppConfig.UIT_CLIENT_DB_PORT.String(),
+		UIT_CLIENT_DB_PORT:        strconv.FormatUint(uint64(appState.AppConfig.UIT_CLIENT_DB_PORT), 10),
 		UIT_CLIENT_NTP_HOST:       appState.AppConfig.UIT_CLIENT_NTP_HOST.String(),
 		UIT_CLIENT_PING_HOST:      appState.AppConfig.UIT_CLIENT_PING_HOST.String(),
 		UIT_SERVER_HOSTNAME:       appState.AppConfig.UIT_SERVER_HOSTNAME,
