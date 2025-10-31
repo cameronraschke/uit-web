@@ -49,8 +49,7 @@ getConfigValue() {
 
 # Load config values (values that need spaces preserved are marked with 'false')
 configArr[UIT_SERVER_ADMIN_PASSWD]=$(getConfigValue "UIT_SERVER_ADMIN_PASSWD")
-configArr[UIT_DB_CLIENT_PASSWD]=$(getConfigValue "UIT_DB_CLIENT_PASSWD")
-configArr[UIT_WEB_USER_DEFAULT_PASSWD]=$(getConfigValue "UIT_WEB_USER_DEFAULT_PASSWD")
+configArr[UIT_CLIENT_DB_PASSWD]=$(getConfigValue "UIT_CLIENT_DB_PASSWD")
 configArr[UIT_WEBMASTER_NAME]=$(getConfigValue "UIT_WEBMASTER_NAME" false)
 configArr[UIT_WEBMASTER_EMAIL]=$(getConfigValue "UIT_WEBMASTER_EMAIL")
 configArr[UIT_SERVER_WAN_IF]=$(getConfigValue "UIT_SERVER_WAN_IF")
@@ -62,11 +61,9 @@ configArr[UIT_SERVER_LAN_ALLOWED_IP]=$(getConfigValue "UIT_SERVER_LAN_ALLOWED_IP
 configArr[UIT_PRINTER_IP]=$(getConfigValue "UIT_PRINTER_IP")
 configArr[UIT_WEB_DB_PASSWD]=$(openssl rand 30 | hexdump | tr -d '\n' | sed 's/[[:space:]]//g' | head -n1 | md5sum | awk '{print $1}')
 jq '.UIT_WEB_DB_PASSWD = "${'"${configArr[UIT_WEB_DB_PASSWD]}"'}"' /etc/uit-toolbox/uit-toolbox.conf > /etc/uit-toolbox/uit-toolbox.tmp && mv /etc/uit-toolbox/uit-toolbox.tmp /etc/uit-toolbox/uit-toolbox.conf
-configArr[UIT_WEB_DB_NAME]=$(getConfigValue "UIT_WEB_DB_NAME")
 configArr[UIT_WEB_DB_HOST]=$(getConfigValue "UIT_WEB_DB_HOST")
 configArr[UIT_WEB_DB_PORT]=$(getConfigValue "UIT_WEB_DB_PORT")
 configArr[UIT_WEB_DB_USERNAME]=$(getConfigValue "UIT_WEB_DB_USERNAME")
-configArr[UIT_WEB_HTTP_PORT]=$(getConfigValue "UIT_WEB_HTTP_PORT")
 configArr[UIT_WEB_HTTPS_PORT]=$(getConfigValue "UIT_WEB_HTTPS_PORT")
 configArr[UIT_WEB_TLS_CERT_FILE]=$(getConfigValue "UIT_WEB_TLS_CERT_FILE")
 configArr[UIT_WEB_TLS_KEY_FILE]=$(getConfigValue "UIT_WEB_TLS_KEY_FILE")
@@ -120,15 +117,6 @@ if [[ ! -f /srv/uit-toolbox/client/pkg/go-latest.linux-amd64.tar.gz ]]; then
     --output-document=/srv/uit-toolbox/client/pkg/go-latest.linux-amd64.tar.gz
 fi
 
-if [[ -f /etc/uit-toolbox.env ]]; then
-  rm /etc/uit-toolbox.env
-fi
-for key in "${!configArr[@]}"; do 
-  printf "%s\n" "$key=\"${configArr[$key]}\"" >> /etc/uit-toolbox.env
-done
-sudo chown uitweb:uitweb /etc/uit-toolbox.env
-sudo chmod 400 /etc/uit-toolbox.env
-
 # Web server setup
 if [[ ! -f /var/www/html/uit-web/favicon.png ]]; then
     wget 'https://uh.edu/favicon.png' --output-document /var/www/html/uit-web/favicon.png
@@ -173,7 +161,7 @@ echo "Updating SQL Passwords..."
 echo "  --PSQL Passwords"
 # PostgreSQL Users
 sudo -u postgres psql --command="ALTER USER cameron WITH PASSWORD '${configArr[UIT_SERVER_ADMIN_PASSWD]}';"
-sudo -u postgres psql --command="ALTER USER uitclient WITH PASSWORD '${configArr[UIT_DB_CLIENT_PASSWD]}';"
+sudo -u postgres psql --command="ALTER USER uitclient WITH PASSWORD '${configArr[UIT_CLIENT_DB_PASSWD]}';"
 sudo -u postgres psql --command="ALTER USER uitweb WITH PASSWORD '${configArr[UIT_WEB_DB_PASSWD]}';"
 
 # Update SQL Permissions
@@ -242,7 +230,6 @@ User=uitweb
 Group=uitweb
 UMask=227
 Restart=on-failure
-EnvironmentFile=/etc/uit-toolbox.env
 MemoryMax=4G
 
 [Install]

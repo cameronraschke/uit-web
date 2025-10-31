@@ -58,13 +58,17 @@ func main() {
 	log.Info("UIT API Starting...")
 
 	// Get DB credentials
-	dbName, dbHost, dbPort, dbUsername, dbPassword := config.GetDatabaseCredentials()
+	dbName, dbHost, dbPort, dbUsername, dbPassword, err := config.GetDatabaseCredentials()
+	if err != nil {
+		log.Error("Failed to get database credentials: " + err.Error())
+		os.Exit(1)
+	}
 
 	// Create DB connection
 	dbConn, err := database.NewDBConnection(dbName, dbHost, dbPort, dbUsername, dbPassword)
 	if err != nil {
 		log.Error("Failed to connect to database: " + err.Error())
-		return
+		os.Exit(1)
 	}
 
 	config.SetDatabaseConn(dbConn)
@@ -74,7 +78,7 @@ func main() {
 	err = database.CreateAdminUser()
 	if err != nil {
 		log.Error("Failed to create admin user: " + err.Error())
-		return
+		os.Exit(1)
 	}
 
 	lanServerIP, _, err := config.GetWebServerIPs()

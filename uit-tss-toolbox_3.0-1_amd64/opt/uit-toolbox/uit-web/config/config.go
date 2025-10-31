@@ -109,16 +109,18 @@ type BlockedMap struct {
 }
 
 type ClientConfig struct {
-	DBUser         string `json:"UIT_DB_CLIENT_USER"`
-	DBPass         string `json:"UIT_DB_CLIENT_PASSWD"`
-	DBName         string `json:"UIT_DB_CLIENT_DBNAME"`
-	DBHost         string `json:"UIT_DB_CLIENT_HOST"`
-	DBPort         string `json:"UIT_DB_CLIENT_PORT"`
-	NTPHost        string `json:"UIT_NTP_SERVER"`
-	PingHost       string `json:"UIT_PING_HOST"`
-	WebHost        string `json:"UIT_WEB_HOST"`
-	WebPort        string `json:"UIT_WEB_PORT"`
-	ServerHostname string `json:"UIT_TOOLBOX_SERVER_HOSTNAME"`
+	UIT_CLIENT_DB_USER        string `json:"UIT_CLIENT_DB_USER"`
+	UIT_CLIENT_DB_PASSWD      string `json:"UIT_CLIENT_DB_PASSWD"`
+	UIT_CLIENT_DB_NAME        string `json:"UIT_CLIENT_DB_NAME"`
+	UIT_CLIENT_DB_HOST        string `json:"UIT_CLIENT_DB_HOST"`
+	UIT_CLIENT_DB_PORT        string `json:"UIT_CLIENT_DB_PORT"`
+	UIT_CLIENT_NTP_HOST       string `json:"UIT_CLIENT_NTP_HOST"`
+	UIT_CLIENT_PING_HOST      string `json:"UIT_CLIENT_PING_HOST"`
+	UIT_SERVER_HOSTNAME       string `json:"UIT_SERVER_HOSTNAME"`
+	UIT_SERVER_LAN_IP_ADDRESS string `json:"UIT_SERVER_LAN_IP_ADDRESS"`
+	UIT_WEB_HTTP_PORT         string `json:"UIT_WEB_HTTP_PORT"`
+	UIT_WEB_HTTPS_PORT        string `json:"UIT_WEB_HTTPS_PORT"`
+	UIT_WEBMASTER_NAME        string `json:"UIT_WEBMASTER_NAME"`
 }
 
 type FileList struct {
@@ -462,12 +464,20 @@ func GetLogger() logger.Logger {
 }
 
 // Database managment
-func GetDatabaseCredentials() (string, string, string, string, string) {
+func GetDatabaseCredentials() (dbName string, dbHost string, dbPort string, dbUsername string, dbPassword string, err error) {
 	appState := GetAppState()
 	if appState == nil {
-		return "", "", "", "", ""
+		return "", "", "", "", "", errors.New("app state is not initialized")
 	}
-	return appState.AppConfig.UIT_WEB_DB_NAME, appState.AppConfig.UIT_WEB_DB_HOST.String(), appState.AppConfig.UIT_WEB_DB_PORT.String(), appState.AppConfig.UIT_WEB_DB_USERNAME, appState.AppConfig.UIT_WEB_DB_PASSWD
+	return appState.AppConfig.UIT_WEB_DB_NAME, appState.AppConfig.UIT_WEB_DB_HOST.String(), appState.AppConfig.UIT_WEB_DB_PORT.String(), appState.AppConfig.UIT_WEB_DB_USERNAME, appState.AppConfig.UIT_WEB_DB_PASSWD, nil
+}
+
+func GetWebServerUserDBCredentials() (dbName string, dbHost string, dbPort string, dbUsername string, dbPassword string, err error) {
+	appState := GetAppState()
+	if appState == nil {
+		return "", "", "", "", "", errors.New("app state is not initialized")
+	}
+	return appState.AppConfig.UIT_WEB_DB_NAME, appState.AppConfig.UIT_WEB_DB_HOST.String(), appState.AppConfig.UIT_WEB_DB_PORT.String(), appState.AppConfig.UIT_WEB_DB_USERNAME, appState.AppConfig.UIT_WEB_DB_PASSWD, nil
 }
 
 func GetDatabaseConn() *sql.DB {
@@ -713,16 +723,18 @@ func GetClientConfig() (*ClientConfig, error) {
 		return nil, errors.New("app state is not initialized")
 	}
 	clientConfig := &ClientConfig{
-		DBUser:         appState.AppConfig.UIT_CLIENT_DB_USER,
-		DBPass:         appState.AppConfig.UIT_CLIENT_DB_PASSWD,
-		DBName:         appState.AppConfig.UIT_CLIENT_DB_NAME,
-		DBHost:         appState.AppConfig.UIT_CLIENT_DB_HOST.String(),
-		DBPort:         appState.AppConfig.UIT_CLIENT_DB_PORT.String(),
-		NTPHost:        appState.AppConfig.UIT_CLIENT_NTP_HOST.String(),
-		PingHost:       appState.AppConfig.UIT_CLIENT_PING_HOST.String(),
-		WebHost:        appState.AppConfig.UIT_SERVER_HOSTNAME,
-		WebPort:        strconv.Itoa(int(appState.AppConfig.UIT_WEB_HTTP_PORT.Port())),
-		ServerHostname: appState.AppConfig.UIT_SERVER_HOSTNAME,
+		UIT_CLIENT_DB_USER:        appState.AppConfig.UIT_CLIENT_DB_USER,
+		UIT_CLIENT_DB_PASSWD:      appState.AppConfig.UIT_CLIENT_DB_PASSWD,
+		UIT_CLIENT_DB_NAME:        appState.AppConfig.UIT_CLIENT_DB_NAME,
+		UIT_CLIENT_DB_HOST:        appState.AppConfig.UIT_CLIENT_DB_HOST.String(),
+		UIT_CLIENT_DB_PORT:        appState.AppConfig.UIT_CLIENT_DB_PORT.String(),
+		UIT_CLIENT_NTP_HOST:       appState.AppConfig.UIT_CLIENT_NTP_HOST.String(),
+		UIT_CLIENT_PING_HOST:      appState.AppConfig.UIT_CLIENT_PING_HOST.String(),
+		UIT_SERVER_HOSTNAME:       appState.AppConfig.UIT_SERVER_HOSTNAME,
+		UIT_SERVER_LAN_IP_ADDRESS: appState.AppConfig.UIT_SERVER_LAN_IP_ADDRESS.String(),
+		UIT_WEB_HTTP_PORT:         appState.AppConfig.UIT_WEB_HTTP_PORT.String(),
+		UIT_WEB_HTTPS_PORT:        appState.AppConfig.UIT_WEB_HTTPS_PORT.String(),
+		UIT_WEBMASTER_NAME:        appState.AppConfig.UIT_WEBMASTER_NAME,
 	}
 	return clientConfig, nil
 }

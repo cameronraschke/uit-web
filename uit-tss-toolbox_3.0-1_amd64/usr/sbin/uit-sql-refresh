@@ -3,7 +3,7 @@
 mark1=$(date +%s.%N)
 uit-sql-refresh-client
 mark2=$(date +%s.%N)
-curl 'https://localhost:1411/api/refresh-client.php?password=UIT_DB_CLIENT_PASSWD&tagnumber=refresh-all'
+curl 'https://localhost:1411/api/refresh-client.php?password=UIT_CLIENT_DB_PASSWD&tagnumber=refresh-all'
 mark3=$(date +%s.%N)
 uit-sql-refresh-server
 mark4=$(date +%s.%N)

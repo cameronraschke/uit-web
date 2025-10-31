@@ -116,6 +116,55 @@ func CreateAdminUser() error {
 	return nil
 }
 
+func CreateWebServerUser() error {
+	db := config.GetDatabaseConn()
+	if db == nil {
+		return errors.New("database connection is not initialized")
+	}
+	_, _, _, webServerUserDBUsername, webServerUserDBPassword, err := config.GetWebServerUserDBCredentials()
+	if err != nil {
+		return errors.New("failed to get web server user credentials: " + err.Error())
+	}
+
+	if strings.TrimSpace(webServerUserDBUsername) == "" {
+		return errors.New("web server user username is empty")
+	}
+	usernameHash := crypto.SHA256.New()
+	usernameHash.Write([]byte(webServerUserDBUsername))
+	webServerUserDBUsernameHash := hex.EncodeToString(usernameHash.Sum(nil))
+
+	if strings.TrimSpace(webServerUserDBPassword) == "" {
+		return errors.New("web server user password is empty")
+	}
+	passwordHash := crypto.SHA256.New()
+	passwordHash.Write([]byte(webServerUserDBPassword))
+	webServerUserDBPasswordHash := hex.EncodeToString(passwordHash.Sum(nil))
+
+	bcryptHashBytes, err := bcrypt.GenerateFromPassword([]byte(webServerUserDBPasswordHash), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.New("failed to hash web server user password: " + err.Error())
+	}
+	bcryptHashString := string(bcryptHashBytes)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// Delete and recreate uitweb user in table logins
+	sqlCode := `
+    INSERT INTO logins (username, password, common_name, is_admin, enabled)
+    VALUES ($1, $2, 'uitweb', FALSE, TRUE)
+    ON CONFLICT (username)
+    DO UPDATE SET password = EXCLUDED.password
+    `
+
+	_, err = db.ExecContext(ctx, sqlCode, webServerUserDBUsernameHash, bcryptHashString)
+	if err != nil {
+		return errors.New("failed to create web server user: " + err.Error())
+	}
+
+	return nil
+}
+
 // type AvailableJobs struct {
 // 	Tagnumber   *int    `json:"tagnumber"`
 // 	Job         *string `json:"job"`
