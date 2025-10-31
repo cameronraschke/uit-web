@@ -109,6 +109,7 @@ func main() {
 	httpMux := http.NewServeMux()
 	httpMux.Handle("/client/", fileServerFullChain.thenFunc(endpoints.FileServerHandler))
 	httpMux.Handle("/client", fileServerFullChain.thenFunc(endpoints.RejectRequest))
+	httpMux.Handle("GET /api/configs/uit-client", fileServerBaseChain.thenFunc(endpoints.GetClientConfig))
 	httpMux.Handle("/", fileServerBaseChain.thenFunc(endpoints.RejectRequest))
 
 	httpServer := &http.Server{
@@ -188,8 +189,6 @@ func main() {
 	httpsMux.Handle("POST /api/images/toggle_pin/", httpsFullAPIChain.thenFunc(endpoints.TogglePinImage))
 
 	httpsMux.Handle("DELETE /api/images/", httpsFullAPIChain.thenFunc(endpoints.DeleteImage))
-
-	httpsMux.Handle("GET /api/configs/uit-client", httpsFullLoginChain.thenFunc(endpoints.GetClientConfig))
 
 	httpsMux.Handle("GET /login", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
 	httpsMux.Handle("GET /login.html", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
