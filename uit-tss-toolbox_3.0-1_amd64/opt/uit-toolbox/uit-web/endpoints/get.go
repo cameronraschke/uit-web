@@ -791,17 +791,18 @@ func GetClientConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	clientConfigMap := map[string]string{
-		"UIT_CLIENT_DB_USER":        clientConfig.UIT_CLIENT_DB_USER,
-		"UIT_CLIENT_DB_PASSWD":      clientConfig.UIT_CLIENT_DB_PASSWD,
-		"UIT_CLIENT_DB_NAME":        clientConfig.UIT_CLIENT_DB_NAME,
-		"UIT_CLIENT_DB_HOST":        clientConfig.UIT_CLIENT_DB_HOST,
-		"UIT_CLIENT_DB_PORT":        clientConfig.UIT_CLIENT_DB_PORT,
-		"UIT_CLIENT_NTP_HOST":       clientConfig.UIT_CLIENT_NTP_HOST,
-		"UIT_CLIENT_PING_HOST":      clientConfig.UIT_CLIENT_PING_HOST,
-		"UIT_SERVER_HOSTNAME":       clientConfig.UIT_SERVER_HOSTNAME,
-		"UIT_SERVER_LAN_IP_ADDRESS": clientConfig.UIT_SERVER_LAN_IP_ADDRESS,
-		"UIT_WEB_HTTP_PORT":         clientConfig.UIT_WEB_HTTP_PORT,
-		"UIT_WEB_HTTPS_PORT":        clientConfig.UIT_WEB_HTTPS_PORT,
+		"UIT_CLIENT_DB_USER":   clientConfig.UIT_CLIENT_DB_USER,
+		"UIT_CLIENT_DB_PASSWD": clientConfig.UIT_CLIENT_DB_PASSWD,
+		"UIT_CLIENT_DB_NAME":   clientConfig.UIT_CLIENT_DB_NAME,
+		"UIT_CLIENT_DB_HOST":   clientConfig.UIT_CLIENT_DB_HOST,
+		"UIT_CLIENT_DB_PORT":   clientConfig.UIT_CLIENT_DB_PORT,
+		"UIT_CLIENT_NTP_HOST":  clientConfig.UIT_CLIENT_NTP_HOST,
+		"UIT_CLIENT_PING_HOST": clientConfig.UIT_CLIENT_PING_HOST,
+		"UIT_SERVER_HOSTNAME":  clientConfig.UIT_SERVER_HOSTNAME,
+		"UIT_WEB_HTTP_HOST":    clientConfig.UIT_WEB_HTTP_HOST,
+		"UIT_WEB_HTTP_PORT":    clientConfig.UIT_WEB_HTTP_PORT,
+		"UIT_WEB_HTTPS_HOST":   clientConfig.UIT_WEB_HTTPS_HOST,
+		"UIT_WEB_HTTPS_PORT":   clientConfig.UIT_WEB_HTTPS_PORT,
 	}
 
 	var response string

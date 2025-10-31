@@ -81,9 +81,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	lanServerIP, _, err := config.GetWebServerIPs()
-	if err != nil || lanServerIP == "" {
-		log.Error("Cannot get LAN server IP: " + err.Error())
+	httpHost, _, err := config.GetWebServerIPs()
+	if err != nil || httpHost == "" {
+		log.Error("Cannot get HTTP server IP: " + err.Error())
 		os.Exit(1)
 	}
 
@@ -111,7 +111,7 @@ func main() {
 	httpMux.Handle("/", fileServerBaseChain.thenFunc(endpoints.RejectRequest))
 
 	httpServer := &http.Server{
-		Addr:         lanServerIP + ":8080",
+		Addr:         httpHost + ":8080",
 		Handler:      httpMux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 1 * time.Minute,
@@ -120,7 +120,7 @@ func main() {
 	defer httpServer.Close()
 
 	go func() {
-		log.Info("HTTP server listening on http://" + lanServerIP + ":8080")
+		log.Info("HTTP server listening on http://" + httpHost + ":8080")
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("HTTP server error: " + err.Error())
 		}

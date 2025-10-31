@@ -36,7 +36,9 @@ type ConfigFile struct {
 	UIT_WEB_DB_NAME                 string `json:"UIT_WEB_DB_NAME"`
 	UIT_WEB_DB_HOST                 string `json:"UIT_WEB_DB_HOST"`
 	UIT_WEB_DB_PORT                 string `json:"UIT_WEB_DB_PORT"`
+	UIT_WEB_HTTP_HOST               string `json:"UIT_WEB_HTTP_HOST"`
 	UIT_WEB_HTTP_PORT               string `json:"UIT_WEB_HTTP_PORT"`
+	UIT_WEB_HTTPS_HOST              string `json:"UIT_WEB_HTTPS_HOST"`
 	UIT_WEB_HTTPS_PORT              string `json:"UIT_WEB_HTTPS_PORT"`
 	UIT_WEB_TLS_CERT_FILE           string `json:"UIT_WEB_TLS_CERT_FILE"`
 	UIT_WEB_TLS_KEY_FILE            string `json:"UIT_WEB_TLS_KEY_FILE"`
@@ -73,8 +75,10 @@ type AppConfig struct {
 	UIT_WEB_DB_NAME                 string         `json:"UIT_WEB_DB_NAME"`
 	UIT_WEB_DB_HOST                 netip.Addr     `json:"UIT_WEB_DB_HOST"`
 	UIT_WEB_DB_PORT                 uint16         `json:"UIT_WEB_DB_PORT"`
-	UIT_WEB_HTTP_PORT               netip.AddrPort `json:"UIT_WEB_HTTP_PORT"`
-	UIT_WEB_HTTPS_PORT              netip.AddrPort `json:"UIT_WEB_HTTPS_PORT"`
+	UIT_WEB_HTTP_HOST               netip.Addr     `json:"UIT_WEB_HTTP_HOST"`
+	UIT_WEB_HTTP_PORT               uint16         `json:"UIT_WEB_HTTP_PORT"`
+	UIT_WEB_HTTPS_HOST              netip.Addr     `json:"UIT_WEB_HTTPS_HOST"`
+	UIT_WEB_HTTPS_PORT              uint16         `json:"UIT_WEB_HTTPS_PORT"`
 	UIT_WEB_TLS_CERT_FILE           string         `json:"UIT_WEB_TLS_CERT_FILE"`
 	UIT_WEB_TLS_KEY_FILE            string         `json:"UIT_WEB_TLS_KEY_FILE"`
 	UIT_WEB_RATE_LIMIT_BURST        int            `json:"UIT_WEB_RATE_LIMIT_BURST"`
@@ -109,18 +113,19 @@ type BlockedMap struct {
 }
 
 type ClientConfig struct {
-	UIT_CLIENT_DB_USER        string `json:"UIT_CLIENT_DB_USER"`
-	UIT_CLIENT_DB_PASSWD      string `json:"UIT_CLIENT_DB_PASSWD"`
-	UIT_CLIENT_DB_NAME        string `json:"UIT_CLIENT_DB_NAME"`
-	UIT_CLIENT_DB_HOST        string `json:"UIT_CLIENT_DB_HOST"`
-	UIT_CLIENT_DB_PORT        string `json:"UIT_CLIENT_DB_PORT"`
-	UIT_CLIENT_NTP_HOST       string `json:"UIT_CLIENT_NTP_HOST"`
-	UIT_CLIENT_PING_HOST      string `json:"UIT_CLIENT_PING_HOST"`
-	UIT_SERVER_HOSTNAME       string `json:"UIT_SERVER_HOSTNAME"`
-	UIT_SERVER_LAN_IP_ADDRESS string `json:"UIT_SERVER_LAN_IP_ADDRESS"`
-	UIT_WEB_HTTP_PORT         string `json:"UIT_WEB_HTTP_PORT"`
-	UIT_WEB_HTTPS_PORT        string `json:"UIT_WEB_HTTPS_PORT"`
-	UIT_WEBMASTER_NAME        string `json:"UIT_WEBMASTER_NAME"`
+	UIT_CLIENT_DB_USER   string `json:"UIT_CLIENT_DB_USER"`
+	UIT_CLIENT_DB_PASSWD string `json:"UIT_CLIENT_DB_PASSWD"`
+	UIT_CLIENT_DB_NAME   string `json:"UIT_CLIENT_DB_NAME"`
+	UIT_CLIENT_DB_HOST   string `json:"UIT_CLIENT_DB_HOST"`
+	UIT_CLIENT_DB_PORT   string `json:"UIT_CLIENT_DB_PORT"`
+	UIT_CLIENT_NTP_HOST  string `json:"UIT_CLIENT_NTP_HOST"`
+	UIT_CLIENT_PING_HOST string `json:"UIT_CLIENT_PING_HOST"`
+	UIT_SERVER_HOSTNAME  string `json:"UIT_SERVER_HOSTNAME"`
+	UIT_WEB_HTTP_HOST    string `json:"UIT_WEB_HTTP_HOST"`
+	UIT_WEB_HTTP_PORT    string `json:"UIT_WEB_HTTP_PORT"`
+	UIT_WEB_HTTPS_HOST   string `json:"UIT_WEB_HTTPS_HOST"`
+	UIT_WEB_HTTPS_PORT   string `json:"UIT_WEB_HTTPS_PORT"`
+	UIT_WEBMASTER_NAME   string `json:"UIT_WEBMASTER_NAME"`
 }
 
 type FileList struct {
@@ -270,17 +275,17 @@ func LoadConfig() (*AppConfig, error) {
 	}
 	appConfig.UIT_WEB_DB_PORT = dbPortAddr.Port()
 
-	httpPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_HTTP_PORT)
+	httpPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_HTTP_HOST + ":" + configFile.UIT_WEB_HTTP_PORT)
 	if err != nil {
 		return nil, fmt.Errorf("invalid UIT_WEB_HTTP_PORT: %w", err)
 	}
-	appConfig.UIT_WEB_HTTP_PORT = httpPortAddr
+	appConfig.UIT_WEB_HTTP_PORT = httpPortAddr.Port()
 
-	httpsPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_HTTPS_PORT)
+	httpsPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_HTTPS_HOST + ":" + configFile.UIT_WEB_HTTPS_PORT)
 	if err != nil {
 		return nil, fmt.Errorf("invalid UIT_WEB_HTTPS_PORT: %w", err)
 	}
-	appConfig.UIT_WEB_HTTPS_PORT = httpsPortAddr
+	appConfig.UIT_WEB_HTTPS_PORT = httpsPortAddr.Port()
 	appConfig.UIT_WEB_TLS_CERT_FILE = configFile.UIT_WEB_TLS_CERT_FILE
 	appConfig.UIT_WEB_TLS_KEY_FILE = configFile.UIT_WEB_TLS_KEY_FILE
 
@@ -677,8 +682,8 @@ func GetWebServerIPs() (string, string, error) {
 	if appState == nil {
 		return "", "", errors.New("app state is not initialized")
 	}
-	lanIP := appState.AppConfig.UIT_SERVER_LAN_IP_ADDRESS
-	wanIP := appState.AppConfig.UIT_SERVER_WAN_IP_ADDRESS
+	lanIP := appState.AppConfig.UIT_WEB_HTTP_HOST
+	wanIP := appState.AppConfig.UIT_WEB_HTTPS_HOST
 	return lanIP.String(), wanIP.String(), nil
 }
 
@@ -723,18 +728,19 @@ func GetClientConfig() (*ClientConfig, error) {
 		return nil, errors.New("app state is not initialized")
 	}
 	clientConfig := &ClientConfig{
-		UIT_CLIENT_DB_USER:        appState.AppConfig.UIT_CLIENT_DB_USER,
-		UIT_CLIENT_DB_PASSWD:      appState.AppConfig.UIT_CLIENT_DB_PASSWD,
-		UIT_CLIENT_DB_NAME:        appState.AppConfig.UIT_CLIENT_DB_NAME,
-		UIT_CLIENT_DB_HOST:        appState.AppConfig.UIT_CLIENT_DB_HOST.String(),
-		UIT_CLIENT_DB_PORT:        strconv.FormatUint(uint64(appState.AppConfig.UIT_CLIENT_DB_PORT), 10),
-		UIT_CLIENT_NTP_HOST:       appState.AppConfig.UIT_CLIENT_NTP_HOST.String(),
-		UIT_CLIENT_PING_HOST:      appState.AppConfig.UIT_CLIENT_PING_HOST.String(),
-		UIT_SERVER_HOSTNAME:       appState.AppConfig.UIT_SERVER_HOSTNAME,
-		UIT_SERVER_LAN_IP_ADDRESS: appState.AppConfig.UIT_SERVER_LAN_IP_ADDRESS.String(),
-		UIT_WEB_HTTP_PORT:         appState.AppConfig.UIT_WEB_HTTP_PORT.String(),
-		UIT_WEB_HTTPS_PORT:        appState.AppConfig.UIT_WEB_HTTPS_PORT.String(),
-		UIT_WEBMASTER_NAME:        appState.AppConfig.UIT_WEBMASTER_NAME,
+		UIT_CLIENT_DB_USER:   appState.AppConfig.UIT_CLIENT_DB_USER,
+		UIT_CLIENT_DB_PASSWD: appState.AppConfig.UIT_CLIENT_DB_PASSWD,
+		UIT_CLIENT_DB_NAME:   appState.AppConfig.UIT_CLIENT_DB_NAME,
+		UIT_CLIENT_DB_HOST:   appState.AppConfig.UIT_CLIENT_DB_HOST.String(),
+		UIT_CLIENT_DB_PORT:   strconv.FormatUint(uint64(appState.AppConfig.UIT_CLIENT_DB_PORT), 10),
+		UIT_CLIENT_NTP_HOST:  appState.AppConfig.UIT_CLIENT_NTP_HOST.String(),
+		UIT_CLIENT_PING_HOST: appState.AppConfig.UIT_CLIENT_PING_HOST.String(),
+		UIT_SERVER_HOSTNAME:  appState.AppConfig.UIT_SERVER_HOSTNAME,
+		UIT_WEB_HTTP_HOST:    appState.AppConfig.UIT_WEB_HTTP_HOST.String(),
+		UIT_WEB_HTTP_PORT:    strconv.FormatUint(uint64(appState.AppConfig.UIT_WEB_HTTP_PORT), 10),
+		UIT_WEB_HTTPS_HOST:   appState.AppConfig.UIT_WEB_HTTPS_HOST.String(),
+		UIT_WEB_HTTPS_PORT:   strconv.FormatUint(uint64(appState.AppConfig.UIT_WEB_HTTPS_PORT), 10),
+		UIT_WEBMASTER_NAME:   appState.AppConfig.UIT_WEBMASTER_NAME,
 	}
 	return clientConfig, nil
 }
