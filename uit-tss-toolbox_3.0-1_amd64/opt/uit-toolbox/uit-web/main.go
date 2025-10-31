@@ -109,7 +109,7 @@ func main() {
 	httpMux := http.NewServeMux()
 	httpMux.Handle("/client/", fileServerFullChain.thenFunc(endpoints.FileServerHandler))
 	httpMux.Handle("/client", fileServerFullChain.thenFunc(endpoints.RejectRequest))
-	httpMux.Handle("GET /api/configs/uit-client", fileServerBaseChain.thenFunc(endpoints.GetClientConfig))
+	httpMux.Handle("/client/api/configs/uit-client", fileServerBaseChain.thenFunc(endpoints.GetClientConfig))
 	httpMux.Handle("/", fileServerBaseChain.thenFunc(endpoints.RejectRequest))
 
 	httpServer := &http.Server{
