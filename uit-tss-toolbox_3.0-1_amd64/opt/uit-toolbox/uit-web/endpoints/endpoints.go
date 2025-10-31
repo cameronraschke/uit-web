@@ -414,6 +414,6 @@ func RejectRequest(w http.ResponseWriter, req *http.Request) {
 	requestURL := requestInfo.URL
 	log := requestInfo.Log
 
-	log.Warning("access denied: " + requestIP + " tried to access " + requestURL)
+	log.Warning("Access denied: " + requestIP + " tried to access " + requestURL)
 	http.Error(w, "Access denied", http.StatusForbidden)
 }
