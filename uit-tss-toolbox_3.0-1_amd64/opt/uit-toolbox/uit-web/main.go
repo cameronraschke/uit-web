@@ -90,7 +90,7 @@ func main() {
 
 	fileServerBaseChain := muxChain{
 		middleware.LimitRequestSizeMiddleware,
-		middleware.TimeoutMiddleware,
+		middleware.FileServerTimeoutMiddleware,
 		middleware.StoreClientIPMiddleware,
 		middleware.RateLimitMiddleware("file"),
 		middleware.AllowIPRangeMiddleware("lan"),
@@ -132,7 +132,7 @@ func main() {
 	// https handlers and middleware chains
 	httpsBaseChain := muxChain{
 		middleware.LimitRequestSizeMiddleware,
-		middleware.TimeoutMiddleware,
+		middleware.APITimeoutMiddleware,
 		middleware.StoreClientIPMiddleware,
 		middleware.RateLimitMiddleware("web"),
 		middleware.AllowIPRangeMiddleware("any"),

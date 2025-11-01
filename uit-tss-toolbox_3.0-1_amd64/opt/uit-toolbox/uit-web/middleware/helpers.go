@@ -29,6 +29,7 @@ type CTXFileRequest struct {
 	ResolvedPath string
 	FileName     string
 }
+type CTXRequestID struct{}
 
 type HTTPErrorCodes struct {
 	Error string `json:"error"`
@@ -40,14 +41,40 @@ type ReturnedJsonToken struct {
 	Valid bool    `json:"valid"`
 }
 
+type JsonError struct {
+	ErrorCode    int    `json:"error_code"`
+	ErrorMessage string `json:"error_message"`
+}
+
 func WriteJson(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-func WriteJsonError(w http.ResponseWriter, status int, msg string) {
-	WriteJson(w, status, map[string]string{"error": msg})
+func WriteJsonError(w http.ResponseWriter, httpStatusCode int) {
+	if httpStatusCode <= 0 {
+		httpStatusCode = http.StatusInternalServerError
+	}
+	responseController := http.NewResponseController(w)
+	if responseController != nil {
+		_ = responseController.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	}
+
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(httpStatusCode)
+	jsonStruct := &JsonError{
+		ErrorCode:    httpStatusCode,
+		ErrorMessage: http.StatusText(httpStatusCode),
+	}
+
+	err := json.NewEncoder(w).Encode(jsonStruct)
+	if err != nil {
+		return
+	}
+
+	_ = responseController.Flush()
 }
 
 func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue, uitCSRFValue string, timeout time.Duration) (*http.Cookie, *http.Cookie, *http.Cookie, *http.Cookie) {

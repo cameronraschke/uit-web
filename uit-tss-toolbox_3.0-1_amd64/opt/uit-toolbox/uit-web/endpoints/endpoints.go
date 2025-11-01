@@ -73,7 +73,7 @@ func ConvertRequestTagnumber(r *http.Request) (int64, bool) {
 func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	requestInfo, err := GetRequestInfo(req)
 	if err != nil {
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	ctx := requestInfo.Ctx
@@ -84,13 +84,13 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	fullPath, resolvedPath, requestedFile, ok := middleware.GetRequestedFile(req)
 	if !ok {
 		log.Warning("no requested file stored in context")
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	if resolvedPath != fullPath {
 		log.Warning("Resolved path does not match full path (" + requestIP + "): " + resolvedPath + " -> " + fullPath)
-		middleware.WriteJsonError(w, http.StatusForbidden, "Forbidden")
+		middleware.WriteJsonError(w, http.StatusForbidden)
 		return
 	}
 
@@ -109,14 +109,14 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	// err = f.SetDeadline(time.Now().Add(30 * time.Second))
 	// if err != nil {
 	// 	log.Error("Cannot set file read deadline: " + fullPath + " (" + err.Error() + ")")
-	// 	http.Error(w, "Internal server error", http.StatusInternalServerError)
+	// 	http.Error(w, http.StatusInternalServerError)
 	// 	return
 	// }
 
 	metadata, err := f.Stat()
 	if err != nil {
 		log.Error("Cannot stat file: " + fullPath + " (" + err.Error() + ")")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
@@ -169,7 +169,7 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	requestInfo, err := GetRequestInfo(req)
 	if err != nil {
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	ctx := requestInfo.Ctx
@@ -180,13 +180,13 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	fullPath, resolvedPath, requestedFile, ok := middleware.GetRequestedFile(req)
 	if !ok {
 		log.Warning("no requested file stored in context")
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	if resolvedPath != fullPath {
 		log.Warning("Resolved path does not match full path (" + requestIP + "): " + resolvedPath + " -> " + fullPath)
-		middleware.WriteJsonError(w, http.StatusForbidden, "Forbidden")
+		middleware.WriteJsonError(w, http.StatusForbidden)
 		return
 	}
 
@@ -205,14 +205,14 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	// err = f.SetDeadline(time.Now().Add(30 * time.Second))
 	// if err != nil {
 	// 	log.Error("Cannot set file read deadline: " + fullPath + " (" + err.Error() + ")")
-	// 	http.Error(w, "Internal server error", http.StatusInternalServerError)
+	// 	http.Error(w, http.StatusInternalServerError)
 	// 	return
 	// }
 
 	metadata, err := f.Stat()
 	if err != nil {
 		log.Error("Cannot stat file: " + fullPath + " (" + err.Error() + ")")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
@@ -229,7 +229,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		nonce, err := GenerateNonce(24)
 		if err != nil {
 			log.Error("Cannot generate CSP nonce: " + err.Error())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
@@ -247,13 +247,13 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		htmlTemp, err := template.ParseFiles(resolvedPath)
 		if err != nil {
 			log.Warning("Cannot parse template file (" + resolvedPath + "): " + err.Error())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		webmasterName, webmasterEmail, err := config.GetWebmasterContact()
 		if err != nil {
 			log.Error("Cannot get webmaster contact info: " + err.Error())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
@@ -262,42 +262,42 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		departments, err := db.GetDepartments(ctx)
 		if err != nil {
 			log.Error("Cannot get department list from database: " + err.Error())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		domains, err := db.GetDomains(ctx)
 		if err != nil {
 			log.Error("Cannot get domain list from database: " + err.Error())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		statuses, err := db.GetStatuses(ctx)
 		if err != nil {
 			log.Error("Cannot get status list from database: " + err.Error())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		manufacturers, err := db.GetManufacturers(ctx)
 		if err != nil {
 			log.Error("Cannot get manufacturer list from database: " + err.Error())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		models, err := db.GetModels(ctx)
 		if err != nil {
 			log.Error("Cannot get model list from database: " + err.Error())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		locations, err := db.GetLocations(ctx)
 		if err != nil {
 			log.Error("Cannot get location list from database: " + err.Error())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
@@ -332,7 +332,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		err = htmlTemp.Execute(w, templateData)
 		if err != nil {
 			log.Error("Error executing template for " + resolvedPath + ": " + err.Error())
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		return
@@ -370,7 +370,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 	requestInfo, err := GetRequestInfo(req)
 	if err != nil {
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	log := requestInfo.Log
@@ -407,7 +407,7 @@ func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 func RejectRequest(w http.ResponseWriter, req *http.Request) {
 	requestInfo, err := GetRequestInfo(req)
 	if err != nil {
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	requestIP := requestInfo.IP

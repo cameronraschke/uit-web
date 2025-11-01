@@ -16,7 +16,7 @@ func DeleteImage(w http.ResponseWriter, r *http.Request) {
 	requestInfo, err := GetRequestInfo(r)
 	if err != nil {
 		log.Println("Cannot get request info error: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	ctx := requestInfo.Ctx
@@ -26,7 +26,7 @@ func DeleteImage(w http.ResponseWriter, r *http.Request) {
 	tagnumber, ok := ConvertRequestTagnumber(r)
 	if tagnumber == 0 || !ok {
 		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
@@ -37,14 +37,14 @@ func DeleteImage(w http.ResponseWriter, r *http.Request) {
 	requestFilePath = strings.TrimSuffix(requestFilePath, ".mov")
 	if requestFilePath == "" {
 		log.Warning("No image path provided in request from: " + requestIP + " (" + requestURL + ")")
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	uuid := strings.TrimSpace(requestFilePath)
 	if uuid == "" {
 		log.Warning("No UUID provided in delete image request from: " + requestIP + " (" + requestURL + ")")
-		middleware.WriteJsonError(w, http.StatusBadRequest, "Bad request")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	uuid = strings.SplitN(uuid, "/", 2)[1]
@@ -52,7 +52,7 @@ func DeleteImage(w http.ResponseWriter, r *http.Request) {
 	db := config.GetDatabaseConn()
 	if db == nil {
 		log.Warning("no database connection available")
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	repo := database.NewRepo(db)
@@ -62,7 +62,7 @@ func DeleteImage(w http.ResponseWriter, r *http.Request) {
 	err = repo.HideClientImageByUUID(ctx, tagnumber, uuid)
 	if err != nil {
 		log.Error("Failed to delete client image with UUID " + uuid + " for tagnumber " + fmt.Sprintf("%d", tagnumber) + ": " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError, "Internal server error")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 

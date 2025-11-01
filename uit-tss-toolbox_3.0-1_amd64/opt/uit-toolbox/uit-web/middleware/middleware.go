@@ -24,11 +24,21 @@ import (
 func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log := config.GetLogger()
-		maxSize := int64(64 << 20)
+		contentLengthHeader := req.Header.Get("Content-Length")
+		if strings.TrimSpace(contentLengthHeader) == "" {
+			log.Warning("Request content length is missing: " + fmt.Sprintf("%d", req.ContentLength))
+			WriteJsonError(w, http.StatusLengthRequired)
+		}
+		maxSize, err := config.GetMaxUploadSize()
+		if err != nil {
+			log.Error("Failed to get max upload size from config: " + err.Error())
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 		if req.ContentLength > maxSize {
 			//req.RemoteAddr used here because the ip has not been assigned to the context yet
 			log.Warning("Request content length exceeds limit: " + fmt.Sprintf("%.2fMB", float64(req.ContentLength)/1e6) + " " + req.RemoteAddr)
-			http.Error(w, FormatHttpError("Request too large"), http.StatusRequestEntityTooLarge)
+			WriteJsonError(w, http.StatusRequestEntityTooLarge)
 			return
 		}
 		req.Body = http.MaxBytesReader(w, req.Body, maxSize)
@@ -36,12 +46,33 @@ func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func TimeoutMiddleware(next http.Handler) http.Handler {
+func APITimeoutMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		ctx, cancel := context.WithTimeout(req.Context(), 10*time.Second)
+		log := config.GetLogger()
+		timeout, err := config.GetRequestTimeout("api")
+		if err != nil {
+			log.Error("Failed to get request timeout: " + err.Error())
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		ctx, cancel := context.WithTimeout(req.Context(), timeout)
 		defer cancel()
-		req = req.WithContext(ctx)
-		next.ServeHTTP(w, req)
+		next.ServeHTTP(w, req.WithContext(ctx))
+	})
+}
+
+func FileServerTimeoutMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := config.GetLogger()
+		timeout, err := config.GetRequestTimeout("file")
+		if err != nil {
+			log.Error("Failed to get request timeout: " + err.Error())
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		ctx, cancel := context.WithTimeout(req.Context(), timeout)
+		defer cancel()
+		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }
 
@@ -52,19 +83,19 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 		ip, port, err := net.SplitHostPort(req.RemoteAddr)
 		if err != nil {
 			log.Warning("Could not parse IP address: " + err.Error())
-			http.Error(w, "Bad request", http.StatusBadRequest)
+			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if strings.TrimSpace(port) == "" {
 			log.Warning("Empty port in request")
-			http.Error(w, "Bad request", http.StatusBadRequest)
+			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		ipValid, _, _ := checkValidIP(ip)
 		if !ipValid {
 			log.Warning("Invalid IP address, terminating connection")
-			http.Error(w, "Bad request", http.StatusBadRequest)
+			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
@@ -80,20 +111,20 @@ func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
 			requestIP, ok := GetRequestIP(req)
 			if !ok {
 				log.Warning("no IP address stored in context")
-				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 
 			if config.IsIPBlocked(requestIP) {
 				log.Debug("Blocked IP attempted request: " + requestIP)
-				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+				WriteJsonError(w, http.StatusTooManyRequests)
 				return
 			}
 
 			limited, retryAfter := config.IsClientRateLimited(rateType, requestIP)
 			if limited {
 				log.Debug("Client is rate limited: " + requestIP + " (retry after " + retryAfter.String() + ")")
-				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+				WriteJsonError(w, http.StatusTooManyRequests)
 				return
 			}
 
@@ -108,24 +139,24 @@ func AllowIPRangeMiddleware(source string) func(http.Handler) http.Handler {
 			log := config.GetLogger()
 			if strings.TrimSpace(source) == "" {
 				log.Warning("No source specified for AllowIPRangeMiddleware")
-				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			requestIP, ok := GetRequestIP(req)
 			if !ok {
 				log.Warning("no IP address stored in context")
-				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			allowed, err := config.IsIPAllowed(source, requestIP)
 			if err != nil {
 				log.Error("Error checking if IP is allowed: " + err.Error())
-				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			if !allowed {
 				log.Warning("IP address not in allowed range: " + requestIP)
-				http.Error(w, "Forbidden", http.StatusForbidden)
+				WriteJsonError(w, http.StatusForbidden)
 				return
 			}
 			next.ServeHTTP(w, req)
@@ -139,12 +170,12 @@ func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
 			log.Warning("no IP address stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		if req.ProtoMajor != 2 {
 			log.Warning("Client does not support HTTP/2: " + requestIP)
-			WriteJsonError(w, http.StatusUpgradeRequired, "Client must use HTTP/2: "+requestIP+" ("+strconv.Itoa(req.ProtoMajor)+"."+strconv.Itoa(req.ProtoMinor)+")")
+			WriteJsonError(w, http.StatusUpgradeRequired)
 			return
 		}
 		next.ServeHTTP(w, req)
@@ -157,19 +188,19 @@ func TLSMiddleware(next http.Handler) http.Handler {
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
 			log.Warning("no IP address stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		if req.TLS == nil || !req.TLS.HandshakeComplete {
 			log.Warning("TLS handshake failed for client " + requestIP)
-			http.Error(w, FormatHttpError("TLS required"), http.StatusUpgradeRequired)
+			WriteJsonError(w, http.StatusUpgradeRequired)
 			return
 		}
 
 		if req.TLS.Version < tls.VersionTLS13 {
 			log.Warning("Rejected connection with weak TLS version from " + requestIP)
-			http.Error(w, FormatHttpError("TLS version too low"), http.StatusUpgradeRequired)
+			WriteJsonError(w, http.StatusUpgradeRequired)
 			return
 		}
 
@@ -185,7 +216,7 @@ func TLSMiddleware(next http.Handler) http.Handler {
 		}
 		if weakCiphers[req.TLS.CipherSuite] {
 			log.Warning("Rejected connection with weak cipher suite from " + requestIP)
-			http.Error(w, FormatHttpError("Weak cipher suite not allowed"), http.StatusUpgradeRequired)
+			WriteJsonError(w, http.StatusUpgradeRequired)
 			return
 		}
 
@@ -199,14 +230,14 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
 			log.Warning("No IP address stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		// URL length
 		if len(req.URL.RequestURI()) > 2048 {
 			log.Warning("Request URL length exceeds limit: " + fmt.Sprintf("%d", len(req.URL.RequestURI())) + " (" + requestIP + ": " + req.Method + " " + req.URL.RequestURI() + ")")
-			http.Error(w, FormatHttpError("Request URI too long"), http.StatusRequestURITooLong)
+			WriteJsonError(w, http.StatusRequestURITooLong)
 			return
 		}
 
@@ -216,18 +247,18 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		for k, v := range queryValues {
 			if len(k) > 128 || len(v) > 512 {
 				log.Warning("Request URL query key length exceeds limit: " + fmt.Sprintf("%d", len(k)) + " (" + requestIP + ": " + req.Method + " " + req.URL.RequestURI() + ")")
-				http.Error(w, FormatHttpError("Request URI too long"), http.StatusRequestURITooLong)
+				WriteJsonError(w, http.StatusRequestURITooLong)
 				return
 			}
 			if strings.ContainsAny(k, disallowedQueryChars) {
 				log.Warning("Invalid characters in query key: " + "( " + requestIP + ": " + req.Method + " " + req.URL.RequestURI() + ")")
-				http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
+				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 			for _, value := range v {
 				if strings.ContainsAny(value, disallowedQueryChars) {
 					log.Warning("Invalid characters in query value: " + "( " + requestIP + ": " + req.Method + " " + req.URL.RequestURI() + ")")
-					http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
+					WriteJsonError(w, http.StatusBadRequest)
 					return
 				}
 			}
@@ -239,13 +270,13 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		rawPath := strings.TrimSpace(req.URL.Path)
 		if rawPath == "" || len(rawPath) > 255 {
 			log.Warning("Empty URL requested from: " + requestIP)
-			http.Error(w, "Bad request", http.StatusBadRequest)
+			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		unescapedPath, err := url.PathUnescape(rawPath)
 		if err != nil {
 			log.Warning("Cannot unescape URL path: " + err.Error())
-			http.Error(w, "Bad request", http.StatusBadRequest)
+			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		normalizedPath := norm.NFC.String(unescapedPath)
@@ -257,7 +288,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 			strings.HasSuffix(normalizedPath, ".") ||
 			strings.ContainsAny(normalizedPath, disallowedPathChars) {
 			log.Warning("Normalized URL path is invalid: " + requestIP)
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
@@ -269,7 +300,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 			fullPath == "." {
 
 			log.Warning("Empty file path requested: " + requestIP + " (" + fullPath + ")")
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
@@ -277,7 +308,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		fileRequestedWithQuery, err := url.Parse(fullPath)
 		if err != nil {
 			log.Warning("Failed to parse URL path: " + err.Error())
-			http.Error(w, "Bad request", http.StatusBadRequest)
+			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		_, fileRequested := path.Split(fileRequestedWithQuery.Path)
@@ -288,7 +319,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 			strings.HasSuffix(fileRequested, ".swp") {
 
 			log.Warning("Invalid characters in file requested")
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
@@ -302,12 +333,12 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 			for _, char := range fullPath {
 				if char < 32 || char == 127 {
 					log.Warning("Control/non-printable character in filename: " + requestIP)
-					http.Error(w, "Forbidden", http.StatusForbidden)
+					WriteJsonError(w, http.StatusForbidden)
 					return
 				}
 				if char > 127 || char > unicode.MaxASCII || char > unicode.MaxLatin1 {
 					log.Warning("Non-ASCII character in filename: " + requestIP)
-					http.Error(w, "Forbidden", http.StatusForbidden)
+					WriteJsonError(w, http.StatusForbidden)
 					return
 				}
 				// if !(unicode.IsPrint(char) ||
@@ -319,13 +350,13 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 
 				if !unicode.In(char, unicode.Digit, unicode.Letter, unicode.Mark, unicode.Number, unicode.Punct, unicode.Space) {
 					log.Warning("Invalid Unicode Char")
-					http.Error(w, FormatHttpError("Forbidden"), http.StatusForbidden)
+					WriteJsonError(w, http.StatusForbidden)
 					return
 				}
 
 				if strings.ContainsRune(disallowedPathChars, char) {
 					log.Warning("Disallowed character in filename: " + requestIP)
-					http.Error(w, "Forbidden", http.StatusForbidden)
+					WriteJsonError(w, http.StatusForbidden)
 					return
 				}
 			}
@@ -338,7 +369,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 			parsedQuery, err := url.ParseQuery(req.URL.RawQuery)
 			if err != nil {
 				log.Warning("Failed to parse URL query: " + requestIP)
-				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			newURL := url.URL{
@@ -357,20 +388,20 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
 			log.Warning("no IP address stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		requestURLString, ok := GetRequestURL(req)
 		if !ok {
 			log.Warning("no URL stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		requestURLParsed, err := url.Parse(requestURLString)
 		if err != nil {
 			log.Warning("Failed to parse request URL: " + err.Error())
-			http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
+			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		requestURLPath := requestURLParsed.Path
@@ -395,90 +426,90 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 			strings.TrimSpace(fullPath) == "." ||
 			strings.TrimSpace(fullPath) == "/" {
 			log.Warning("Invalid file path: " + fullPath)
-			http.Error(w, FormatHttpError("Forbidden"), http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
 		if !config.IsFileAllowed(fileRequested) {
 			log.Warning("File not in whitelist: " + fileRequested)
-			http.Error(w, FormatHttpError("Forbidden"), http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
 		resolvedPath, err := filepath.EvalSymlinks(fullPath)
 		if err != nil || !strings.HasPrefix(resolvedPath, basePath) {
 			log.Warning("File request error from " + requestIP + " (" + resolvedPath + "): Error resolving symlink: " + err.Error())
-			http.Error(w, FormatHttpError("Forbidden"), http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
 		if resolvedPath != fullPath {
 			log.Warning("Resolved path does not match full path (" + requestIP + "): " + resolvedPath + " -> " + fullPath)
-			http.Error(w, FormatHttpError("Forbidden"), http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
 		metadata, err := os.Lstat(fullPath)
 		if err != nil {
 			log.Error("Cannot get metadata from file: " + fullPath + " (" + err.Error() + ")")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		if metadata == nil {
 			log.Error("Metadata is nil for file: " + fullPath)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		if metadata.Name() != fileRequested || !config.IsFileAllowed(metadata.Name()) {
 			log.Warning("Filename mismatch: " + metadata.Name() + " != " + fileRequested)
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 		if metadata.Size() <= 0 {
 			log.Warning("Attempt to access empty file: " + fileRequested)
-			http.Error(w, "Empty file", http.StatusNoContent)
+			WriteJsonError(w, http.StatusNoContent)
 			return
 		}
 		if metadata.IsDir() {
 			log.Warning("Attempt to access directory as file: " + fileRequested)
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
 		fileMode := metadata.Mode()
 		if fileMode&os.ModeSymlink != 0 {
 			log.Warning("Attempt to access symbolic link: " + fileRequested)
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 		if fileMode&os.ModeDevice != 0 {
 			log.Warning("Attempt to access device file: " + fileRequested)
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 		if fileMode&os.ModeNamedPipe != 0 {
 			log.Warning("Attempt to access named pipe: " + fileRequested)
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 		if fileMode&os.ModeSocket != 0 {
 			log.Warning("Attempt to access socket file: " + fileRequested)
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 		if fileMode&os.ModeCharDevice != 0 {
 			log.Warning("Attempt to access character device file: " + fileRequested)
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 		if fileMode&os.ModeIrregular != 0 {
 			log.Warning("Attempt to access irregular file: " + fileRequested)
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 		if !fileMode.IsRegular() {
 			log.Warning("Attempt to access non-regular file: " + fileRequested)
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
@@ -499,13 +530,13 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
 			log.Warning("no IP address stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		requestURL, ok := GetRequestURL(req)
 		if !ok {
 			log.Warning("no URL stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
@@ -519,7 +550,7 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 		}
 		if !validMethods[req.Method] {
 			log.Warning("Invalid request method (" + requestIP + "): " + req.Method)
-			http.Error(w, FormatHttpError("Method not allowed"), http.StatusMethodNotAllowed)
+			WriteJsonError(w, http.StatusMethodNotAllowed)
 			return
 		}
 
@@ -528,7 +559,7 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 			contentType := req.Header.Get("Content-Type")
 			if contentType != "application/x-www-form-urlencoded" && contentType != "application/json" && !strings.HasPrefix(contentType, "multipart/form-data") {
 				log.Warning("Invalid Content-Type header: " + contentType + " (" + requestIP + ": " + req.Method + " " + requestURL + ")")
-				http.Error(w, FormatHttpError("Invalid content type"), http.StatusUnsupportedMediaType)
+				WriteJsonError(w, http.StatusUnsupportedMediaType)
 				return
 			}
 		}
@@ -542,20 +573,20 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
 			log.Warning("no IP address stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		requestURL, ok := GetRequestURL(req)
 		if !ok {
 			log.Warning("no URL stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		// Content length
 		if req.ContentLength > 64<<20 {
 			log.Warning("Request content length exceeds limit: " + fmt.Sprintf("%.2fMB", float64(req.ContentLength)/1e6))
-			http.Error(w, FormatHttpError("Request too large"), http.StatusRequestEntityTooLarge)
+			WriteJsonError(w, http.StatusRequestEntityTooLarge)
 			return
 		}
 
@@ -563,7 +594,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		origin := req.Header.Get("Origin")
 		if origin != "" && len(origin) > 2048 {
 			log.Warning("Invalid Origin header: " + origin + " (" + requestIP + ": " + req.Method + " " + requestURL + ")")
-			http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
+			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
@@ -571,7 +602,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		host := strings.TrimSpace(req.Host)
 		if host == "" || strings.ContainsAny(host, " <>\"'%;()&+") || len(host) > 255 {
 			log.Warning("Invalid Host header: " + host + " (" + requestIP + ": " + req.Method + " " + requestURL + ")")
-			http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
+			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
@@ -579,7 +610,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		userAgent := req.Header.Get("User-Agent")
 		if userAgent == "" || len(userAgent) > 256 {
 			log.Warning("Invalid User-Agent header: " + userAgent + " (" + requestIP + ": " + req.Method + " " + requestURL + ")")
-			http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
+			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
@@ -587,7 +618,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		referer := req.Header.Get("Referer")
 		if referer != "" && len(referer) > 2048 {
 			log.Warning("Invalid Referer header: " + referer + " (" + requestIP + ": " + req.Method + " " + requestURL + ")")
-			http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
+			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
@@ -595,7 +626,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		// for key, value := range req.Header {
 		//   if strings.ContainsAny(key, "<>\"'%;()&+") || strings.ContainsAny(value[0], "<>\"'%;()&+") {
 		//     log.Warning("Invalid characters in header '" + key + "': " + value[0] + " (" + requestIP + ": " + req.Method + " " + requestURL + ")")
-		//     http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
+		//     WriteJsonError(w, http.StatusBadRequest)
 		//     return
 		//   }
 		// }
@@ -610,13 +641,13 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
 			log.Warning("no IP address stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		requestURL, ok := GetRequestURL(req)
 		if !ok {
 			log.Warning("no URL stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
@@ -624,7 +655,7 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 		_, httpsServerIP, err := config.GetWebServerIPs()
 		if err != nil || strings.TrimSpace(httpsServerIP) == "" {
 			log.Error("Cannot get web server IP for CORS: " + err.Error())
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		// Check CORS policy
@@ -632,7 +663,7 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 		cors.AddTrustedOrigin("https://" + httpsServerIP + ":1411")
 		if err := cors.Check(req); err != nil {
 			log.Warning("Request to " + requestURL + " blocked from " + requestIP)
-			http.Error(w, FormatHttpError("CORS policy violation"), http.StatusForbidden)
+			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
@@ -670,125 +701,19 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func APIAuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := config.GetLogger()
-
-		// Request variables
-		var requestBasicToken string
-		var requestBearerToken string
-		var requestCSRFToken string
-		var sessionID string
-		var sessionCount int64 = 0
-
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-
-		requestIP, ok := GetRequestIP(req)
-		if !ok {
-			log.Warning("no IP address stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
-			return
-		}
-		requestURL, ok := GetRequestURL(req)
-		if !ok {
-			log.Warning("no URL stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
-			return
-		}
-
-		queryType := strings.TrimSpace(req.URL.Query().Get("type"))
-		// if strings.TrimSpace(queryType) == "" {
-		// 	log.Warning("No query type defined for request: " + requestIP)
-		// 	http.Error(w, FormatHttpError("Bad request"), http.StatusBadRequest)
-		// 	return
-		// }
-
-		authHeaders := req.Header.Values("Authorization")
-		if len(authHeaders) == 0 {
-			log.Warning("No Authorization header provided: " + requestIP + " ( " + requestURL + ")")
-			http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
-			return
-		}
-		for _, header := range authHeaders {
-			// Get position (index) of space in auth header
-			spaceIndex := strings.IndexByte(header, ' ')
-			if spaceIndex <= 0 || spaceIndex == len(header)-1 {
-				continue
-			}
-			headerType := header[:spaceIndex]
-			token := strings.TrimSpace(header[spaceIndex+1:])
-			if token == "" {
-				continue
-			}
-			switch strings.ToLower(headerType) {
-			case "basic":
-				if requestBasicToken == "" {
-					requestBasicToken = token
-				}
-			case "bearer":
-				if requestBearerToken == "" {
-					requestBearerToken = token
-				}
-			}
-			if requestBasicToken != "" && requestBearerToken != "" {
-				break
-			}
-		}
-		if strings.TrimSpace(requestBearerToken) == "" || strings.TrimSpace(requestBasicToken) == "" {
-			log.Warning("Empty value for Authorization header: " + requestIP + " ( " + requestURL + ")")
-			http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
-			return
-		}
-
-		// No consequences for having missing CSRF (yet)
-		requestCSRFToken = strings.TrimSpace(req.Header.Get("X-CSRF-Token"))
-
-		sessionID = strings.TrimSpace(req.Header.Get("X-Session-ID"))
-		if strings.TrimSpace(sessionID) == "" {
-			log.Warning("No session ID provided: " + requestIP + " ( " + requestURL + ")")
-			http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
-			return
-		}
-
-		sessionValid, sessionExists, err := config.CheckAuthSessionExists(sessionID, requestIP, requestBasicToken, requestBearerToken, requestCSRFToken)
-		if err != nil {
-			log.Error("Error checking auth session: " + err.Error())
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
-			return
-		}
-		if sessionValid && sessionExists {
-			next.ServeHTTP(w, req)
-		} else if sessionExists && !sessionValid {
-			sessionCount = config.GetAuthSessionCount()
-			log.Debug("Auth cache miss: " + requestIP + " (Sessions: " + strconv.Itoa(int(sessionCount)) + ") " + requestURL)
-			if queryType == "new-token" && strings.TrimSpace(requestBasicToken) != "" {
-				next.ServeHTTP(w, req)
-			} else {
-				log.Info("No valid authentication found for request: " + requestIP + " ( " + requestURL + ")")
-				http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
-				return
-			}
-		} else {
-			log.Info("No valid authentication found for request: " + requestIP + " ( " + requestURL + ")")
-			http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
-			return
-		}
-	})
-}
-
 func CookieAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log := config.GetLogger()
 		requestIP, ok := GetRequestIP(req)
 		if !ok {
 			log.Warning("no IP address stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		requestURL, ok := GetRequestURL(req)
 		if !ok {
 			log.Warning("no URL stored in context")
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
@@ -803,7 +728,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			}
 			log.Info("No authentication cookies found for request: " + requestIP + " (" + requestURL + ")")
 			log.Info("Basic cookie error: " + fmt.Sprintf("%v", basicErr) + ", Bearer cookie error: " + fmt.Sprintf("%v", bearerErr) + ", SessionID cookie error: " + fmt.Sprintf("%v", sessionErr) + ")")
-			// http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
+			// WriteJsonError(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
 			http.Redirect(w, req, "/login", http.StatusSeeOther)
 			return
 		}
@@ -813,7 +738,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 		sessionValid, sessionExists, err := config.CheckAuthSessionExists(uitSessionIDCookie.Value, requestIP, uitBasicCookie.Value, uitBearerCookie.Value, uitCSRFCookie.Value)
 		if err != nil {
 			log.Error("Error checking auth session: " + err.Error())
-			http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
@@ -827,7 +752,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			sessionExtended, err := config.ExtendAuthSession(uitSessionIDCookie.Value)
 			if err != nil {
 				log.Error("Error extending auth session: " + err.Error())
-				http.Error(w, FormatHttpError("Internal server error"), http.StatusInternalServerError)
+				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			if sessionExtended {
@@ -845,7 +770,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			return
 		} else {
 			log.Info("No valid authentication found for request: " + requestIP + " (" + requestURL + ")")
-			// http.Error(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
+			// WriteJsonError(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
 			http.Redirect(w, req, "/login", http.StatusSeeOther)
 			return
 		}

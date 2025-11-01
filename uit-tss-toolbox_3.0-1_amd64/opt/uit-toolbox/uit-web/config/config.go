@@ -42,6 +42,9 @@ type ConfigFile struct {
 	UIT_WEB_HTTPS_PORT              string `json:"UIT_WEB_HTTPS_PORT"`
 	UIT_WEB_TLS_CERT_FILE           string `json:"UIT_WEB_TLS_CERT_FILE"`
 	UIT_WEB_TLS_KEY_FILE            string `json:"UIT_WEB_TLS_KEY_FILE"`
+	UIT_WEB_MAX_UPLOAD_SIZE_MB      string `json:"UIT_WEB_MAX_UPLOAD_SIZE_MB"`
+	UIT_WEB_API_REQUEST_TIMEOUT     string `json:"UIT_WEB_API_REQUEST_TIMEOUT"`
+	UIT_WEB_FILE_REQUEST_TIMEOUT    string `json:"UIT_WEB_FILE_REQUEST_TIMEOUT"`
 	UIT_WEB_RATE_LIMIT_BURST        string `json:"UIT_WEB_RATE_LIMIT_BURST"`
 	UIT_WEB_RATE_LIMIT_INTERVAL     string `json:"UIT_WEB_RATE_LIMIT_INTERVAL"`
 	UIT_WEB_RATE_LIMIT_BAN_DURATION string `json:"UIT_WEB_RATE_LIMIT_BAN_DURATION"`
@@ -81,6 +84,9 @@ type AppConfig struct {
 	UIT_WEB_HTTPS_PORT              uint16         `json:"UIT_WEB_HTTPS_PORT"`
 	UIT_WEB_TLS_CERT_FILE           string         `json:"UIT_WEB_TLS_CERT_FILE"`
 	UIT_WEB_TLS_KEY_FILE            string         `json:"UIT_WEB_TLS_KEY_FILE"`
+	UIT_WEB_MAX_UPLOAD_SIZE_MB      int64          `json:"UIT_WEB_MAX_UPLOAD_SIZE_MB"`
+	UIT_WEB_API_REQUEST_TIMEOUT     time.Duration  `json:"UIT_WEB_API_REQUEST_TIMEOUT"`
+	UIT_WEB_FILE_REQUEST_TIMEOUT    time.Duration  `json:"UIT_WEB_FILE_REQUEST_TIMEOUT"`
 	UIT_WEB_RATE_LIMIT_BURST        int            `json:"UIT_WEB_RATE_LIMIT_BURST"`
 	UIT_WEB_RATE_LIMIT_INTERVAL     float64        `json:"UIT_WEB_RATE_LIMIT_INTERVAL"`
 	UIT_WEB_RATE_LIMIT_BAN_DURATION time.Duration  `json:"UIT_WEB_RATE_LIMIT_BAN_DURATION"`
@@ -134,22 +140,24 @@ type FileList struct {
 }
 
 type AppState struct {
-	AppConfig         *AppConfig
-	DBConn            atomic.Pointer[sql.DB]
-	AuthMap           sync.Map
-	AuthMapEntryCount atomic.Int64
-	Log               logger.Logger
-	WebServerLimiter  *LimiterMap
-	FileLimiter       *LimiterMap
-	APILimiter        *LimiterMap
-	AuthLimiter       *LimiterMap
-	BlockedIPs        *BlockedMap
-	AllowedFiles      atomic.Value
-	AllowedFilesMu    sync.Mutex
-	AllowedWANIPs     sync.Map
-	AllowedLANIPs     sync.Map
-	AllowedIPs        sync.Map
-	SessionSecret     []byte
+	AppConfig          *AppConfig
+	DBConn             atomic.Pointer[sql.DB]
+	AuthMap            sync.Map
+	AuthMapEntryCount  atomic.Int64
+	Log                logger.Logger
+	WebServerLimiter   *LimiterMap
+	FileLimiter        *LimiterMap
+	APILimiter         *LimiterMap
+	AuthLimiter        *LimiterMap
+	BlockedIPs         *BlockedMap
+	AllowedFiles       atomic.Value
+	AllowedFilesMu     sync.Mutex
+	AllowedWANIPs      sync.Map
+	AllowedLANIPs      sync.Map
+	AllowedIPs         sync.Map
+	SessionSecret      []byte
+	APIRequestTimeout  atomic.Value
+	FileRequestTimeout atomic.Value
 }
 
 type AuthHTTPHeader struct {
@@ -302,6 +310,20 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, fmt.Errorf("invalid UIT_WEB_HTTPS_PORT: %w", err)
 	}
 	appConfig.UIT_WEB_HTTPS_PORT = httpsPortAddr.Port()
+	appConfig.UIT_WEB_MAX_UPLOAD_SIZE_MB, err = strconv.ParseInt(configFile.UIT_WEB_MAX_UPLOAD_SIZE_MB, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_WEB_MAX_UPLOAD_SIZE_MB: %w", err)
+	}
+	requestAPITimeoutSeconds, err := strconv.ParseInt(configFile.UIT_WEB_API_REQUEST_TIMEOUT, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_WEB_API_REQUEST_TIMEOUT: %w", err)
+	}
+	appConfig.UIT_WEB_API_REQUEST_TIMEOUT = time.Duration(requestAPITimeoutSeconds) * time.Second
+	requestFileTimeoutSeconds, err := strconv.ParseInt(configFile.UIT_WEB_FILE_REQUEST_TIMEOUT, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid UIT_WEB_FILE_REQUEST_TIMEOUT: %w", err)
+	}
+	appConfig.UIT_WEB_FILE_REQUEST_TIMEOUT = time.Duration(requestFileTimeoutSeconds) * time.Second
 	appConfig.UIT_WEB_TLS_CERT_FILE = configFile.UIT_WEB_TLS_CERT_FILE
 	appConfig.UIT_WEB_TLS_KEY_FILE = configFile.UIT_WEB_TLS_KEY_FILE
 
@@ -454,6 +476,10 @@ func InitApp() (*AppState, error) {
 		return nil, fmt.Errorf("failed to generate session secret: %w", err)
 	}
 	appState.SessionSecret = []byte(sessionSecret)
+
+	// Set initial timeouts
+	appState.APIRequestTimeout.Store(appConfig.UIT_WEB_API_REQUEST_TIMEOUT)
+	appState.FileRequestTimeout.Store(appConfig.UIT_WEB_FILE_REQUEST_TIMEOUT)
 
 	SetAppState(appState)
 	return appState, nil
@@ -763,7 +789,58 @@ func GetClientConfig() (*ClientConfig, error) {
 func GetTLSCertFiles() (certFile string, keyFile string, err error) {
 	appState := GetAppState()
 	if appState == nil {
-		return "", "", errors.New("app state is not initialized")
+		return "", "", fmt.Errorf("%s", "cannot retrieve TLS cert files, app state is not initialized")
 	}
 	return appState.AppConfig.UIT_WEB_TLS_CERT_FILE, appState.AppConfig.UIT_WEB_TLS_KEY_FILE, nil
+}
+
+func GetMaxUploadSize() (int64, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return 0, fmt.Errorf("%s", "cannot retrieve max upload size, app state is not initialized")
+	}
+	return appState.AppConfig.UIT_WEB_MAX_UPLOAD_SIZE_MB, nil
+}
+
+func GetRequestTimeout(timeoutType string) (time.Duration, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return 0, fmt.Errorf("%s", "cannot get request timeout, app state is not initialized")
+	}
+	switch strings.ToLower(timeoutType) {
+	case "api":
+		timeout, ok := appState.APIRequestTimeout.Load().(time.Duration)
+		if !ok {
+			return 0, fmt.Errorf("%s", "cannot get API request timeout, invalid type stored")
+		}
+		return timeout, nil
+	case "file":
+		timeout, ok := appState.FileRequestTimeout.Load().(time.Duration)
+		if !ok {
+			return 0, fmt.Errorf("%s", "cannot get file request timeout, invalid type stored")
+		}
+		return timeout, nil
+	default:
+		return 0, fmt.Errorf("invalid timeout type: %s", timeoutType)
+	}
+}
+
+func SetRequestTimeout(timeoutType string, timeout time.Duration) error {
+	appState := GetAppState()
+	if appState == nil {
+		return fmt.Errorf("%s", "cannot set request timeout, app state is not initialized")
+	}
+	if timeout <= 0 {
+		return fmt.Errorf("invalid timeout value: %v", timeout)
+	}
+	switch strings.ToLower(timeoutType) {
+	case "api":
+		appState.APIRequestTimeout.Store(timeout)
+		return nil
+	case "file":
+		appState.FileRequestTimeout.Store(timeout)
+		return nil
+	default:
+		return fmt.Errorf("invalid timeout type: %s", timeoutType)
+	}
 }
