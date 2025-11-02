@@ -401,57 +401,51 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		}
 
 		for headerKey, headerValues := range req.Header {
-			// Check header key length and critical characters
-			if len(headerKey) > 255 {
-				log.Warning("Invalid header key length: " + fmt.Sprintf("%d", len(headerKey)) + " (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
+			// Block CRLF and null bytes in header keys
+			if strings.ContainsAny(headerKey, "\x00\r\n") {
+				log.Warning("CRLF or null byte in header key from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
-
-			// Block CRLF and null bytes in header keys
-			if strings.ContainsAny(headerKey, "\x00\r\n") {
-				log.Warning("CRLF or null byte in header key: " + headerKey + " (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
+			// Check header key length and critical characters
+			if len(headerKey) > 255 {
+				log.Warning("Header key too long: '" + headerKey + "' (" + fmt.Sprintf("%d", len(headerKey)) + " bytes) from " + requestIP.String())
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 
 			for _, headerValue := range headerValues {
-				// Default max length for header values (overridden below for specific headers)
-				if len(headerValue) > 8192 {
-					log.Warning("Header value too long for '" + headerKey + "': " + fmt.Sprintf("%d", len(headerValue)/1024) + " KB (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
+				// Block CRLF and null bytes in ALL header values
+				if strings.ContainsAny(headerValue, "\x00\r\n") {
+					log.Warning("CRLF or null byte in header '" + headerKey + "' from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 					WriteJsonError(w, http.StatusBadRequest)
 					return
 				}
-
-				// Block CRLF and null bytes in ALL header values
-				if strings.ContainsAny(headerValue, "\x00\r\n") {
-					log.Warning("CRLF or null byte in header '" + headerKey + "' (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
+				// Default max length for header values (specific requirements below)
+				if len(headerValue) > 8192 {
+					log.Warning("Header value too long for '" + headerKey + "': " + fmt.Sprintf("%.2f", float64(len(headerValue))/1024) + " KB from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 					WriteJsonError(w, http.StatusBadRequest)
 					return
 				}
 			}
 		}
 
-		// ============================================================
-		// MANDATORY HEADERS: Validate required headers
-		// ============================================================
-
+		// Required headers
 		// Host header (required)
 		host := req.Host
-		// Host length checks
-		if len(host) > 255 {
-			log.Warning("Host header too long: " + fmt.Sprintf("%d", len(host)/1024) + " KB (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
-			WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
 		if strings.TrimSpace(host) == "" {
-			log.Warning("Missing Host header (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
+			log.Warning("Missing Host header from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
-		// Block dangerous chars in Host header
-		if strings.ContainsAny(host, " <>\"'\x00\r\n") {
-			log.Warning("Invalid characters in Host header (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
+		if len(host) > 255 {
+			log.Warning("Host header too long: " + fmt.Sprintf("%d bytes", len(host)) + " from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
+			WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		// Block dangerous characters in Host header (already checked \x00\r\n above)
+		if strings.ContainsAny(host, " <>\"'") {
+			log.Warning("Invalid characters in Host header from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -459,12 +453,12 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		// User-Agent header (required)
 		userAgent := req.Header.Get("User-Agent")
 		if userAgent == "" {
-			log.Warning("Missing User-Agent header (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
+			log.Warning("Missing User-Agent header from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if len(userAgent) > 512 {
-			log.Warning("User-Agent too long: " + fmt.Sprintf("%d", len(userAgent)/1024) + " KB (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
+			log.Warning("User-Agent too long: " + fmt.Sprintf("%d bytes", len(userAgent)) + " from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -473,21 +467,22 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		if req.Method == http.MethodPost || req.Method == http.MethodPut {
 			contentType := req.Header.Get("Content-Type")
 			if contentType == "" {
-				log.Warning("Missing Content-Type for POST/PUT (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
+				log.Warning("Missing Content-Type for " + req.Method + " from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 			if len(contentType) > 256 {
-				log.Warning("Content-Type too long: " + fmt.Sprintf("%d", len(contentType)/1024) + " KB (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
+				log.Warning("Content-Type too long: " + fmt.Sprintf("%d bytes", len(contentType)) + " from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 		}
 
+		// Optional headers: Validate if present
 		// Cookie (optional, validate length if present)
 		cookieHeader := req.Header.Get("Cookie")
 		if len(cookieHeader) > 4096 {
-			log.Warning("Cookie header too large: " + fmt.Sprintf("%d", len(cookieHeader)) + " (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
+			log.Warning("Cookie header too large: " + fmt.Sprintf("%.2f KB", float64(len(cookieHeader))/1024) + " from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -496,31 +491,29 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		authorization := req.Header.Get("Authorization")
 		if authorization != "" {
 			if len(authorization) > 8192 {
-				log.Warning("Authorization header too long: " + fmt.Sprintf("%d", len(authorization)/1024) + " KB (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
+				log.Warning("Authorization header too long: " + fmt.Sprintf("%.2f KB", float64(len(authorization))/1024) + " from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 			// Must start with Bearer or Basic
 			if !strings.HasPrefix(authorization, "Bearer ") && !strings.HasPrefix(authorization, "Basic ") {
-				log.Warning("Invalid Authorization format from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
+				log.Warning("Invalid Authorization format (missing Bearer/Basic prefix) from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 		}
 
-		// Connection header (not allowed in HTTP/2)
-		if req.ProtoMajor == 2 {
-			if req.Header.Get("Connection") != "" {
-				log.Warning("Connection header present in HTTP/2 request from: " + requestIP.String() + " (" + req.Method + " " + requestURL + ")")
-				WriteJsonError(w, http.StatusBadRequest)
-				return
-			}
+		// Connection header (disallowed, not allowed in HTTP/2)
+		if req.ProtoMajor == 2 && req.Header.Get("Connection") != "" {
+			log.Warning("Connection header present in HTTP/2 request from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
+			WriteJsonError(w, http.StatusBadRequest)
+			return
 		}
 
-		// Transfer-Encoding (check for request smuggling)
+		// Transfer-Encoding (optional, check for request smuggling)
 		transferEncoding := req.Header.Get("Transfer-Encoding")
 		if transferEncoding != "" && transferEncoding != "chunked" {
-			log.Warning("Suspicious Transfer-Encoding: " + transferEncoding + " (" + requestIP.String() + " " + req.Method + " " + requestURL + ")")
+			log.Warning("Suspicious Transfer-Encoding: '" + transferEncoding + "' from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -528,29 +521,28 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		// Referer (optional, but validate length)
 		referer := req.Header.Get("Referer")
 		if len(referer) > 2048 {
-			log.Warning("Referer header too long: " + fmt.Sprintf("%d", len(referer)/1024) + " KB (" + requestIP.String() + " " + req.Method + " " + requestURL + ")")
+			log.Warning("Referer too long: " + fmt.Sprintf("%.2f KB", float64(len(referer))/1024) + " from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
-		// Origin (for CORS, validate length)
+		// Origin (if using CORS, validate length)
 		origin := req.Header.Get("Origin")
 		if len(origin) > 2048 {
-			log.Warning("Origin header too long: " + fmt.Sprintf("%d", len(origin)/1024) + " KB (" + requestIP.String() + " " + req.Method + " " + requestURL + ")")
+			log.Warning("Origin too long: " + fmt.Sprintf("%.2f KB", float64(len(origin))/1024) + " from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
-		// X-Forwarded-For (possible proxy bypass attempt)
+		// Suspicious headers
 		if xForwardedFor := req.Header.Get("X-Forwarded-For"); xForwardedFor != "" {
-			log.Warning("X-Forwarded-For present (possible proxy bypass): " + xForwardedFor + " (" + requestIP.String() + " " + req.Method + " " + requestURL + ")")
-			// Don't return
+			log.Warning("X-Forwarded-For header present (possible proxy bypass): " + xForwardedFor + " from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
+			// Log and don't return
 		}
 
-		// X-Real-IP (possible proxy bypass attempt)
 		if xRealIP := req.Header.Get("X-Real-IP"); xRealIP != "" {
-			log.Warning("X-Real-IP present (possible proxy bypass): " + xRealIP + " (" + requestIP.String() + " " + req.Method + " " + requestURL + ")")
-			// Don't return
+			log.Warning("X-Real-IP header present (possible IP spoofing): " + xRealIP + " from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
+			// Log and don't return
 		}
 
 		next.ServeHTTP(w, req)
@@ -573,6 +565,7 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// SERVER-SIDE CORS CHECKS
 		// Get web server IP for CORS
 		_, httpsServerIP, err := config.GetWebServerIPs()
 		if err != nil || strings.TrimSpace(httpsServerIP) == "" {
@@ -589,35 +582,54 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Handle OPTIONS early
+		// OPTIONS preflight request handling
 		if req.Method == http.MethodOptions {
-			// Headers for OPTIONS request
 			w.Header().Set("Access-Control-Allow-Origin", "https://"+httpsServerIP+":1411")
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Set-Cookie, credentials")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Max-Age", "86400") // Cache preflight for 24 hours
+			w.Header().Set("Vary", "Origin, Access-Control-Request-Method, Access-Control-Request-Headers")
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
+		// CORS policy
 		w.Header().Set("Access-Control-Allow-Origin", "https://"+httpsServerIP+":1411")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
-		w.Header().Set("Pragma", "no-cache")
-		w.Header().Set("Expires", "0")
-		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Strict-Transport-Security", "max-age=86400; includeSubDomains")
-		w.Header().Set("X-Accel-Buffering", "no")
-		w.Header().Set("Referrer-Policy", "no-referrer")
-		w.Header().Set("Server", "")
-		w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+		w.Header().Set("Vary", "Origin")
 
-		// Deprecated headers
-		w.Header().Set("X-XSS-Protection", "1; mode=block")
-		w.Header().Set("X-Download-Options", "noopen")
-		w.Header().Set("X-Permitted-Cross-Domain-Policies", "none")
+		// Security headers
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload") // 2 years
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		cspPolicy := "default-src 'self'; " +
+			"style-src 'self'; " +
+			"script-src 'self'; " +
+			"worker-src 'self'; " +
+			"img-src 'self' data: https:; " +
+			"font-src 'self'; " +
+			"connect-src 'self' https://" + httpsServerIP + ":1411; " +
+			"frame-ancestors 'none'; " +
+			"base-uri 'self'; " +
+			"form-action 'self'; " +
+			"upgrade-insecure-requests"
+		w.Header().Set("Content-Security-Policy", cspPolicy)
+		w.Header().Set("Cross-Origin-Embedder-Policy", "require-corp")
+		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+		w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
+
+		// Cache headers
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, private")
+
+		// Browser permissions
+		w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()")
+
+		// Hide server information
+		w.Header().Set("Server", "")
 
 		next.ServeHTTP(w, req)
 	})
