@@ -25,7 +25,7 @@ func DeleteImage(w http.ResponseWriter, r *http.Request) {
 	requestURL := requestInfo.URL
 	tagnumber, ok := ConvertRequestTagnumber(r)
 	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -36,14 +36,14 @@ func DeleteImage(w http.ResponseWriter, r *http.Request) {
 	requestFilePath = strings.TrimSuffix(requestFilePath, ".mp4")
 	requestFilePath = strings.TrimSuffix(requestFilePath, ".mov")
 	if requestFilePath == "" {
-		log.Warning("No image path provided in request from: " + requestIP + " (" + requestURL + ")")
+		log.Warning("No image path provided in request from: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	uuid := strings.TrimSpace(requestFilePath)
 	if uuid == "" {
-		log.Warning("No UUID provided in delete image request from: " + requestIP + " (" + requestURL + ")")
+		log.Warning("No UUID provided in delete image request from: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}

@@ -50,7 +50,7 @@ func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 
 	systemSerial := strings.TrimSpace(r.URL.Query().Get("system_serial"))
 	if tagnumber == 0 && systemSerial == "" {
-		log.Warning("No tagnumber or system_serial provided in request from: " + requestIP + " (" + requestURL + ")")
+		log.Warning("No tagnumber or system_serial provided in request from: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -73,7 +73,7 @@ func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Client lookup query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Client lookup query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -106,7 +106,7 @@ func GetAllTags(w http.ResponseWriter, r *http.Request) {
 	allTags, err := repo.GetAllTags(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("All tags query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("All tags query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -128,7 +128,7 @@ func GetHardwareIdentifiers(w http.ResponseWriter, r *http.Request) {
 
 	tagnumber, ok := ConvertRequestTagnumber(r)
 	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -145,7 +145,7 @@ func GetHardwareIdentifiers(w http.ResponseWriter, r *http.Request) {
 	hardwareData, err := repo.GetHardwareIdentifiers(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Hardware ID query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Hardware ID query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -167,7 +167,7 @@ func GetBiosData(w http.ResponseWriter, r *http.Request) {
 
 	tagnumber, ok := ConvertRequestTagnumber(r)
 	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -185,7 +185,7 @@ func GetBiosData(w http.ResponseWriter, r *http.Request) {
 	biosData, err := repo.GetBiosData(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Bios data query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Bios data query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -208,7 +208,7 @@ func GetOSData(w http.ResponseWriter, r *http.Request) {
 
 	tagnumber, ok := ConvertRequestTagnumber(r)
 	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -226,7 +226,7 @@ func GetOSData(w http.ResponseWriter, r *http.Request) {
 	osData, err := repo.GetOsData(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("OS data query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("OS data query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -249,7 +249,7 @@ func GetClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
 
 	tagnumber, ok := ConvertRequestTagnumber(r)
 	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -267,7 +267,7 @@ func GetClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
 	activeJobs, err := repo.GetActiveJobs(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Queued client jobs query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Queued client jobs query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -290,7 +290,7 @@ func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
 
 	tagnumber, ok := ConvertRequestTagnumber(r)
 	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -308,7 +308,7 @@ func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
 	availableJobs, err := repo.GetAvailableJobs(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Available jobs query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Available jobs query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -348,7 +348,7 @@ func GetNotes(w http.ResponseWriter, r *http.Request) {
 	notesData, err := repo.GetNotes(ctx, noteType)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Get notes query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Get notes query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -369,7 +369,7 @@ func GetLocationFormData(w http.ResponseWriter, r *http.Request) {
 	requestURL := requestInfo.URL
 	tagnumber, ok := ConvertRequestTagnumber(r)
 	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -386,7 +386,7 @@ func GetLocationFormData(w http.ResponseWriter, r *http.Request) {
 	locationData, err := repo.GetLocationFormData(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Location form data query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Location form data query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -407,7 +407,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 	requestURL := requestInfo.URL
 	tagnumber, ok := ConvertRequestTagnumber(r)
 	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP + " (" + requestURL + ")")
+		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -422,7 +422,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	imageUUIDs, err := repo.GetClientImageUUIDs(ctx, tagnumber)
 	if err != nil && err != sql.ErrNoRows {
-		log.Info("Client images query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+		log.Info("Client images query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -433,9 +433,9 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 		time, tag, filepath, _, hidden, primaryImage, note, err := repo.GetClientImageManifestByUUID(ctx, imageUUID)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				log.Info("Image not found in database: " + requestIP + " (" + requestURL + "): " + err.Error())
+				log.Info("Image not found in database: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			} else {
-				log.Info("Client image query error (manifest): " + requestIP + " (" + requestURL + "): " + err.Error())
+				log.Info("Client image query error (manifest): " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
@@ -446,14 +446,14 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if filepath == nil || strings.TrimSpace(*filepath) == "" {
-			log.Info("Client image filepath is empty: " + requestIP + " (" + requestURL + ")")
+			log.Info("Client image filepath is empty: " + requestIP.String() + " (" + requestURL + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		img, err := os.Open(*filepath)
 		if err != nil {
-			log.Info("Client image open error (manifest): " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Client image open error (manifest): " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -461,7 +461,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 
 		imageStat, err := img.Stat()
 		if err != nil {
-			log.Info("Client image stat error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Client image stat error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -476,27 +476,27 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 			imageConfig, imageType, err := image.DecodeConfig(imageReader)
 			if err != nil {
 				_ = img.Close()
-				log.Info("Client image decode error: " + requestIP + " (" + requestURL + "): " + err.Error())
+				log.Info("Client image decode error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			if imageType != "jpeg" && imageType != "png" {
 				_ = img.Close()
-				log.Info("Client image has invalid type: " + requestIP + " (" + requestURL + "): " + imageType)
+				log.Info("Client image has invalid type: " + requestIP.String() + " (" + requestURL + "): " + imageType)
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			if (imageType == "jpeg" && fileExtension != ".jpg" && fileExtension != ".jpeg") ||
 				(imageType == "png" && fileExtension != ".png") {
 				_ = img.Close()
-				log.Info("Client image file extension does not match image type: " + requestIP + " (" + requestURL + "): " + imageStat.Name())
+				log.Info("Client image file extension does not match image type: " + requestIP.String() + " (" + requestURL + "): " + imageStat.Name())
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			imageData.Width = &imageConfig.Width
 			imageData.Height = &imageConfig.Height
 			if imageData.Width == nil || imageData.Height == nil || *imageData.Width <= 0 || *imageData.Height <= 0 {
-				log.Info("Client image has invalid dimensions: " + requestIP + " (" + requestURL + ")")
+				log.Info("Client image has invalid dimensions: " + requestIP.String() + " (" + requestURL + ")")
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
@@ -516,7 +516,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 		if tag != nil && *tag >= 1 {
 			tagStr = fmt.Sprintf("%d", *tag)
 		} else {
-			log.Warning("Client image has no or invalid tag in database: " + requestIP + " (" + requestURL + ")")
+			log.Warning("Client image has no or invalid tag in database: " + requestIP.String() + " (" + requestURL + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -538,7 +538,7 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 
 		urlStr, err := url.JoinPath("/api/images/", tagStr, clientImgUUIDPath)
 		if err != nil {
-			log.Info("Client image URL join error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Client image URL join error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -568,7 +568,7 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 	requestFilePath = strings.TrimSuffix(requestFilePath, ".mp4")
 	requestFilePath = strings.TrimSuffix(requestFilePath, ".mov")
 	if requestFilePath == "" {
-		log.Warning("No image path provided in request from: " + requestIP + " (" + requestURL + ")")
+		log.Warning("No image path provided in request from: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -583,41 +583,41 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	requestImageUUID := path.Base(requestFilePath)
 	if requestImageUUID == "" {
-		log.Warning("No image file name provided in request from: " + requestIP + " (" + requestURL + ")")
+		log.Warning("No image file name provided in request from: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	log.Debug("Serving image request for: " + requestImageUUID + " from " + requestIP + " (" + requestURL + ")")
+	log.Debug("Serving image request for: " + requestImageUUID + " from " + requestIP.String() + " (" + requestURL + ")")
 	_, _, imagePath, _, hidden, _, _, err := repo.GetClientImageManifestByUUID(ctx, requestImageUUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Info("Image not found: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Image not found: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		log.Info("Client image query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+		log.Info("Client image query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	if strings.TrimSpace(*imagePath) == "" {
-		log.Info("Image path is empty: " + requestIP + " (" + requestURL + ")")
+		log.Info("Image path is empty: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 	if *hidden {
-		log.Info("Attempt to access hidden image: " + requestIP + " (" + requestURL + ")")
+		log.Info("Attempt to access hidden image: " + requestIP.String() + " (" + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 	imageFile, err := os.Open(*imagePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Info("Image not found: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Image not found: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		log.Info("Client image open error: " + requestIP + " (" + requestURL + "): " + err.Error())
+		log.Info("Client image open error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -652,7 +652,7 @@ func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
 	jobQueueOverview, err := repo.GetJobQueueOverview(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Job queue overview query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Job queue overview query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -686,7 +686,7 @@ func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
 	inventorySummary, err := repo.GetDashboardInventorySummary(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Inventory summary query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Inventory summary query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -729,7 +729,7 @@ func GetInventoryTableData(w http.ResponseWriter, r *http.Request) {
 		}
 		v, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil {
-			log.Info("Invalid " + key + " filter provided: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Invalid " + key + " filter provided: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			return nil
 		}
 		return &v
@@ -741,7 +741,7 @@ func GetInventoryTableData(w http.ResponseWriter, r *http.Request) {
 		}
 		v, err := strconv.ParseBool(raw)
 		if err != nil {
-			log.Info("Invalid " + key + " filter provided: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Invalid " + key + " filter provided: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			return nil
 		}
 		return &v
@@ -763,7 +763,7 @@ func GetInventoryTableData(w http.ResponseWriter, r *http.Request) {
 	inventoryTableData, err := repo.GetInventoryTableData(ctx, filterOptions)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Inventory table data query error: " + requestIP + " (" + requestURL + "): " + err.Error())
+			log.Info("Inventory table data query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -785,7 +785,7 @@ func GetClientConfig(w http.ResponseWriter, r *http.Request) {
 
 	clientConfig, err := config.GetClientConfig()
 	if err != nil {
-		log.Error("Error getting client config: " + requestIP + " (" + requestURL + "): " + err.Error())
+		log.Error("Error getting client config: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -808,7 +808,7 @@ func GetClientConfig(w http.ResponseWriter, r *http.Request) {
 	var response string
 	for k, v := range clientConfigMap {
 		if v == "" {
-			log.Warning("Client config value for " + k + " is empty: " + requestIP + " (" + requestURL + ")")
+			log.Warning("Client config value for " + k + " is empty: " + requestIP.String() + " (" + requestURL + ")")
 		}
 		response += fmt.Sprintf("%s=%s\n", k, v)
 	}

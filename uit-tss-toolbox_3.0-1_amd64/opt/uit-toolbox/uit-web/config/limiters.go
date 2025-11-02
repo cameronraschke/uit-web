@@ -2,7 +2,7 @@ package config
 
 import (
 	"errors"
-	"strings"
+	"net/netip"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -28,32 +28,32 @@ func GetLimiter(limiterType string) *LimiterMap {
 	}
 }
 
-func (limiterMap *LimiterMap) Get(key string) *rate.Limiter {
+func (limiterMap *LimiterMap) Get(ipAddr netip.Addr) *rate.Limiter {
 	if limiterMap == nil {
 		return nil
 	}
-	if value, ok := limiterMap.M.Load(key); ok {
+	if value, ok := limiterMap.M.Load(ipAddr); ok {
 		if e, ok2 := value.(LimiterEntry); ok2 && e.Limiter != nil {
 			e.LastSeen = time.Now()
-			limiterMap.M.Store(key, e)
+			limiterMap.M.Store(ipAddr, e)
 			return e.Limiter
 		}
 	}
 	limiter := rate.NewLimiter(rate.Limit(limiterMap.Rate), limiterMap.Burst)
-	limiterMap.M.Store(key, LimiterEntry{Limiter: limiter, LastSeen: time.Now()})
+	limiterMap.M.Store(ipAddr, LimiterEntry{Limiter: limiter, LastSeen: time.Now()})
 	return limiter
 }
 
-func (blockedMap *BlockedMap) Block(ip string) {
-	if blockedMap == nil || ip == "" {
+func (blockedMap *BlockedMap) Block(ip netip.Addr) {
+	if blockedMap == nil || ip == (netip.Addr{}) {
 		return
 	}
 	blockedMap.M.Store(ip, LimiterEntry{LastSeen: time.Now()})
 }
 
-func IsClientRateLimited(limiterType, ip string) (limited bool, retryAfter time.Duration) {
+func IsClientRateLimited(limiterType string, ip netip.Addr) (limited bool, retryAfter time.Duration) {
 	appState := GetAppState()
-	if appState == nil || strings.TrimSpace(ip) == "" {
+	if appState == nil || ip == (netip.Addr{}) {
 		return false, 0
 	}
 

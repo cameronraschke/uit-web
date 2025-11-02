@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/netip"
 	"strconv"
 	"strings"
 	"time"
@@ -43,8 +44,8 @@ func GetAuthSessions() map[string]AuthSession {
 	return authSessionsMap
 }
 
-func CreateAuthSession(ipAddress string) (string, string, string, string, error) {
-	if strings.TrimSpace(ipAddress) == "" {
+func CreateAuthSession(ipAddress netip.Addr) (string, string, string, string, error) {
+	if ipAddress == (netip.Addr{}) {
 		return "", "", "", "", errors.New("empty IP address")
 	}
 	appState := GetAppState()
@@ -167,7 +168,7 @@ func ClearExpiredAuthSessions() {
 		if authSession.Basic.Expiry.Before(curTime) && authSession.Bearer.Expiry.Before(curTime) {
 			DeleteAuthSession(k.(string))
 			authSessionCount := GetAuthSessionCount()
-			log.Info("Auth session expired: " + authSession.Basic.IP + " (TTL: " + fmt.Sprintf("%.2f", authSession.Bearer.Expiry.Sub(curTime).Seconds()) + ", " + strconv.Itoa(int(authSessionCount)) + " session(s))")
+			log.Info("Auth session expired: " + authSession.Basic.IP.String() + " (TTL: " + fmt.Sprintf("%.2f", authSession.Bearer.Expiry.Sub(curTime).Seconds()) + ", " + strconv.Itoa(int(authSessionCount)) + " session(s))")
 		}
 		return true
 	})
@@ -195,7 +196,7 @@ func RefreshAndGetAuthSessionCount() int64 {
 	return entries
 }
 
-func CheckAuthSessionExists(sessionID string, ipAddress string, basicToken string, bearerToken string, csrfToken string) (bool, bool, error) {
+func CheckAuthSessionExists(sessionID string, ipAddress netip.Addr, basicToken string, bearerToken string, csrfToken string) (bool, bool, error) {
 	sessionValid := false
 	sessionExists := false
 
@@ -221,7 +222,7 @@ func CheckAuthSessionExists(sessionID string, ipAddress string, basicToken strin
 		return sessionValid, sessionExists, errors.New("IP address mismatch for session ID: " + sessionID)
 	}
 
-	if strings.TrimSpace(ipAddress) == "" || strings.TrimSpace(basicToken) == "" || strings.TrimSpace(bearerToken) == "" {
+	if ipAddress == (netip.Addr{}) || strings.TrimSpace(basicToken) == "" || strings.TrimSpace(bearerToken) == "" {
 		return sessionValid, sessionExists, errors.New("empty IP address or token for session ID: " + sessionID)
 	}
 

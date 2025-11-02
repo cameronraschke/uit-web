@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
@@ -20,7 +21,7 @@ import (
 
 type RequestInfo struct {
 	Ctx context.Context
-	IP  string
+	IP  netip.Addr
 	URL string
 	Log logger.Logger
 }
@@ -37,25 +38,26 @@ func GenerateNonce(n int) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-func GetRequestInfo(r *http.Request) (RequestInfo, error) {
+func GetRequestInfo(req *http.Request) (RequestInfo, error) {
 	log := config.GetLogger()
 
-	ctx := r.Context()
+	ctx := req.Context()
 	if ctx == nil {
 		return RequestInfo{}, errors.New("no context found in request")
 	}
 
-	ip, ok := middleware.GetRequestIP(r)
+	requestIP, ok := middleware.GetRequestIPFromRequestContext(req)
 	if !ok {
-		return RequestInfo{}, errors.New("no IP address stored in context")
+		log.Warning("No IP address stored in context")
+		return RequestInfo{}, errors.New("no IP address found in request context")
+	}
+	requestURL, ok := middleware.GetRequestURLFromRequestContext(req)
+	if !ok {
+		log.Warning("No URL stored in context")
+		return RequestInfo{}, errors.New("no URL found in request context")
 	}
 
-	url, ok := middleware.GetRequestURL(r)
-	if !ok {
-		return RequestInfo{}, errors.New("no URL stored in context")
-	}
-
-	return RequestInfo{Ctx: ctx, IP: ip, URL: url, Log: log}, nil
+	return RequestInfo{Ctx: ctx, IP: requestIP, URL: requestURL, Log: log}, nil
 }
 
 func ConvertRequestTagnumber(r *http.Request) (int64, bool) {
@@ -81,26 +83,20 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	requestIP := requestInfo.IP
 	requestURL := requestInfo.URL
 
-	fullPath, resolvedPath, requestedFile, ok := middleware.GetRequestedFile(req)
+	resolvedPath, ok := middleware.GetRequestFileFromRequestContext(req)
 	if !ok {
 		log.Warning("no requested file stored in context")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
-	if resolvedPath != fullPath {
-		log.Warning("Resolved path does not match full path (" + requestIP + "): " + resolvedPath + " -> " + fullPath)
-		middleware.WriteJsonError(w, http.StatusForbidden)
-		return
-	}
-
-	log.Debug("File request from " + requestIP + " for " + requestURL)
+	log.Debug("File request from " + requestIP.String() + " for " + requestURL)
 
 	// Previous path and file validation done in middleware
 	// Open the file
-	f, err := os.Open(fullPath)
+	f, err := os.Open(resolvedPath)
 	if err != nil {
-		log.Warning("File not found: " + fullPath + " (" + err.Error() + ")")
+		log.Warning("File not found: " + resolvedPath + " (" + err.Error() + ")")
 		http.Error(w, "File not found", http.StatusNotFound)
 		return
 	}
@@ -108,39 +104,39 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 
 	// err = f.SetDeadline(time.Now().Add(30 * time.Second))
 	// if err != nil {
-	// 	log.Error("Cannot set file read deadline: " + fullPath + " (" + err.Error() + ")")
+	// 	log.Error("Cannot set file read deadline: " + resolvedPath + " (" + err.Error() + ")")
 	// 	http.Error(w, http.StatusInternalServerError)
 	// 	return
 	// }
 
 	metadata, err := f.Stat()
 	if err != nil {
-		log.Error("Cannot stat file: " + fullPath + " (" + err.Error() + ")")
+		log.Error("Cannot stat file: " + resolvedPath + " (" + err.Error() + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	maxFileSize := int64(10) << 30 // 10 GiB
 	if metadata.Size() > maxFileSize {
-		log.Warning("File too large: " + fullPath + " (" + fmt.Sprintf("%d", metadata.Size()) + " bytes)")
-		http.Error(w, "File too large", http.StatusRequestEntityTooLarge)
+		log.Warning("File too large: " + resolvedPath + " (" + fmt.Sprintf("%d", metadata.Size()) + " bytes)")
+		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
 	}
 
 	// Get file info for headers
-	if strings.HasSuffix(fullPath, ".deb") {
+	if strings.HasSuffix(resolvedPath, ".deb") {
 		w.Header().Set("Content-Type", "application/vnd.debian.binary-package")
-	} else if strings.HasSuffix(fullPath, ".gz") {
+	} else if strings.HasSuffix(resolvedPath, ".gz") {
 		w.Header().Set("Content-Type", "application/gzip")
-	} else if strings.HasSuffix(fullPath, ".img") {
+	} else if strings.HasSuffix(resolvedPath, ".img") {
 		w.Header().Set("Content-Type", "application/vnd.efi.img")
-	} else if strings.HasSuffix(fullPath, ".iso") {
+	} else if strings.HasSuffix(resolvedPath, ".iso") {
 		w.Header().Set("Content-Type", "application/vnd.efi.iso")
-	} else if strings.HasSuffix(fullPath, ".squashfs") {
+	} else if strings.HasSuffix(resolvedPath, ".squashfs") {
 		w.Header().Set("Content-Type", "application/octet-stream")
-	} else if strings.HasSuffix(fullPath, ".crt") {
+	} else if strings.HasSuffix(resolvedPath, ".crt") {
 		w.Header().Set("Content-Type", "application/x-x509-ca-cert")
-	} else if strings.HasSuffix(fullPath, ".pem") {
+	} else if strings.HasSuffix(resolvedPath, ".pem") {
 		w.Header().Set("Content-Type", "application/pem-certificate-chain")
 	} else {
 		w.Header().Set("Content-Type", "application/octet-stream")
@@ -159,11 +155,12 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), f)
 
 	if ctx.Err() != nil {
-		log.Warning("Request cancelled while serving file: " + requestedFile + " to " + requestIP + " (" + ctx.Err().Error() + ")")
+		log.Warning("Request cancelled while serving file: " + resolvedPath + " to " + requestIP.String() + " (" + ctx.Err().Error() + ")")
+		middleware.WriteJsonError(w, http.StatusRequestTimeout)
 		return
 	}
 
-	log.Info("Served file: " + requestedFile + " to " + requestIP)
+	log.Info("Served file: " + resolvedPath + " to " + requestIP.String())
 }
 
 func WebServerHandler(w http.ResponseWriter, req *http.Request) {
@@ -177,26 +174,20 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	requestIP := requestInfo.IP
 	requestURL := requestInfo.URL
 
-	fullPath, resolvedPath, requestedFile, ok := middleware.GetRequestedFile(req)
+	resolvedPath, ok := middleware.GetRequestFileFromRequestContext(req)
 	if !ok {
 		log.Warning("no requested file stored in context")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
-	if resolvedPath != fullPath {
-		log.Warning("Resolved path does not match full path (" + requestIP + "): " + resolvedPath + " -> " + fullPath)
-		middleware.WriteJsonError(w, http.StatusForbidden)
-		return
-	}
-
-	log.Debug("File request from " + requestIP + " for " + requestURL)
+	log.Debug("File request from " + requestIP.String() + " for " + requestURL)
 
 	// Previous path and file validation done in middleware
 	// Open the file
-	f, err := os.Open(fullPath)
+	f, err := os.Open(resolvedPath)
 	if err != nil {
-		log.Warning("File not found: " + fullPath + " (" + err.Error() + ")")
+		log.Warning("File not found: " + resolvedPath + " (" + err.Error() + ")")
 		http.Error(w, "File not found", http.StatusNotFound)
 		return
 	}
@@ -204,27 +195,27 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 
 	// err = f.SetDeadline(time.Now().Add(30 * time.Second))
 	// if err != nil {
-	// 	log.Error("Cannot set file read deadline: " + fullPath + " (" + err.Error() + ")")
+	// 	log.Error("Cannot set file read deadline: " + resolvedPath + " (" + err.Error() + ")")
 	// 	http.Error(w, http.StatusInternalServerError)
 	// 	return
 	// }
 
 	metadata, err := f.Stat()
 	if err != nil {
-		log.Error("Cannot stat file: " + fullPath + " (" + err.Error() + ")")
+		log.Error("Cannot stat file: " + resolvedPath + " (" + err.Error() + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	maxFileSize := int64(128) << 20 // 128 MiB
 	if metadata.Size() > maxFileSize {
-		log.Warning("File too large: " + fullPath + " (" + fmt.Sprintf("%d", metadata.Size()) + " bytes)")
+		log.Warning("File too large: " + resolvedPath + " (" + fmt.Sprintf("%d", metadata.Size()) + " bytes)")
 		http.Error(w, "File too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 
 	// Set headers
-	if strings.HasSuffix(requestedFile, ".html") {
+	if strings.HasSuffix(resolvedPath, ".html") {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		nonce, err := GenerateNonce(24)
 		if err != nil {
@@ -336,14 +327,14 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		return
-	} else if strings.HasSuffix(requestedFile, ".css") {
+	} else if strings.HasSuffix(resolvedPath, ".css") {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	} else if strings.HasSuffix(requestedFile, ".js") {
+	} else if strings.HasSuffix(resolvedPath, ".js") {
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-	} else if strings.HasSuffix(requestedFile, ".png") || strings.HasSuffix(requestedFile, ".ico") {
+	} else if strings.HasSuffix(resolvedPath, ".png") || strings.HasSuffix(resolvedPath, ".ico") {
 		w.Header().Set("Content-Type", "image/png")
 	} else {
-		log.Warning("Unknown file type requested: " + requestedFile)
+		log.Warning("Unknown file type requested: " + resolvedPath)
 		http.Error(w, "Unsupported Media Type", http.StatusUnsupportedMediaType)
 		return
 	}
@@ -360,11 +351,11 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), f)
 
 	if ctx.Err() != nil {
-		log.Warning("Request cancelled while serving file: " + requestedFile + " to " + requestIP + " (" + ctx.Err().Error() + ")")
+		log.Warning("Request cancelled while serving file: " + resolvedPath + " to " + requestIP.String() + " (" + ctx.Err().Error() + ")")
 		return
 	}
 
-	log.Debug("Served file: " + requestedFile + " to " + requestIP)
+	log.Debug("Served file: " + resolvedPath + " to " + requestIP.String())
 }
 
 func LogoutHandler(w http.ResponseWriter, req *http.Request) {
@@ -377,22 +368,22 @@ func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 	requestIP := requestInfo.IP
 	requestURL := requestInfo.URL
 
-	log.Info("Logout request from " + requestIP + " for " + requestURL)
+	log.Info("Logout request from " + requestIP.String() + " for " + requestURL)
 	// Invalidate cookies
 	requestSessionIDCookie, err := req.Cookie("uit_session_id")
 	if err != nil && err != http.ErrNoCookie {
-		log.Warning("Error retrieving session ID cookie for logout: " + err.Error() + " (" + requestIP + ")")
+		log.Warning("Error retrieving session ID cookie for logout: " + err.Error() + " (" + requestIP.String() + ")")
 		http.Redirect(w, req, "/login", http.StatusSeeOther)
 		return
 	}
 	if requestSessionIDCookie == nil || strings.TrimSpace(requestSessionIDCookie.Value) == "" {
-		log.Info("No session ID cookie provided for logout: " + requestIP)
+		log.Info("No session ID cookie provided for logout: " + requestIP.String())
 		http.Redirect(w, req, "/login", http.StatusSeeOther)
 		return
 	}
 	sessionID := strings.TrimSpace(requestSessionIDCookie.Value)
 	config.DeleteAuthSession(sessionID)
-	log.Info("Deleted auth session for logout: " + sessionID + " (" + requestIP + ")")
+	log.Info("Deleted auth session for logout: " + sessionID + " (" + requestIP.String() + ")")
 	// Clear cookies
 	sessionIDCookie, basicCookie, bearerCookie, csrfCookie := middleware.GetAuthCookiesForResponse("", "", "", "", -time.Hour)
 	http.SetCookie(w, sessionIDCookie)
@@ -414,6 +405,6 @@ func RejectRequest(w http.ResponseWriter, req *http.Request) {
 	requestURL := requestInfo.URL
 	log := requestInfo.Log
 
-	log.Warning("Access denied: " + requestIP + " tried to access " + requestURL)
+	log.Warning("Access denied: " + requestIP.String() + " tried to access " + requestURL)
 	http.Error(w, "Access denied", http.StatusForbidden)
 }

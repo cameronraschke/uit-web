@@ -1,17 +1,15 @@
 package middleware
 
 import (
-	"bufio"
 	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"io"
+	"fmt"
 	"net/http"
 	"net/netip"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -21,19 +19,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type CTXClientIP struct{}
-type CTXURLRequest struct{}
-type ctxFileReqKey struct{}
-type CTXFileRequest struct {
-	FullPath     string
-	ResolvedPath string
-	FileName     string
-}
-type CTXRequestID struct{}
-
-type HTTPErrorCodes struct {
-	Error string `json:"error"`
-}
+type ctxClientIPKey struct{}
+type ctxURLRequestKey struct{}
+type ctxPathRequestKey struct{}
+type ctxQueryRequestKey struct{}
+type ctxFileRequestKey struct{}
+type ctxRequestUUIDKey struct{}
 
 type ReturnedJsonToken struct {
 	Token string  `json:"token"`
@@ -45,6 +36,15 @@ type JsonError struct {
 	ErrorCode    int    `json:"error_code"`
 	ErrorMessage string `json:"error_message"`
 }
+
+var (
+	clientIPKey     ctxClientIPKey
+	urlRequestKey   ctxURLRequestKey
+	pathRequestKey  ctxPathRequestKey
+	queryRequestKey ctxQueryRequestKey
+	fileRequestKey  ctxFileRequestKey
+	requestUUIDKey  ctxRequestUUIDKey
+)
 
 func WriteJson(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -75,6 +75,97 @@ func WriteJsonError(w http.ResponseWriter, httpStatusCode int) {
 	}
 
 	_ = responseController.Flush()
+}
+
+func withClientIP(ctx context.Context, ipStr string) (context.Context, error) {
+	if strings.TrimSpace(ipStr) == "" {
+		return ctx, errors.New("empty IP address")
+	}
+	ipAddr, err := netip.ParseAddr(ipStr)
+	if err != nil {
+		return ctx, fmt.Errorf("failed to parse IP address: %w", err)
+	}
+	if !ipAddr.IsValid() {
+		return ctx, errors.New("invalid IP address: " + ipStr)
+	}
+	return context.WithValue(ctx, clientIPKey, ipAddr), nil
+}
+func GetRequestIPFromContext(ctx context.Context) (ipAddr netip.Addr, ok bool) {
+	ipAddr, ok = ctx.Value(clientIPKey).(netip.Addr)
+	return ipAddr, ok
+}
+func GetRequestIPFromRequestContext(r *http.Request) (ipAddr netip.Addr, ok bool) {
+	return GetRequestIPFromContext(r.Context())
+}
+
+func withRequestURL(ctx context.Context, url string) (context.Context, error) {
+	// if strings.TrimSpace(url) == "" {
+	// 	return ctx, errors.New("empty request URL")
+	// }
+	return context.WithValue(ctx, urlRequestKey, url), nil
+}
+func GetRequestURLFromContext(ctx context.Context) (url string, ok bool) {
+	url, ok = ctx.Value(urlRequestKey).(string)
+	return url, ok
+}
+func GetRequestURLFromRequestContext(r *http.Request) (url string, ok bool) {
+	return GetRequestURLFromContext(r.Context())
+}
+
+func withRequestPath(ctx context.Context, path string) (context.Context, error) {
+	// if strings.TrimSpace(path) == "" {
+	// 	return ctx, errors.New("empty request path")
+	// }
+	return context.WithValue(ctx, pathRequestKey, path), nil
+}
+func GetRequestPathFromContext(ctx context.Context) (path string, ok bool) {
+	path, ok = ctx.Value(pathRequestKey).(string)
+	return path, ok
+}
+func GetRequestPathFromRequestContext(r *http.Request) (path string, ok bool) {
+	return GetRequestPathFromContext(r.Context())
+}
+
+func withRequestQuery(ctx context.Context, query string) (context.Context, error) {
+	// if strings.TrimSpace(query) == "" {
+	// 	return ctx, errors.New("empty request query")
+	// }
+	return context.WithValue(ctx, queryRequestKey, query), nil
+}
+func GetRequestQueryFromContext(ctx context.Context) (query string, ok bool) {
+	query, ok = ctx.Value(queryRequestKey).(string)
+	return query, ok
+}
+func GetRequestQueryFromRequestContext(r *http.Request) (query string, ok bool) {
+	return GetRequestQueryFromContext(r.Context())
+}
+
+func withRequestFile(ctx context.Context, file string) (context.Context, error) {
+	// if strings.TrimSpace(file) == "" {
+	// 	return ctx, errors.New("empty request file")
+	// }
+	return context.WithValue(ctx, fileRequestKey, file), nil
+}
+func GetRequestFileFromContext(ctx context.Context) (file string, ok bool) {
+	file, ok = ctx.Value(fileRequestKey).(string)
+	return file, ok
+}
+func GetRequestFileFromRequestContext(r *http.Request) (file string, ok bool) {
+	return GetRequestFileFromContext(r.Context())
+}
+
+func withRequestUUID(ctx context.Context, uuid string) (context.Context, error) {
+	if strings.TrimSpace(uuid) == "" {
+		return ctx, errors.New("empty request UUID")
+	}
+	return context.WithValue(ctx, requestUUIDKey, uuid), nil
+}
+func GetRequestUUIDFromContext(ctx context.Context) (uuid string, ok bool) {
+	uuid, ok = ctx.Value(requestUUIDKey).(string)
+	return uuid, ok
+}
+func GetRequestUUIDFromRequestContext(r *http.Request) (uuid string, ok bool) {
+	return GetRequestUUIDFromContext(r.Context())
 }
 
 func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue, uitCSRFValue string, timeout time.Duration) (*http.Cookie, *http.Cookie, *http.Cookie, *http.Cookie) {
@@ -121,121 +212,43 @@ func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue,
 	return sessionIDCookie, basicCookie, bearerCookie, csrfCookie
 }
 
-func FormatHttpError(errorMessage string) (jsonErrStr string) {
-	httpError := HTTPErrorCodes{Error: errorMessage}
-	json, err := json.Marshal(httpError)
-	if err != nil {
-		return ""
-	}
-	return string(json)
-}
-
-func checkValidIP(s string) (isValid bool, isLoopback bool, isLocal bool) {
-	log := config.GetLogger()
+func checkValidIP(ip string) (isValid bool, isLoopback bool, isLocal bool, err error) {
 	maxStringSize := int64(128)
-	maxCharSize := int(4)
 
-	ipBytes := &io.LimitedReader{
-		R: strings.NewReader(s),
-		N: maxStringSize,
+	if len(ip) > int(maxStringSize) {
+		return false, false, false, fmt.Errorf("IP address string length exceeded %d bytes", maxStringSize)
 	}
-	reader := bufio.NewReader(ipBytes)
-
-	var totalBytes int64
-	var b strings.Builder
-	for {
-		char, charSize, err := reader.ReadRune()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			log.Warning("read error in checkValidIP" + err.Error())
-			return false, false, false
-		}
-		if charSize > maxCharSize {
-			log.Warning("IP address contains an invalid Unicode character")
-			return false, false, false
-		}
-		if char == utf8.RuneError && charSize == 1 {
-			return false, false, false
-		}
-		if (char >= '0' && char <= '9') && (char == '.' || char == ':') {
-			log.Warning("IP address contains an invalid character")
-			return false, false, false
-		}
-		totalBytes += int64(charSize)
-		if totalBytes > maxStringSize {
-			log.Warning("IP length exceeded " + strconv.FormatInt(maxStringSize, 10) + " bytes")
-			return false, false, false
-		}
-		b.WriteRune(char)
+	ipStr := strings.TrimSpace(ip)
+	if ipStr == "" {
+		return false, false, false, errors.New("IP address string is empty")
+	}
+	if !utf8.ValidString(ipStr) {
+		return false, false, false, errors.New("IP address string is not valid UTF-8")
 	}
 
-	ip := strings.TrimSpace(b.String())
-	if ip == "" {
-		return false, false, false
-	}
-
-	// Reset string builder so GC can get rid of it
-	b.Reset()
-
-	parsedIP, err := netip.ParseAddr(ip)
+	parsedIP, err := netip.ParseAddr(ipStr)
 	if err != nil {
-		return false, false, false
+		return false, false, false, fmt.Errorf("failed to parse IP address string: %w", err)
 	}
 
 	// If unspecified, empty, or wrong byte size
 	if parsedIP.BitLen() != 32 && parsedIP.BitLen() != 128 {
-		log.Warning("IP Address is the incorrect length")
-		return false, false, false
+		return false, false, false, errors.New("parsed IP address is the incorrect length")
 	}
 
 	if parsedIP.IsUnspecified() || !parsedIP.IsValid() {
-		log.Warning("IP address is unspecified or invalid: " + string(parsedIP.String()))
-		return false, false, false
+		return false, false, false, errors.New("parsed IP address is unspecified or invalid: " + parsedIP.String())
 	}
 
-	if !parsedIP.Is4() || parsedIP.Is4In6() || parsedIP.Is6() {
-		log.Warning("IP address is not IPv4: " + string(parsedIP.String()))
-		return false, false, false
-	}
+	// if !parsedIP.Is4() || parsedIP.Is4In6() || parsedIP.Is6() {
+	// 	return false, false, false, errors.New("IP address is not IPv4: " + parsedIP.String())
+	// }
 
 	if parsedIP.IsInterfaceLocalMulticast() || parsedIP.IsLinkLocalMulticast() || parsedIP.IsMulticast() {
-		log.Warning("IP address is multicast: " + string(parsedIP.String()))
-		return false, false, false
+		return false, false, false, errors.New("parsed IP address is multicast: " + parsedIP.String())
 	}
 
-	return true, parsedIP.IsLoopback(), parsedIP.IsPrivate()
-}
-
-func GetRequestIP(r *http.Request) (string, bool) {
-	if ip, ok := r.Context().Value(CTXClientIP{}).(string); ok {
-		return ip, true
-	}
-	return "", false
-}
-
-func GetRequestURL(r *http.Request) (string, bool) {
-	if url, ok := r.Context().Value(CTXURLRequest{}).(string); ok {
-		return url, true
-	}
-	return "", false
-}
-
-func GetFileRequest(req *http.Request) (CTXFileRequest, bool) {
-	v := req.Context().Value(ctxFileReqKey{})
-	if v == nil {
-		return CTXFileRequest{}, false
-	}
-	fileRequest, ok := v.(CTXFileRequest)
-	return fileRequest, ok
-}
-
-func GetRequestedFile(req *http.Request) (string, string, string, bool) {
-	if fileRequest, ok := req.Context().Value(ctxFileReqKey{}).(CTXFileRequest); ok {
-		return fileRequest.FullPath, fileRequest.ResolvedPath, fileRequest.FileName, true
-	}
-	return "", "", "", false
+	return true, parsedIP.IsLoopback(), parsedIP.IsPrivate(), nil
 }
 
 func CheckAuthCredentials(ctx context.Context, username, password string) (bool, error) {

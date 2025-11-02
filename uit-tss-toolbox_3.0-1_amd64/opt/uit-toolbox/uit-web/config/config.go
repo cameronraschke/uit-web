@@ -167,30 +167,30 @@ type AuthHTTPHeader struct {
 }
 
 type BasicToken struct {
-	Token     string    `json:"token"`
-	Expiry    time.Time `json:"expiry"`
-	NotBefore time.Time `json:"not_before"`
-	TTL       float64   `json:"ttl"`
-	IP        string    `json:"ip"`
-	Valid     bool      `json:"valid"`
+	Token     string     `json:"token"`
+	Expiry    time.Time  `json:"expiry"`
+	NotBefore time.Time  `json:"not_before"`
+	TTL       float64    `json:"ttl"`
+	IP        netip.Addr `json:"ip"`
+	Valid     bool       `json:"valid"`
 }
 
 type BearerToken struct {
-	Token     string    `json:"token"`
-	Expiry    time.Time `json:"expiry"`
-	NotBefore time.Time `json:"not_before"`
-	TTL       float64   `json:"ttl"`
-	IP        string    `json:"ip"`
-	Valid     bool      `json:"valid"`
+	Token     string     `json:"token"`
+	Expiry    time.Time  `json:"expiry"`
+	NotBefore time.Time  `json:"not_before"`
+	TTL       float64    `json:"ttl"`
+	IP        netip.Addr `json:"ip"`
+	Valid     bool       `json:"valid"`
 }
 
 type CSRFToken struct {
-	Token     string    `json:"token"`
-	Expiry    time.Time `json:"expiry"`
-	NotBefore time.Time `json:"not_before"`
-	TTL       float64   `json:"ttl"`
-	IP        string    `json:"ip"`
-	Valid     bool      `json:"valid"`
+	Token     string     `json:"token"`
+	Expiry    time.Time  `json:"expiry"`
+	NotBefore time.Time  `json:"not_before"`
+	TTL       float64    `json:"ttl"`
+	IP        netip.Addr `json:"ip"`
+	Valid     bool       `json:"valid"`
 }
 
 type AuthSession struct {
@@ -627,14 +627,10 @@ func RemoveAllowedFile(filename string) {
 }
 
 // IP address checks
-func IsIPAllowed(trafficType string, ip string) (allowed bool, err error) {
+func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error) {
 	appState := GetAppState()
 	if appState == nil {
 		return false, fmt.Errorf("app state is not initialized")
-	}
-	ipAddr, err := netip.ParseAddr(ip)
-	if err != nil {
-		return false, fmt.Errorf("invalid IP address: %w", err)
 	}
 
 	allowed = false
@@ -681,7 +677,7 @@ func IsIPAllowed(trafficType string, ip string) (allowed bool, err error) {
 	return allowed, nil
 }
 
-func IsIPBlocked(ipAddress string) bool {
+func IsIPBlocked(ipAddress netip.Addr) bool {
 	appState := GetAppState()
 	if appState == nil {
 		return false
