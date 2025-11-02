@@ -89,13 +89,17 @@ func main() {
 	}
 
 	fileServerBaseChain := muxChain{
+		middleware.PanicRecoveryMiddleware,
 		middleware.LimitRequestSizeMiddleware,
-		middleware.FileServerTimeoutMiddleware,
 		middleware.StoreClientIPMiddleware,
-		middleware.RateLimitMiddleware("file"),
+		middleware.CheckIPBlockedMiddleware,
+		middleware.TLSMiddleware,
+		middleware.CheckHttpVersionMiddleware,
 		middleware.AllowIPRangeMiddleware("lan"),
-		middleware.CheckValidURLMiddleware,
+		middleware.RateLimitMiddleware("file"),
+		middleware.FileServerTimeoutMiddleware,
 		middleware.HTTPMethodMiddleware,
+		middleware.CheckValidURLMiddleware,
 		middleware.CheckHeadersMiddleware,
 		middleware.SetHeadersMiddleware,
 	}
@@ -131,15 +135,17 @@ func main() {
 
 	// https handlers and middleware chains
 	httpsBaseChain := muxChain{
+		middleware.PanicRecoveryMiddleware,
 		middleware.LimitRequestSizeMiddleware,
-		middleware.APITimeoutMiddleware,
 		middleware.StoreClientIPMiddleware,
-		middleware.RateLimitMiddleware("web"),
-		middleware.AllowIPRangeMiddleware("any"),
-		middleware.CheckHttpVersionMiddleware,
+		middleware.CheckIPBlockedMiddleware,
 		middleware.TLSMiddleware,
-		middleware.CheckValidURLMiddleware,
+		middleware.CheckHttpVersionMiddleware,
+		middleware.AllowIPRangeMiddleware("any"),
+		middleware.RateLimitMiddleware("web"),
+		middleware.APITimeoutMiddleware,
 		middleware.HTTPMethodMiddleware,
+		middleware.CheckValidURLMiddleware,
 		middleware.CheckHeadersMiddleware,
 		middleware.SetHeadersMiddleware,
 	}

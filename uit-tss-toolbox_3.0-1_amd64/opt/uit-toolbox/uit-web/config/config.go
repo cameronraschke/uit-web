@@ -102,19 +102,19 @@ type AppConfig struct {
 	UIT_WEBMASTER_EMAIL             string         `json:"UIT_WEBMASTER_EMAIL"`
 }
 
-type LimiterEntry struct {
+type ClientLimiter struct {
 	Limiter  *rate.Limiter
 	LastSeen time.Time
 }
 
-type LimiterMap struct {
-	M     sync.Map
-	Rate  float64
-	Burst int
+type RateLimiter struct {
+	ClientMap sync.Map
+	Rate      float64
+	Burst     int
 }
 
-type BlockedMap struct {
-	M         sync.Map
+type BlockedClients struct {
+	ClientMap sync.Map
 	BanPeriod time.Duration
 }
 
@@ -145,11 +145,11 @@ type AppState struct {
 	AuthMap            sync.Map
 	AuthMapEntryCount  atomic.Int64
 	Log                logger.Logger
-	WebServerLimiter   *LimiterMap
-	FileLimiter        *LimiterMap
-	APILimiter         *LimiterMap
-	AuthLimiter        *LimiterMap
-	BlockedIPs         *BlockedMap
+	WebServerLimiter   *RateLimiter
+	FileLimiter        *RateLimiter
+	APILimiter         *RateLimiter
+	AuthLimiter        *RateLimiter
+	BlockedIPs         *BlockedClients
 	AllowedFiles       atomic.Value
 	AllowedFilesMu     sync.Mutex
 	AllowedWANIPs      sync.Map
@@ -400,11 +400,11 @@ func InitApp() (*AppState, error) {
 		AuthMap:           sync.Map{},
 		AuthMapEntryCount: atomic.Int64{},
 		Log:               logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_SERVER_LOG_LEVEL"))),
-		WebServerLimiter:  &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST},
-		FileLimiter:       &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 4, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST / 4},
-		APILimiter:        &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST},
-		AuthLimiter:       &LimiterMap{M: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 10, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST / 10},
-		BlockedIPs:        &BlockedMap{M: sync.Map{}, BanPeriod: appConfig.UIT_WEB_RATE_LIMIT_BAN_DURATION},
+		WebServerLimiter:  &RateLimiter{ClientMap: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST},
+		FileLimiter:       &RateLimiter{ClientMap: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 4, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST / 4},
+		APILimiter:        &RateLimiter{ClientMap: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST},
+		AuthLimiter:       &RateLimiter{ClientMap: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 10, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST / 10},
+		BlockedIPs:        &BlockedClients{ClientMap: sync.Map{}, BanPeriod: appConfig.UIT_WEB_RATE_LIMIT_BAN_DURATION},
 		AllowedWANIPs:     sync.Map{},
 		AllowedLANIPs:     sync.Map{},
 		AllowedIPs:        sync.Map{},
@@ -682,18 +682,18 @@ func IsIPBlocked(ipAddress netip.Addr) bool {
 	if appState == nil {
 		return false
 	}
-	value, ok := appState.BlockedIPs.M.Load(ipAddress)
+	value, ok := appState.BlockedIPs.ClientMap.Load(ipAddress)
 	if !ok {
 		return false
 	}
-	blockedEntry, ok := value.(LimiterEntry)
+	blockedEntry, ok := value.(ClientLimiter)
 	if !ok {
 		return false
 	}
 	if time.Now().Before(blockedEntry.LastSeen.Add(appState.BlockedIPs.BanPeriod)) {
 		return true
 	}
-	appState.BlockedIPs.M.Delete(ipAddress)
+	appState.BlockedIPs.ClientMap.Delete(ipAddress)
 	return false
 }
 
@@ -703,13 +703,13 @@ func CleanupBlockedIPs() {
 		return
 	}
 	now := time.Now()
-	appState.BlockedIPs.M.Range(func(key, value any) bool {
-		blockedEntry, ok := value.(LimiterEntry)
+	appState.BlockedIPs.ClientMap.Range(func(key, value any) bool {
+		blockedEntry, ok := value.(ClientLimiter)
 		if !ok {
 			return true
 		}
 		if now.After(blockedEntry.LastSeen.Add(appState.BlockedIPs.BanPeriod)) {
-			appState.BlockedIPs.M.Delete(key)
+			appState.BlockedIPs.ClientMap.Delete(key)
 		}
 		return true
 	})

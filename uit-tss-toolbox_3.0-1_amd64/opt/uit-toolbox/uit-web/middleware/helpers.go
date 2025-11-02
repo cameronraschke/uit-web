@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/netip"
+	"net/url"
+	"path"
 	"regexp"
 	"strings"
 	"time"
@@ -37,6 +39,11 @@ type JsonError struct {
 	ErrorMessage string `json:"error_message"`
 }
 
+const (
+	disallowedQueryChars = "\x00\r\n<>\"'`:"
+	disallowedPathChars  = " <>\"'`|\\*$%#?~:\x00\r\n"
+)
+
 var (
 	clientIPKey     ctxClientIPKey
 	urlRequestKey   ctxURLRequestKey
@@ -44,6 +51,8 @@ var (
 	queryRequestKey ctxQueryRequestKey
 	fileRequestKey  ctxFileRequestKey
 	requestUUIDKey  ctxRequestUUIDKey
+
+	allowedQueryKeyRegex = regexp.MustCompile(`^[A-Za-z0-9._\-]+$`)
 )
 
 func WriteJson(w http.ResponseWriter, status int, v any) {
@@ -293,6 +302,15 @@ func IsPrintableASCII(b []byte) bool {
 	return true
 }
 
+func IsASCIIStringPrintable(s string) bool {
+	for _, char := range s {
+		if char < 32 || char > 126 {
+			return false
+		}
+	}
+	return true
+}
+
 func IsAlphanumericAscii(b []byte) bool {
 	for i := range b {
 		char := b[i]
@@ -403,3 +421,124 @@ func ValidateAuthFormInputSHA256(username, password string) error {
 // 	}
 // 	return  || strings.Contains(err.Error(), "http: request body too large")
 // }
+
+func validateQueryParams(query url.Values) error {
+	const maxKeyLen = 128
+	const maxValueLen = 512
+	const maxParams = 64
+
+	// If empty, return early
+	if len(query) == 0 {
+		return nil
+	}
+
+	if len(query) > maxParams {
+		return fmt.Errorf("too many query parameters in URL (%d > %d)", len(query), maxParams)
+	}
+
+	for key, values := range query {
+		// key length
+		if len(key) == 0 {
+			return fmt.Errorf("empty query key not allowed")
+		}
+
+		if len(key) > maxKeyLen {
+			return fmt.Errorf("query key too long: %d chars", len(key))
+		}
+
+		// query keys
+		if !allowedQueryKeyRegex.MatchString(key) {
+			return fmt.Errorf("invalid/dangerous characters in query key")
+		}
+
+		for _, value := range values {
+			if len(value) > maxValueLen {
+				return fmt.Errorf("query value too long: %d chars", len(value))
+			}
+
+			// query values
+			if strings.ContainsAny(value, disallowedQueryChars) {
+				return fmt.Errorf("invalid/dangerous characters in query value")
+			}
+		}
+	}
+
+	return nil
+}
+
+func validateAndCleanPath(rawPath string) (string, error) {
+	if strings.TrimSpace(rawPath) == "" {
+		return "", fmt.Errorf("URL path is empty")
+	}
+
+	if len(rawPath) > 255 {
+		return "", fmt.Errorf("URL path too long: %d chars", len(rawPath))
+	}
+
+	if !strings.HasPrefix(rawPath, "/") {
+		return "", fmt.Errorf("URL path must start with /")
+	}
+
+	cleanPath := path.Clean(rawPath)
+
+	if !strings.HasPrefix(cleanPath, "/") || cleanPath == ".." {
+		return "", fmt.Errorf("path traversal attempt")
+	}
+
+	if cleanPath == "." {
+		return "", fmt.Errorf("no path specified")
+	}
+
+	if strings.Contains(cleanPath, "\x00") {
+		return "", fmt.Errorf("null byte in path")
+	}
+
+	// validate each path segment
+	segments := strings.Split(strings.Trim(cleanPath, "/"), "/")
+	for _, segment := range segments {
+		if segment == "" {
+			continue
+		}
+
+		if err := validatePathSegment(segment); err != nil {
+			return "", fmt.Errorf("invalid path segment '%s': %w", segment, err)
+		}
+	}
+
+	return cleanPath, nil
+}
+
+func validatePathSegment(segment string) error {
+	// Reject double-encoding attacks (percent signs shouldn't remain after Go's decode)
+	if strings.Contains(segment, "%") {
+		return fmt.Errorf("percent-encoded characters detected (possible double-encoding attack)")
+	}
+
+	// Reject disallowed characters
+	if strings.ContainsAny(segment, disallowedPathChars) {
+		return fmt.Errorf("dangerous characters found in URL path")
+	}
+
+	// 3. Reject hidden files/directories (both prefix and suffix checks)
+	if strings.HasPrefix(segment, ".") {
+		return fmt.Errorf("hidden file/directory not allowed (starts with dot)")
+	}
+
+	if strings.HasSuffix(segment, ".") {
+		return fmt.Errorf("invalid filename (ends with dot)")
+	}
+
+	// Common file extensions to block
+	if strings.HasSuffix(segment, ".tmp") ||
+		strings.HasSuffix(segment, ".bak") ||
+		strings.HasSuffix(segment, ".swp") {
+		return fmt.Errorf("backup/temporary file extension not allowed in URL path")
+	}
+
+	// ASCII printable characters only (32-126)
+	if !IsASCIIStringPrintable(segment) {
+		return fmt.Errorf("non-printable or non-ASCII characters found in URL path")
+	}
+
+	return nil
+}
