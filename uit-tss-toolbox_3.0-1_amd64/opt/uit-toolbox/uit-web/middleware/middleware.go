@@ -342,8 +342,9 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
+
 		if !slices.Contains(endpointConfig.AllowedMethods, req.Method) {
-			log.Warning("Method not allowed for endpoint (" + requestIP.String() + "): " + req.Method)
+			log.Info("Method is not allowed for endpoint (" + req.URL.Path + "): " + req.Method + " from " + requestIP.String())
 			WriteJsonError(w, http.StatusMethodNotAllowed)
 			return
 		}

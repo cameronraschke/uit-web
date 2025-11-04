@@ -518,12 +518,20 @@ func InitApp() (*AppState, error) {
 			Redirect:       false,
 			RedirectURL:    "",
 		}
+		defaultBytes, err := json.Marshal(endpointDefaults)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal endpoint defaults for %s: %w", endpointPath, err)
+		}
+		merged := WebEndpoint{}
+		if err = json.Unmarshal(defaultBytes, &merged); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal endpoint defaults for %s: %w", endpointPath, err)
+		}
 		endpointCopy := endpointData
-		endpointCopyBytes, err := json.Marshal(endpointCopy)
+		userBytes, err := json.Marshal(endpointCopy)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal endpoint data for %s: %w", endpointPath, err)
 		}
-		if err := json.Unmarshal(endpointCopyBytes, &endpointDefaults); err != nil {
+		if err := json.Unmarshal(userBytes, &merged); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal endpoint data for %s: %w", endpointPath, err)
 		}
 		appState.WebEndpoints.Store(endpointPath, &endpointDefaults)
