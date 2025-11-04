@@ -1,3 +1,16 @@
 {
-  "/": ""
+  "": {
+    "file_path": "404.html",
+    "allowed_methods": ["OPTIONS", "GET", "POST", "PUSH", "DELETE"],
+    "tls_required": true,
+    "auth_required": false,
+    "acl_users": [""],
+    "acl_groups": [""],
+    "http_version": "HTTP/1.1",
+    "endpoint_type": "static_file",
+    "content_type": "text/html; charset=utf-8",
+    "status_code": 404,
+    "redirect": false,
+    "redirect_url": ""
+  }
 }

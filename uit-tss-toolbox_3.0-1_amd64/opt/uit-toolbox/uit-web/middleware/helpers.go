@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,6 +28,7 @@ type ctxPathRequestKey struct{}
 type ctxQueryRequestKey struct{}
 type ctxFileRequestKey struct{}
 type ctxRequestUUIDKey struct{}
+type ctxNonceKey struct{}
 
 type ReturnedJsonToken struct {
 	Token string  `json:"token"`
@@ -51,6 +53,7 @@ var (
 	queryRequestKey ctxQueryRequestKey
 	fileRequestKey  ctxFileRequestKey
 	requestUUIDKey  ctxRequestUUIDKey
+	nonceKey        ctxNonceKey
 
 	allowedQueryKeyRegex = regexp.MustCompile(`^[A-Za-z0-9._\-]+$`)
 )
@@ -84,6 +87,31 @@ func WriteJsonError(w http.ResponseWriter, httpStatusCode int) {
 	}
 
 	_ = responseController.Flush()
+}
+
+func GenerateNonce(n int) (string, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+func withNonce(ctx context.Context, nonce string) (context.Context, error) {
+	if strings.TrimSpace(nonce) == "" {
+		return ctx, errors.New("empty nonce")
+	}
+	return context.WithValue(ctx, nonceKey, nonce), nil
+}
+func GetNonceFromContext(ctx context.Context) (nonce string, ok bool) {
+	nonce, ok = ctx.Value(nonceKey).(string)
+	return nonce, ok
+}
+func GetNonceFromRequestContext(r *http.Request) (nonce string, ok bool) {
+	return GetNonceFromContext(r.Context())
+}
+
+func GetContextFromRequest(r *http.Request) context.Context {
+	return r.Context()
 }
 
 func withClientIP(ctx context.Context, ipStr string) (context.Context, error) {

@@ -2,8 +2,6 @@ package endpoints
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -28,14 +26,6 @@ type RequestInfo struct {
 
 type ServerTime struct {
 	Time string `json:"server_time"`
-}
-
-func GenerateNonce(n int) (string, error) {
-	b := make([]byte, n)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 func GetRequestInfo(req *http.Request) (RequestInfo, error) {
@@ -164,16 +154,20 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func WebServerHandler(w http.ResponseWriter, req *http.Request) {
-	requestInfo, err := GetRequestInfo(req)
-	if err != nil {
+	ctx := req.Context()
+	log := config.GetLogger()
+	requestIP, ok := middleware.GetRequestIPFromRequestContext(req)
+	if !ok {
+		log.Warning("No IP address stored in context")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
-
+	requestURL, ok := middleware.GetRequestURLFromRequestContext(req)
+	if !ok {
+		log.Warning("No URL stored in context")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
 	requestedPath, ok := middleware.GetRequestPathFromRequestContext(req)
 	if !ok {
 		log.Warning("no requested file stored in context")
@@ -181,173 +175,165 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	requestedFile, ok := middleware.GetRequestFileFromRequestContext(req)
-	if !ok {
-		log.Warning("no requested file stored in context")
+	log.Debug("File request from " + requestIP.String() + " for " + requestURL)
+
+	// Get endpoint config
+	endpointData, err := config.GetWebEndpointConfig(requestedPath)
+	if err != nil {
+		log.Warning("Cannot get endpoint config for endpoint: " + requestURL + " (" + err.Error() + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-
-	log.Debug("File request from " + requestIP.String() + " for " + requestURL + " (mapped to " + requestedFile + ")")
-
-	// Previous path and file validation done in middleware
+	filePath, err := config.GetWebEndpointFilePath(endpointData)
+	if err != nil || strings.TrimSpace(filePath) == "" {
+		log.Warning("Cannot get file path for endpoint: " + requestedPath + " (" + err.Error() + ")")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
 	// Open the file
-	f, err := os.Open(requestedPath)
+	file, err := os.Open(filePath)
 	if err != nil {
-		log.Warning("Cannot open file: " + requestedPath + " (" + err.Error() + ")")
+		log.Warning("Cannot open file: " + filePath + " (" + err.Error() + ")")
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
-	defer f.Close()
+	defer file.Close()
 
-	// err = f.SetDeadline(time.Now().Add(30 * time.Second))
+	// err = file.SetDeadline(time.Now().Add(30 * time.Second))
 	// if err != nil {
-	// 	log.Error("Cannot set file read deadline: " + requestedPath + " (" + err.Error() + ")")
+	// 	log.Error("Cannot set file read deadline: " + filePath + " (" + err.Error() + ")")
 	// 	http.Error(w, http.StatusInternalServerError)
 	// 	return
 	// }
 
-	metadata, err := f.Stat()
+	metadata, err := file.Stat()
 	if err != nil {
-		log.Error("Cannot stat file: " + requestedPath + " (" + err.Error() + ")")
+		log.Error("Cannot stat file: " + filePath + " (" + err.Error() + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
-	maxFileSize := int64(128) << 20 // 128 MiB
+	maxFileSize, err := config.GetMaxUploadSize()
+	if err != nil {
+		log.Error("Cannot get max upload size from config: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
 	if metadata.Size() > maxFileSize {
-		log.Warning("File too large: " + requestedPath + " (" + fmt.Sprintf("%d", metadata.Size()) + " bytes)")
+		log.Warning("File too large: " + filePath + " (" + fmt.Sprintf("%d", metadata.Size()) + " bytes)")
 		http.Error(w, "File too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 
 	// Set headers
-	if strings.HasSuffix(requestedPath, ".html") {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		nonce, err := GenerateNonce(24)
-		if err != nil {
-			log.Error("Cannot generate CSP nonce: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Security-Policy",
-			"default-src 'none'; "+
-				"script-src 'self' 'nonce-"+nonce+"'; "+
-				"style-src 'self'; "+
-				"img-src 'self' blob: data:; "+
-				"font-src 'self'; "+
-				"connect-src 'self'; "+
-				"frame-ancestors 'none'; "+
-				"form-action 'self'; "+
-				"base-uri 'self'")
-
-		htmlTemp, err := template.ParseFiles(requestedPath)
-		if err != nil {
-			log.Warning("Cannot parse template file (" + requestedPath + "): " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		webmasterName, webmasterEmail, err := config.GetWebmasterContact()
-		if err != nil {
-			log.Error("Cannot get webmaster contact info: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
-		db := database.NewRepo(config.GetDatabaseConn())
-
-		departments, err := db.GetDepartments(ctx)
-		if err != nil {
-			log.Error("Cannot get department list from database: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
-		domains, err := db.GetDomains(ctx)
-		if err != nil {
-			log.Error("Cannot get domain list from database: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
-		statuses, err := db.GetStatuses(ctx)
-		if err != nil {
-			log.Error("Cannot get status list from database: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
-		manufacturers, err := db.GetManufacturers(ctx)
-		if err != nil {
-			log.Error("Cannot get manufacturer list from database: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
-		models, err := db.GetModels(ctx)
-		if err != nil {
-			log.Error("Cannot get model list from database: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
-		locations, err := db.GetLocations(ctx)
-		if err != nil {
-			log.Error("Cannot get location list from database: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
-		urlTag := req.URL.Query().Get("tagnumber")
-		urlTag = strings.TrimSpace(urlTag)
-
-		templateData := struct {
-			JsNonce        string
-			WebmasterName  string
-			WebmasterEmail string
-			Departments    map[string]string
-			Domains        map[string]string
-			ClientTag      string
-			Statuses       map[string]string
-			Manufacturers  map[string]string
-			Models         map[string]string
-			Locations      map[string]string
-		}{
-			JsNonce:        nonce,
-			WebmasterName:  webmasterName,
-			WebmasterEmail: webmasterEmail,
-			Departments:    departments,
-			Domains:        domains,
-			ClientTag:      urlTag,
-			Statuses:       statuses,
-			Manufacturers:  manufacturers,
-			Models:         models,
-			Locations:      locations,
-		}
-
-		// Execute the template
-		err = htmlTemp.Execute(w, templateData)
-		if err != nil {
-			log.Error("Error executing template for " + requestedPath + ": " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+	contentType, err := config.GetWebEndpointContentType(endpointData)
+	if err != nil {
+		log.Warning("Cannot get content type for endpoint: " + requestedPath + " (" + err.Error() + ")")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
-	} else if strings.HasSuffix(requestedPath, ".css") {
-		w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	} else if strings.HasSuffix(requestedPath, ".js") {
-		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-	} else if strings.HasSuffix(requestedPath, ".png") || strings.HasSuffix(requestedPath, ".ico") {
-		w.Header().Set("Content-Type", "image/png")
-	} else {
-		log.Warning("Unknown file type requested: " + requestedPath)
-		http.Error(w, "Unsupported Media Type", http.StatusUnsupportedMediaType)
+	}
+	w.Header().Set("Content-Type", contentType)
+
+	// Generate nonce
+	nonce, ok := middleware.GetNonceFromRequestContext(req)
+	if !ok {
+		log.Error("Error retrieving CSP nonce from context")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	parsedHTMLTemplate, err := template.ParseFiles(filePath)
+	if err != nil {
+		log.Warning("Cannot parse template file (" + filePath + "): " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	webmasterName, webmasterEmail, err := config.GetWebmasterContact()
+	if err != nil {
+		log.Error("Cannot get webmaster contact info: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	db := database.NewRepo(config.GetDatabaseConn())
+
+	departments, err := db.GetDepartments(ctx)
+	if err != nil {
+		log.Error("Cannot get department list from database: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	domains, err := db.GetDomains(ctx)
+	if err != nil {
+		log.Error("Cannot get domain list from database: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	statuses, err := db.GetStatuses(ctx)
+	if err != nil {
+		log.Error("Cannot get status list from database: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	manufacturers, err := db.GetManufacturers(ctx)
+	if err != nil {
+		log.Error("Cannot get manufacturer list from database: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	models, err := db.GetModels(ctx)
+	if err != nil {
+		log.Error("Cannot get model list from database: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	locations, err := db.GetLocations(ctx)
+	if err != nil {
+		log.Error("Cannot get location list from database: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	urlTag := req.URL.Query().Get("tagnumber")
+	urlTag = strings.TrimSpace(urlTag)
+
+	templateData := struct {
+		JsNonce        string
+		WebmasterName  string
+		WebmasterEmail string
+		Departments    map[string]string
+		Domains        map[string]string
+		ClientTag      string
+		Statuses       map[string]string
+		Manufacturers  map[string]string
+		Models         map[string]string
+		Locations      map[string]string
+	}{
+		JsNonce:        nonce,
+		WebmasterName:  webmasterName,
+		WebmasterEmail: webmasterEmail,
+		Departments:    departments,
+		Domains:        domains,
+		ClientTag:      urlTag,
+		Statuses:       statuses,
+		Manufacturers:  manufacturers,
+		Models:         models,
+		Locations:      locations,
+	}
+
+	// Execute the template
+	err = parsedHTMLTemplate.Execute(w, templateData)
+	if err != nil {
+		log.Error("Error executing template for " + filePath + ": " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	// Set headers
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", metadata.Size()))
 	w.Header().Set("Content-Disposition", "inline; filename=\""+metadata.Name()+"\"")
 	w.Header().Set("Last-Modified", metadata.ModTime().UTC().Format(http.TimeFormat))
@@ -355,7 +341,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 
 	// Serve the file
-	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), f)
+	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), file)
 
 	if ctx.Err() != nil {
 		log.Warning("Request cancelled while serving file: " + requestedPath + " to " + requestIP.String() + " (" + ctx.Err().Error() + ")")

@@ -130,6 +130,16 @@ func TLSMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
+		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
+		if err != nil {
+			log.Warning("Error getting endpoint config in TLS middleware: " + err.Error() + " (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		if !endpointConfig.TLSRequired {
+			next.ServeHTTP(w, req)
+			return
+		}
 
 		if req.TLS == nil || !req.TLS.HandshakeComplete {
 			log.Warning("TLS handshake failed for client " + requestIP.String())
@@ -599,13 +609,27 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload") // 2 years
 		w.Header().Set("Referrer-Policy", "no-referrer")
+		nonce, err := GenerateNonce(24)
+		if err != nil {
+			log.Error("Cannot generate CSP nonce: " + err.Error())
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		ctx := req.Context()
+		ctx, err = withNonce(ctx, nonce)
+		if err != nil {
+			log.Error("Error storing CSP nonce in context: " + err.Error())
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		req = req.WithContext(ctx)
 		cspPolicy := "default-src 'self'; " +
 			"style-src 'self'; " +
-			"script-src 'self'; " +
+			"script-src 'self' 'nonce-" + nonce + "'; " +
 			"worker-src 'self'; " +
-			"img-src 'self' data: https:; " +
+			"img-src 'self' blob: data:; " +
 			"font-src 'self'; " +
-			"connect-src 'self' https://" + httpsServerIP + ":1411; " +
+			"connect-src 'self'; " +
 			"frame-ancestors 'none'; " +
 			"base-uri 'self'; " +
 			"form-action 'self'; " +

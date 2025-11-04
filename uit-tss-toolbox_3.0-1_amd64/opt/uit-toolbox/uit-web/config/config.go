@@ -102,6 +102,23 @@ type AppConfig struct {
 	UIT_WEBMASTER_EMAIL             string         `json:"UIT_WEBMASTER_EMAIL"`
 }
 
+type WebEndpoints map[string]WebEndpoint
+
+type WebEndpoint struct {
+	FilePath       string   `json:"file_path"`
+	AllowedMethods []string `json:"allowed_methods"`
+	TLSRequired    bool     `json:"tls_required"`
+	AuthRequired   bool     `json:"auth_required"`
+	ACLUsers       []string `json:"acl_users"`
+	ACLGroups      []string `json:"acl_groups"`
+	HTTPVersion    string   `json:"http_version"`
+	EndpointType   string   `json:"endpoint_type"`
+	ContentType    string   `json:"content_type"`
+	StatusCode     int      `json:"status_code"`
+	Redirect       bool     `json:"redirect"`
+	RedirectURL    string   `json:"redirect_url"`
+}
+
 type ClientLimiter struct {
 	Limiter  *rate.Limiter
 	LastSeen time.Time
@@ -158,6 +175,7 @@ type AppState struct {
 	SessionSecret      []byte
 	APIRequestTimeout  atomic.Value
 	FileRequestTimeout atomic.Value
+	WebEndpoints       sync.Map
 }
 
 type AuthHTTPHeader struct {
@@ -211,11 +229,11 @@ func LoadConfig() (*AppConfig, error) {
 	var configFile ConfigFile
 
 	// Decode JSON
-	file, err := os.ReadFile("/etc/uit-toolbox/uit-toolbox.json")
+	mainConfigFile, err := os.ReadFile("/etc/uit-toolbox/uit-toolbox.json")
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return nil, fmt.Errorf("failed to read config mainConfigFile: %w", err)
 	}
-	if err := json.Unmarshal(file, &configFile); err != nil {
+	if err := json.Unmarshal(mainConfigFile, &configFile); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config JSON: %w", err)
 	}
 
@@ -479,9 +497,25 @@ func InitApp() (*AppState, error) {
 	}
 	appState.SessionSecret = []byte(sessionSecret)
 
+	// Configure web endpoints
+	endpointsConfig, err := os.ReadFile("/etc/uit-toolbox/web_endpoints.json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read web endpoints config file: %w", err)
+	}
+	var webEndpoints WebEndpoints
+	if err := json.Unmarshal(endpointsConfig, &webEndpoints); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal web endpoints config JSON: %w", err)
+	}
+	for endpointPath, endpointData := range webEndpoints {
+		endpointCopy := endpointData
+		appState.WebEndpoints.Store(endpointPath, &endpointCopy)
+	}
+
 	// Set initial timeouts
 	appState.APIRequestTimeout.Store(appConfig.UIT_WEB_API_REQUEST_TIMEOUT)
 	appState.FileRequestTimeout.Store(appConfig.UIT_WEB_FILE_REQUEST_TIMEOUT)
+
+	// Declare endpoints
 
 	SetAppState(appState)
 	return appState, nil
@@ -841,4 +875,64 @@ func SetRequestTimeout(timeoutType string, timeout time.Duration) error {
 	default:
 		return fmt.Errorf("invalid timeout type: %s", timeoutType)
 	}
+}
+
+func GetWebEndpointConfig(endpointPath string) (*WebEndpoint, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return nil, fmt.Errorf("%s", "cannot get web endpoint, app state is not initialized")
+	}
+	value, ok := appState.WebEndpoints.Load(endpointPath)
+	if !ok {
+		return nil, fmt.Errorf("endpoint not found: %s", endpointPath)
+	}
+	endpointData, ok := value.(*WebEndpoint)
+	if !ok {
+		return nil, fmt.Errorf("invalid endpoint data for: %s", endpointPath)
+	}
+	return endpointData, nil
+}
+
+func GetWebEndpointFilePath(webEndpoint *WebEndpoint) (string, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return "", fmt.Errorf("%s", "cannot get file path for endpoint, app state is not initialized")
+	}
+	filePath := webEndpoint.FilePath
+	if strings.TrimSpace(filePath) == "" {
+		return "", fmt.Errorf("file path is empty for endpoint")
+	}
+	return filePath, nil
+}
+
+func IsWebEndpointAuthRequired(webEndpoint *WebEndpoint) (bool, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return false, fmt.Errorf("%s", "cannot check auth requirement for endpoint, app state is not initialized")
+	}
+	return webEndpoint.AuthRequired, nil
+}
+
+func IsWebEndpointHTTPSRequired(webEndpoint *WebEndpoint) (bool, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return false, fmt.Errorf("%s", "cannot check HTTPS requirement for endpoint, app state is not initialized")
+	}
+	return webEndpoint.TLSRequired, nil
+}
+
+func GetWebEndpointAllowedMethods(webEndpoint *WebEndpoint) ([]string, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return nil, fmt.Errorf("%s", "cannot get allowed methods for endpoint, app state is not initialized")
+	}
+	return webEndpoint.AllowedMethods, nil
+}
+
+func GetWebEndpointContentType(webEndpoint *WebEndpoint) (string, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return "", fmt.Errorf("%s", "cannot get content type for endpoint, app state is not initialized")
+	}
+	return webEndpoint.ContentType, nil
 }
