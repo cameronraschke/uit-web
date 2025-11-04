@@ -3,5 +3,7 @@
   "/api/dashboard/inventory_summary": {},
   "/api/notes": {
     "allowed_methods": ["OPTIONS", "GET", "POST"]
-  }
+  },
+  "/api/inventory": {}
+
 }

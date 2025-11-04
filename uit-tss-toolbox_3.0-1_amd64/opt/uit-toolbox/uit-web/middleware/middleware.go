@@ -131,6 +131,10 @@ func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 		}
 		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
 		if err != nil {
+			if strings.HasPrefix(req.URL.Path, "/api/") {
+				log.Warning("No valid API endpoint config for URL: " + req.URL.Path)
+				next.ServeHTTP(w, req)
+			}
 			log.Warning("Error getting endpoint config (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
@@ -142,7 +146,7 @@ func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		if endpointType == "static_file" {
+		if endpointType == "static_file" || endpointType == "web_content" {
 			filePath, err := config.GetWebEndpointFilePath(endpointConfig)
 			if err != nil || strings.TrimSpace(filePath) == "" {
 				log.Warning("No file path configured for endpoint: " + req.URL.Path)
