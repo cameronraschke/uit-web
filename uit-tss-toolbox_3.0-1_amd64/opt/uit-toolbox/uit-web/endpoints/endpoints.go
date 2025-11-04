@@ -174,48 +174,55 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	requestIP := requestInfo.IP
 	requestURL := requestInfo.URL
 
-	resolvedPath, ok := middleware.GetRequestFileFromRequestContext(req)
+	requestedPath, ok := middleware.GetRequestPathFromRequestContext(req)
 	if !ok {
 		log.Warning("no requested file stored in context")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
-	log.Debug("File request from " + requestIP.String() + " for " + requestURL)
+	requestedFile, ok := middleware.GetRequestFileFromRequestContext(req)
+	if !ok {
+		log.Warning("no requested file stored in context")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	log.Debug("File request from " + requestIP.String() + " for " + requestURL + " (mapped to " + requestedFile + ")")
 
 	// Previous path and file validation done in middleware
 	// Open the file
-	f, err := os.Open(resolvedPath)
+	f, err := os.Open(requestedPath)
 	if err != nil {
-		log.Warning("File not found: " + resolvedPath + " (" + err.Error() + ")")
-		http.Error(w, "File not found", http.StatusNotFound)
+		log.Warning("Cannot open file: " + requestedPath + " (" + err.Error() + ")")
+		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 	defer f.Close()
 
 	// err = f.SetDeadline(time.Now().Add(30 * time.Second))
 	// if err != nil {
-	// 	log.Error("Cannot set file read deadline: " + resolvedPath + " (" + err.Error() + ")")
+	// 	log.Error("Cannot set file read deadline: " + requestedPath + " (" + err.Error() + ")")
 	// 	http.Error(w, http.StatusInternalServerError)
 	// 	return
 	// }
 
 	metadata, err := f.Stat()
 	if err != nil {
-		log.Error("Cannot stat file: " + resolvedPath + " (" + err.Error() + ")")
+		log.Error("Cannot stat file: " + requestedPath + " (" + err.Error() + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	maxFileSize := int64(128) << 20 // 128 MiB
 	if metadata.Size() > maxFileSize {
-		log.Warning("File too large: " + resolvedPath + " (" + fmt.Sprintf("%d", metadata.Size()) + " bytes)")
+		log.Warning("File too large: " + requestedPath + " (" + fmt.Sprintf("%d", metadata.Size()) + " bytes)")
 		http.Error(w, "File too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 
 	// Set headers
-	if strings.HasSuffix(resolvedPath, ".html") {
+	if strings.HasSuffix(requestedPath, ".html") {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		nonce, err := GenerateNonce(24)
 		if err != nil {
@@ -235,9 +242,9 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 				"form-action 'self'; "+
 				"base-uri 'self'")
 
-		htmlTemp, err := template.ParseFiles(resolvedPath)
+		htmlTemp, err := template.ParseFiles(requestedPath)
 		if err != nil {
-			log.Warning("Cannot parse template file (" + resolvedPath + "): " + err.Error())
+			log.Warning("Cannot parse template file (" + requestedPath + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -322,19 +329,19 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		// Execute the template
 		err = htmlTemp.Execute(w, templateData)
 		if err != nil {
-			log.Error("Error executing template for " + resolvedPath + ": " + err.Error())
+			log.Error("Error executing template for " + requestedPath + ": " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		return
-	} else if strings.HasSuffix(resolvedPath, ".css") {
+	} else if strings.HasSuffix(requestedPath, ".css") {
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	} else if strings.HasSuffix(resolvedPath, ".js") {
+	} else if strings.HasSuffix(requestedPath, ".js") {
 		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-	} else if strings.HasSuffix(resolvedPath, ".png") || strings.HasSuffix(resolvedPath, ".ico") {
+	} else if strings.HasSuffix(requestedPath, ".png") || strings.HasSuffix(requestedPath, ".ico") {
 		w.Header().Set("Content-Type", "image/png")
 	} else {
-		log.Warning("Unknown file type requested: " + resolvedPath)
+		log.Warning("Unknown file type requested: " + requestedPath)
 		http.Error(w, "Unsupported Media Type", http.StatusUnsupportedMediaType)
 		return
 	}
@@ -351,11 +358,11 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), f)
 
 	if ctx.Err() != nil {
-		log.Warning("Request cancelled while serving file: " + resolvedPath + " to " + requestIP.String() + " (" + ctx.Err().Error() + ")")
+		log.Warning("Request cancelled while serving file: " + requestedPath + " to " + requestIP.String() + " (" + ctx.Err().Error() + ")")
 		return
 	}
 
-	log.Debug("Served file: " + resolvedPath + " to " + requestIP.String())
+	log.Debug("Served file: " + requestedPath + " to " + requestIP.String())
 }
 
 func LogoutHandler(w http.ResponseWriter, req *http.Request) {
