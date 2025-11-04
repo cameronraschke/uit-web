@@ -40,10 +40,13 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log := config.GetLogger()
-		contentLengthHeader := req.Header.Get("Content-Length")
-		if strings.TrimSpace(contentLengthHeader) == "" {
-			log.Warning("Request content length is missing: " + fmt.Sprintf("%d", req.ContentLength))
-			WriteJsonError(w, http.StatusLengthRequired)
+		if req.Header.Get("Content-Length") == "" && (req.Method == http.MethodPost || req.Method == http.MethodPut) {
+			contentLengthHeader := req.Header.Get("Content-Length")
+			if strings.TrimSpace(contentLengthHeader) == "" {
+				log.Warning("Request content length is missing: " + fmt.Sprintf("%d", req.ContentLength))
+				WriteJsonError(w, http.StatusLengthRequired)
+				return
+			}
 		}
 		maxSize, err := config.GetMaxUploadSize()
 		if err != nil {
