@@ -129,14 +129,14 @@ func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		endpointConfig, ok := GetWebEndpointConfigFromRequestContext(req)
-		if !ok {
+		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
+		if err != nil {
 			log.Warning("Error getting endpoint config (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
-		ctx, err := withWebEndpointConfig(req.Context(), endpointConfig)
+		ctx, err := withWebEndpointConfig(req.Context(), &endpointConfig)
 		if err != nil {
 			log.Warning("Error storing endpoint config in context: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)

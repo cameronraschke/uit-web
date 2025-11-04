@@ -877,62 +877,41 @@ func SetRequestTimeout(timeoutType string, timeout time.Duration) error {
 	}
 }
 
-func GetWebEndpointConfig(endpointPath string) (*WebEndpoint, error) {
+func GetWebEndpointConfig(endpointPath string) (WebEndpoint, error) {
 	appState := GetAppState()
 	if appState == nil {
-		return nil, fmt.Errorf("%s", "cannot get web endpoint, app state is not initialized")
+		return WebEndpoint{}, fmt.Errorf("cannot get web endpoint, app state is not initialized")
 	}
 	value, ok := appState.WebEndpoints.Load(endpointPath)
 	if !ok {
-		return nil, fmt.Errorf("endpoint not found: %s", endpointPath)
+		return WebEndpoint{}, fmt.Errorf("endpoint not found: %s", endpointPath)
 	}
 	endpointData, ok := value.(*WebEndpoint)
 	if !ok {
-		return nil, fmt.Errorf("invalid endpoint data for: %s", endpointPath)
+		return WebEndpoint{}, fmt.Errorf("invalid endpoint data for: %s", endpointPath)
 	}
-	return endpointData, nil
+	return *endpointData, nil // return copy
 }
 
-func GetWebEndpointFilePath(webEndpoint *WebEndpoint) (string, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return "", fmt.Errorf("%s", "cannot get file path for endpoint, app state is not initialized")
-	}
-	filePath := webEndpoint.FilePath
-	if strings.TrimSpace(filePath) == "" {
+func GetWebEndpointFilePath(webEndpoint WebEndpoint) (string, error) {
+	if strings.TrimSpace(webEndpoint.FilePath) == "" {
 		return "", fmt.Errorf("file path is empty for endpoint")
 	}
-	return filePath, nil
+	return webEndpoint.FilePath, nil
 }
 
-func IsWebEndpointAuthRequired(webEndpoint *WebEndpoint) (bool, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return false, fmt.Errorf("%s", "cannot check auth requirement for endpoint, app state is not initialized")
-	}
+func IsWebEndpointAuthRequired(webEndpoint WebEndpoint) (bool, error) {
 	return webEndpoint.AuthRequired, nil
 }
 
-func IsWebEndpointHTTPSRequired(webEndpoint *WebEndpoint) (bool, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return false, fmt.Errorf("%s", "cannot check HTTPS requirement for endpoint, app state is not initialized")
-	}
+func IsWebEndpointHTTPSRequired(webEndpoint WebEndpoint) (bool, error) {
 	return webEndpoint.TLSRequired, nil
 }
 
-func GetWebEndpointAllowedMethods(webEndpoint *WebEndpoint) ([]string, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return nil, fmt.Errorf("%s", "cannot get allowed methods for endpoint, app state is not initialized")
-	}
+func GetWebEndpointAllowedMethods(webEndpoint WebEndpoint) ([]string, error) {
 	return webEndpoint.AllowedMethods, nil
 }
 
-func GetWebEndpointContentType(webEndpoint *WebEndpoint) (string, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return "", fmt.Errorf("%s", "cannot get content type for endpoint, app state is not initialized")
-	}
+func GetWebEndpointContentType(webEndpoint WebEndpoint) (string, error) {
 	return webEndpoint.ContentType, nil
 }
