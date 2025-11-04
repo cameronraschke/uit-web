@@ -28,6 +28,7 @@ type ctxPathRequestKey struct{}
 type ctxQueryRequestKey struct{}
 type ctxFileRequestKey struct{}
 type ctxRequestUUIDKey struct{}
+type ctxRequestEndpointKey struct{}
 type ctxNonceKey struct{}
 
 type ReturnedJsonToken struct {
@@ -47,13 +48,14 @@ const (
 )
 
 var (
-	clientIPKey     ctxClientIPKey
-	urlRequestKey   ctxURLRequestKey
-	pathRequestKey  ctxPathRequestKey
-	queryRequestKey ctxQueryRequestKey
-	fileRequestKey  ctxFileRequestKey
-	requestUUIDKey  ctxRequestUUIDKey
-	nonceKey        ctxNonceKey
+	clientIPKey        ctxClientIPKey
+	urlRequestKey      ctxURLRequestKey
+	pathRequestKey     ctxPathRequestKey
+	queryRequestKey    ctxQueryRequestKey
+	fileRequestKey     ctxFileRequestKey
+	requestEndpointKey ctxRequestEndpointKey
+	requestUUIDKey     ctxRequestUUIDKey
+	nonceKey           ctxNonceKey
 
 	allowedQueryKeyRegex = regexp.MustCompile(`^[A-Za-z0-9._\-]+$`)
 )
@@ -110,8 +112,15 @@ func GetNonceFromRequestContext(r *http.Request) (nonce string, ok bool) {
 	return GetNonceFromContext(r.Context())
 }
 
-func GetContextFromRequest(r *http.Request) context.Context {
-	return r.Context()
+func withWebEndpointConfig(ctx context.Context, endpoint config.WebEndpoint) (context.Context, error) {
+	return context.WithValue(ctx, requestEndpointKey, endpoint), nil
+}
+func GetWebEndpointConfigFromContext(ctx context.Context) (endpoint config.WebEndpoint, ok bool) {
+	endpoint, ok = ctx.Value(requestEndpointKey).(config.WebEndpoint)
+	return endpoint, ok
+}
+func GetWebEndpointConfigFromRequestContext(r *http.Request) (endpoint config.WebEndpoint, ok bool) {
+	return GetWebEndpointConfigFromContext(r.Context())
 }
 
 func withClientIP(ctx context.Context, ipStr string) (context.Context, error) {

@@ -41,9 +41,19 @@ func GetRequestInfo(req *http.Request) (RequestInfo, error) {
 		log.Warning("No IP address stored in context")
 		return RequestInfo{}, errors.New("no IP address found in request context")
 	}
-	requestURL, ok := middleware.GetRequestURLFromRequestContext(req)
+	requestPath, ok := middleware.GetRequestPathFromRequestContext(req)
 	if !ok {
-		log.Warning("No URL stored in context")
+		log.Warning("No path stored in context")
+		return RequestInfo{}, errors.New("no path found in request context")
+	}
+	requestQuery, ok := middleware.GetRequestQueryFromRequestContext(req)
+	if !ok {
+		log.Warning("No query stored in context")
+		return RequestInfo{}, errors.New("no query found in request context")
+	}
+	requestURL := requestPath + "?" + requestQuery
+	if strings.TrimSpace(requestURL) == "?" {
+		log.Warning("No URL found in request context")
 		return RequestInfo{}, errors.New("no URL found in request context")
 	}
 

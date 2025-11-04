@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime/debug"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -121,6 +120,32 @@ func CheckIPBlockedMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := config.GetLogger()
+		requestIP, ok := GetRequestIPFromRequestContext(req)
+		if !ok {
+			log.Warning("No IP address stored in context")
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		endpointConfig, ok := GetWebEndpointConfigFromRequestContext(req)
+		if !ok {
+			log.Warning("Error getting endpoint config (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+
+		ctx, err := withWebEndpointConfig(req.Context(), endpointConfig)
+		if err != nil {
+			log.Warning("Error storing endpoint config in context: " + err.Error())
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		next.ServeHTTP(w, req.WithContext(ctx))
+	})
+}
+
 func TLSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log := config.GetLogger()
@@ -130,9 +155,9 @@ func TLSMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
-		if err != nil {
-			log.Warning("Error getting endpoint config in TLS middleware: " + err.Error() + " (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
+		endpointConfig, ok := GetWebEndpointConfigFromRequestContext(req)
+		if !ok {
+			log.Warning("Error getting endpoint config in TLS middleware (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -300,6 +325,18 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 		}
 		if !validMethods[req.Method] {
 			log.Warning("Invalid request method (" + requestIP.String() + "): " + req.Method)
+			WriteJsonError(w, http.StatusMethodNotAllowed)
+			return
+		}
+
+		endpointConfig, ok := GetWebEndpointConfigFromRequestContext(req)
+		if !ok {
+			log.Warning("Error getting endpoint config in HTTP method middleware (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		if !slices.Contains(endpointConfig.AllowedMethods, req.Method) {
+			log.Warning("Method not allowed for endpoint (" + requestIP.String() + "): " + req.Method)
 			WriteJsonError(w, http.StatusMethodNotAllowed)
 			return
 		}
@@ -661,72 +698,58 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		requestURLString, ok := GetRequestURLFromRequestContext(req)
+		pathRequested, ok := GetRequestPathFromRequestContext(req)
 		if !ok {
-			log.Warning("No URL stored in context")
+			log.Warning("No URL path stored in context")
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		fileRequested, ok := GetRequestFileFromRequestContext(req)
+		if !ok {
+			log.Warning("No file name stored in context")
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		endpointConfig, err := config.GetWebEndpointConfig(pathRequested)
+		if err != nil {
+			log.Warning("Error getting endpoint config in AllowedFilesMiddleware (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		endpointFilePath, err := config.GetWebEndpointFilePath(endpointConfig)
+		if err != nil {
+			log.Warning("No file path configured for endpoint in AllowedFilesMiddleware (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
-		requestURLParsed, err := url.Parse(requestURLString)
-		if err != nil {
-			log.Warning("Failed to parse request URL: " + err.Error())
-			WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		requestURLPath := requestURLParsed.Path
-		if requestURLPath == "/login" || requestURLPath == "/logout" || requestURLPath == "/dashboard" || requestURLPath == "/inventory" || requestURLPath == "/client_images" {
-			requestURLPath = requestURLPath + ".html"
-		}
-
-		if requestURLPath == "" || requestURLPath == "/" {
-			requestURLPath = "/dashboard.html"
-		}
-
-		var basePath string
-		if strings.HasPrefix(requestURLString, "/client/") {
-			basePath = "/srv/uit-toolbox/"
-		} else {
-			basePath = "/var/www/html/uit-web/"
-		}
-
-		fullPath := path.Join(basePath, requestURLPath)
-		fileRequested := path.Base(requestURLPath)
-		if !path.IsAbs(fullPath) ||
-			strings.TrimSpace(fullPath) == "." ||
-			strings.TrimSpace(fullPath) == "/" {
-			log.Warning("Invalid file path: " + fullPath)
+		if !config.IsFileAllowed(endpointFilePath) {
+			log.Warning("File not in whitelist: " + endpointFilePath)
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
-		if !config.IsFileAllowed(fileRequested) {
-			log.Warning("File not in whitelist: " + fileRequested)
-			WriteJsonError(w, http.StatusForbidden)
-			return
-		}
-
-		resolvedPath, err := filepath.EvalSymlinks(fullPath)
-		if err != nil || !strings.HasPrefix(resolvedPath, basePath) {
+		resolvedPath, err := filepath.EvalSymlinks(endpointFilePath)
+		if err != nil || resolvedPath != endpointFilePath {
 			log.Warning("File request error from " + requestIP.String() + " (" + resolvedPath + "): Error resolving symlink: " + err.Error())
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
-		if resolvedPath != fullPath {
-			log.Warning("Resolved path does not match full path (" + requestIP.String() + "): " + resolvedPath + " -> " + fullPath)
+		if resolvedPath != endpointFilePath {
+			log.Warning("Resolved path does not match full path (" + requestIP.String() + "): " + resolvedPath + " -> " + endpointFilePath)
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
-		metadata, err := os.Lstat(fullPath)
+		metadata, err := os.Lstat(endpointFilePath)
 		if err != nil {
-			log.Error("Cannot get metadata from file: " + fullPath + " (" + err.Error() + ")")
+			log.Error("Cannot get metadata from file: " + endpointFilePath + " (" + err.Error() + ")")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		if metadata == nil {
-			log.Error("Metadata is nil for file: " + fullPath)
+			log.Error("Metadata is nil for file: " + endpointFilePath)
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
