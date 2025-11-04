@@ -136,6 +136,13 @@ func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		filePath, err := config.GetWebEndpointFilePath(endpointConfig)
+		if err != nil || strings.TrimSpace(filePath) == "" {
+			log.Warning("No file path configured for endpoint: " + req.URL.Path)
+			WriteJsonError(w, http.StatusNotFound)
+			return
+		}
+
 		ctx, err := withWebEndpointConfig(req.Context(), &endpointConfig)
 		if err != nil {
 			log.Warning("Error storing endpoint config in context: " + err.Error())

@@ -507,8 +507,26 @@ func InitApp() (*AppState, error) {
 		return nil, fmt.Errorf("failed to unmarshal web endpoints config JSON: %w", err)
 	}
 	for endpointPath, endpointData := range webEndpoints {
+		endpointDefaults := WebEndpoint{
+			AllowedMethods: []string{"GET"},
+			TLSRequired:    true,
+			AuthRequired:   true,
+			HTTPVersion:    "HTTP/2.0",
+			EndpointType:   "api",
+			ContentType:    "application/json; charset=utf-8",
+			StatusCode:     200,
+			Redirect:       false,
+			RedirectURL:    "",
+		}
 		endpointCopy := endpointData
-		appState.WebEndpoints.Store(endpointPath, &endpointCopy)
+		endpointCopyBytes, err := json.Marshal(endpointCopy)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal endpoint data for %s: %w", endpointPath, err)
+		}
+		if err := json.Unmarshal(endpointCopyBytes, &endpointDefaults); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal endpoint data for %s: %w", endpointPath, err)
+		}
+		appState.WebEndpoints.Store(endpointPath, &endpointDefaults)
 	}
 
 	// Set initial timeouts
