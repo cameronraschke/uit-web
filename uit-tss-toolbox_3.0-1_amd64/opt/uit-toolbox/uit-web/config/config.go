@@ -498,57 +498,73 @@ func InitApp() (*AppState, error) {
 	appState.SessionSecret = []byte(sessionSecret)
 
 	// Configure web endpoints
-	endpointsConfig, err := os.ReadFile("/etc/uit-toolbox/web_endpoints.json")
-	if err != nil {
-		return nil, fmt.Errorf("failed to read web endpoints config file: %w", err)
+	endpointsDirectory := "/etc/uit-toolbox/endpoints/"
+	fileInfo, err := os.Stat(endpointsDirectory)
+	if err != nil || !fileInfo.IsDir() {
+		return appState, fmt.Errorf("endpoints directory does not exist, skipping endpoint loading")
 	}
-	var webEndpoints WebEndpoints
-	if err := json.Unmarshal(endpointsConfig, &webEndpoints); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal web endpoints config JSON: %w", err)
+	files, err := os.ReadDir(endpointsDirectory)
+	if err != nil || len(files) == 0 {
+		return nil, fmt.Errorf("failed to read files in the endpoints directory: %w", err)
 	}
-	for endpointPath, endpointData := range webEndpoints {
-		merged := WebEndpoint{
-			FilePath:       endpointData.FilePath,
-			AllowedMethods: endpointData.AllowedMethods,
-			TLSRequired:    endpointData.TLSRequired,
-			AuthRequired:   endpointData.AuthRequired,
-			ACLUsers:       endpointData.ACLUsers,
-			ACLGroups:      endpointData.ACLGroups,
-			HTTPVersion:    endpointData.HTTPVersion,
-			EndpointType:   endpointData.EndpointType,
-			ContentType:    endpointData.ContentType,
-			StatusCode:     endpointData.StatusCode,
-			Redirect:       endpointData.Redirect,
-			RedirectURL:    endpointData.RedirectURL,
+	for _, file := range files {
+		if file.IsDir() || !strings.HasSuffix(file.Name(), ".json") {
+			continue
 		}
-		if len(merged.AllowedMethods) == 0 {
-			merged.AllowedMethods = []string{"GET"}
+
+		endpointsConfig, err := os.ReadFile(endpointsDirectory + file.Name())
+		if err != nil {
+			return nil, fmt.Errorf("failed to read web endpoints config file %s: %w", file.Name(), err)
 		}
-		if merged.TLSRequired == nil {
-			merged.TLSRequired = new(bool)
-			*merged.TLSRequired = true
+
+		var webEndpoints WebEndpoints
+		if err := json.Unmarshal(endpointsConfig, &webEndpoints); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal web endpoints config JSON: %w", err)
 		}
-		if merged.AuthRequired == nil {
-			merged.AuthRequired = new(bool)
-			*merged.AuthRequired = true
+		for endpointPath, endpointData := range webEndpoints {
+			merged := WebEndpoint{
+				FilePath:       endpointData.FilePath,
+				AllowedMethods: endpointData.AllowedMethods,
+				TLSRequired:    endpointData.TLSRequired,
+				AuthRequired:   endpointData.AuthRequired,
+				ACLUsers:       endpointData.ACLUsers,
+				ACLGroups:      endpointData.ACLGroups,
+				HTTPVersion:    endpointData.HTTPVersion,
+				EndpointType:   endpointData.EndpointType,
+				ContentType:    endpointData.ContentType,
+				StatusCode:     endpointData.StatusCode,
+				Redirect:       endpointData.Redirect,
+				RedirectURL:    endpointData.RedirectURL,
+			}
+			if len(merged.AllowedMethods) == 0 {
+				merged.AllowedMethods = []string{"GET"}
+			}
+			if merged.TLSRequired == nil {
+				merged.TLSRequired = new(bool)
+				*merged.TLSRequired = true
+			}
+			if merged.AuthRequired == nil {
+				merged.AuthRequired = new(bool)
+				*merged.AuthRequired = true
+			}
+			if merged.Redirect == nil {
+				merged.Redirect = new(bool)
+				*merged.Redirect = false
+			}
+			if merged.HTTPVersion == "" {
+				merged.HTTPVersion = "HTTP/2.0"
+			}
+			if merged.EndpointType == "" {
+				merged.EndpointType = "api"
+			}
+			if merged.ContentType == "" {
+				merged.ContentType = "application/json; charset=utf-8"
+			}
+			if merged.StatusCode == 0 {
+				merged.StatusCode = 200
+			}
+			appState.WebEndpoints.Store(endpointPath, &merged)
 		}
-		if merged.Redirect == nil {
-			merged.Redirect = new(bool)
-			*merged.Redirect = false
-		}
-		if merged.HTTPVersion == "" {
-			merged.HTTPVersion = "HTTP/2.0"
-		}
-		if merged.EndpointType == "" {
-			merged.EndpointType = "api"
-		}
-		if merged.ContentType == "" {
-			merged.ContentType = "application/json; charset=utf-8"
-		}
-		if merged.StatusCode == 0 {
-			merged.StatusCode = 200
-		}
-		appState.WebEndpoints.Store(endpointPath, &merged)
 	}
 
 	// Set initial timeouts
