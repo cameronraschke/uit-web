@@ -704,12 +704,7 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		fileRequested, ok := GetRequestFileFromRequestContext(req)
-		if !ok {
-			log.Warning("No file name stored in context")
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		fileRequested := filepath.Base(pathRequested)
 		endpointConfig, err := config.GetWebEndpointConfig(pathRequested)
 		if err != nil {
 			log.Warning("Error getting endpoint config in AllowedFilesMiddleware (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
