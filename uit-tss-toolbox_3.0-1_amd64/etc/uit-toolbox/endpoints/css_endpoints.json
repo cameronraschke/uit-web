@@ -1,0 +1,20 @@
+{
+  "/css/login.css": {
+    "file_path": "/var/www/html/uit-web/css/login.css",
+    "auth_required": false,
+    "endpoint_type": "static_file",
+    "content_type": "text/css; charset=utf-8"
+  },
+  "/css/desktop.css": {
+    "file_path": "/var/www/html/uit-web/css/desktop.css",
+    "auth_required": false,
+    "endpoint_type": "static_file",
+    "content_type": "text/css; charset=utf-8"
+  },
+  "/css/dashboard.css": {
+    "file_path": "/var/www/html/uit-web/css/desktop.css",
+    "auth_required": false,
+    "endpoint_type": "static_file",
+    "content_type": "text/css; charset=utf-8"
+  }
+}
