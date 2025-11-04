@@ -168,7 +168,7 @@ func TLSMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		if !endpointConfig.TLSRequired {
+		if endpointConfig.TLSRequired != nil && !*endpointConfig.TLSRequired {
 			next.ServeHTTP(w, req)
 			return
 		}

@@ -107,15 +107,15 @@ type WebEndpoints map[string]WebEndpoint
 type WebEndpoint struct {
 	FilePath       string   `json:"file_path"`
 	AllowedMethods []string `json:"allowed_methods"`
-	TLSRequired    bool     `json:"tls_required"`
-	AuthRequired   bool     `json:"auth_required"`
+	TLSRequired    *bool    `json:"tls_required"`
+	AuthRequired   *bool    `json:"auth_required"`
 	ACLUsers       []string `json:"acl_users"`
 	ACLGroups      []string `json:"acl_groups"`
 	HTTPVersion    string   `json:"http_version"`
 	EndpointType   string   `json:"endpoint_type"`
 	ContentType    string   `json:"content_type"`
 	StatusCode     int      `json:"status_code"`
-	Redirect       bool     `json:"redirect"`
+	Redirect       *bool    `json:"redirect"`
 	RedirectURL    string   `json:"redirect_url"`
 }
 
@@ -507,34 +507,48 @@ func InitApp() (*AppState, error) {
 		return nil, fmt.Errorf("failed to unmarshal web endpoints config JSON: %w", err)
 	}
 	for endpointPath, endpointData := range webEndpoints {
-		endpointDefaults := WebEndpoint{
-			AllowedMethods: []string{"GET"},
-			TLSRequired:    true,
-			AuthRequired:   true,
-			HTTPVersion:    "HTTP/2.0",
-			EndpointType:   "api",
-			ContentType:    "application/json; charset=utf-8",
-			StatusCode:     200,
-			Redirect:       false,
-			RedirectURL:    "",
+		merged := WebEndpoint{
+			FilePath:       endpointData.FilePath,
+			AllowedMethods: endpointData.AllowedMethods,
+			TLSRequired:    endpointData.TLSRequired,
+			AuthRequired:   endpointData.AuthRequired,
+			ACLUsers:       endpointData.ACLUsers,
+			ACLGroups:      endpointData.ACLGroups,
+			HTTPVersion:    endpointData.HTTPVersion,
+			EndpointType:   endpointData.EndpointType,
+			ContentType:    endpointData.ContentType,
+			StatusCode:     endpointData.StatusCode,
+			Redirect:       endpointData.Redirect,
+			RedirectURL:    endpointData.RedirectURL,
 		}
-		defaultBytes, err := json.Marshal(endpointDefaults)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal endpoint defaults for %s: %w", endpointPath, err)
+		if len(merged.AllowedMethods) == 0 {
+			merged.AllowedMethods = []string{"GET"}
 		}
-		merged := WebEndpoint{}
-		if err = json.Unmarshal(defaultBytes, &merged); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal endpoint defaults for %s: %w", endpointPath, err)
+		if merged.TLSRequired == nil {
+			merged.TLSRequired = new(bool)
+			*merged.TLSRequired = true
 		}
-		endpointCopy := endpointData
-		endpointCopyBytes, err := json.Marshal(endpointCopy)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal endpoint data for %s: %w", endpointPath, err)
+		if merged.AuthRequired == nil {
+			merged.AuthRequired = new(bool)
+			*merged.AuthRequired = true
 		}
-		if err := json.Unmarshal(endpointCopyBytes, &merged); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal endpoint data for %s: %w", endpointPath, err)
+		if merged.Redirect == nil {
+			merged.Redirect = new(bool)
+			*merged.Redirect = false
 		}
-		appState.WebEndpoints.Store(endpointPath, &endpointDefaults)
+		if merged.HTTPVersion == "" {
+			merged.HTTPVersion = "HTTP/2.0"
+		}
+		if merged.EndpointType == "" {
+			merged.EndpointType = "api"
+		}
+		if merged.ContentType == "" {
+			merged.ContentType = "application/json; charset=utf-8"
+		}
+		if merged.StatusCode == 0 {
+			merged.StatusCode = 200
+		}
+		appState.WebEndpoints.Store(endpointPath, &merged)
 	}
 
 	// Set initial timeouts
@@ -927,14 +941,23 @@ func GetWebEndpointFilePath(webEndpoint WebEndpoint) (string, error) {
 }
 
 func IsWebEndpointAuthRequired(webEndpoint WebEndpoint) (bool, error) {
-	return webEndpoint.AuthRequired, nil
+	if webEndpoint.AuthRequired == nil {
+		return false, fmt.Errorf("auth required field is nil for endpoint")
+	}
+	return true, nil
 }
 
 func IsWebEndpointHTTPSRequired(webEndpoint WebEndpoint) (bool, error) {
-	return webEndpoint.TLSRequired, nil
+	if webEndpoint.TLSRequired == nil {
+		return false, fmt.Errorf("TLS required field is nil for endpoint")
+	}
+	return true, nil
 }
 
 func GetWebEndpointAllowedMethods(webEndpoint WebEndpoint) ([]string, error) {
+	if len(webEndpoint.AllowedMethods) == 0 {
+		return nil, fmt.Errorf("allowed methods list is empty for endpoint")
+	}
 	return webEndpoint.AllowedMethods, nil
 }
 
