@@ -62,7 +62,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	requestURL := requestInfo.URL
 
 	// Sanitize login POST request
-	if req.Method != http.MethodPost || !(strings.HasSuffix(requestURL, "/login.html") || strings.HasSuffix(requestURL, "/login")) {
+	if req.Method != http.MethodPost || !strings.HasSuffix(requestURL, "/login") {
 		log.Warning("Invalid method or URL for auth form sanitization: " + requestIP.String() + " ( " + requestURL + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
