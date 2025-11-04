@@ -50,20 +50,24 @@ type RemoteTable struct {
 }
 
 func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
-	requestInfo, err := GetRequestInfo(req)
-	if err != nil {
-		fmt.Println("Cannot get request info error: " + err.Error())
+	ctx := req.Context()
+	log := config.GetLogger()
+	requestIP, ok := middleware.GetRequestIPFromRequestContext(req)
+	if !ok {
+		fmt.Println("IP address not stored in context (WebAuthEndpoint): (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
+	requestPath, ok := middleware.GetRequestPathFromRequestContext(req)
+	if !ok {
+		fmt.Println("Request URL not stored in context (WebAuthEndpoint): (" + requestIP.String() + " " + req.Method + " " + requestPath + ")")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
 
 	// Sanitize login POST request
-	if req.Method != http.MethodPost || !strings.HasSuffix(requestURL, "/login") {
-		log.Warning("Invalid method or URL for auth form sanitization: " + requestIP.String() + " ( " + requestURL + ")")
+	if req.Method != http.MethodPost || !strings.HasSuffix(requestPath, "/login") {
+		log.Warning("Invalid method or URL for auth form sanitization: " + requestIP.String() + " ( " + requestPath + ")")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
