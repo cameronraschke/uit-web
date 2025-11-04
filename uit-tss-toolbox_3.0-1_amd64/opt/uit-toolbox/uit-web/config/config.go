@@ -310,7 +310,9 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, fmt.Errorf("invalid UIT_WEB_HTTPS_PORT: %w", err)
 	}
 	appConfig.UIT_WEB_HTTPS_PORT = httpsPortAddr.Port()
-	appConfig.UIT_WEB_MAX_UPLOAD_SIZE_MB, err = strconv.ParseInt(configFile.UIT_WEB_MAX_UPLOAD_SIZE_MB, 10, 64)
+	uploadSizeBytes, err := strconv.ParseInt(configFile.UIT_WEB_MAX_UPLOAD_SIZE_MB, 10, 64)
+	uploadSizeMB := uploadSizeBytes << 20
+	appConfig.UIT_WEB_MAX_UPLOAD_SIZE_MB = uploadSizeMB
 	if err != nil {
 		return nil, fmt.Errorf("invalid UIT_WEB_MAX_UPLOAD_SIZE_MB: %w", err)
 	}
