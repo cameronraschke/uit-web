@@ -748,11 +748,11 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		if metadata.Name() != fileRequested || !config.IsFileAllowed(metadata.Name()) {
-			log.Warning("Filename mismatch: " + metadata.Name() + " != " + fileRequested)
-			WriteJsonError(w, http.StatusForbidden)
-			return
-		}
+		// if metadata.Name() != fileRequested || !config.IsFileAllowed(metadata.Name()) {
+		// 	log.Warning("Filename mismatch: " + metadata.Name() + " != " + fileRequested)
+		// 	WriteJsonError(w, http.StatusForbidden)
+		// 	return
+		// }
 		if metadata.Size() <= 0 {
 			log.Warning("Attempt to access empty file: " + fileRequested)
 			WriteJsonError(w, http.StatusNoContent)

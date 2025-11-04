@@ -244,103 +244,105 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	w.Header().Set("Content-Type", contentType)
 
-	// Generate nonce
-	nonce, ok := middleware.GetNonceFromRequestContext(req)
-	if !ok {
-		log.Error("Error retrieving CSP nonce from context")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	parsedHTMLTemplate, err := template.ParseFiles(filePath)
-	if err != nil {
-		log.Warning("Cannot parse template file (" + filePath + "): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	webmasterName, webmasterEmail, err := config.GetWebmasterContact()
-	if err != nil {
-		log.Error("Cannot get webmaster contact info: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+	if strings.HasSuffix(filePath, ".html") {
+		// Generate nonce
+		nonce, ok := middleware.GetNonceFromRequestContext(req)
+		if !ok {
+			log.Error("Error retrieving CSP nonce from context")
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		parsedHTMLTemplate, err := template.ParseFiles(filePath)
+		if err != nil {
+			log.Warning("Cannot parse template file (" + filePath + "): " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		webmasterName, webmasterEmail, err := config.GetWebmasterContact()
+		if err != nil {
+			log.Error("Cannot get webmaster contact info: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 
-	db := database.NewRepo(config.GetDatabaseConn())
+		db := database.NewRepo(config.GetDatabaseConn())
 
-	departments, err := db.GetDepartments(ctx)
-	if err != nil {
-		log.Error("Cannot get department list from database: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+		departments, err := db.GetDepartments(ctx)
+		if err != nil {
+			log.Error("Cannot get department list from database: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 
-	domains, err := db.GetDomains(ctx)
-	if err != nil {
-		log.Error("Cannot get domain list from database: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+		domains, err := db.GetDomains(ctx)
+		if err != nil {
+			log.Error("Cannot get domain list from database: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 
-	statuses, err := db.GetStatuses(ctx)
-	if err != nil {
-		log.Error("Cannot get status list from database: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+		statuses, err := db.GetStatuses(ctx)
+		if err != nil {
+			log.Error("Cannot get status list from database: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 
-	manufacturers, err := db.GetManufacturers(ctx)
-	if err != nil {
-		log.Error("Cannot get manufacturer list from database: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+		manufacturers, err := db.GetManufacturers(ctx)
+		if err != nil {
+			log.Error("Cannot get manufacturer list from database: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 
-	models, err := db.GetModels(ctx)
-	if err != nil {
-		log.Error("Cannot get model list from database: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+		models, err := db.GetModels(ctx)
+		if err != nil {
+			log.Error("Cannot get model list from database: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 
-	locations, err := db.GetLocations(ctx)
-	if err != nil {
-		log.Error("Cannot get location list from database: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+		locations, err := db.GetLocations(ctx)
+		if err != nil {
+			log.Error("Cannot get location list from database: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 
-	urlTag := req.URL.Query().Get("tagnumber")
-	urlTag = strings.TrimSpace(urlTag)
+		urlTag := req.URL.Query().Get("tagnumber")
+		urlTag = strings.TrimSpace(urlTag)
 
-	templateData := struct {
-		JsNonce        string
-		WebmasterName  string
-		WebmasterEmail string
-		Departments    map[string]string
-		Domains        map[string]string
-		ClientTag      string
-		Statuses       map[string]string
-		Manufacturers  map[string]string
-		Models         map[string]string
-		Locations      map[string]string
-	}{
-		JsNonce:        nonce,
-		WebmasterName:  webmasterName,
-		WebmasterEmail: webmasterEmail,
-		Departments:    departments,
-		Domains:        domains,
-		ClientTag:      urlTag,
-		Statuses:       statuses,
-		Manufacturers:  manufacturers,
-		Models:         models,
-		Locations:      locations,
-	}
+		templateData := struct {
+			JsNonce        string
+			WebmasterName  string
+			WebmasterEmail string
+			Departments    map[string]string
+			Domains        map[string]string
+			ClientTag      string
+			Statuses       map[string]string
+			Manufacturers  map[string]string
+			Models         map[string]string
+			Locations      map[string]string
+		}{
+			JsNonce:        nonce,
+			WebmasterName:  webmasterName,
+			WebmasterEmail: webmasterEmail,
+			Departments:    departments,
+			Domains:        domains,
+			ClientTag:      urlTag,
+			Statuses:       statuses,
+			Manufacturers:  manufacturers,
+			Models:         models,
+			Locations:      locations,
+		}
 
-	// Execute the template
-	err = parsedHTMLTemplate.Execute(w, templateData)
-	if err != nil {
-		log.Error("Error executing template for " + filePath + ": " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
+		// Execute the template
+		err = parsedHTMLTemplate.Execute(w, templateData)
+		if err != nil {
+			log.Error("Error executing template for " + filePath + ": " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Set headers
