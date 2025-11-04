@@ -136,11 +136,19 @@ func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		filePath, err := config.GetWebEndpointFilePath(endpointConfig)
-		if err != nil || strings.TrimSpace(filePath) == "" {
-			log.Warning("No file path configured for endpoint: " + req.URL.Path)
+		endpointType, err := config.GetWebEndpointType(endpointConfig)
+		if err != nil || endpointType == "" {
+			log.Warning("No valid endpoint config for URL: " + req.URL.Path)
 			WriteJsonError(w, http.StatusNotFound)
 			return
+		}
+		if endpointType == "static_file" {
+			filePath, err := config.GetWebEndpointFilePath(endpointConfig)
+			if err != nil || strings.TrimSpace(filePath) == "" {
+				log.Warning("No file path configured for endpoint: " + req.URL.Path)
+				WriteJsonError(w, http.StatusNotFound)
+				return
+			}
 		}
 
 		ctx, err := withWebEndpointConfig(req.Context(), &endpointConfig)

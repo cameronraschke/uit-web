@@ -980,3 +980,10 @@ func GetWebEndpointAllowedMethods(webEndpoint WebEndpoint) ([]string, error) {
 func GetWebEndpointContentType(webEndpoint WebEndpoint) (string, error) {
 	return webEndpoint.ContentType, nil
 }
+
+func GetWebEndpointType(webEndpoint WebEndpoint) (string, error) {
+	if strings.TrimSpace(webEndpoint.EndpointType) == "" {
+		return "", fmt.Errorf("endpoint type is empty for endpoint")
+	}
+	return webEndpoint.EndpointType, nil
+}
