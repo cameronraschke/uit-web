@@ -279,12 +279,6 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		requestURL, ok := GetRequestURLFromRequestContext(req)
-		if !ok {
-			log.Warning("No URL stored in context")
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
 
 		// Check method
 		validMethods := map[string]bool{
@@ -300,15 +294,6 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Check Content-Type for POST/PUT
-		if req.Method == http.MethodPost || req.Method == http.MethodPut {
-			contentType := req.Header.Get("Content-Type")
-			if contentType != "application/x-www-form-urlencoded" && contentType != "application/json" && !strings.HasPrefix(contentType, "multipart/form-data") {
-				log.Warning("Invalid Content-Type header: " + contentType + " (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
-				WriteJsonError(w, http.StatusUnsupportedMediaType)
-				return
-			}
-		}
 		next.ServeHTTP(w, req)
 	})
 }
@@ -477,6 +462,11 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 			if len(contentType) > 256 {
 				log.Warning("Content-Type too long: " + fmt.Sprintf("%d bytes", len(contentType)) + " from " + requestIP.String() + ": (" + req.Method + " " + requestURL + ")")
 				WriteJsonError(w, http.StatusBadRequest)
+				return
+			}
+			if contentType != "application/x-www-form-urlencoded" && contentType != "application/json" && !strings.HasPrefix(contentType, "multipart/form-data") {
+				log.Warning("Invalid Content-Type header: " + contentType + " (" + requestIP.String() + ": " + req.Method + " " + requestURL + ")")
+				WriteJsonError(w, http.StatusUnsupportedMediaType)
 				return
 			}
 		}
