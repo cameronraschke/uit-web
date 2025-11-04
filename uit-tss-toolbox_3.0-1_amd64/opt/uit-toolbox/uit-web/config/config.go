@@ -527,11 +527,11 @@ func InitApp() (*AppState, error) {
 			return nil, fmt.Errorf("failed to unmarshal endpoint defaults for %s: %w", endpointPath, err)
 		}
 		endpointCopy := endpointData
-		userBytes, err := json.Marshal(endpointCopy)
+		endpointCopyBytes, err := json.Marshal(endpointCopy)
 		if err != nil {
 			return nil, fmt.Errorf("failed to marshal endpoint data for %s: %w", endpointPath, err)
 		}
-		if err := json.Unmarshal(userBytes, &merged); err != nil {
+		if err := json.Unmarshal(endpointCopyBytes, &merged); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal endpoint data for %s: %w", endpointPath, err)
 		}
 		appState.WebEndpoints.Store(endpointPath, &endpointDefaults)
