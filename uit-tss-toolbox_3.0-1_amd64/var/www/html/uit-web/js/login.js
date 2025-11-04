@@ -131,7 +131,7 @@ loginForm.addEventListener("submit", async (event) => {
         const base64Payload = jsonToBase64(jsonData);
         if (!base64Payload || base64Payload.length === 0) throw new Error('Failed to encode login payload to base64');
 
-        const response = await fetch('/login.html', {
+        const response = await fetch('/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json',
               'Content-Transfer-Encoding': 'base64'

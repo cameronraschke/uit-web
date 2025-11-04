@@ -34,6 +34,6 @@ async function logout() {
   } finally {
     isLoggingOut = false;
     logoutButton.disabled = false;
-    window.location.replace("/login.html");
+    window.location.replace("/login");
   }
 }

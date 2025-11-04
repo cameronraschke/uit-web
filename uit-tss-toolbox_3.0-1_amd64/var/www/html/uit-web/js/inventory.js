@@ -93,7 +93,7 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
   inventoryLookupResetButton.style.display = "inline-block";
   clientMoreDetailsButton.style.display = "inline-block";
   if (lookupTag) {
-    clientImagesLink.href = `/client_images.html?tagnumber=${lookupTag || ''}`;
+    clientImagesLink.href = `/client_images?tagnumber=${lookupTag || ''}`;
     clientImagesLink.target = "_blank";
     clientImagesLink.style.display = "inline";
   } else {

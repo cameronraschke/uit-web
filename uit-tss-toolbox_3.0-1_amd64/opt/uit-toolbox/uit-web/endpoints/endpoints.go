@@ -343,6 +343,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
+		return
 	}
 
 	// Set headers
