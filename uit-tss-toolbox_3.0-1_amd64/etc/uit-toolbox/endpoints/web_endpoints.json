@@ -7,7 +7,7 @@
     "acl_users": [""],
     "acl_groups": [""],
     "http_version": "HTTP/1.1",
-    "endpoint_type": "static_file",
+    "endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8",
     "status_code": 404,
     "redirect": false,
@@ -16,35 +16,45 @@
   "/favicon.png": {
     "file_path": "/var/www/html/uit-web/favicon.ico",
     "auth_required": false,
-    "endpoint_type": "static_file",
+    "endpoint_type": "web_content",
     "content_type": "image/png"
   },
   "/favicon.ico": {
     "file_path": "/var/www/html/uit-web/favicon.png",
     "auth_required": false,
-    "endpoint_type": "static_file",
+    "endpoint_type": "web_content",
     "content_type": "image/png"
+  },
+  "/header": {
+    "file_path": "/var/www/html/uit-web/header.html",
+    "endpoint_type": "web_content",
+    "content_type": "text/html; charset=utf-8"
+  },
+  "/footer": {
+    "file_path": "/var/www/html/uit-web/footer.html",
+    "endpoint_type": "web_content",
+    "content_type": "text/html; charset=utf-8"
   },
   "/login": {
     "file_path": "/var/www/html/uit-web/login.html",
     "allowed_methods": ["OPTIONS", "GET", "POST"],
     "auth_required": false,
-    "endpoint_type": "static_file",
+    "endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
   },
   "/dashboard": {
     "file_path": "/var/www/html/uit-web/dashboard.html",
-    "endpoint_type": "static_file",
+    "endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
   },
-  "/header": {
-    "file_path": "/var/www/html/uit-web/header.html",
-    "endpoint_type": "static_file",
+  "/inventory": {
+    "file_path": "/var/www/html/uit-web/inventory.html",
+    "endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
   },
-  "/footer": {
-    "file_path": "/var/www/html/uit-web/footer.html",
-    "endpoint_type": "static_file",
+  "/client_images": {
+    "file_path": "/var/www/html/uit-web/client_images.html",
+    "endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
   }
 }

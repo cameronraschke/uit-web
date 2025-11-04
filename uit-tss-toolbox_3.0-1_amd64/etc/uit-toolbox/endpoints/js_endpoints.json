@@ -1,32 +1,53 @@
 {
+  "/js/auth_webworker.js": {
+    "file_path": "/var/www/html/uit-web/js/auth_webworker.js",
+    "endpoint_type": "web_content",
+    "content_type": "text/javascript; charset=utf-8"
+  },
   "/js/login.js": {
     "file_path": "/var/www/html/uit-web/js/login.js",
     "auth_required": false,
-    "endpoint_type": "static_file",
+    "endpoint_type": "web_content",
+    "content_type": "text/javascript; charset=utf-8"
+  },
+  "/js/logout.js": {
+    "file_path": "/var/www/html/uit-web/js/logout.js",
+    "endpoint_type": "web_content",
     "content_type": "text/javascript; charset=utf-8"
   },
   "/js/init.js": {
     "file_path": "/var/www/html/uit-web/js/init.js",
-    "auth_required": true,
-    "endpoint_type": "static_file",
+    "endpoint_type": "web_content",
     "content_type": "text/javascript; charset=utf-8"
   },
   "/js/header.js": {
     "file_path": "/var/www/html/uit-web/js/header.js",
-    "auth_required": true,
-    "endpoint_type": "static_file",
+    "endpoint_type": "web_content",
     "content_type": "text/javascript; charset=utf-8"
   },
   "/js/footer.js": {
     "file_path": "/var/www/html/uit-web/js/footer.js",
-    "auth_required": true,
-    "endpoint_type": "static_file",
+    "endpoint_type": "web_content",
     "content_type": "text/javascript; charset=utf-8"
   },
   "/js/dashboard.js": {
     "file_path": "/var/www/html/uit-web/js/dashboard.js",
-    "auth_required": true,
-    "endpoint_type": "static_file",
+    "endpoint_type": "web_content",
+    "content_type": "text/javascript; charset=utf-8"
+  },
+  "/js/inventory.js": {
+    "file_path": "/var/www/html/uit-web/js/inventory.js",
+    "endpoint_type": "web_content",
+    "content_type": "text/javascript; charset=utf-8"
+  },
+  "/js/inventory_tables.js": {
+    "file_path": "/var/www/html/uit-web/js/inventory_tables.js",
+    "endpoint_type": "web_content",
+    "content_type": "text/javascript; charset=utf-8"
+  },
+  "/js/client_images.js": {
+    "file_path": "/var/www/html/uit-web/js/client_images.js",
+    "endpoint_type": "web_content",
     "content_type": "text/javascript; charset=utf-8"
   }
 }

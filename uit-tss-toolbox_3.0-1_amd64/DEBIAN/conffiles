@@ -4,3 +4,5 @@
 /etc/uit-toolbox/endpoints/css_endpoints.json
 /etc/uit-toolbox/endpoints/js_endpoints.json
 /etc/uit-toolbox/endpoints/file_endpoints.json
+/etc/uit-toolbox/acls/users.json
+/etc/uit-toolbox/acls/groups.json

@@ -1,0 +1,17 @@
+{
+  "groups": [
+    {
+      "id": "lan",
+      "name": "LAN Clients",
+      "type": "group",
+      "ip_ranges": [],
+      "allowed_services": [
+        "api_read",
+        "api_write",
+        "web_access",
+        "file_read"
+      ],
+      "allowed_endpoints": ["all"]
+    }
+  ]
+}

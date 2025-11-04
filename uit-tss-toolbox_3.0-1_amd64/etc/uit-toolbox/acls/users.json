@@ -1,0 +1,19 @@
+{
+  "users": [
+    {
+      "id": "admin",
+      "name": "admin",
+      "type": "user",
+      "ip_ranges": [],
+      "allowed_services": [
+        "api_read",
+        "api_write",
+        "web_access",
+        "file_read"
+      ],
+      "allowed_endpoints": ["all"],
+      "is_admin": true,
+      "in_groups": []
+    }
+  ]
+}

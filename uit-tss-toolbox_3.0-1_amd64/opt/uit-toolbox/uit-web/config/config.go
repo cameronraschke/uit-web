@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	"net"
 	"net/netip"
 	"os"
@@ -167,7 +166,6 @@ type AppState struct {
 	APILimiter         *RateLimiter
 	AuthLimiter        *RateLimiter
 	BlockedIPs         *BlockedClients
-	AllowedFiles       atomic.Value
 	AllowedFilesMu     sync.Mutex
 	AllowedWANIPs      sync.Map
 	AllowedLANIPs      sync.Map
@@ -176,6 +174,8 @@ type AppState struct {
 	APIRequestTimeout  atomic.Value
 	FileRequestTimeout atomic.Value
 	WebEndpoints       sync.Map
+	GroupPermissions   sync.Map
+	UserPermissions    sync.Map
 }
 
 type AuthHTTPHeader struct {
@@ -430,54 +430,6 @@ func InitApp() (*AppState, error) {
 		AllowedIPs:        sync.Map{},
 	}
 
-	allowedFiles := []FileList{
-		{Filename: "filesystem.squashfs", Allowed: true},
-		{Filename: "initrd.img", Allowed: true},
-		{Filename: "vmlinuz", Allowed: true},
-		{Filename: "uit-ca.crt", Allowed: true},
-		{Filename: "uit-web.crt", Allowed: true},
-		{Filename: "uit-toolbox-client.deb", Allowed: true},
-		{Filename: "desktop.css", Allowed: true},
-		{Filename: "favicon.png", Allowed: true},
-		{Filename: "favicon.ico", Allowed: true},
-		{Filename: "header.html", Allowed: true},
-		{Filename: "footer.html", Allowed: true},
-		{Filename: "dashboard.html", Allowed: true},
-		{Filename: "dashboard.js", Allowed: true},
-		{Filename: "dashboard.css", Allowed: true},
-		{Filename: "login.html", Allowed: true},
-		{Filename: "login.css", Allowed: true},
-		{Filename: "login.js", Allowed: true},
-		{Filename: "auth-webworker.js", Allowed: true},
-		{Filename: "footer.js", Allowed: true},
-		{Filename: "header.js", Allowed: true},
-		{Filename: "init.js", Allowed: true},
-		{Filename: "include.js", Allowed: true},
-		{Filename: "login.js", Allowed: true},
-		{Filename: "logout.js", Allowed: true},
-		{Filename: "inventory.html", Allowed: true},
-		{Filename: "inventory.js", Allowed: true},
-		{Filename: "inventory_table.js", Allowed: true},
-		{Filename: "inventory.css", Allowed: true},
-		{Filename: "client_images.html", Allowed: true},
-		{Filename: "client_images.js", Allowed: true},
-		{Filename: "client_images.css", Allowed: true},
-		{Filename: "checkouts.html", Allowed: true},
-		{Filename: "checkouts.js", Allowed: true},
-		{Filename: "job_queue.html", Allowed: true},
-		{Filename: "job_queue.js", Allowed: true},
-		{Filename: "reports.html", Allowed: true},
-		{Filename: "reports.js", Allowed: true},
-		{Filename: "go-latest.linux-amd64.tar.gz", Allowed: true},
-		{Filename: "uit-client.conf", Allowed: true},
-	}
-
-	allowed := make(map[string]bool, len(allowedFiles))
-	for _, file := range allowedFiles {
-		allowed[file.Filename] = file.Allowed
-	}
-	appState.AllowedFiles.Store(allowed)
-
 	for _, wanIP := range appConfig.UIT_SERVER_WAN_ALLOWED_IP {
 		appState.AllowedWANIPs.Store(wanIP, true)
 	}
@@ -567,6 +519,19 @@ func InitApp() (*AppState, error) {
 		}
 	}
 
+	permissions, err := InitPermissions()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load permission config: %w", err)
+	}
+
+	for _, groupPermissions := range permissions.Groups {
+		appState.GroupPermissions.Store(groupPermissions.ID, groupPermissions)
+	}
+
+	for _, userPermissions := range permissions.Users {
+		appState.UserPermissions.Store(userPermissions.ID, userPermissions)
+	}
+
 	// Set initial timeouts
 	appState.APIRequestTimeout.Store(appConfig.UIT_WEB_API_REQUEST_TIMEOUT)
 	appState.FileRequestTimeout.Store(appConfig.UIT_WEB_FILE_REQUEST_TIMEOUT)
@@ -640,82 +605,6 @@ func SwapDatabaseConn(newDbConn *sql.DB) (oldDbConn *sql.DB) {
 		return nil
 	}
 	return appState.DBConn.Swap(newDbConn)
-}
-
-// Allowed file checks
-func GetAllowedFiles() map[string]bool {
-	appState := GetAppState()
-	if appState == nil {
-		return nil
-	}
-	allowedFiles, _ := appState.AllowedFiles.Load().(map[string]bool)
-	if allowedFiles == nil {
-		return nil
-	}
-
-	return maps.Clone(allowedFiles)
-}
-
-func IsFileAllowed(filename string) bool {
-	appState := GetAppState()
-	if appState == nil || filename == "" {
-		return false
-	}
-	cur, _ := appState.AllowedFiles.Load().(map[string]bool)
-	if cur == nil {
-		return false
-	}
-	allowed, ok := cur[filename]
-	return ok && allowed
-}
-
-func AddAllowedFile(filename string) error {
-	appState := GetAppState()
-	if appState == nil {
-		return errors.New("app state is not initialized")
-	}
-
-	appState.AllowedFilesMu.Lock()
-	defer appState.AllowedFilesMu.Unlock()
-
-	oldMap, _ := appState.AllowedFiles.Load().(map[string]bool)
-	if oldMap == nil {
-		oldMap = map[string]bool{}
-	}
-	if oldMap[filename] {
-		return nil
-	}
-
-	newMap := make(map[string]bool, len(oldMap)+1)
-	maps.Copy(newMap, oldMap)
-	newMap[filename] = true
-	appState.AllowedFiles.Store(newMap)
-	return nil
-}
-
-func RemoveAllowedFile(filename string) {
-	appState := GetAppState()
-	if appState == nil {
-		return
-	}
-
-	appState.AllowedFilesMu.Lock()
-	defer appState.AllowedFilesMu.Unlock()
-
-	oldMap, _ := appState.AllowedFiles.Load().(map[string]bool)
-	if oldMap == nil {
-		return
-	}
-	if _, exists := oldMap[filename]; !exists {
-		return
-	}
-	newMap := make(map[string]bool, len(oldMap)-1)
-	for k, v := range oldMap {
-		if k != filename {
-			newMap[k] = v
-		}
-	}
-	appState.AllowedFiles.Store(newMap)
 }
 
 // IP address checks
