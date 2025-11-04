@@ -718,11 +718,11 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if !config.IsFileAllowed(fileRequested) {
-			log.Warning("File not in whitelist: " + fileRequested)
-			WriteJsonError(w, http.StatusForbidden)
-			return
-		}
+		// if !config.IsFileAllowed(fileRequested) {
+		// 	log.Warning("File not in whitelist: " + fileRequested)
+		// 	WriteJsonError(w, http.StatusForbidden)
+		// 	return
+		// }
 
 		resolvedPath, err := filepath.EvalSymlinks(endpointFilePath)
 		if err != nil || resolvedPath != endpointFilePath {
