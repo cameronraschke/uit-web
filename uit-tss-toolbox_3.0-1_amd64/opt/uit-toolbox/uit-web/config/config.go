@@ -537,7 +537,7 @@ func InitApp() (*AppState, error) {
 				RedirectURL:    endpointData.RedirectURL,
 			}
 			if len(merged.AllowedMethods) == 0 {
-				merged.AllowedMethods = []string{"GET"}
+				merged.AllowedMethods = []string{"OPTIONS", "GET"}
 			}
 			if merged.TLSRequired == nil {
 				merged.TLSRequired = new(bool)

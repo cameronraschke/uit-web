@@ -1,4 +1,5 @@
 /etc/uit-toolbox/uit-toolbox.json
+/etc/uit-toolbox/endpoints/api_endpoints.json
 /etc/uit-toolbox/endpoints/web_endpoints.json
 /etc/uit-toolbox/endpoints/css_endpoints.json
 /etc/uit-toolbox/endpoints/js_endpoints.json
