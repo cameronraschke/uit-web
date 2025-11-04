@@ -41,7 +41,7 @@
     "content_type": "text/javascript; charset=utf-8"
   },
   "/js/inventory_table.js": {
-    "file_path": "/var/www/html/uit-web/js/inventory_tables.js",
+    "file_path": "/var/www/html/uit-web/js/inventory_table.js",
     "endpoint_type": "web_content",
     "content_type": "text/javascript; charset=utf-8"
   },
