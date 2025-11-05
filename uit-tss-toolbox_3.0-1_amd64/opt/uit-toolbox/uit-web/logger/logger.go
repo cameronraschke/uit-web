@@ -1,7 +1,10 @@
 package logger
 
 import (
+	"bufio"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -19,7 +22,6 @@ const (
 	Error
 )
 
-// WIP
 type loggerType int64
 
 const (
@@ -72,6 +74,11 @@ type Logger interface {
 	Info(message string)
 	Warning(message string)
 	Error(message string)
+	HTTPAuth(req *http.Request, message string)
+	HTTPDebug(req *http.Request, message string)
+	HTTPInfo(req *http.Request, message string)
+	HTTPWarning(req *http.Request, message string)
+	HTTPError(req *http.Request, message string)
 }
 
 type ConsoleLogger struct {
@@ -81,6 +88,19 @@ type ConsoleLogger struct {
 
 func (consoleLogger *ConsoleLogger) SetLoggerLevel(logLevel LogLevel) {
 	consoleLogger.Level.Store(int64(logLevel))
+}
+
+func (consoleLogger *ConsoleLogger) logHTTPErr(req *http.Request, logLevel LogLevel, message string) {
+	if int64(logLevel) < consoleLogger.Level.Load() {
+		return
+	}
+
+	// Buffer values outside of lock
+	ipAddr, _, _ := net.SplitHostPort(req.RemoteAddr)
+	requestMethod := req.Method
+	requestURI := req.URL.Path
+	requestInfo := fmt.Sprintf(" (%s %s %s)", ipAddr, requestMethod, requestURI)
+	consoleLogger.log(logLevel, message+requestInfo)
 }
 
 func (consoleLogger *ConsoleLogger) log(logLevel LogLevel, message string) {
@@ -94,10 +114,11 @@ func (consoleLogger *ConsoleLogger) log(logLevel LogLevel, message string) {
 
 	// Buffer values outside of lock
 	currentTime := TimePrefix()
-	currentLogLevel := logLevel.getLogLevel()
-	formattedMessage := fmt.Sprintf("%s [%s] %s\n", currentTime, currentLogLevel, message)
+	formattedMessage := fmt.Sprintf("%s [%s] %s\n", currentTime, logLevel.getLogLevel(), message)
+	writer := bufio.NewWriter(output)
 	consoleLogger.writeMu.Lock()
-	output.Write([]byte(formattedMessage))
+	writer.Write([]byte(formattedMessage))
+	writer.Flush()
 	consoleLogger.writeMu.Unlock()
 }
 
@@ -106,6 +127,22 @@ func (consoleLogger *ConsoleLogger) Debug(message string)   { consoleLogger.log(
 func (consoleLogger *ConsoleLogger) Info(message string)    { consoleLogger.log(Info, message) }
 func (consoleLogger *ConsoleLogger) Warning(message string) { consoleLogger.log(Warning, message) }
 func (consoleLogger *ConsoleLogger) Error(message string)   { consoleLogger.log(Error, message) }
+
+func (consoleLogger *ConsoleLogger) HTTPAuth(req *http.Request, message string) {
+	consoleLogger.logHTTPErr(req, Auth, message)
+}
+func (consoleLogger *ConsoleLogger) HTTPDebug(req *http.Request, message string) {
+	consoleLogger.logHTTPErr(req, Debug, message)
+}
+func (consoleLogger *ConsoleLogger) HTTPInfo(req *http.Request, message string) {
+	consoleLogger.logHTTPErr(req, Info, message)
+}
+func (consoleLogger *ConsoleLogger) HTTPWarning(req *http.Request, message string) {
+	consoleLogger.logHTTPErr(req, Warning, message)
+}
+func (consoleLogger *ConsoleLogger) HTTPError(req *http.Request, message string) {
+	consoleLogger.logHTTPErr(req, Error, message)
+}
 
 func CreateLogger(loggerType string, logLevel LogLevel) Logger {
 	switch strings.ToLower(loggerType) {

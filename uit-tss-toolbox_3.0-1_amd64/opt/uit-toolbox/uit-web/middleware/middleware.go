@@ -52,7 +52,7 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 				requestIP, _, _ := net.SplitHostPort(req.RemoteAddr)
 
 				log.Error(fmt.Sprintf("Panic recovered: %v\n%s", err, string(debug.Stack())))
-				log.Error("Request from: " + requestIP + " " + req.Method + " " + req.URL.Path)
+				log.HTTPError(req, "Request from: "+requestIP+" "+req.Method+" "+req.URL.Path)
 
 				WriteJsonError(w, http.StatusInternalServerError)
 			}
@@ -72,20 +72,20 @@ func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 		if req.Header.Get("Content-Length") == "" && (req.Method == http.MethodPost || req.Method == http.MethodPut) {
 			contentLengthHeader := req.Header.Get("Content-Length")
 			if strings.TrimSpace(contentLengthHeader) == "" {
-				log.Warning("Request content length is missing: " + fmt.Sprintf("%d", req.ContentLength))
+				log.HTTPWarning(req, "Request content length is missing")
 				WriteJsonError(w, http.StatusLengthRequired)
 				return
 			}
 		}
 		maxSize, err := config.GetMaxUploadSize()
 		if err != nil {
-			log.Error("Failed to get max upload size from config: " + err.Error())
+			log.HTTPError(req, "Failed to get max upload size from config: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		if req.ContentLength > maxSize {
 			//req.RemoteAddr used here because the ip has not been assigned to the context yet
-			log.Warning("Request content length exceeds limit: " + fmt.Sprintf("%.2fMB", float64(req.ContentLength)/1e6) + " " + req.RemoteAddr)
+			log.HTTPWarning(req, "Request content length exceeds limit: "+fmt.Sprintf("%.2fMB", float64(req.ContentLength)/1e6)+" > "+fmt.Sprintf("%.2fMB", float64(maxSize)/1e6))
 			WriteJsonError(w, http.StatusRequestEntityTooLarge)
 			return
 		}
@@ -104,24 +104,24 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 		}
 		ip, port, err := net.SplitHostPort(req.RemoteAddr)
 		if err != nil {
-			log.Warning("Could not parse IP address: " + err.Error())
+			log.HTTPWarning(req, "Could not parse IP address: "+err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if strings.TrimSpace(port) == "" {
-			log.Warning("Empty port in request")
+			log.HTTPWarning(req, "Empty port in request")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		ipValid, _, _, err := checkValidIP(ip)
 		if err != nil {
-			log.Warning("Error validating/storing IP address in context: " + err.Error())
+			log.HTTPWarning(req, "Error validating/storing IP address in context: "+err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if !ipValid {
-			log.Warning("Cannot store invalid IP address in context: " + ip)
+			log.HTTPWarning(req, "Cannot store invalid IP address in context")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -129,7 +129,7 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 		// withClientIP parses and casts the IP address to ipnet.Addr type
 		ctx, err := withClientIP(req.Context(), ip)
 		if err != nil {
-			log.Warning("Error storing IP address in context: " + err.Error())
+			log.HTTPError(req, "Error storing IP address in context: "+err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -141,18 +141,18 @@ func CheckIPBlockedMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log, ok, err := GetLoggerFromRequestContext(req)
 		if !ok || err != nil {
-			fmt.Println("Error getting logger from context in CheckIPBlockedMiddleware: " + err.Error())
+			fmt.Println("Error getting logger for CheckIPBlockedMiddleware from context: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		requestIP, ok := GetRequestIPFromRequestContext(req)
 		if !ok {
-			log.Warning("No IP address stored in context")
+			log.HTTPWarning(req, "No IP address stored in context")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		if config.IsIPBlocked(requestIP) {
-			log.Warning("Blocked IP attempted request: " + requestIP.String())
+			log.HTTPWarning(req, "Blocked IP attempted request")
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
@@ -164,26 +164,19 @@ func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log, ok, err := GetLoggerFromRequestContext(req)
 		if !ok || err != nil {
-			fmt.Println("Error getting logger from context in WebEndpointConfigMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		requestIP, ok := GetRequestIPFromRequestContext(req)
-		if !ok {
-			log.Warning("No IP address stored in context")
+			fmt.Println("Error getting logger for WebEndpointConfigMiddleware from context: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
 		if err != nil {
-			log.Warning("Error getting endpoint config (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
+			log.HTTPWarning(req, "Error getting endpoint config for WebEndpointConfigMiddleware: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-
 		ctx, err := withWebEndpointConfig(req.Context(), &endpointConfig)
 		if err != nil {
-			log.Warning("Error storing endpoint config in context: " + err.Error())
+			log.HTTPError(req, "Error storing endpoint config for WebEndpointConfigMiddleware in context: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
