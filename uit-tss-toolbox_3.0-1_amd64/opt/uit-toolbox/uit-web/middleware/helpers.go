@@ -18,6 +18,7 @@ import (
 	"unicode/utf8"
 
 	config "uit-toolbox/config"
+	"uit-toolbox/logger"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -29,6 +30,7 @@ type ctxQueryRequestKey struct{}
 type ctxFileRequestKey struct{}
 type ctxRequestUUIDKey struct{}
 type ctxRequestEndpointKey struct{}
+type ctxRequestLoggerKey struct{}
 type ctxNonceKey struct{}
 
 type ReturnedJsonToken struct {
@@ -56,6 +58,7 @@ var (
 	requestEndpointKey ctxRequestEndpointKey
 	requestUUIDKey     ctxRequestUUIDKey
 	nonceKey           ctxNonceKey
+	loggerKey          ctxRequestLoggerKey
 
 	allowedQueryKeyRegex = regexp.MustCompile(`^[A-Za-z0-9._\-]+$`)
 )
@@ -67,6 +70,10 @@ func WriteJson(w http.ResponseWriter, status int, v any) {
 }
 
 func WriteJsonError(w http.ResponseWriter, httpStatusCode int) {
+	WriteJsonErrorCustomMessage(w, httpStatusCode, http.StatusText(httpStatusCode))
+}
+
+func WriteJsonErrorCustomMessage(w http.ResponseWriter, httpStatusCode int, customMessage string) {
 	if httpStatusCode <= 0 {
 		httpStatusCode = http.StatusInternalServerError
 	}
@@ -80,7 +87,7 @@ func WriteJsonError(w http.ResponseWriter, httpStatusCode int) {
 	w.WriteHeader(httpStatusCode)
 	jsonStruct := &JsonError{
 		ErrorCode:    httpStatusCode,
-		ErrorMessage: http.StatusText(httpStatusCode),
+		ErrorMessage: customMessage,
 	}
 
 	err := json.NewEncoder(w).Encode(jsonStruct)
@@ -215,6 +222,26 @@ func GetRequestUUIDFromContext(ctx context.Context) (uuid string, ok bool) {
 }
 func GetRequestUUIDFromRequestContext(r *http.Request) (uuid string, ok bool) {
 	return GetRequestUUIDFromContext(r.Context())
+}
+
+func withLogger(ctx context.Context, logger logger.Logger) (context.Context, error) {
+	if logger == nil {
+		return ctx, errors.New("nil logger")
+	}
+	return context.WithValue(ctx, loggerKey, logger), nil
+}
+func GetLoggerFromContext(ctx context.Context) (logger.Logger, bool, error) {
+	log, ok := ctx.Value(loggerKey).(logger.Logger)
+	if !ok {
+		log = config.GetLogger()
+		if log == nil {
+			return nil, false, errors.New("logger not found in context and default logger is nil")
+		}
+	}
+	return log, ok, nil
+}
+func GetLoggerFromRequestContext(r *http.Request) (logger.Logger, bool, error) {
+	return GetLoggerFromContext(r.Context())
 }
 
 func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue, uitCSRFValue string, timeout time.Duration) (*http.Cookie, *http.Cookie, *http.Cookie, *http.Cookie) {

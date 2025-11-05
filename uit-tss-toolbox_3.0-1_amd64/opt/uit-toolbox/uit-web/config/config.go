@@ -101,23 +101,6 @@ type AppConfig struct {
 	UIT_WEBMASTER_EMAIL             string         `json:"UIT_WEBMASTER_EMAIL"`
 }
 
-type WebEndpoints map[string]WebEndpoint
-
-type WebEndpoint struct {
-	FilePath       string   `json:"file_path"`
-	AllowedMethods []string `json:"allowed_methods"`
-	TLSRequired    *bool    `json:"tls_required"`
-	AuthRequired   *bool    `json:"auth_required"`
-	ACLUsers       []string `json:"acl_users"`
-	ACLGroups      []string `json:"acl_groups"`
-	HTTPVersion    string   `json:"http_version"`
-	EndpointType   string   `json:"endpoint_type"`
-	ContentType    string   `json:"content_type"`
-	StatusCode     int      `json:"status_code"`
-	Redirect       *bool    `json:"redirect"`
-	RedirectURL    string   `json:"redirect_url"`
-}
-
 type ClientLimiter struct {
 	Limiter  *rate.Limiter
 	LastSeen time.Time
@@ -550,21 +533,22 @@ func SetAppState(newState *AppState) {
 }
 
 func GetAppState() *AppState {
-	appStateMutex.RLock()
-	defer appStateMutex.RUnlock()
+	appStateMutex.Lock()
+	defer appStateMutex.Unlock()
 	return appStateInstance
 }
 
 // Logger access
 func GetLogger() logger.Logger {
-	appStateMutex.RLock()
-	asi := appStateInstance
-	defer appStateMutex.RUnlock()
-	if asi == nil || asi.Log == nil {
+	appStateMutex.Lock()
+	defer appStateMutex.Unlock()
+
+	if appStateInstance == nil || appStateInstance.Log == nil {
 		fmt.Println("Logger not initialized, using default logger")
 		return defaultLogger
 	}
-	return asi.Log
+
+	return appStateInstance.Log
 }
 
 // Database managment
@@ -820,59 +804,4 @@ func SetRequestTimeout(timeoutType string, timeout time.Duration) error {
 	default:
 		return fmt.Errorf("invalid timeout type: %s", timeoutType)
 	}
-}
-
-func GetWebEndpointConfig(endpointPath string) (WebEndpoint, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return WebEndpoint{}, fmt.Errorf("cannot get web endpoint, app state is not initialized")
-	}
-	value, ok := appState.WebEndpoints.Load(endpointPath)
-	if !ok {
-		return WebEndpoint{}, fmt.Errorf("endpoint not found: %s", endpointPath)
-	}
-	endpointData, ok := value.(*WebEndpoint)
-	if !ok {
-		return WebEndpoint{}, fmt.Errorf("invalid endpoint data for: %s", endpointPath)
-	}
-	return *endpointData, nil // return copy
-}
-
-func GetWebEndpointFilePath(webEndpoint WebEndpoint) (string, error) {
-	if strings.TrimSpace(webEndpoint.FilePath) == "" {
-		return "", fmt.Errorf("file path is empty for endpoint")
-	}
-	return webEndpoint.FilePath, nil
-}
-
-func IsWebEndpointAuthRequired(webEndpoint WebEndpoint) (bool, error) {
-	if webEndpoint.AuthRequired == nil {
-		return false, fmt.Errorf("auth required field is nil for endpoint")
-	}
-	return true, nil
-}
-
-func IsWebEndpointHTTPSRequired(webEndpoint WebEndpoint) (bool, error) {
-	if webEndpoint.TLSRequired == nil {
-		return false, fmt.Errorf("TLS required field is nil for endpoint")
-	}
-	return true, nil
-}
-
-func GetWebEndpointAllowedMethods(webEndpoint WebEndpoint) ([]string, error) {
-	if len(webEndpoint.AllowedMethods) == 0 {
-		return nil, fmt.Errorf("allowed methods list is empty for endpoint")
-	}
-	return webEndpoint.AllowedMethods, nil
-}
-
-func GetWebEndpointContentType(webEndpoint WebEndpoint) (string, error) {
-	return webEndpoint.ContentType, nil
-}
-
-func GetWebEndpointType(webEndpoint WebEndpoint) (string, error) {
-	if strings.TrimSpace(webEndpoint.EndpointType) == "" {
-		return "", fmt.Errorf("endpoint type is empty for endpoint")
-	}
-	return webEndpoint.EndpointType, nil
 }

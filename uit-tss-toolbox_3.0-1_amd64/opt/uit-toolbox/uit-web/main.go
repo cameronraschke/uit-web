@@ -35,7 +35,7 @@ func (chain muxChain) then(handle http.Handler) http.Handler {
 func main() {
 	debug.PrintStack()
 
-	bootLog := logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_SERVER_LOG_LEVEL")))
+	bootLog := logger.CreateLogger("console", logger.ParseLogLevel("info"))
 	bootLog.Info("Server time: " + time.Now().Format("01-02-2006 15:04:05"))
 	bootLog.Info("UIT API Starting...")
 
@@ -89,6 +89,7 @@ func main() {
 	}
 
 	fileServerBaseChain := muxChain{
+		middleware.StoreLoggerMiddleware,
 		middleware.PanicRecoveryMiddleware,
 		middleware.LimitRequestSizeMiddleware,
 		middleware.StoreClientIPMiddleware,
@@ -136,6 +137,7 @@ func main() {
 
 	// https handlers and middleware chains
 	httpsBaseChain := muxChain{
+		middleware.StoreLoggerMiddleware,
 		middleware.PanicRecoveryMiddleware,
 		middleware.LimitRequestSizeMiddleware,
 		middleware.StoreClientIPMiddleware,
