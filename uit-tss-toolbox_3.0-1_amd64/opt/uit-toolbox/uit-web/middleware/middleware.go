@@ -280,7 +280,7 @@ func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
 
 		switch majorVersion {
 		case 1:
-			if majorVersion == 1 && (req.ProtoMajor == 1 && req.ProtoMinor == 1 && minorVersion == 1) {
+			if req.ProtoMajor == 1 && req.ProtoMinor == 1 && minorVersion == 1 {
 				next.ServeHTTP(w, req)
 			} else {
 				log.Warning("Unsupported HTTP version: HTTP/" + strconv.Itoa(req.ProtoMajor) + "." + strconv.Itoa(req.ProtoMinor) + " < " + endpointConfig.HTTPVersion + " (" + requestIP.String() + "" + req.Method + " " + req.URL.Path + ")")
@@ -289,7 +289,7 @@ func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
 				return
 			}
 		case 2:
-			if req.ProtoMajor != 2 && (req.ProtoMajor == 1 && req.ProtoMinor == 0 && minorVersion == 0) {
+			if req.ProtoMajor == 2 && req.ProtoMinor == 0 && minorVersion == 0 {
 				next.ServeHTTP(w, req)
 			} else {
 				log.Warning("Unsupported HTTP version: HTTP/" + strconv.Itoa(req.ProtoMajor) + "." + strconv.Itoa(req.ProtoMinor) + " < " + endpointConfig.HTTPVersion + " (" + requestIP.String() + "" + req.Method + " " + req.URL.Path + ")")
