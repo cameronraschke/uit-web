@@ -46,11 +46,7 @@ func GetRequestInfo(req *http.Request) (RequestInfo, error) {
 		log.Warning("No path stored in context")
 		return RequestInfo{}, errors.New("no path found in request context")
 	}
-	requestQuery, ok := middleware.GetRequestQueryFromRequestContext(req)
-	if !ok {
-		log.Warning("No query stored in context")
-		return RequestInfo{}, errors.New("no query found in request context")
-	}
+	requestQuery, _ := middleware.GetRequestQueryFromRequestContext(req)
 	requestURL := requestPath + "?" + requestQuery.Encode()
 	if strings.TrimSpace(requestURL) == "?" {
 		log.Warning("No URL found in request context")
@@ -81,15 +77,19 @@ func ConvertTagnumber(tag string) (int64, error) {
 }
 
 func FileServerHandler(w http.ResponseWriter, req *http.Request) {
-	requestInfo, err := GetRequestInfo(req)
-	if err != nil {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Failed to get logger from context for FileServerHandler: " + err.Error())
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	requestIP, ok := middleware.GetRequestIPFromRequestContext(req)
+	if !ok {
+		log.Warning("No IP address stored in context for FileServerHandler")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
 
 	resolvedPath, ok := middleware.GetRequestFileFromRequestContext(req)
 	if !ok {
@@ -98,13 +98,13 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Debug("File request from " + requestIP.String() + " for " + requestURL)
+	log.HTTPDebug(req, "File request received")
 
 	// Previous path and file validation done in middleware
 	// Open the file
 	f, err := os.Open(resolvedPath)
 	if err != nil {
-		log.Warning("File not found: " + resolvedPath + " (" + err.Error() + ")")
+		log.HTTPWarning(req, "File not found for FileServerHandler: "+err.Error())
 		http.Error(w, "File not found", http.StatusNotFound)
 		return
 	}
@@ -373,25 +373,30 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func LogoutHandler(w http.ResponseWriter, req *http.Request) {
-	requestInfo, err := GetRequestInfo(req)
-	if err != nil {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Failed to get logger from context for LogoutHandler: " + err.Error())
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	requestIP, ok := middleware.GetRequestIPFromContext(ctx)
+	if !ok {
+		log.HTTPWarning(req, "No IP address stored in context for LogoutHandler")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
 
-	log.Info("Logout request from " + requestIP.String() + " for " + requestURL)
+	log.HTTPInfo(req, "Logout request received")
 	// Invalidate cookies
 	requestSessionIDCookie, err := req.Cookie("uit_session_id")
 	if err != nil && err != http.ErrNoCookie {
-		log.Warning("Error retrieving session ID cookie for logout: " + err.Error() + " (" + requestIP.String() + ")")
+		log.HTTPWarning(req, "Error retrieving session ID cookie for logout: "+err.Error())
 		http.Redirect(w, req, "/login", http.StatusSeeOther)
 		return
 	}
 	if requestSessionIDCookie == nil || strings.TrimSpace(requestSessionIDCookie.Value) == "" {
-		log.Info("No session ID cookie provided for logout: " + requestIP.String())
+		log.HTTPInfo(req, "No session ID cookie provided for logout")
 		http.Redirect(w, req, "/login", http.StatusSeeOther)
 		return
 	}
@@ -410,15 +415,14 @@ func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func RejectRequest(w http.ResponseWriter, req *http.Request) {
-	requestInfo, err := GetRequestInfo(req)
-	if err != nil {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Failed to get logger from context for RejectRequest: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
-	log := requestInfo.Log
 
-	log.Warning("Access denied: " + requestIP.String() + " tried to access " + requestURL)
-	http.Error(w, "Access denied", http.StatusForbidden)
+	log.HTTPWarning(req, "Access denied to forbidden endpoint")
+	middleware.WriteJsonError(w, http.StatusForbidden)
 }

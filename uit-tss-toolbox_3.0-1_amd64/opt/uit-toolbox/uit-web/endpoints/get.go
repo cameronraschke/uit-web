@@ -20,37 +20,26 @@ import (
 )
 
 // Per-client functions
-func GetServerTime(w http.ResponseWriter, r *http.Request) {
-	_, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
+func GetServerTime(w http.ResponseWriter, req *http.Request) {
 	curTime := time.Now().Format("2006-01-02 15:04:05.000")
-
 	middleware.WriteJson(w, http.StatusOK, ServerTime{Time: curTime})
 }
 
-func GetClientLookup(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetClientLookup(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Cannot get logger for GetClientLookup from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
 
 	// No consequence for missing tag, acceptable if lookup by serial
-	tagnumber, _ := ConvertRequestTagnumber(r)
+	tagnumber, _ := ConvertRequestTagnumber(req)
 
-	systemSerial := strings.TrimSpace(r.URL.Query().Get("system_serial"))
+	systemSerial := strings.TrimSpace(req.URL.Query().Get("system_serial"))
 	if tagnumber == 0 && systemSerial == "" {
-		log.Warning("No tagnumber or system_serial provided in request from: " + requestIP.String() + " (" + requestURL + ")")
+		log.HTTPWarning(req, "No tagnumber or system_serial provided in request")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -73,7 +62,7 @@ func GetClientLookup(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Client lookup query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Client lookup query error: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
