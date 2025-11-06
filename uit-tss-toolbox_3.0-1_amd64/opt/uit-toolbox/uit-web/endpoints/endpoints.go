@@ -1,11 +1,9 @@
 package endpoints
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
-	"net/netip"
 	"os"
 	"strconv"
 	"strings"
@@ -13,47 +11,11 @@ import (
 	"time"
 	config "uit-toolbox/config"
 	database "uit-toolbox/database"
-	"uit-toolbox/logger"
 	middleware "uit-toolbox/middleware"
 )
 
-type RequestInfo struct {
-	Ctx context.Context
-	IP  netip.Addr
-	URL string
-	Log logger.Logger
-}
-
 type ServerTime struct {
 	Time string `json:"server_time"`
-}
-
-func GetRequestInfo(req *http.Request) (RequestInfo, error) {
-	log := config.GetLogger()
-
-	ctx := req.Context()
-	if ctx == nil {
-		return RequestInfo{}, errors.New("no context found in request")
-	}
-
-	requestIP, ok := middleware.GetRequestIPFromRequestContext(req)
-	if !ok {
-		log.Warning("No IP address stored in context")
-		return RequestInfo{}, errors.New("no IP address found in request context")
-	}
-	requestPath, ok := middleware.GetRequestPathFromRequestContext(req)
-	if !ok {
-		log.Warning("No path stored in context")
-		return RequestInfo{}, errors.New("no path found in request context")
-	}
-	requestQuery, _ := middleware.GetRequestQueryFromRequestContext(req)
-	requestURL := requestPath + "?" + requestQuery.Encode()
-	if strings.TrimSpace(requestURL) == "?" {
-		log.Warning("No URL found in request context")
-		return RequestInfo{}, errors.New("no URL found in request context")
-	}
-
-	return RequestInfo{Ctx: ctx, IP: requestIP, URL: requestURL, Log: log}, nil
 }
 
 func ConvertRequestTagnumber(r *http.Request) (int64, bool) {
@@ -69,6 +31,10 @@ func ConvertRequestTagnumber(r *http.Request) (int64, bool) {
 }
 
 func ConvertTagnumber(tag string) (int64, error) {
+	tag = strings.TrimSpace(tag)
+	if tag == "" {
+		return 0, errors.New("tagnumber is empty")
+	}
 	tagnumber, err := strconv.ParseInt(tag, 10, 64)
 	if err != nil || tagnumber < 1 || tagnumber > 999999 {
 		return 0, errors.New("invalid tagnumber" + err.Error())

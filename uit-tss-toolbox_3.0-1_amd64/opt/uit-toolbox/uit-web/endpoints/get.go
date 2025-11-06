@@ -1,11 +1,9 @@
 package endpoints
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"image"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -33,11 +31,17 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
+	urlQueries, ok := middleware.GetRequestQueryFromContext(ctx)
+	if !ok {
+		log.HTTPWarning(req, "No request query parameters found in context for GetClientLookup")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
 
 	// No consequence for missing tag, acceptable if lookup by serial
-	tagnumber, _ := ConvertRequestTagnumber(req)
+	tagnumber, _ := ConvertTagnumber(urlQueries.Get("tagnumber"))
+	systemSerial := strings.TrimSpace(urlQueries.Get("system_serial"))
 
-	systemSerial := strings.TrimSpace(req.URL.Query().Get("system_serial"))
 	if tagnumber == 0 && systemSerial == "" {
 		log.HTTPWarning(req, "No tagnumber or system_serial provided in request")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -46,13 +50,11 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPWarning(req, "No database connection available for GetClientLookup")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
 
 	var hardwareData *database.ClientLookup
 	if tagnumber != 0 {
@@ -70,32 +72,27 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, hardwareData)
 }
 
-func GetAllTags(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetAllTags(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Cannot get logger for GetAllTags from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
 
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPWarning(req, "No database connection available for GetAllTags")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
 
 	allTags, err := repo.GetAllTags(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("All tags query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Query error in GetAllTags: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -103,38 +100,38 @@ func GetAllTags(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, allTags)
 }
 
-func GetHardwareIdentifiers(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetHardwareIdentifiers(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Cannot get logger for GetHardwareIdentifiers from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
-
-	tagnumber, ok := ConvertRequestTagnumber(r)
-	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
+	urlQueries, ok := middleware.GetRequestQueryFromContext(ctx)
+	if !ok {
+		log.HTTPWarning(req, "No request query parameters found in context for GetHardwareIdentifiers")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	tagnumber, err := ConvertTagnumber(urlQueries.Get("tagnumber"))
+	if err != nil {
+		log.HTTPWarning(req, "Invalid tagnumber provided in GetHardwareIdentifiers: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPWarning(req, "No database connection available for GetHardwareIdentifiers")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
 	hardwareData, err := repo.GetHardwareIdentifiers(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Hardware ID query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPInfo(req, "Query error in GetHardwareIdentifiers: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -142,39 +139,39 @@ func GetHardwareIdentifiers(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, hardwareData)
 }
 
-func GetBiosData(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetBiosData(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Cannot get logger for GetBiosData from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
-
-	tagnumber, ok := ConvertRequestTagnumber(r)
-	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
+	urlQueries, ok := middleware.GetRequestQueryFromContext(ctx)
+	if !ok {
+		log.HTTPWarning(req, "No request query parameters found in context for GetBiosData")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	tagnumber, err := ConvertTagnumber(urlQueries.Get("tagnumber"))
+	if err != nil {
+		log.HTTPWarning(req, "Invalid tagnumber provided in GetBiosData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPWarning(req, "No database connection available in GetBiosData")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
 
 	biosData, err := repo.GetBiosData(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Bios data query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Query error in GetBiosData: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -183,39 +180,39 @@ func GetBiosData(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, biosData)
 }
 
-func GetOSData(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetOSData(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Cannot get logger for GetOSData from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
-
-	tagnumber, ok := ConvertRequestTagnumber(r)
-	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
+	urlQueries, ok := middleware.GetRequestQueryFromContext(ctx)
+	if !ok {
+		log.HTTPWarning(req, "No request query parameters found in context for GetOSData")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	tagnumber, err := ConvertTagnumber(urlQueries.Get("tagnumber"))
+	if err != nil {
+		log.HTTPWarning(req, "Invalid tagnumber provided in GetOSData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPWarning(req, "No database connection available in GetOSData")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
 
 	osData, err := repo.GetOsData(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("OS data query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.Info("Query error in GetOSData: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -224,39 +221,39 @@ func GetOSData(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, osData)
 }
 
-func GetClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetClientQueuedJobs(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Cannot get logger for GetClientQueuedJobs from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
-
-	tagnumber, ok := ConvertRequestTagnumber(r)
-	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
+	urlQueries, ok := middleware.GetRequestQueryFromContext(ctx)
+	if !ok {
+		log.HTTPWarning(req, "No request query parameters found in context for GetClientQueuedJobs")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	tagnumber, err := ConvertTagnumber(urlQueries.Get("tagnumber"))
+	if err != nil {
+		log.HTTPWarning(req, "Invalid tagnumber provided in GetClientQueuedJobs: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPWarning(req, "No database connection available in GetClientQueuedJobs")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
 
 	activeJobs, err := repo.GetActiveJobs(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Queued client jobs query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Query error in GetClientQueuedJobs: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -265,39 +262,39 @@ func GetClientQueuedJobs(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, activeJobs)
 }
 
-func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetClientAvailableJobs(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Cannot get logger for GetClientAvailableJobs from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
-
-	tagnumber, ok := ConvertRequestTagnumber(r)
-	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
+	urlQueries, ok := middleware.GetRequestQueryFromContext(ctx)
+	if !ok {
+		log.HTTPWarning(req, "No request query parameters found in context for GetClientAvailableJobs")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	tagnumber, err := ConvertTagnumber(urlQueries.Get("tagnumber"))
+	if err != nil {
+		log.HTTPWarning(req, "Invalid tagnumber provided in GetClientAvailableJobs: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPWarning(req, "No database connection available in GetClientAvailableJobs")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
 
 	availableJobs, err := repo.GetAvailableJobs(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Available jobs query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Query error in GetClientAvailableJobs: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -306,38 +303,38 @@ func GetClientAvailableJobs(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, availableJobs)
 }
 
-func GetNotes(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetNotes(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Cannot get logger for GetNotes from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
+	urlQueries, ok := middleware.GetRequestQueryFromContext(ctx)
+	if !ok {
+		log.HTTPWarning(req, "No request query parameters found in context for GetNotes")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	noteType := strings.TrimSpace(urlQueries.Get("note_type"))
+	if noteType == "" {
+		log.HTTPInfo(req, "No note_type provided, defaulting to 'general'")
+		noteType = "general"
+	}
 
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPWarning(req, "No database connection available in GetNotes")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	noteType := strings.TrimSpace(r.URL.Query().Get("note_type"))
-	if noteType == "" {
-		log.Info("No note_type provided, defaulting to 'general'")
-		noteType = "general"
-	}
 
 	notesData, err := repo.GetNotes(ctx, noteType)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Get notes query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Query error in GetNotes: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -345,37 +342,38 @@ func GetNotes(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, notesData)
 }
 
-func GetLocationFormData(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromRequestContext(req)
+	if err != nil || !ok {
+		fmt.Println("Cannot get logger for GetLocationFormData from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
-	tagnumber, ok := ConvertRequestTagnumber(r)
-	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
+	requestQueries, ok := middleware.GetRequestQueryFromContext(ctx)
+	if !ok {
+		log.HTTPWarning(req, "No request query parameters found in context for GetLocationFormData")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	tagnumber, err := ConvertTagnumber(requestQueries.Get("tagnumber"))
+	if err != nil {
+		log.HTTPWarning(req, "Invalid tagnumber provided in GetLocationFormData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPWarning(req, "No database connection available for GetLocationFormData")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
 	locationData, err := repo.GetLocationFormData(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Location form data query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Query error in GetLocationFormData: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -391,42 +389,29 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestIP, ok := middleware.GetRequestIPFromRequestContext(req)
-	if !ok {
-		log.Warning("Cannot get request IP for GetClientImagesManifest from context")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	requestURL, ok := middleware.GetRequestPathFromRequestContext(req)
-	if !ok {
-		log.Warning("Cannot get request URL for GetClientImagesManifest from context")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
 	requestQueries, ok := middleware.GetRequestQueryFromRequestContext(req)
 	if !ok {
-		log.Warning("Cannot get request queries for GetClientImagesManifest from context")
+		log.HTTPWarning(req, "Cannot get requested queries for GetClientImagesManifest from context")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	tagnumber, err := ConvertTagnumber(requestQueries.Get("tagnumber"))
 	if err != nil {
-		log.HTTPWarning(req, "No or invalid tagnumber provided in request")
+		log.HTTPWarning(req, "No or invalid tagnumber provided in request to GetClientImagesManifest: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
+
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPWarning(req, "No database connection available for GetClientImagesManifest")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
 	imageUUIDs, err := repo.GetClientImageUUIDs(ctx, tagnumber)
 	if err != nil && err != sql.ErrNoRows {
-		log.Info("Client images query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+		log.HTTPWarning(req, "Query error in GetClientImagesManifest: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -437,9 +422,9 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		time, tag, filepath, _, hidden, primaryImage, note, err := repo.GetClientImageManifestByUUID(ctx, imageUUID)
 		if err != nil {
 			if err == sql.ErrNoRows {
-				log.Info("Image not found in database: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+				log.HTTPInfo(req, "Image not found in database: "+imageUUID+" "+err.Error())
 			} else {
-				log.Info("Client image query error (manifest): " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+				log.HTTPWarning(req, "Query error in GetClientImagesManifest: "+imageUUID+" "+err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
@@ -450,14 +435,14 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		}
 
 		if filepath == nil || strings.TrimSpace(*filepath) == "" {
-			log.Info("Client image filepath is empty: " + requestIP.String() + " (" + requestURL + ")")
+			log.HTTPInfo(req, "Filepath provided to GetClientImagesManifest is nil")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		img, err := os.Open(*filepath)
 		if err != nil {
-			log.Info("Client image open error (manifest): " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Cannot open image file in GetClientImagesManifest: "+*filepath+" "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -465,7 +450,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 
 		imageStat, err := img.Stat()
 		if err != nil {
-			log.Info("Client image stat error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Cannot stat image in GetClientImagesManifest: "+*filepath+" "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -480,27 +465,27 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 			imageConfig, imageType, err := image.DecodeConfig(imageReader)
 			if err != nil {
 				_ = img.Close()
-				log.Info("Client image decode error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+				log.HTTPWarning(req, "Cannot decode image in GetClientImagesManifest: "+*filepath+" "+err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			if imageType != "jpeg" && imageType != "png" {
 				_ = img.Close()
-				log.Info("Client image has invalid type: " + requestIP.String() + " (" + requestURL + "): " + imageType)
+				log.HTTPWarning(req, "Image has invalid type in GetClientImagesManifest: "+*filepath+" -> "+imageType)
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			if (imageType == "jpeg" && fileExtension != ".jpg" && fileExtension != ".jpeg") ||
 				(imageType == "png" && fileExtension != ".png") {
 				_ = img.Close()
-				log.Info("Client image file extension does not match image type: " + requestIP.String() + " (" + requestURL + "): " + imageStat.Name())
+				log.HTTPWarning(req, "Image file extension does not match image type in GetClientImagesManifest: "+imageStat.Name()+" != "+imageType)
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			imageData.Width = &imageConfig.Width
 			imageData.Height = &imageConfig.Height
 			if imageData.Width == nil || imageData.Height == nil || *imageData.Width <= 0 || *imageData.Height <= 0 {
-				log.Info("Client image has invalid dimensions: " + requestIP.String() + " (" + requestURL + ")")
+				log.HTTPWarning(req, "Image has invalid dimensions in GetClientImagesManifest: "+*filepath)
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
@@ -520,7 +505,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		if tag != nil && *tag >= 1 {
 			tagStr = fmt.Sprintf("%d", *tag)
 		} else {
-			log.Warning("Client image has no or invalid tag in database: " + requestIP.String() + " (" + requestURL + ")")
+			log.HTTPWarning(req, "Image has no or invalid tag in database in GetClientImagesManifest: "+imageUUID)
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -542,7 +527,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 
 		urlStr, err := url.JoinPath("/api/images/", tagStr, clientImgUUIDPath)
 		if err != nil {
-			log.Info("Client image URL join error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Error joining URL paths in GetClientImagesManifest: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -586,8 +571,6 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
 
 	log.HTTPDebug(req, "Serving image request for: "+requestedImageUUID)
 	_, _, imagePath, _, hidden, _, _, err := repo.GetClientImageManifestByUUID(ctx, requestedImageUUID)
@@ -629,32 +612,27 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 }
 
 // Overview section
-func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetJobQueueOverview(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Cannot get logger for GetJobQueueOverview from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
 
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPWarning(req, "No database connection available for GetJobQueueOverview")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
 
 	jobQueueOverview, err := repo.GetJobQueueOverview(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Job queue overview query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Query error in GetJobQueueOverview: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -663,32 +641,27 @@ func GetJobQueueOverview(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, jobQueueOverview)
 }
 
-func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetDashboardInventorySummary(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Cannot get logger for GetDashboardInventorySummary from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
 
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPWarning(req, "No database connection available for GetDashboardInventorySummary")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
 
 	inventorySummary, err := repo.GetDashboardInventorySummary(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Inventory summary query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Query error in GetDashboardInventorySummary: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -696,54 +669,56 @@ func GetDashboardInventorySummary(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, inventorySummary)
 }
 
-func GetInventoryTableData(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Cannot get logger for GetInventoryTableData from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
+	requestQueries, ok := middleware.GetRequestQueryFromContext(ctx)
+	if !ok {
+		log.HTTPWarning(req, "No request query parameters found in context for GetInventoryTableData")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPWarning(req, "No database connection available for GetInventoryTableData")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	repo := database.NewRepo(db)
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
 
 	getStr := func(key string) *string {
-		s := strings.TrimSpace(r.URL.Query().Get(key))
+		s := strings.TrimSpace(requestQueries.Get(key))
 		if s == "" {
 			return nil
 		}
 		return &s
 	}
 	getInt64 := func(key string) *int64 {
-		raw := strings.TrimSpace(r.URL.Query().Get(key))
+		raw := strings.TrimSpace(requestQueries.Get(key))
 		if raw == "" {
 			return nil
 		}
 		v, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil {
-			log.Info("Invalid " + key + " filter provided: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Invalid '"+key+"' filter provided: "+err.Error())
 			return nil
 		}
 		return &v
 	}
 	getBool := func(key string) *bool {
-		raw := strings.TrimSpace(r.URL.Query().Get(key))
+		raw := strings.TrimSpace(requestQueries.Get(key))
 		if raw == "" {
 			return nil
 		}
 		v, err := strconv.ParseBool(raw)
 		if err != nil {
-			log.Info("Invalid " + key + " filter provided: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Invalid '"+key+"' filter provided: "+err.Error())
 			return nil
 		}
 		return &v
@@ -765,7 +740,7 @@ func GetInventoryTableData(w http.ResponseWriter, r *http.Request) {
 	inventoryTableData, err := repo.GetInventoryTableData(ctx, filterOptions)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.Info("Inventory table data query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Query error in GetInventoryTableData: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -773,21 +748,18 @@ func GetInventoryTableData(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, inventoryTableData)
 }
 
-func GetClientConfig(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetClientConfig(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Cannot get logger for GetClientConfig from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	// ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
 
 	clientConfig, err := config.GetClientConfig()
 	if err != nil {
-		log.Error("Error getting client config: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+		log.HTTPWarning(req, "Error getting client config in GetClientConfig: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -810,7 +782,7 @@ func GetClientConfig(w http.ResponseWriter, r *http.Request) {
 	var response string
 	for k, v := range clientConfigMap {
 		if v == "" {
-			log.Warning("Client config value for " + k + " is empty: " + requestIP.String() + " (" + requestURL + ")")
+			log.HTTPWarning(req, "Client config value for '"+k+"' is empty: using default empty string")
 		}
 		response += fmt.Sprintf("%s=%s\n", k, v)
 	}

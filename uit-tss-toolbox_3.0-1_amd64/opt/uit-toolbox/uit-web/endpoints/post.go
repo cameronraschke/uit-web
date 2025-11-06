@@ -151,16 +151,25 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 }
 
 func InsertNewNote(w http.ResponseWriter, req *http.Request) {
-	requestInfo, err := GetRequestInfo(req)
-	if err != nil {
-		fmt.Println("Cannot get request info error: " + err.Error())
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Failed to get logger from context for InsertNewNote: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
+	requestIP, ok := middleware.GetRequestIPFromContext(ctx)
+	if !ok {
+		log.Warning("No IP address found in context for InsertNewNote")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	requestURL, ok := middleware.GetRequestURLFromContext(ctx)
+	if !ok {
+		log.HTTPWarning(req, "No request URL found in context for InsertNewNote")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
 	requestMethod := req.Method
 
 	// Sanitize POST request
@@ -228,16 +237,25 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	// Field broken: optional (bool)
 	// Field status: mandatory (string), must match existing status in database table client_location_status, printable ASCII only
 	// Field note: optional (string), max 2000 chars, printable ASCII only
-	requestInfo, err := GetRequestInfo(req)
-	if err != nil {
-		fmt.Println("Cannot get request info error: " + err.Error())
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Failed to get logger from context for UpdateInventory: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
+	requestIP, ok := middleware.GetRequestIPFromContext(ctx)
+	if !ok {
+		log.Warning("No IP address found in context for UpdateInventory")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	requestURL, ok := middleware.GetRequestURLFromContext(ctx)
+	if !ok {
+		log.HTTPWarning(req, "No request URL found in context for UpdateInventory")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
 	requestMethod := req.Method
 
 	// Check for POST method and correct URL

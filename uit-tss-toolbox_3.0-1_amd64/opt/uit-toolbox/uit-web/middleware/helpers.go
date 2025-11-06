@@ -190,12 +190,19 @@ func withRequestQuery(ctx context.Context, query string) (context.Context, error
 	}
 	return context.WithValue(ctx, queryRequestKey, urlValues), nil
 }
-func GetRequestQueryFromContext(ctx context.Context) (query *url.Values, ok bool) {
-	query, ok = ctx.Value(queryRequestKey).(*url.Values)
-	return query, ok
+func GetRequestQueryFromContext(ctx context.Context) (query url.Values, ok bool) {
+	val := ctx.Value(queryRequestKey)
+	if val == nil {
+		return url.Values{}, false
+	}
+	queries, ok := val.(url.Values)
+	if !ok {
+		return url.Values{}, false
+	}
+	return queries, true
 }
-func GetRequestQueryFromRequestContext(r *http.Request) (query *url.Values, ok bool) {
-	return GetRequestQueryFromContext(r.Context())
+func GetRequestQueryFromRequestContext(req *http.Request) (query url.Values, ok bool) {
+	return GetRequestQueryFromContext(req.Context())
 }
 
 func withRequestFile(ctx context.Context, file string) (context.Context, error) {
