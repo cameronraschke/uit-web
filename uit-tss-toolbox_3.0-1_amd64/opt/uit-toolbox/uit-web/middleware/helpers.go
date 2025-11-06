@@ -183,16 +183,18 @@ func GetRequestPathFromRequestContext(r *http.Request) (path string, ok bool) {
 }
 
 func withRequestQuery(ctx context.Context, query string) (context.Context, error) {
-	// if strings.TrimSpace(query) == "" {
-	// 	return ctx, errors.New("empty request query")
-	// }
-	return context.WithValue(ctx, queryRequestKey, query), nil
+	query = strings.TrimSpace(query)
+	urlValues, err := url.ParseQuery(query)
+	if err != nil {
+		return ctx, fmt.Errorf("failed to parse request query: %w", err)
+	}
+	return context.WithValue(ctx, queryRequestKey, urlValues), nil
 }
-func GetRequestQueryFromContext(ctx context.Context) (query string, ok bool) {
-	query, ok = ctx.Value(queryRequestKey).(string)
+func GetRequestQueryFromContext(ctx context.Context) (query *url.Values, ok bool) {
+	query, ok = ctx.Value(queryRequestKey).(*url.Values)
 	return query, ok
 }
-func GetRequestQueryFromRequestContext(r *http.Request) (query string, ok bool) {
+func GetRequestQueryFromRequestContext(r *http.Request) (query *url.Values, ok bool) {
 	return GetRequestQueryFromContext(r.Context())
 }
 

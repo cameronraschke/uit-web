@@ -3,7 +3,6 @@ package endpoints
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -12,46 +11,46 @@ import (
 	middleware "uit-toolbox/middleware"
 )
 
-func DeleteImage(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
+func DeleteImage(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Failed to get logger from context for DeleteImage: " + err.Error())
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	requestQueries, ok := middleware.GetRequestQueryFromContext(ctx)
+	if !ok {
+		log.HTTPWarning(req, "No request query parameters found in context for DeleteImage")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	tagnumber, err := ConvertTagnumber(requestQueries.Get("tagnumber"))
 	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		log.HTTPWarning(req, "Invalid tagnumber query parameter for DeleteImage: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
-	tagnumber, ok := ConvertRequestTagnumber(r)
-	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
+	requestedImageUUID := strings.TrimSpace(requestQueries.Get("uuid"))
+	if requestedImageUUID == "" {
+		log.HTTPWarning(req, "No uuid query parameter provided for DeleteImage")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	requestFilePath := strings.TrimPrefix(r.URL.Path, "/api/images/")
-	requestFilePath = strings.TrimSuffix(requestFilePath, ".jpeg")
-	requestFilePath = strings.TrimSuffix(requestFilePath, ".png")
-	requestFilePath = strings.TrimSuffix(requestFilePath, ".mp4")
-	requestFilePath = strings.TrimSuffix(requestFilePath, ".mov")
-	if requestFilePath == "" {
-		log.Warning("No image path provided in request from: " + requestIP.String() + " (" + requestURL + ")")
+	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".jpeg")
+	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".png")
+	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".mp4")
+	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".mov")
+	if requestedImageUUID == "" {
+		log.HTTPWarning(req, "Invalid UUID provided in for DeleteImage")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-
-	uuid := strings.TrimSpace(requestFilePath)
-	if uuid == "" {
-		log.Warning("No UUID provided in delete image request from: " + requestIP.String() + " (" + requestURL + ")")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	uuid = strings.SplitN(uuid, "/", 2)[1]
 
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPError(req, "No database connection available")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -59,9 +58,9 @@ func DeleteImage(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	err = repo.HideClientImageByUUID(ctx, tagnumber, uuid)
+	err = repo.HideClientImageByUUID(ctx, tagnumber, requestedImageUUID)
 	if err != nil {
-		log.Error("Failed to delete client image with UUID " + uuid + " for tagnumber " + fmt.Sprintf("%d", tagnumber) + ": " + err.Error())
+		log.Error("Failed to delete client image with UUID " + requestedImageUUID + " for tagnumber " + fmt.Sprintf("%d", tagnumber) + ": " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}

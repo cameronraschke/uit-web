@@ -191,14 +191,14 @@ func main() {
 	httpsMux.Handle("GET /api/notes", httpsFullAPIChain.thenFunc(endpoints.GetNotes))
 	httpsMux.Handle("GET /api/dashboard/inventory_summary", httpsFullAPIChain.thenFunc(endpoints.GetDashboardInventorySummary))
 	httpsMux.Handle("GET /api/images/manifest", httpsFullAPIChain.thenFunc(endpoints.GetClientImagesManifest))
-	httpsMux.Handle("GET /api/images/", httpsFullAPIChain.thenFunc(endpoints.GetImage))
+	httpsMux.Handle("GET /api/images", httpsFullAPIChain.thenFunc(endpoints.GetImage))
 	httpsMux.Handle("GET /api/inventory", httpsFullAPIChain.thenFunc(endpoints.GetInventoryTableData))
 
 	httpsMux.Handle("POST /api/notes", httpsFullAPIChain.thenFunc(endpoints.InsertNewNote))
 	httpsMux.Handle("POST /api/update_inventory", httpsFullAPIChain.thenFunc(endpoints.UpdateInventory))
-	httpsMux.Handle("POST /api/images/toggle_pin/", httpsFullAPIChain.thenFunc(endpoints.TogglePinImage))
+	httpsMux.Handle("POST /api/images/toggle_pin", httpsFullAPIChain.thenFunc(endpoints.TogglePinImage))
 
-	httpsMux.Handle("DELETE /api/images/", httpsFullAPIChain.thenFunc(endpoints.DeleteImage))
+	httpsMux.Handle("DELETE /api/images", httpsFullAPIChain.thenFunc(endpoints.DeleteImage))
 
 	httpsMux.Handle("GET /login", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
 	httpsMux.Handle("POST /login", httpsFullLoginChain.thenFunc(endpoints.WebAuthEndpoint))

@@ -669,26 +669,11 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 }
 
 func TogglePinImage(w http.ResponseWriter, req *http.Request) {
-	requestInfo, err := GetRequestInfo(req)
-	if err != nil {
-		fmt.Println("Cannot get request info error: " + err.Error())
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Logger not found in context (TogglePinImage): (" + req.Method + " " + req.URL.Path + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
-	requestMethod := req.Method
-	if requestMethod != http.MethodPost || !(strings.HasPrefix(requestURL, "/api/images/toggle_pin/")) {
-		log.Warning("Invalid method or URL for toggle pin image: " + requestIP.String() + " ( " + requestURL + ")")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	tagnumber, ok := ConvertRequestTagnumber(req)
-	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
@@ -698,23 +683,33 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 		Tagnumber int64  `json:"tagnumber"`
 	}
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-		log.Error("Failed to decode JSON body: " + err.Error() + " (" + requestIP.String() + ")")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-
-	body.UUID = strings.TrimPrefix(body.UUID, "/api/images/toggle_pin/")
-	body.UUID = strings.TrimSuffix(body.UUID, ".jpeg")
-	body.UUID = strings.TrimSuffix(body.UUID, ".png")
-	body.UUID = strings.TrimSuffix(body.UUID, ".mp4")
-	body.UUID = strings.TrimSuffix(body.UUID, ".mov")
-	if body.UUID == "" {
-		log.Warning("No image path provided in request from: " + requestIP.String() + " (" + requestURL + ")")
+		log.HTTPError(req, "Cannot decode TogglePinImage JSON: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	uuid := strings.TrimSpace(body.UUID)
+	if uuid == "" {
+		log.HTTPWarning(req, "No image UUID provided in TogglePinImage body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	uuid = strings.TrimSuffix(uuid, ".jpeg")
+	uuid = strings.TrimSuffix(uuid, ".png")
+	uuid = strings.TrimSuffix(uuid, ".mp4")
+	uuid = strings.TrimSuffix(uuid, ".mov")
+	if uuid == "" {
+		log.HTTPWarning(req, "No image path provided for TogglePinImage body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	tagnumber := body.Tagnumber
+	if tagnumber < 1 || tagnumber > 999999 {
+		log.HTTPWarning(req, "Invalid tag number provided in TogglePinImage body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
 
 	db := config.GetDatabaseConn()
 	if db == nil {
@@ -725,7 +720,7 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 	repo := database.NewRepo(db)
 	err = repo.TogglePinImage(ctx, uuid, tagnumber)
 	if err != nil {
-		log.Error("Failed to toggle pin image: " + err.Error() + " (" + requestIP.String() + ")")
+		log.HTTPError(req, "Failed to toggle pin image: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}

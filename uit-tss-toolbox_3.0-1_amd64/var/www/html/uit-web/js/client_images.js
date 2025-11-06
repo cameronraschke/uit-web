@@ -140,8 +140,7 @@ async function loadClientImages(clientTag) {
         }
         const entry = document.getElementById(uuidToUnpin);
         try {
-          const unpinURL = new URL(`/api/images/toggle_pin/${clientTag}/${uuidToUnpin}`, window.location.origin);
-          unpinURL.searchParams.append('tagnumber', clientTag);
+          const unpinURL = new URL(`/api/images/toggle_pin`, window.location.origin);
           const unpinResponse = await fetch(unpinURL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -178,6 +177,7 @@ async function loadClientImages(clientTag) {
         const uuidToDelete = button.dataset.uuid;
         if (!uuidToDelete) {
           alert('Error: No UUID found for this image.');
+          button.disabled = false;
           return;
         }
         const imageCount = button.dataset.imageCount || '';
@@ -189,15 +189,17 @@ async function loadClientImages(clientTag) {
           await waitForNextPaint(2);
         }
 
-        const ok = window.confirm(`Are you sure you want to delete this image (${imageCount})?`);
-        if (!ok) {
+        const okToDelete = window.confirm(`Are you sure you want to delete this image (${imageCount})?`);
+        if (!okToDelete) {
           if (entry) entry.style.opacity = '1';
+          button.disabled = false;
           return;
         }
 
         try {
-          const deleteURL = new URL(`/api/images/${clientTag}/${uuidToDelete}`, window.location.origin);
-          deleteURL.searchParams.append('tagnumber', clientTag);
+          const deleteURL = new URL(`/api/images`, window.location.origin);
+          deleteURL.searchParams.set('tagnumber', clientTag);
+          deleteURL.searchParams.set('uuid', uuidToDelete);
           const deleteResponse = await fetch(deleteURL, {
             method: 'DELETE',
             credentials: 'same-origin'
@@ -210,6 +212,7 @@ async function loadClientImages(clientTag) {
           alert(`Error deleting image: ${deleteError.message}`);
         } finally {
           if (entry) entry.style.opacity = '1';
+          button.disabled = false;
         }
       });
     } 

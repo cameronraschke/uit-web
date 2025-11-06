@@ -51,7 +51,7 @@ func GetRequestInfo(req *http.Request) (RequestInfo, error) {
 		log.Warning("No query stored in context")
 		return RequestInfo{}, errors.New("no query found in request context")
 	}
-	requestURL := requestPath + "?" + requestQuery
+	requestURL := requestPath + "?" + requestQuery.Encode()
 	if strings.TrimSpace(requestURL) == "?" {
 		log.Warning("No URL found in request context")
 		return RequestInfo{}, errors.New("no URL found in request context")
@@ -70,6 +70,14 @@ func ConvertRequestTagnumber(r *http.Request) (int64, bool) {
 		return 0, false
 	}
 	return tagnumber, true
+}
+
+func ConvertTagnumber(tag string) (int64, error) {
+	tagnumber, err := strconv.ParseInt(tag, 10, 64)
+	if err != nil || tagnumber < 1 || tagnumber > 999999 {
+		return 0, errors.New("invalid tagnumber" + err.Error())
+	}
+	return tagnumber, nil
 }
 
 func FileServerHandler(w http.ResponseWriter, req *http.Request) {

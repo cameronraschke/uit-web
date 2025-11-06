@@ -394,20 +394,35 @@ func GetLocationFormData(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, locationData)
 }
 
-func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromRequestContext(req)
+	if err != nil || !ok {
+		fmt.Println("Cannot get logger for GetClientImagesManifest from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
-	tagnumber, ok := ConvertRequestTagnumber(r)
-	if tagnumber == 0 || !ok {
-		log.Warning("No or invalid tagnumber provided in request from: " + requestIP.String() + " (" + requestURL + ")")
+	requestIP, ok := middleware.GetRequestIPFromRequestContext(req)
+	if !ok {
+		log.Warning("Cannot get request IP for GetClientImagesManifest from context")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	requestURL, ok := middleware.GetRequestPathFromRequestContext(req)
+	if !ok {
+		log.Warning("Cannot get request URL for GetClientImagesManifest from context")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	requestQueries, ok := middleware.GetRequestQueryFromRequestContext(req)
+	if !ok {
+		log.Warning("Cannot get request queries for GetClientImagesManifest from context")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	tagnumber, err := ConvertTagnumber(requestQueries.Get("tagnumber"))
+	if err != nil {
+		log.HTTPWarning(req, "No or invalid tagnumber provided in request")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -550,28 +565,31 @@ func GetClientImagesManifest(w http.ResponseWriter, r *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, imageManifests)
 }
 
-func GetImage(w http.ResponseWriter, r *http.Request) {
-	requestInfo, err := GetRequestInfo(r)
-	if err != nil {
-		log.Println("Cannot get request info error: " + err.Error())
+func GetImage(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if err != nil || !ok {
+		fmt.Println("Cannot get logger for GetImage from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx := requestInfo.Ctx
-	log := requestInfo.Log
-	requestIP := requestInfo.IP
-	requestURL := requestInfo.URL
-
-	requestFilePath := strings.TrimPrefix(r.URL.Path, "/api/images/")
-	requestFilePath = strings.TrimSuffix(requestFilePath, ".jpeg")
-	requestFilePath = strings.TrimSuffix(requestFilePath, ".png")
-	requestFilePath = strings.TrimSuffix(requestFilePath, ".mp4")
-	requestFilePath = strings.TrimSuffix(requestFilePath, ".mov")
-	if requestFilePath == "" {
-		log.Warning("No image path provided in request from: " + requestIP.String() + " (" + requestURL + ")")
+	requestedQueries, ok := middleware.GetRequestQueryFromContext(ctx)
+	if !ok {
+		log.HTTPWarning(req, "Cannot get request queries for GetImage from context")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	requestedImageUUID := strings.TrimSpace(requestedQueries.Get("uuid"))
+	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".jpeg")
+	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".png")
+	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".mp4")
+	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".mov")
+	if requestedImageUUID == "" {
+		log.HTTPWarning(req, "No image path provided in request")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
+
 	db := config.GetDatabaseConn()
 	if db == nil {
 		log.Warning("no database connection available")
@@ -581,49 +599,44 @@ func GetImage(w http.ResponseWriter, r *http.Request) {
 	repo := database.NewRepo(db)
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	requestImageUUID := path.Base(requestFilePath)
-	if requestImageUUID == "" {
-		log.Warning("No image file name provided in request from: " + requestIP.String() + " (" + requestURL + ")")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	log.Debug("Serving image request for: " + requestImageUUID + " from " + requestIP.String() + " (" + requestURL + ")")
-	_, _, imagePath, _, hidden, _, _, err := repo.GetClientImageManifestByUUID(ctx, requestImageUUID)
+
+	log.HTTPDebug(req, "Serving image request for: "+requestedImageUUID)
+	_, _, imagePath, _, hidden, _, _, err := repo.GetClientImageManifestByUUID(ctx, requestedImageUUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.Info("Image not found: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPInfo(req, "Image not found: "+requestedImageUUID+" "+err.Error())
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		log.Info("Client image query error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+		log.HTTPInfo(req, "Client image query error: "+requestedImageUUID+" "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	if strings.TrimSpace(*imagePath) == "" {
-		log.Info("Image path is empty: " + requestIP.String() + " (" + requestURL + ")")
+		log.HTTPInfo(req, "Image path from database is empty for: "+requestedImageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 	if *hidden {
-		log.Info("Attempt to access hidden image: " + requestIP.String() + " (" + requestURL + ")")
+		log.HTTPWarning(req, "Attempt to access hidden image: "+requestedImageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 	imageFile, err := os.Open(*imagePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Info("Image not found: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+			log.HTTPWarning(req, "Image not found on disk: "+requestedImageUUID+" "+err.Error())
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		log.Info("Client image open error: " + requestIP.String() + " (" + requestURL + "): " + err.Error())
+		log.HTTPWarning(req, "Image cannot be opened: "+requestedImageUUID+" "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	defer imageFile.Close()
 
-	http.ServeContent(w, r, imageFile.Name(), time.Time{}, imageFile)
+	http.ServeContent(w, req, imageFile.Name(), time.Time{}, imageFile)
 }
 
 // Overview section
