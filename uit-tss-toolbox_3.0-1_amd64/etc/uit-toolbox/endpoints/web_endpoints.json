@@ -42,6 +42,11 @@
     "endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
   },
+  "/logout": {
+    "file_path": "/var/www/html/uit-web/logout.html",
+    "endpoint_type": "web_content",
+    "content_type": "text/html; charset=utf-8"
+  },
   "/dashboard": {
     "file_path": "/var/www/html/uit-web/dashboard.html",
     "endpoint_type": "web_content",

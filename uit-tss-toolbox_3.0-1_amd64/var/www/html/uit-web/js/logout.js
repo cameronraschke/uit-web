@@ -37,3 +37,7 @@ async function logout() {
     window.location.replace("/login");
   }
 }
+
+if (window.location.pathname === '/logout') {
+  logout();
+}
