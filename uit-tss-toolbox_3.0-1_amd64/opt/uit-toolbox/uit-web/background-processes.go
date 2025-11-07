@@ -108,10 +108,10 @@ func startMemoryMonitor(ctx context.Context, log logger.Logger, maxBytes uint64,
 			if memStats.Alloc > maxBytes {
 				select {
 				case errChan <- fmt.Errorf("memory usage exceeded: %d bytes > %d bytes", memStats.Alloc, maxBytes):
+					return
 				default:
 					log.Error(fmt.Sprintf("Memory exceeded but cannot send error: %d > %d", memStats.Alloc, maxBytes))
 				}
-				return
 			}
 		}
 	}

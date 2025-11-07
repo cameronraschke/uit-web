@@ -75,7 +75,7 @@ func main() {
 	defer cancel()
 
 	var wg sync.WaitGroup
-	errChan := make(chan error, 3)
+	errChan := make(chan error, 10) // Buffer for multiple errors
 
 	// Start HTTP file server
 	log.Info("Starting HTTP file server on http://" + httpHost + ":8080")
@@ -104,6 +104,12 @@ func main() {
 		defer func() {
 			if recoveryErr := recover(); recoveryErr != nil {
 				log.Error("Background process panic: " + fmt.Sprint(recoveryErr))
+				log.Error("Stack:\n" + string(debug.Stack()))
+				select {
+				case errChan <- fmt.Errorf("background process panic: %v", recoveryErr):
+				default:
+					log.Warning("Error channel full, cannot send panic error (func main - backgroundProcesses)")
+				}
 			}
 		}()
 		log.Info("Starting background processes...")
@@ -125,17 +131,25 @@ func main() {
 	}
 
 	cancel() // Cancel context to stop web servers
+	// Drain additional errors
 	go func() {
-		timeout := time.After(1 * time.Second)
+		deadline := time.After(1 * time.Second)
 		for {
 			select {
-			case err := <-errChan:
-				log.Error("Additional error: " + err.Error())
-			case <-timeout:
-				return
+			case err, ok := <-errChan:
+				if !ok {
+					return // Channel closed, continue
+				}
+				log.Error("Additional error logged while shutting down: " + err.Error())
+			case <-deadline:
+				return // Timeout reached, stop draining and continue
 			}
 		}
 	}()
+
+	// Wait for web servers to stop with timeout
+	webServerShutdownCTX, webServerCTXCancel := context.WithTimeout(context.Background(), 35*time.Second)
+	defer webServerCTXCancel()
 
 	done := make(chan struct{})
 	go func() {
@@ -145,8 +159,28 @@ func main() {
 
 	select {
 	case <-done:
-		log.Info("UIT API stopped.")
-	case <-time.After(35 * time.Second): // 5s buffer beyond server timeout
+		time.Sleep(50 * time.Millisecond)
+		log.Info("Web servers stopped gracefully")
+	case <-webServerShutdownCTX.Done():
 		log.Error("Shutdown timed out, forcing exit")
 	}
+
+	// Close database connection with timeout
+	dbCloseCtx, dbCloseCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer dbCloseCancel()
+
+	dbCloseDone := make(chan struct{})
+	go func() {
+		dbConn.Close()
+		close(dbCloseDone)
+	}()
+
+	select {
+	case <-dbCloseDone:
+		log.Info("Database connection closed")
+	case <-dbCloseCtx.Done():
+		log.Error("Database close timed out")
+	}
+
+	log.Info("UIT API stopped.")
 }
