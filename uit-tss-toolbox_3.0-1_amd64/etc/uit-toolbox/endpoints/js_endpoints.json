@@ -45,6 +45,11 @@
     "endpoint_type": "web_content",
     "content_type": "text/javascript; charset=utf-8"
   },
+  "/js/inventory_filters.js": {
+    "file_path": "/var/www/html/uit-web/js/inventory_filters.js",
+    "endpoint_type": "web_content",
+    "content_type": "text/javascript; charset=utf-8"
+  },
   "/js/client_images.js": {
     "file_path": "/var/www/html/uit-web/js/client_images.js",
     "endpoint_type": "web_content",
