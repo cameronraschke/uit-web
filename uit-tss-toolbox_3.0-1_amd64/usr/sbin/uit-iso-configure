@@ -263,7 +263,7 @@ echo "${GREEN}Done.${RESET}"
 
 echo ""
 echo "${BOLD}Installing the client package${RESET}"
-wget 'http://mickey.uit:8080/client/pkg/go-latest.linux-amd64.tar.gz' --output-document=/root/go-latest.linux-amd64.tar.gz
+wget 'http://10.0.0.1:8080/client/pkg/go-latest.linux-amd64.tar.gz' --output-document=/root/go-latest.linux-amd64.tar.gz
 if [[ -d /usr/local/go ]]; then
   rm -rf /usr/local/go
 fi
@@ -276,9 +276,9 @@ if [[ -f /root/uit-toolbox-client.deb ]]; then
 	rm /root/uit-toolbox-client.deb
 fi
 
-curl 'http://mickey.uit:8080/client/pkg/uit-toolbox-client.deb' --output /root/uit-toolbox-client.deb &>/dev/null
+curl 'http://10.0.0.1:8080/client/pkg/uit-toolbox-client.deb' --output /root/uit-toolbox-client.deb &>/dev/null
 while [[ ! -f /root/uit-toolbox-client.deb ]]; do
-	curl 'http://mickey.uit:8080/client/pkg/uit-toolbox-client.deb' --output /root/uit-toolbox-client.deb &>/dev/null
+	curl 'http://10.0.0.1:8080/client/pkg/uit-toolbox-client.deb' --output /root/uit-toolbox-client.deb &>/dev/null
 	sleep 1
 done
 dpkg --install /root/uit-toolbox-client.deb &>/dev/null
