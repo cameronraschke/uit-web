@@ -129,8 +129,8 @@ func GetWebEndpointConfigFromContext(ctx context.Context) (endpoint config.WebEn
 	endpoint, ok = ctx.Value(requestEndpointKey).(config.WebEndpoint)
 	return endpoint, ok
 }
-func GetWebEndpointConfigFromRequestContext(r *http.Request) (endpoint config.WebEndpoint, ok bool) {
-	return GetWebEndpointConfigFromContext(r.Context())
+func GetWebEndpointConfigFromRequestContext(req *http.Request) (endpoint config.WebEndpoint, ok bool) {
+	return GetWebEndpointConfigFromContext(req.Context())
 }
 
 func withClientIP(ctx context.Context, ipStr string) (context.Context, error) {
@@ -169,9 +169,9 @@ func GetRequestURLFromRequestContext(r *http.Request) (url string, ok bool) {
 }
 
 func withRequestPath(ctx context.Context, path string) (context.Context, error) {
-	// if strings.TrimSpace(path) == "" {
-	// 	return ctx, errors.New("empty request path")
-	// }
+	if strings.TrimSpace(path) == "" {
+		return ctx, errors.New("empty request path")
+	}
 	return context.WithValue(ctx, pathRequestKey, path), nil
 }
 func GetRequestPathFromContext(ctx context.Context) (path string, ok bool) {
