@@ -300,8 +300,18 @@ async function populateLocationForm(tag) {
   }
 }
 
-
-
+const csvDownloadButton = document.getElementById('inventory-filter-download-button');
+csvDownloadButton.addEventListener('click', async (event) => {
+  event.preventDefault();
+  csvDownloadButton.disabled = true;
+  csvDownloadButton.textContent = 'Preparing download...';
+  try {
+    fetchFilteredInventoryData(true);
+  } finally {
+    csvDownloadButton.disabled = false;
+    csvDownloadButton.textContent = 'Download Results';
+  }
+});
 
 Promise.all([fetchFilteredInventoryData(), loadManufacturersAndModels()]);
 

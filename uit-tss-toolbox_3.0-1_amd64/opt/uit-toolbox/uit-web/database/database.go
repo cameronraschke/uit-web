@@ -972,5 +972,5 @@ func ptrTimeToString(p *time.Time) string {
 	if p == nil {
 		return ""
 	}
-	return p.Format("2006-01-02 15:04:05")
+	return p.Format("2006-01-02 15:04:05 PM")
 }

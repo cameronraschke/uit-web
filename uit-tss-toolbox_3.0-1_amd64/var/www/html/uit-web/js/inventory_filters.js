@@ -123,7 +123,7 @@ filterHasImagesReset.addEventListener("click", async (event) => {
   await fetchFilteredInventoryData();
 });
 
-async function fetchFilteredInventoryData() {
+async function fetchFilteredInventoryData(csvDownload = false) {
   const tag = filterTag.value.trim() || null;
   const serial = filterSerial.value.trim() || null;
   const location = filterLocation.value.trim() || null;
@@ -136,7 +136,7 @@ async function fetchFilteredInventoryData() {
   const hasImages = filterHasImages.value.trim() || null;
 
   try {
-    const tableData = await getInventoryTableData(tag, serial, location, department, manufacturer, model, domain, status, broken, hasImages);
+    const tableData = await getInventoryTableData(csvDownload, tag, serial, location, department, manufacturer, model, domain, status, broken, hasImages);
     await renderInventoryTable(tableData);
   } catch (error) {
     console.error("Error fetching inventory data:", error);

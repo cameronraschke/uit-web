@@ -1,6 +1,6 @@
 const rowCountElement = document.getElementById('inventory-table-rowcount');
 
-async function getInventoryTableData(filterTag, filterSerial, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages) {
+async function getInventoryTableData(csvDownload = false, filterTag, filterSerial, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages) {
   const query = new URLSearchParams();
   if (filterTag) query.append("tagnumber", filterTag);
   if (filterSerial) query.append("system_serial", filterSerial);
@@ -12,7 +12,12 @@ async function getInventoryTableData(filterTag, filterSerial, filterLocation, fi
   if (filterStatus) query.append("status", filterStatus);
   if (filterBroken) query.append("broken", filterBroken);
   if (filterHasImages) query.append("has_images", filterHasImages);
+  if (csvDownload) query.append("csv", "true");
   try {
+    if (csvDownload) {
+      location.href = `/api/inventory?${query.toString()}`;
+      return;
+    }
     const response = await fetch(`/api/inventory?${query.toString()}`);
     const rawData = await response.text();
     const jsonData = rawData.trim() ? JSON.parse(rawData) : [];

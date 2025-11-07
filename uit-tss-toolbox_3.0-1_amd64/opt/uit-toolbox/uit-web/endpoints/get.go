@@ -748,19 +748,22 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	if requestQueries.Get("csv") == "true" {
+		log.HTTPDebug(req, "CSV file requested in GetInventoryTableData")
 		csvData, err := database.ConvertInventoryTableDataToCSV(ctx, inventoryTableData)
 		if err != nil {
 			log.HTTPWarning(req, "Error converting inventory table data to CSV in GetInventoryTableData: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", "text/csv")
-		w.Header().Set("Content-Disposition", "attachment; filename=\"inventory_table_data.csv\"")
-		_, err = w.Write([]byte(csvData))
-		if err != nil {
-			log.HTTPWarning(req, "Error writing CSV data to response in GetInventoryTableData: "+err.Error())
+		if csvData == "" {
+			log.HTTPWarning(req, "No CSV data generated in GetInventoryTableData")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
+		}
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		w.Header().Set("Content-Disposition", "attachment; filename=\"inventory_table_data.csv\"")
+		if _, err = w.Write([]byte(csvData)); err != nil {
+			log.HTTPWarning(req, "Error writing CSV data to response: "+err.Error())
 		}
 		return
 	} else {
