@@ -143,3 +143,10 @@ type InventoryFilterOptions struct {
 	Broken             *bool   `json:"broken"`
 	HasImages          *bool   `json:"has_images"`
 }
+
+type ManufacturersAndModels struct {
+	SystemModel                 string `json:"system_model"`
+	SystemModelFormatted        string `json:"system_model_formatted"`
+	SystemManufacturer          string `json:"system_manufacturer"`
+	SystemManufacturerFormatted string `json:"system_manufacturer_formatted"`
+}

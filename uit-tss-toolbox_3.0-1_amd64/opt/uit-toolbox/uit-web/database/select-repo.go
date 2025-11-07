@@ -133,61 +133,36 @@ func (repo *Repo) GetLocations(ctx context.Context) (map[string]string, error) {
 	return locationMap, nil
 }
 
-func (repo *Repo) GetModels(ctx context.Context) (map[string]string, error) {
-	sqlCode := `SELECT system_model, (CASE WHEN LENGTH(system_model) > 17 THEN CONCAT(LEFT(system_model, 8), '...', RIGHT(system_model, 9)) ELSE system_model END) AS system_model_formatted 
+func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]ManufacturersAndModels, error) {
+	sqlCode := `SELECT system_model, 
+		(CASE WHEN LENGTH(system_model) > 17 THEN CONCAT(LEFT(system_model, 8), '...', RIGHT(system_model, 9)) ELSE system_model END) AS system_model_formatted,
+		system_manufacturer, 
+		(CASE WHEN LENGTH(system_manufacturer) > 10 THEN CONCAT(LEFT(system_manufacturer, 10), '...') ELSE system_manufacturer END) AS system_manufacturer_formatted
 		FROM system_data 
 		WHERE system_manufacturer IS NOT NULL 
 			AND system_model IS NOT NULL
 		GROUP BY system_manufacturer, system_model 
 		ORDER BY system_manufacturer ASC, system_model ASC;`
 
+	var manufacturersAndModels []ManufacturersAndModels
 	rows, err := repo.DB.QueryContext(ctx, sqlCode)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var modelMap = make(map[string]string)
 	for rows.Next() {
-		var model, modelFormatted string
-		if err := rows.Scan(&model, &modelFormatted); err != nil {
+		var mam ManufacturersAndModels
+		if err := rows.Scan(&mam.SystemModel, &mam.SystemModelFormatted, &mam.SystemManufacturer, &mam.SystemManufacturerFormatted); err != nil {
 			return nil, err
 		}
-		modelMap[model] = modelFormatted
+		manufacturersAndModels = append(manufacturersAndModels, mam)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return modelMap, nil
-}
-
-func (repo *Repo) GetManufacturers(ctx context.Context) (map[string]string, error) {
-	sqlCode := `SELECT system_manufacturer, (CASE WHEN LENGTH(system_manufacturer) > 10 THEN CONCAT(LEFT(system_manufacturer, 10), '...') ELSE system_manufacturer END) AS system_manufacturer_formatted
-		FROM system_data 
-		WHERE system_manufacturer IS NOT NULL 
-			AND system_model IS NOT NULL 
-		GROUP BY system_manufacturer, system_model 
-		ORDER BY system_manufacturer ASC, system_model ASC;`
-	rows, err := repo.DB.QueryContext(ctx, sqlCode)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var manufacturerMap = make(map[string]string)
-	for rows.Next() {
-		var manufacturer, manufacturerFormatted string
-		if err := rows.Scan(&manufacturer, &manufacturerFormatted); err != nil {
-			return nil, err
-		}
-		manufacturerMap[manufacturer] = manufacturerFormatted
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return manufacturerMap, nil
+	return manufacturersAndModels, nil
 }
 
 func (repo *Repo) ClientLookupByTag(ctx context.Context, tag int64) (*ClientLookup, error) {
@@ -566,9 +541,12 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *Inve
 		AND ($7::text IS NULL OR locations.domain = $7)
 		AND ($8::text IS NULL OR locations.status = $8)
 		AND ($9::boolean IS NULL OR locations.broken = $9)
-		AND ($10::boolean IS NULL OR 
-			($10 = TRUE AND EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber)) OR
-			($10 = FALSE AND NOT EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber)))
+		AND (
+			$10::boolean IS NULL OR 
+			(
+				($10 = TRUE AND EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber))
+				OR ($10 = FALSE AND NOT EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber)))
+			)
 		ORDER BY locations.time DESC;`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlCode,

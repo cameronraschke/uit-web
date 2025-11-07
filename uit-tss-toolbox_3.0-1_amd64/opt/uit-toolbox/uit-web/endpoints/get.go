@@ -684,14 +684,6 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available for GetInventoryTableData")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	repo := database.NewRepo(db)
-
 	getStr := func(key string) *string {
 		s := strings.TrimSpace(requestQueries.Get(key))
 		if s == "" {
@@ -728,14 +720,24 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		Tagnumber:          getInt64("tagnumber"),
 		SystemSerial:       getStr("system_serial"),
 		Location:           getStr("location"),
-		SystemManufacturer: getStr("manufacturer"),
-		SystemModel:        getStr("model"),
+		SystemManufacturer: getStr("system_manufacturer"),
+		SystemModel:        getStr("system_model"),
 		Department:         getStr("department"),
 		Domain:             getStr("domain"),
 		Status:             getStr("status"),
 		Broken:             getBool("broken"),
 		HasImages:          getBool("has_images"),
 	}
+
+	// log.HTTPDebug(req, fmt.Sprintf("Filter options: %+v", filterOptions))
+
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.HTTPWarning(req, "No database connection available for GetInventoryTableData")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	repo := database.NewRepo(db)
 
 	inventoryTableData, err := repo.GetInventoryTableData(ctx, filterOptions)
 	if err != nil {
@@ -788,4 +790,32 @@ func GetClientConfig(w http.ResponseWriter, req *http.Request) {
 	}
 
 	middleware.WriteJson(w, http.StatusOK, response)
+}
+
+func GetManufacturersAndModels(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Cannot get logger for GetManufacturersAndModels from context: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.HTTPWarning(req, "No database connection available for GetManufacturersAndModels")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	repo := database.NewRepo(db)
+
+	manufacturersAndModels, err := repo.GetManufacturersAndModels(ctx)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.HTTPWarning(req, "Query error in GetManufacturersAndModels: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+	}
+	middleware.WriteJson(w, http.StatusOK, manufacturersAndModels)
 }

@@ -262,20 +262,6 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		manufacturers, err := db.GetManufacturers(ctx)
-		if err != nil {
-			log.Error("Cannot get manufacturer list from database: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
-		models, err := db.GetModels(ctx)
-		if err != nil {
-			log.Error("Cannot get model list from database: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
 		locations, err := db.GetLocations(ctx)
 		if err != nil {
 			log.Error("Cannot get location list from database: " + err.Error())
@@ -294,8 +280,6 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			Domains        map[string]string
 			ClientTag      string
 			Statuses       map[string]string
-			Manufacturers  map[string]string
-			Models         map[string]string
 			Locations      map[string]string
 		}{
 			JsNonce:        nonce,
@@ -305,8 +289,6 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			Domains:        domains,
 			ClientTag:      urlTag,
 			Statuses:       statuses,
-			Manufacturers:  manufacturers,
-			Models:         models,
 			Locations:      locations,
 		}
 

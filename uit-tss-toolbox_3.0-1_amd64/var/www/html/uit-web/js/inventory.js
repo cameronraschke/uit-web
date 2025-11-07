@@ -1,4 +1,5 @@
 let updatingInventory = false;
+let allModelsData = [];
 
 // Inventory update form (and lookup)
 const inventoryLookupWarningMessage = document.getElementById('existing-inventory-message');
@@ -334,5 +335,105 @@ inventoryFilterResetButton.addEventListener("click", async (event) => {
   await fetchFilteredInventoryData();
 });
 
-Promise.all([fetchFilteredInventoryData()]);
+function populateManufacturerSelect() {
+  const manufacturerSelect = document.getElementById('inventory-filter-manufacturer');
+  if (!manufacturerSelect) return;
+
+  // Get manufacturers
+  const manufacturersMap = new Map();
+  allModelsData.forEach(item => {
+    if (item.system_manufacturer && !manufacturersMap.has(item.system_manufacturer)) {
+      manufacturersMap.set(item.system_manufacturer, item.system_manufacturer_formatted || item.system_manufacturer);
+    }
+  });
+
+  // Clear and rebuild manufacturer select options
+  manufacturerSelect.innerHTML = '';
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.textContent = 'Manufacturer';
+  defaultOption.selected = true;
+  manufacturerSelect.appendChild(defaultOption);
+
+  // Sort by formatted name
+  const sortedManufacturers = Array.from(manufacturersMap.entries()).sort((a, b) => 
+    a[1].localeCompare(b[1])
+  );
+
+  sortedManufacturers.forEach(([manufacturer, manufacturerFormatted]) => {
+    const option = document.createElement('option');
+    option.value = manufacturer;
+    option.textContent = manufacturerFormatted;
+    manufacturerSelect.appendChild(option);
+  });
+}
+
+function populateModelSelect(selectedManufacturer = null) {
+  const modelSelect = document.getElementById('inventory-filter-model');
+  if (!modelSelect) return;
+
+  // Filter models by manufacturer if one is selected
+  const filteredModels = selectedManufacturer
+    ? allModelsData.filter(item => item.system_manufacturer === selectedManufacturer)
+    : allModelsData;
+
+  // Get models
+  const modelsMap = new Map();
+  filteredModels.forEach(item => {
+    if (item.system_model && !modelsMap.has(item.system_model)) {
+      modelsMap.set(item.system_model, item.system_model_formatted || item.system_model);
+    }
+  });
+
+  // Clear and rebuild model select options
+  modelSelect.innerHTML = '';
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.textContent = 'Model';
+  modelSelect.appendChild(defaultOption);
+
+  // Sort by formatted name
+  const sortedModels = Array.from(modelsMap.entries()).sort((a, b) => 
+    a[1].localeCompare(b[1])
+  );
+
+  sortedModels.forEach(([model, modelFormatted]) => {
+    const option = document.createElement('option');
+    option.value = model;
+    option.textContent = modelFormatted;
+    modelSelect.appendChild(option);
+  });
+}
+
+
+async function loadManufacturersAndModels() {
+  try {
+    const response = await fetchData('/api/models');
+    if (!response) {
+      throw new Error('No data returned from /api/models');
+    }
+
+    allModelsData = Array.isArray(response) ? response : [];
+    populateManufacturerSelect();
+    populateModelSelect();
+
+  } catch (error) {
+    console.error('Error fetching models:', error);
+  }
+}
+
+async function updateModelOptionsBasedOnManufacturer() {
+  const manufacturerSelect = document.getElementById('inventory-filter-manufacturer');
+  const selectedManufacturer = manufacturerSelect.value || null;
+  
+  // Repopulate model select with filtered options
+  populateModelSelect(selectedManufacturer);
+}
+
+const filterManufacturer = document.getElementById('inventory-filter-manufacturer')
+filterManufacturer.addEventListener("change", async (event) => {
+  await updateModelOptionsBasedOnManufacturer();
+});
+
+Promise.all([fetchFilteredInventoryData(), loadManufacturersAndModels()]);
 
