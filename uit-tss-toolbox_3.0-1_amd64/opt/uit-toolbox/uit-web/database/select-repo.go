@@ -524,13 +524,14 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *Inve
 	sqlCode := `SELECT locations.tagnumber, locations.system_serial, locations.location, 
 		locationFormatting(locations.location) AS location_formatted,
 		system_data.system_manufacturer, system_data.system_model, locations.department, static_departments.department_formatted,
-		locations.domain, static_domains.domain_formatted, client_health.os_installed, client_health.os_name, locations.status,
+		locations.domain, static_domains.domain_formatted, client_health.os_installed, client_health.os_name, static_client_statuses.status,
 		locations.broken, locations.note, locations.time AS last_updated
 		FROM locations
 		LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
 		LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
 		LEFT JOIN static_departments ON locations.department = static_departments.department
 		LEFT JOIN static_domains ON locations.domain = static_domains.domain
+		LEFT JOIN static_client_statuses ON locations.status = static_client_statuses.status
 		WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 		AND ($1::bigint IS NULL OR locations.tagnumber = $1)
 		AND ($2::text IS NULL OR locations.system_serial = $2)

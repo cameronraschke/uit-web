@@ -306,12 +306,18 @@ csvDownloadButton.addEventListener('click', async (event) => {
   csvDownloadButton.disabled = true;
   csvDownloadButton.textContent = 'Preparing download...';
   try {
-    fetchFilteredInventoryData(true);
+    await fetchFilteredInventoryData(true);
   } finally {
+    initializeInventoryPage();
     csvDownloadButton.disabled = false;
     csvDownloadButton.textContent = 'Download Results';
   }
 });
 
-Promise.all([fetchFilteredInventoryData(), loadManufacturersAndModels()]);
+function initializeInventoryPage() {
+  Promise.all([fetchFilteredInventoryData(), loadManufacturersAndModels()]);
+}
+document.addEventListener("DOMContentLoaded", () => {
+  initializeInventoryPage();
+});
 
