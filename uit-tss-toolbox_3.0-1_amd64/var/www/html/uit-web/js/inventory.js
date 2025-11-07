@@ -1,5 +1,4 @@
 let updatingInventory = false;
-let allModelsData = [];
 
 // Inventory update form (and lookup)
 const inventoryLookupWarningMessage = document.getElementById('existing-inventory-message');
