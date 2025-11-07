@@ -1,3 +1,5 @@
+const rowCountElement = document.getElementById('inventory-table-rowcount');
+
 async function getInventoryTableData(filterTag, filterSerial, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages) {
   const query = new URLSearchParams();
   if (filterTag) query.append("tagnumber", filterTag);
@@ -38,6 +40,12 @@ async function renderInventoryTable(tableData = null) {
       const dateB = new Date(b.last_update || 0);
       return dateB - dateA;
     });
+
+    let rowCount = tableDataSorted.length;
+    if (!rowCount || rowCount === 0) {
+      rowCount = 0;
+    }
+    rowCountElement.textContent = `${rowCount} entries`;
 
     tableBody.innerHTML = '';
     const fragment = document.createDocumentFragment();
@@ -194,6 +202,7 @@ async function renderInventoryTable(tableData = null) {
     tableBody.appendChild(fragment);
   } catch (error) {
     // console.error('Error rendering inventory table:', error.message);
+    rowCountElement.textContent = `0 entries`;
     tableBody.innerHTML = '';
     const errRow = document.createElement('tr');
     const errCell = document.createElement('td');

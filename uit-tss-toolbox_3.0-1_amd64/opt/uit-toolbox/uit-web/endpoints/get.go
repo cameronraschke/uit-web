@@ -698,7 +698,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		}
 		v, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil {
-			log.HTTPWarning(req, "Invalid '"+key+"' filter provided: "+err.Error())
+			log.HTTPWarning(req, "Invalid '"+key+"' filter provided in GetInventoryTableData: "+err.Error())
 			return nil
 		}
 		return &v
@@ -710,7 +710,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		}
 		v, err := strconv.ParseBool(raw)
 		if err != nil {
-			log.HTTPWarning(req, "Invalid '"+key+"' filter provided: "+err.Error())
+			log.HTTPWarning(req, "Invalid '"+key+"' filter provided in GetInventoryTableData: "+err.Error())
 			return nil
 		}
 		return &v
@@ -747,7 +747,25 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	middleware.WriteJson(w, http.StatusOK, inventoryTableData)
+	if requestQueries.Get("csv") == "true" {
+		csvData, err := database.ConvertInventoryTableDataToCSV(ctx, inventoryTableData)
+		if err != nil {
+			log.HTTPWarning(req, "Error converting inventory table data to CSV in GetInventoryTableData: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Content-Disposition", "attachment; filename=\"inventory_table_data.csv\"")
+		_, err = w.Write([]byte(csvData))
+		if err != nil {
+			log.HTTPWarning(req, "Error writing CSV data to response in GetInventoryTableData: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		return
+	} else {
+		middleware.WriteJson(w, http.StatusOK, inventoryTableData)
+	}
 }
 
 func GetClientConfig(w http.ResponseWriter, req *http.Request) {

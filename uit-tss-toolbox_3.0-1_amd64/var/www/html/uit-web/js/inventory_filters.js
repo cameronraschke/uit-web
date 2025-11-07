@@ -31,23 +31,30 @@ filterDepartmentReset.addEventListener("click", async (event) => {
   await fetchFilteredInventoryData();
 });
 
-// Manufacturer filter
+// Manufacturer & model filters
 const filterManufacturer = document.getElementById('inventory-filter-manufacturer')
 const filterManufacturerReset = document.getElementById('inventory-filter-manufacturer-reset')
+const filterModel = document.getElementById('inventory-filter-model')
+const filterModelReset = document.getElementById('inventory-filter-model-reset')
+
 filterManufacturer.addEventListener("change", async (event) => {
   filterManufacturerReset.style.display = 'inline-block';
+  populateModelSelect(filterManufacturer.value || null);
+  await updateModelOptionsBasedOnManufacturer();
   await fetchFilteredInventoryData();
 });
 filterManufacturerReset.addEventListener("click", async (event) => {
   event.preventDefault();
   filterManufacturerReset.style.display = 'none';
   filterManufacturer.value = '';
+  // Also reset model select
+  filterModelReset.style.display = 'none';
+  filterModel.value = '';
+  await loadManufacturersAndModels();
   await fetchFilteredInventoryData();
 });
 
 // Model filter
-const filterModel = document.getElementById('inventory-filter-model')
-const filterModelReset = document.getElementById('inventory-filter-model-reset')
 filterModel.addEventListener("change", async (event) => {
   filterModelReset.style.display = 'inline-block';
   await fetchFilteredInventoryData();
@@ -56,6 +63,7 @@ filterModelReset.addEventListener("click", async (event) => {
   event.preventDefault();
   filterModelReset.style.display = 'none';
   filterModel.value = '';
+  populateModelSelect();
   await fetchFilteredInventoryData();
 });
 
@@ -148,6 +156,7 @@ inventoryFilterResetButton.addEventListener("click", async (event) => {
   document.querySelectorAll('.inventory-filter-reset').forEach(elem => {
     elem.style.display = 'none';
   });
+  await loadManufacturersAndModels();
   await fetchFilteredInventoryData();
 });
 
@@ -248,7 +257,3 @@ async function updateModelOptionsBasedOnManufacturer() {
   // Repopulate model select with filtered options
   populateModelSelect(selectedManufacturer);
 }
-
-filterManufacturer.addEventListener("change", async (event) => {
-  await updateModelOptionsBasedOnManufacturer();
-});

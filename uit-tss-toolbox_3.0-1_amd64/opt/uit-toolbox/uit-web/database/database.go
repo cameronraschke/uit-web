@@ -1,9 +1,11 @@
 package database
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"database/sql"
+	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -883,4 +885,92 @@ func UpdateDB(ctx context.Context, sqlCode string, value string, tagnumber int) 
 	}
 
 	return nil
+}
+
+func ConvertInventoryTableDataToCSV(ctx context.Context, dbQueryData []*InventoryTableData) (string, error) {
+	if ctx.Err() != nil {
+		return "", errors.New("Context error in ConvertInventoryTableDataToCSV: " + ctx.Err().Error())
+	}
+	if dbQueryData == nil {
+		return "", errors.New("dbQueryData is nil in ConvertInventoryTableDataToCSV")
+	}
+	if len(dbQueryData) == 0 {
+		return "", errors.New("no data available to convert to CSV in ConvertInventoryTableDataToCSV")
+	}
+	writer := new(bytes.Buffer)
+	csvWriter := csv.NewWriter(writer)
+
+	csvHeader := []string{
+		"Tagnumber",
+		"System Serial",
+		"Location",
+		"Manufacturer",
+		"Model",
+		"Department",
+		"Domain",
+		"OS Name",
+		"Status",
+		"Broken",
+		"Note",
+		"Last Updated",
+	}
+	if err := csvWriter.Write(csvHeader); err != nil {
+		return "", errors.New("Error writing CSV header in ConvertInventoryTableDataToCSV: " + err.Error())
+	}
+
+	for _, row := range dbQueryData {
+		record := []string{
+			ptrIntToString(row.Tagnumber),
+			ptrStringToString(row.SystemSerial),
+			ptrStringToString(row.LocationFormatted),
+			ptrStringToString(row.SystemManufacturer),
+			ptrStringToString(row.SystemModel),
+			ptrStringToString(row.DepartmentFormatted),
+			ptrStringToString(row.DomainFormatted),
+			ptrStringToString(row.OsName),
+			ptrStringToString(row.Status),
+			ptrBoolToString(row.Broken),
+			ptrStringToString(row.Note),
+			ptrTimeToString(row.LastUpdated),
+		}
+		if err := csvWriter.Write(record); err != nil {
+			return "", errors.New("Error writing CSV row in ConvertInventoryTableDataToCSV: " + err.Error())
+		}
+	}
+
+	// Flush buffered data to the writer
+	csvWriter.Flush()
+	if err := csvWriter.Error(); err != nil {
+		return "", errors.New("Error flushing CSV writer in ConvertInventoryTableDataToCSV: " + err.Error())
+	}
+
+	return writer.String(), nil
+}
+
+func ptrIntToString(p *int64) string {
+	if p == nil {
+		return ""
+	}
+	return strconv.FormatInt(*p, 10)
+}
+
+func ptrStringToString(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+func ptrBoolToString(p *bool) string {
+	if p == nil {
+		return ""
+	}
+	return strconv.FormatBool(*p)
+}
+
+func ptrTimeToString(p *time.Time) string {
+	if p == nil {
+		return ""
+	}
+	return p.Format("2006-01-02 15:04:05")
 }
