@@ -761,7 +761,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-		w.Header().Set("Content-Disposition", "attachment; filename=\"inventory_table_data-"+time.Now().Format("01-02-2006 15:04:05")+".csv\"")
+		w.Header().Set("Content-Disposition", "attachment; filename=\"inventory_table_data-"+time.Now().Format("01-02-2006-150405")+".csv\"")
 		if _, err = w.Write([]byte(csvData)); err != nil {
 			log.HTTPWarning(req, "Error writing CSV data to response: "+err.Error())
 		}
