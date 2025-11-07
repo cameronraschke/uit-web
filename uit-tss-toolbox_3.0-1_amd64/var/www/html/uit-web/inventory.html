@@ -160,63 +160,63 @@
               pattern="[A-Za-z0-9\-_]{1,64}" />
             <span>
               <select id="inventory-filter-location" name="location" form="inventory-filter-form">
-                <option value="" selected>Location</option>
+                <option value="" selected disabled>Location</option>
                 {{ range $location, $locationReadable := .Locations }}
                   <option value="{{ $location }}">{{ $locationReadable }}</option>
                 {{ end }}
               </select>
-              <a id="inventory-filter-location-reset" href="">x</a>
+              <a id="inventory-filter-location-reset" class="inventory-filter-reset" href="">x</a>
             </span>
             <span>
               <select id="inventory-filter-department" name="department" form="inventory-filter-form">
-                <option value="" selected>Department</option>
+                <option value="" selected disabled>Department</option>
                 {{ range $department, $departmentReadable := .Departments }}
                   <option value="{{ $department }}">{{ $departmentReadable }}</option>
                 {{ end }}
               </select>
-              <a id="inventory-filter-department-reset" href="">x</a>
+              <a id="inventory-filter-department-reset" class="inventory-filter-reset" href="">x</a>
             </span>
             <span>
               <select id="inventory-filter-manufacturer" name="manufacturer" form="inventory-filter-form">
-                <option value="" selected>Manufacturer</option>
+                <option value="" selected disabled>Manufacturer</option>
               </select>
-              <a id="inventory-filter-manufacturer-reset" href="">x</a>
+              <a id="inventory-filter-manufacturer-reset" class="inventory-filter-reset" href="">x</a>
             </span>
             <span>
               <select id="inventory-filter-model" name="model" form="inventory-filter-form">
-                <option value="" selected>Model</option>
+                <option value="" selected disabled>Model</option>
               </select>
-              <a id="inventory-filter-model-reset" href="">x</a></span>
+              <a id="inventory-filter-model-reset" class="inventory-filter-reset" href="">x</a></span>
             <span>
               <select id="inventory-filter-domain" name="domain" form="inventory-filter-form">
-                <option value="" selected>AD Domain</option>
+                <option value="" selected disabled>AD Domain</option>
                 {{ range $domain, $domainReadable := .Domains }}
                   <option value="{{ $domain }}">{{ $domainReadable }}</option>
                 {{ end }}
               </select>
-              <a id="inventory-filter-domain-reset" href="">x</a></span>
+              <a id="inventory-filter-domain-reset" class="inventory-filter-reset" href="">x</a></span>
             <span>
               <select id="inventory-filter-status" name="status" form="inventory-filter-form">
-                <option value="" selected>Status</option>
+                <option value="" selected disabled>Status</option>
                 {{ range $status, $statusReadable := .Statuses }}
                   <option value="{{ $status }}">{{ $statusReadable }}</option>
                 {{ end }}
               </select>
-              <a id="inventory-filter-status-reset" href="">x</a></span>
+              <a id="inventory-filter-status-reset" class="inventory-filter-reset" href="">x</a></span>
             <span>
               <select id="inventory-filter-broken" name="broken" form="inventory-filter-form">
-                <option value="" selected>Broken?</option>
+                <option value="" selected disabled>Broken?</option>
                 <option value="true">Yes - Is broken</option>
                 <option value="false">No - Is functional</option>
               </select>
-              <a id="inventory-filter-broken-reset" href="">x</a></span>
+              <a id="inventory-filter-broken-reset" class="inventory-filter-reset" href="">x</a></span>
             <span>
               <select id="inventory-filter-has_images" name="has_images" form="inventory-filter-form">
-                <option value="" selected>Has Images?</option>
+                <option value="" selected disabled>Has Images?</option>
                 <option value="true">Yes - Has images</option>
                 <option value="false">No - Missing images</option>
               </select>
-              <a id="inventory-filter-has_images-reset" href="">x</a>
+              <a id="inventory-filter-has_images-reset" class="inventory-filter-reset" href="">x</a>
             </span>
             <button type="submit" class="submit" id="inventory-submit-button">Search</button>
             <button id="inventory-filter-form-reset-button" type="reset" class="cancel" id="inventory-reset-button">Reset Search</button>

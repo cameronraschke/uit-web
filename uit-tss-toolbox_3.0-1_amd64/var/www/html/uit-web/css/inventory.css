@@ -92,6 +92,6 @@
   gap: 1rem;
 }
 
-#inventory-filter-location-reset, #inventory-filter-department-reset, #inventory-filter-manufacturer-reset, #inventory-filter-model-reset, #inventory-filter-domain-reset, #inventory-filter-status-reset, #inventory-filter-broken-reset, #inventory-filter-has_images-reset {
+.inventory-filter-reset {
   display: none;
 }

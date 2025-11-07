@@ -17,6 +17,122 @@ const inventoryUpdateCancelButton = document.getElementById('inventory-update-ca
 const tagDatalist = document.getElementById('inventory-tag-suggestions');
 const clientImagesLink = document.getElementById('client_images_link');
 
+// Filter form
+const filterTag = document.getElementById('inventory-filter-tagnumber')
+const filterSerial = document.getElementById('inventory-filter-serial')
+
+// Location filter
+const filterLocation = document.getElementById('inventory-filter-location')
+const filterLocationReset = document.getElementById('inventory-filter-location-reset')
+filterLocation.addEventListener("change", async (event) => {
+  document.getElementById('inventory-filter-location-reset').style.display = 'inline-block';
+  await fetchFilteredInventoryData();
+});
+filterLocationReset.addEventListener("click", async (event) => {
+  event.preventDefault();
+  filterLocationReset.style.display = 'none';
+  filterLocation.value = '';
+  await fetchFilteredInventoryData();
+});
+
+// Department filter
+const filterDepartment = document.getElementById('inventory-filter-department')
+const filterDepartmentReset = document.getElementById('inventory-filter-department-reset')
+filterDepartment.addEventListener("change", async (event) => {
+  filterDepartmentReset.style.display = 'inline-block';
+  await fetchFilteredInventoryData();
+});
+filterDepartmentReset.addEventListener("click", async (event) => {
+  event.preventDefault();
+  filterDepartmentReset.style.display = 'none';
+  filterDepartment.value = '';
+  await fetchFilteredInventoryData();
+});
+
+// Manufacturer filter
+const filterManufacturer = document.getElementById('inventory-filter-manufacturer')
+const filterManufacturerReset = document.getElementById('inventory-filter-manufacturer-reset')
+filterManufacturer.addEventListener("change", async (event) => {
+  filterManufacturerReset.style.display = 'inline-block';
+  await fetchFilteredInventoryData();
+});
+filterManufacturerReset.addEventListener("click", async (event) => {
+  event.preventDefault();
+  filterDepartmentReset.style.display = 'none';
+  filterDepartment.value = '';
+  await fetchFilteredInventoryData();
+});
+
+// Model filter
+const filterModel = document.getElementById('inventory-filter-model')
+const filterModelReset = document.getElementById('inventory-filter-model-reset')
+filterModel.addEventListener("change", async (event) => {
+  filterModelReset.style.display = 'inline-block';
+  await fetchFilteredInventoryData();
+});
+filterModelReset.addEventListener("click", async (event) => {
+  event.preventDefault();
+  filterModelReset.style.display = 'none';
+  filterModel.value = '';
+  await fetchFilteredInventoryData();
+});
+
+// Domain filter
+const filterDomain = document.getElementById('inventory-filter-domain')
+const filterDomainReset = document.getElementById('inventory-filter-domain-reset')
+filterDomain.addEventListener("change", async (event) => {
+  filterDomainReset.style.display = 'inline-block';
+  await fetchFilteredInventoryData();
+});
+filterDomainReset.addEventListener("click", async (event) => {
+  event.preventDefault();
+  filterDomainReset.style.display = 'none';
+  filterDomain.value = '';
+  await fetchFilteredInventoryData();
+});
+
+// Status filter
+const filterStatus = document.getElementById('inventory-filter-status')
+const filterStatusReset = document.getElementById('inventory-filter-status-reset')
+filterStatus.addEventListener("change", async (event) => {
+  filterStatusReset.style.display = 'inline-block';
+  await fetchFilteredInventoryData();
+});
+filterStatusReset.addEventListener("click", async (event) => {
+  event.preventDefault();
+  filterStatusReset.style.display = 'none';
+  filterStatus.value = '';
+  await fetchFilteredInventoryData();
+});
+
+// Broken filter
+const filterBroken = document.getElementById('inventory-filter-broken')
+const filterBrokenReset = document.getElementById('inventory-filter-broken-reset')
+filterBroken.addEventListener("change", async (event) => {
+  document.getElementById('inventory-filter-broken-reset').style.display = 'inline-block';
+  await fetchFilteredInventoryData();
+});
+filterBrokenReset.addEventListener("click", async (event) => {
+  event.preventDefault();
+  filterBrokenReset.style.display = 'none';
+  filterBroken.value = '';
+  await fetchFilteredInventoryData();
+});
+
+// Has Images filter
+const filterHasImages = document.getElementById('inventory-filter-has_images')
+const filterHasImagesReset = document.getElementById('inventory-filter-has_images-reset')
+filterHasImages.addEventListener("change", async (event) => {
+  document.getElementById('inventory-filter-has_images-reset').style.display = 'inline-block';
+  await fetchFilteredInventoryData();
+});
+filterHasImagesReset.addEventListener("click", async (event) => {
+  event.preventDefault();
+  filterHasImagesReset.style.display = 'none';
+  filterHasImages.value = '';
+  await fetchFilteredInventoryData();
+});
+
 async function getTagOrSerial(tagnumber, serial) {
   const query = new URLSearchParams();
   if (tagnumber) {
@@ -303,19 +419,19 @@ async function populateLocationForm(tag) {
 
 
 async function fetchFilteredInventoryData() {
-  const filterTag = document.getElementById('inventory-filter-tagnumber').value.trim() || null;
-  const filterSerial = document.getElementById('inventory-filter-serial').value.trim() || null;
-  const filterLocation = document.getElementById('inventory-filter-location').value.trim() || null;
-  const filterDepartment = document.getElementById('inventory-filter-department').value.trim() || null;
-  const filterManufacturer = document.getElementById('inventory-filter-manufacturer').value.trim() || null;
-  const filterModel = document.getElementById('inventory-filter-model').value.trim() || null;
-  const filterDomain = document.getElementById('inventory-filter-domain').value.trim() || null;
-  const filterStatus = document.getElementById('inventory-filter-status').value.trim() || null;
-  const filterBroken = document.getElementById('inventory-filter-broken').value.trim() || null;
-  const filterHasImages = document.getElementById('inventory-filter-has_images').value.trim() || null;
+  const tag = filterTag.value.trim() || null;
+  const serial = filterSerial.value.trim() || null;
+  const location = filterLocation.value.trim() || null;
+  const department = filterDepartment.value.trim() || null;
+  const manufacturer = filterManufacturer.value.trim() || null;
+  const model = filterModel.value.trim() || null;
+  const domain = filterDomain.value.trim() || null;
+  const status = filterStatus.value.trim() || null;
+  const broken = filterBroken.value.trim() || null;
+  const hasImages = filterHasImages.value.trim() || null;
 
   try {
-    const tableData = await getInventoryTableData(filterTag, filterSerial, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages);
+    const tableData = await getInventoryTableData(tag, serial, location, department, manufacturer, model, domain, status, broken, hasImages);
     await renderInventoryTable(tableData);
   } catch (error) {
     console.error("Error fetching inventory data:", error);
@@ -353,6 +469,7 @@ function populateManufacturerSelect() {
   defaultOption.value = '';
   defaultOption.textContent = 'Manufacturer';
   defaultOption.selected = true;
+  defaultOption.disabled = true;
   manufacturerSelect.appendChild(defaultOption);
 
   // Sort by formatted name
@@ -390,6 +507,8 @@ function populateModelSelect(selectedManufacturer = null) {
   const defaultOption = document.createElement('option');
   defaultOption.value = '';
   defaultOption.textContent = 'Model';
+  defaultOption.selected = true;
+  defaultOption.disabled = true;
   modelSelect.appendChild(defaultOption);
 
   // Sort by formatted name
@@ -430,10 +549,10 @@ async function updateModelOptionsBasedOnManufacturer() {
   populateModelSelect(selectedManufacturer);
 }
 
-const filterManufacturer = document.getElementById('inventory-filter-manufacturer')
 filterManufacturer.addEventListener("change", async (event) => {
   await updateModelOptionsBasedOnManufacturer();
 });
+
 
 Promise.all([fetchFilteredInventoryData(), loadManufacturersAndModels()]);
 
