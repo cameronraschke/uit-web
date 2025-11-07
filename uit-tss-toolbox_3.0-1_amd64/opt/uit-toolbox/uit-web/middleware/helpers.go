@@ -45,7 +45,7 @@ type JsonError struct {
 }
 
 const (
-	disallowedQueryChars = "\x00\r\n<>\"'`:"
+	disallowedQueryChars = "\x00\r\n<>`:"
 	disallowedPathChars  = " <>\"'`|\\*$%#?~:\x00\r\n"
 )
 

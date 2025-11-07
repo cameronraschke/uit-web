@@ -28,8 +28,7 @@ async function renderInventoryTable(tableData = null) {
   const tableBody = document.getElementById('inventory-table-body')
   try {
     if (!tableData) {
-      console.log('No table data provided, fetching all inventory data.');
-      tableData = await getInventoryTableData();
+      throw new Error('No table data provided.');
     }
     if (!Array.isArray(tableData) || tableData.length === 0) {
       throw new Error('Table data is empty or invalid.');
@@ -194,7 +193,7 @@ async function renderInventoryTable(tableData = null) {
     }
     tableBody.appendChild(fragment);
   } catch (error) {
-    console.error('Error rendering inventory table:', error.message);
+    // console.error('Error rendering inventory table:', error.message);
     tableBody.innerHTML = '';
     const errRow = document.createElement('tr');
     const errCell = document.createElement('td');

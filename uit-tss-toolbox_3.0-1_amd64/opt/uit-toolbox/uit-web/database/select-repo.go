@@ -557,20 +557,18 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *Inve
 		LEFT JOIN static_departments ON locations.department = static_departments.department
 		LEFT JOIN static_domains ON locations.domain = static_domains.domain
 		WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-		AND ($1::bigint IS NULL OR locations.tagnumber = $1::bigint)
-		AND ($2::text IS NULL OR locations.system_serial = $2::text)
-		AND ($3::text IS NULL OR locations.location = $3::text)
-		AND ($4::text IS NULL OR system_data.system_manufacturer = $4::text)
-		AND ($5::text IS NULL OR system_data.system_model = $5::text)
-		AND ($6::text IS NULL OR locations.department = $6::text)
-		AND ($7::text IS NULL OR locations.domain = $7::text)
-		AND ($8::text IS NULL OR locations.status = $8::text)
-		AND ($9::boolean IS NULL OR locations.broken = $9::boolean)
-		AND (
-			$10::boolean IS NULL 
-			OR ($10::boolean = TRUE AND EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber))
-			OR ($10::boolean = FALSE AND NOT EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber))
-		)
+		AND ($1::bigint IS NULL OR locations.tagnumber = $1)
+		AND ($2::text IS NULL OR locations.system_serial = $2)
+		AND ($3::text IS NULL OR locations.location = $3)
+		AND ($4::text IS NULL OR system_data.system_manufacturer = $4)
+		AND ($5::text IS NULL OR system_data.system_model = $5)
+		AND ($6::text IS NULL OR locations.department = $6)
+		AND ($7::text IS NULL OR locations.domain = $7)
+		AND ($8::text IS NULL OR locations.status = $8)
+		AND ($9::boolean IS NULL OR locations.broken = $9)
+		AND ($10::boolean IS NULL OR 
+			($10 = TRUE AND EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber)) OR
+			($10 = FALSE AND NOT EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber)))
 		ORDER BY locations.time DESC;`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlCode,
@@ -583,7 +581,8 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *Inve
 		toNullString(filterOptions.Domain),
 		toNullString(filterOptions.Status),
 		toNullBool(filterOptions.Broken),
-		toNullBool(filterOptions.HasImages))
+		toNullBool(filterOptions.HasImages),
+	)
 	if err != nil {
 		return nil, err
 	}

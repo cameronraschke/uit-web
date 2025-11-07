@@ -45,26 +45,26 @@ func toNullString(p *string) any {
 	if p == nil {
 		return nil
 	}
-	return *p
+	return sql.NullString{String: *p, Valid: true}
 }
 func toNullBool(p *bool) any {
 	if p == nil {
 		return nil
 	}
-	return *p
+	return sql.NullBool{Bool: *p, Valid: true}
 }
 func toNullInt64(p *int64) any {
 	if p == nil {
 		return nil
 	}
-	return *p
+	return sql.NullInt64{Int64: *p, Valid: true}
 }
 
 func toNullTime(p *time.Time) any {
 	if p == nil {
 		return nil
 	}
-	return *p
+	return sql.NullTime{Time: *p, Valid: true}
 }
 
 func CreateAdminUser() error {
