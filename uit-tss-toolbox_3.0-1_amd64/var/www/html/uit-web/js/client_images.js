@@ -59,7 +59,10 @@ async function loadClientImages(clientTag) {
 			imgDiv.className = 'image-box';
 
 			const imgLink = document.createElement('a');
-			imgLink.href = `${imgJsonManifest.url}`;
+      const imgURL = new URL(`/api/images`, window.location.origin);
+      imgURL.searchParams.set('tagnumber', clientTag);
+      imgURL.searchParams.set('uuid', imgJsonManifest.uuid);
+      imgLink.href = imgURL.toString();
 			imgLink.target = '_blank';
 			imgLink.rel = 'noopener noreferrer';
 
@@ -73,7 +76,12 @@ async function loadClientImages(clientTag) {
         console.warn(`Unsupported media type: ${imgJsonManifest.file_type} for image UUID: ${imgJsonManifest.uuid}`);
         continue;
       }
-      media.src = `${imgJsonManifest.url}`;
+      if (!media) {
+        console.warn(`Failed to create media element for image UUID: ${imgJsonManifest.uuid}`);
+        continue;
+      }
+      media.lazy = true;
+      media.src = imgURL.toString();
 			media.alt = `Media for ${clientTag}`;
 			media.className = 'client-image';
 

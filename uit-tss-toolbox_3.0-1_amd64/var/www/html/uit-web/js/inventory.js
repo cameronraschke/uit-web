@@ -327,5 +327,12 @@ inventoryFilterForm.addEventListener("submit", async (event) => {
   await fetchFilteredInventoryData();
 });
 
+const inventoryFilterResetButton = document.getElementById('inventory-filter-form-reset-button');
+inventoryFilterResetButton.addEventListener("click", async (event) => {
+  event.preventDefault();
+  inventoryFilterForm.reset();
+  await fetchFilteredInventoryData();
+});
+
 Promise.all([fetchFilteredInventoryData()]);
 

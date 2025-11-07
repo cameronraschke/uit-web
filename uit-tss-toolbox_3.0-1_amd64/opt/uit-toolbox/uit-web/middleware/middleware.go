@@ -171,7 +171,7 @@ func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
 		if err != nil {
 			log.HTTPWarning(req, "Error getting endpoint config for WebEndpointConfigMiddleware: "+err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
+			WriteJsonError(w, http.StatusNotFound)
 			return
 		}
 		ctx, err := withWebEndpointConfig(req.Context(), &endpointConfig)

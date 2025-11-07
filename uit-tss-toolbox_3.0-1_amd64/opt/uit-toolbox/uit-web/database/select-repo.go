@@ -110,7 +110,7 @@ func (repo *Repo) GetStatuses(ctx context.Context) (map[string]string, error) {
 }
 
 func (repo *Repo) GetLocations(ctx context.Context) (map[string]string, error) {
-	sqlCode := `SELECT location, locationFormatting(location) AS location_formatted FROM locations WHERE time > NOW() - INTERVAL '6 MONTH' AND location IS NOT NULL GROUP BY location ORDER BY location ASC;`
+	sqlCode := `SELECT location, locationFormatting(location) AS location_formatted FROM locations WHERE time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber) AND location IS NOT NULL GROUP BY location ORDER BY location ASC;`
 	rows, err := repo.DB.QueryContext(ctx, sqlCode)
 	if err != nil {
 		return nil, err
