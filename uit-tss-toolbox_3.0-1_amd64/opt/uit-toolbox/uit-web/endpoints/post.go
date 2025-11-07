@@ -327,7 +327,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !middleware.IsAlphanumericAscii([]byte(*inventoryUpdate.SystemSerial)) {
+	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.SystemSerial) {
 		log.Warning("Non-alphanumeric characters in system serial field for inventory update: " + requestIP.String())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -359,7 +359,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
-		if !middleware.IsAlphanumericAscii([]byte(*inventoryUpdate.SystemManufacturer)) {
+		if !middleware.IsASCIIStringPrintable(*inventoryUpdate.SystemManufacturer) {
 			log.Warning("Non-alphanumeric characters in system manufacturer field for inventory update: " + requestIP.String())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
@@ -376,7 +376,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
-		if !middleware.IsAlphanumericAscii([]byte(*inventoryUpdate.SystemModel)) {
+		if !middleware.IsASCIIStringPrintable(*inventoryUpdate.SystemModel) {
 			log.Warning("Non-alphanumeric characters in system model field for inventory update: " + requestIP.String())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return

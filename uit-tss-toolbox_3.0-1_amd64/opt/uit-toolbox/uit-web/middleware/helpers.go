@@ -379,18 +379,14 @@ func IsPrintableASCII(b []byte) bool {
 }
 
 func IsASCIIStringPrintable(s string) bool {
+	// if s == "" {
+	// 	return false
+	// }
+	if !utf8.ValidString(s) {
+		return false
+	}
 	for _, char := range s {
 		if char < 32 || char > 126 {
-			return false
-		}
-	}
-	return true
-}
-
-func IsAlphanumericAscii(b []byte) bool {
-	for i := range b {
-		char := b[i]
-		if (char < '0' || char > '9') && (char < 'A' || char > 'Z') && (char < 'a' || char > 'z') && char != '_' && char != '-' && char != ' ' {
 			return false
 		}
 	}
