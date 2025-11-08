@@ -621,7 +621,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		}
 
 		fullFilePath := filepath.Join(imageDirectoryPath, fileName)
-		if err := os.WriteFile(fullFilePath, fileData, 0644); err != nil {
+		if err := os.WriteFile(fullFilePath, fileData, 0755); err != nil {
 			log.Error("Failed to save uploaded file for inventory update: " + err.Error() + " (" + requestIP.String() + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
