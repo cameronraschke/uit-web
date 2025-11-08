@@ -294,7 +294,7 @@ async function populateLocationForm(tag) {
     if (locationFormData.system_model) inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model;
     if (locationFormData.department) inventoryUpdateForm.querySelector("#department").value = locationFormData.department;
     if (locationFormData.domain) inventoryUpdateForm.querySelector("#domain").value = locationFormData.domain;
-    if (typeof locationFormData.broken === "boolean") inventoryUpdateForm.querySelector("#broken").value = locationFormData.broken;
+    if (typeof locationFormData.is_broken === "boolean") inventoryUpdateForm.querySelector("#broken").value = locationFormData.is_broken;
     if (typeof locationFormData.status === "string") inventoryUpdateForm.querySelector("#status").value = locationFormData.status;
     if (locationFormData.note) inventoryUpdateForm.querySelector("#note").value = locationFormData.note;
   }

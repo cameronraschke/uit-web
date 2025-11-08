@@ -156,15 +156,15 @@ async function renderInventoryTable(tableData = null) {
       tr.appendChild(statusCell);
 
       const brokenCell = document.createElement('td');
-      if (row.broken === true) {
+      if (row.is_broken === true) {
         brokenCell.textContent = 'Broken';
-        brokenCell.dataset.broken = 'true';
-      } else if (row.broken === false) {
+        brokenCell.dataset.is_broken = 'true';
+      } else if (row.is_broken === false) {
         brokenCell.textContent = 'Functional';
-        brokenCell.dataset.broken = 'false';
+        brokenCell.dataset.is_broken = 'false';
       } else {
         brokenCell.textContent = 'N/A';
-        brokenCell.dataset.broken = null;
+        brokenCell.dataset.is_broken = null;
       }
       tr.appendChild(brokenCell);
 
