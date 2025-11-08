@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS locations (
 	tagnumber INTEGER NOT NULL,
 	system_serial VARCHAR(128) DEFAULT NULL,
 	location VARCHAR(128) NOT NULL,
-	is_broken BOOLEAN DEFAULT NULL,
+	is_broken BOOLEAN DEFAULT FALSE,
 	disk_removed BOOLEAN DEFAULT NULL,
 	department_name VARCHAR(64) REFERENCES static_department_info(department_name) DEFAULT NULL,
 	ad_domain VARCHAR(64) REFERENCES static_ad_domains(domain_name) DEFAULT NULL,
