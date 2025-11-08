@@ -37,10 +37,12 @@ func (repo *Repo) InsertInventory(ctx context.Context, tagnumber *int64, systemS
 }
 
 func (repo *Repo) UpdateSystemData(ctx context.Context, tagnumber int64, systemManufacturer *string, systemModel *string) error {
-	sqlCode := `UPDATE system_data 
-			SET 
-				system_manufacturer = COALESCE($2, system_manufacturer), 
-				system_model = COALESCE($3, system_model)
+	sqlCode := `INSERT INTO system_data (tagnumber, system_manufacturer, system_model) 
+			VALUES ($1, $2, $3)
+			ON CONFLICT (tagnumber) DO 
+			UPDATE SET 
+				system_manufacturer = EXCLUDED.system_manufacturer, 
+				system_model = EXCLUDED.system_model
 			WHERE tagnumber = $1;`
 	_, err := repo.DB.ExecContext(ctx, sqlCode, tagnumber, systemManufacturer, systemModel)
 	return err
