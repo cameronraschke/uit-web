@@ -402,7 +402,7 @@ VALUES
 
 CREATE TABLE IF NOT EXISTS static_ad_domains (
   domain_name VARCHAR(64) PRIMARY KEY,
-  domain_formatted VARCHAR(64) DEFAULT NULL,
+  domain_name_formatted VARCHAR(64) DEFAULT NULL,
 	domain_sort_order SMALLINT NOT NULL DEFAULT 0
 );
 

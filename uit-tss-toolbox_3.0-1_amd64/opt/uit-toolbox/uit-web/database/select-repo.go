@@ -44,7 +44,7 @@ func (repo *Repo) GetAllTags(ctx context.Context) ([]int, error) {
 }
 
 func (repo *Repo) GetDepartments(ctx context.Context) (map[string]string, error) {
-	rows, err := repo.DB.QueryContext(ctx, "SELECT department, department_formatted FROM static_department_info ORDER BY department_formatted;")
+	rows, err := repo.DB.QueryContext(ctx, "SELECT department_name, department_name_formatted FROM static_department_info ORDER BY department_name_formatted;")
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (repo *Repo) GetDepartments(ctx context.Context) (map[string]string, error)
 }
 
 func (repo *Repo) GetDomains(ctx context.Context) (map[string]string, error) {
-	rows, err := repo.DB.QueryContext(ctx, "SELECT domain, domain_formatted FROM static_ad_domains ORDER BY domain_formatted;")
+	rows, err := repo.DB.QueryContext(ctx, "SELECT domain_name, domain_name_formatted FROM static_ad_domains ORDER BY domain_name_formatted;")
 	if err != nil {
 		return nil, err
 	}
@@ -525,7 +525,7 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *Inve
 	sqlCode := `SELECT locations.tagnumber, locations.system_serial, locations.location, 
 		locationFormatting(locations.location) AS location_formatted,
 		system_data.system_manufacturer, system_data.system_model, locations.department_name, static_department_info.department_name_formatted,
-		locations.ad_domain, static_ad_domains.domain_formatted, client_health.os_installed, client_health.os_name, static_client_statuses.status_formatted,
+		locations.ad_domain, static_ad_domains.domain_name_formatted, client_health.os_installed, client_health.os_name, static_client_statuses.status_formatted,
 		locations.is_broken, locations.note, locations.time AS last_updated
 		FROM locations
 		LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
