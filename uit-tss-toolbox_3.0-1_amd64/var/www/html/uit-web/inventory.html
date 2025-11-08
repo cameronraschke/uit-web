@@ -115,12 +115,9 @@
               <label for="status" class="required-field">Status:</label>
               <select id="status" name="status">
                 <option value="" disabled selected>Select Status</option>
-                <option value="storage">Storage</option>
-                <option value="checked-out">Checked Out</option>
-                <option value="needs-repair">Needs Repair</option>
-                <option value="retired">Retired</option>
-                <option value="lost">Lost</option>
-                <option value="other">Other</option>
+                {{ range $status, $statusReadable := .Statuses }}
+                  <option value="{{ $status }}">{{ $statusReadable }}</option>
+                {{ end }}
               </select>
             </div>
             <div class="vertical-spacer"></div>
