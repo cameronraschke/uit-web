@@ -42,8 +42,7 @@ func (repo *Repo) UpdateSystemData(ctx context.Context, tagnumber int64, systemM
 			ON CONFLICT (tagnumber) DO 
 			UPDATE SET 
 				system_manufacturer = EXCLUDED.system_manufacturer, 
-				system_model = EXCLUDED.system_model
-			WHERE tagnumber = $1;`
+				system_model = EXCLUDED.system_model;`
 	_, err := repo.DB.ExecContext(ctx, sqlCode, tagnumber, systemManufacturer, systemModel)
 	return err
 }
