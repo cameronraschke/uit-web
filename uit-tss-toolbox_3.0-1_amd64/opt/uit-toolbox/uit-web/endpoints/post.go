@@ -355,42 +355,14 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	*inventoryUpdate.Location = strings.TrimSpace(*inventoryUpdate.Location)
 
 	// Broken (optional, bool)
-	var brokenBool bool
-	if inventoryUpdate.Broken != nil {
-		brokenBool, err = strconv.ParseBool(strconv.FormatBool(*inventoryUpdate.Broken))
-		if err != nil {
-			log.Warning("Cannot parse broken bool value for inventory update: " + requestIP.String())
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		if !brokenBool && brokenBool {
-			log.Warning("Invalid broken bool value for inventory update: " + requestIP.String())
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-	} else {
+	if inventoryUpdate.Broken == nil {
 		log.Info("No broken bool value provided for inventory update: " + requestIP.String())
 	}
-	*inventoryUpdate.Broken = brokenBool
 
 	// Disk removed (optional, bool)
-	var diskRemovedBool bool
-	if inventoryUpdate.DiskRemoved != nil {
-		diskRemovedBool, err = strconv.ParseBool(strconv.FormatBool(*inventoryUpdate.DiskRemoved))
-		if err != nil {
-			log.Warning("Cannot parse disk removed bool value for inventory update: " + requestIP.String())
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		if !diskRemovedBool && diskRemovedBool {
-			log.Warning("Invalid disk removed bool value for inventory update: " + requestIP.String())
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-	} else {
+	if inventoryUpdate.DiskRemoved == nil {
 		log.Info("No disk removed bool value provided for inventory update: " + requestIP.String())
 	}
-	*inventoryUpdate.DiskRemoved = diskRemovedBool
 
 	// Department (optional, max 24 chars)
 	if inventoryUpdate.Department != nil && strings.TrimSpace(*inventoryUpdate.Department) != "" {
