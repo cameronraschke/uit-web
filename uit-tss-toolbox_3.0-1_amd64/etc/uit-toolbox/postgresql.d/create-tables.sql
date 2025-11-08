@@ -16,85 +16,85 @@ CREATE TABLE serverstats (
 
 
 CREATE TABLE IF NOT EXISTS jobstats (
-    uuid VARCHAR(64) UNIQUE NOT NULL,
-    tagnumber INTEGER DEFAULT NULL,
-    etheraddress VARCHAR(17) DEFAULT NULL,
-    date DATE DEFAULT NULL,
-    time TIMESTAMP(3) DEFAULT NULL,
-    system_serial VARCHAR(64) DEFAULT NULL,
-    disk VARCHAR(8) DEFAULT NULL,
-    disk_model VARCHAR(36) DEFAULT NULL,
-    disk_type VARCHAR(4) DEFAULT NULL,
-    disk_size SMALLINT DEFAULT NULL,
-    disk_serial VARCHAR(32) DEFAULT NULL,
-    disk_writes DECIMAL(5,2) DEFAULT NULL,
-    disk_reads DECIMAL(5,2) DEFAULT NULL,
-    disk_power_on_hours INTEGER DEFAULT NULL,
-    disk_errors INT DEFAULT NULL,
-    disk_power_cycles INTEGER DEFAULT NULL,
-    disk_temp SMALLINT DEFAULT NULL,
-    disk_firmware VARCHAR(10) DEFAULT NULL,
-    battery_model VARCHAR(16) DEFAULT NULL,
-    battery_serial VARCHAR(16) DEFAULT NULL,
-    battery_health SMALLINT DEFAULT NULL,
-    battery_charge_cycles SMALLINT DEFAULT NULL,
-    battery_capacity INTEGER DEFAULT NULL,
-    battery_manufacturedate DATE DEFAULT NULL,
-    cpu_temp SMALLINT DEFAULT NULL,
-    bios_version VARCHAR(24) DEFAULT NULL,
-    bios_date VARCHAR(12) DEFAULT NULL,
-    bios_firmware VARCHAR(8) DEFAULT NULL,
-    ram_serial VARCHAR(128) DEFAULT NULL,
-    ram_capacity SMALLINT DEFAULT NULL,
-    ram_speed SMALLINT DEFAULT NULL,
-    cpu_usage DECIMAL(6,2) DEFAULT NULL,
-    network_usage DECIMAL(5,2) DEFAULT NULL,
-    boot_time DECIMAL(5,2) DEFAULT NULL,
-    erase_completed BOOLEAN DEFAULT FALSE,
-    erase_mode VARCHAR(24) DEFAULT NULL,
-    erase_diskpercent SMALLINT DEFAULT NULL,
-    erase_time SMALLINT DEFAULT NULL,
-    clone_completed BOOLEAN DEFAULT FALSE,
-    clone_image VARCHAR(36) DEFAULT NULL,
-    clone_master BOOLEAN DEFAULT FALSE,
-    clone_time SMALLINT DEFAULT NULL,
-    job_failed BOOLEAN DEFAULT FALSE,
-    host_connected BOOLEAN DEFAULT FALSE
+	uuid VARCHAR(64) UNIQUE NOT NULL,
+	tagnumber INTEGER DEFAULT NULL,
+	etheraddress VARCHAR(17) DEFAULT NULL,
+	date DATE DEFAULT NULL,
+	time TIMESTAMP(3) DEFAULT NULL,
+	system_serial VARCHAR(64) DEFAULT NULL,
+	disk VARCHAR(8) DEFAULT NULL,
+	disk_model VARCHAR(36) DEFAULT NULL,
+	disk_type VARCHAR(4) DEFAULT NULL,
+	disk_size SMALLINT DEFAULT NULL,
+	disk_serial VARCHAR(32) DEFAULT NULL,
+	disk_writes DECIMAL(5,2) DEFAULT NULL,
+	disk_reads DECIMAL(5,2) DEFAULT NULL,
+	disk_power_on_hours INTEGER DEFAULT NULL,
+	disk_errors INT DEFAULT NULL,
+	disk_power_cycles INTEGER DEFAULT NULL,
+	disk_temp SMALLINT DEFAULT NULL,
+	disk_firmware VARCHAR(10) DEFAULT NULL,
+	battery_model VARCHAR(16) DEFAULT NULL,
+	battery_serial VARCHAR(16) DEFAULT NULL,
+	battery_health SMALLINT DEFAULT NULL,
+	battery_charge_cycles SMALLINT DEFAULT NULL,
+	battery_capacity INTEGER DEFAULT NULL,
+	battery_manufacturedate DATE DEFAULT NULL,
+	cpu_temp SMALLINT DEFAULT NULL,
+	bios_version VARCHAR(24) DEFAULT NULL,
+	bios_date VARCHAR(12) DEFAULT NULL,
+	bios_firmware VARCHAR(8) DEFAULT NULL,
+	ram_serial VARCHAR(128) DEFAULT NULL,
+	ram_capacity SMALLINT DEFAULT NULL,
+	ram_speed SMALLINT DEFAULT NULL,
+	cpu_usage DECIMAL(6,2) DEFAULT NULL,
+	network_usage DECIMAL(5,2) DEFAULT NULL,
+	boot_time DECIMAL(5,2) DEFAULT NULL,
+	erase_completed BOOLEAN DEFAULT FALSE,
+	erase_mode VARCHAR(24) DEFAULT NULL,
+	erase_diskpercent SMALLINT DEFAULT NULL,
+	erase_time SMALLINT DEFAULT NULL,
+	clone_completed BOOLEAN DEFAULT FALSE,
+	clone_image VARCHAR(36) DEFAULT NULL,
+	clone_master BOOLEAN DEFAULT FALSE,
+	clone_time SMALLINT DEFAULT NULL,
+	job_failed BOOLEAN DEFAULT FALSE,
+	host_connected BOOLEAN DEFAULT FALSE
 );
 
 
 CREATE TABLE IF NOT EXISTS locations (
-    time TIMESTAMP(3) UNIQUE NOT NULL,
-    tagnumber INTEGER DEFAULT NULL,
-    system_serial VARCHAR(64) DEFAULT NULL,
-    location VARCHAR(128) DEFAULT NULL,
-    broken BOOLEAN DEFAULT NULL,
-    status VARCHAR(24) REFERENCES client_location_status(status) DEFAULT NULL,
-    disk_removed BOOLEAN DEFAULT NULL,
-    department VARCHAR(24) DEFAULT NULL,
-    domain VARCHAR(24) DEFAULT NULL,
-    note VARCHAR(512) DEFAULT NULL
+	time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP PRIMARY KEY,
+	tagnumber INTEGER NOT NULL,
+	system_serial VARCHAR(128) DEFAULT NULL,
+	location VARCHAR(128) NOT NULL,
+	is_broken BOOLEAN DEFAULT NULL,
+	disk_removed BOOLEAN DEFAULT NULL,
+	department_name VARCHAR(64) REFERENCES static_department_info(department_name) DEFAULT NULL,
+	ad_domain VARCHAR(64) REFERENCES static_ad_domains(domain_name) DEFAULT NULL,
+	note VARCHAR(512) DEFAULT NULL,
+	client_status VARCHAR(24) REFERENCES static_client_statuses(status) DEFAULT NULL
 );
 
 
 DROP TABLE IF EXISTS static_disk_stats;
 CREATE TABLE IF NOT EXISTS static_disk_stats (
-    disk_model VARCHAR(36) UNIQUE NOT NULL,
-    disk_capacity SMALLINT DEFAULT NULL,
-    disk_write_speed SMALLINT DEFAULT NULL,
-    disk_read_speed SMALLINT DEFAULT NULL,
-    disk_mtbf INTEGER DEFAULT NULL,
-    disk_tbw SMALLINT DEFAULT NULL,
-    disk_tbr SMALLINT DEFAULT NULL,
-    min_temp SMALLINT DEFAULT NULL,
-    max_temp SMALLINT DEFAULT NULL,
-    disk_interface VARCHAR(4) DEFAULT NULL,
-    disk_type VARCHAR(4) DEFAULT NULL,
-    spinning BOOLEAN DEFAULT NULL,
-    spin_speed SMALLINT DEFAULT NULL,
-    power_cycles INTEGER DEFAULT NULL,
-    pcie_gen SMALLINT DEFAULT NULL,
-    pcie_lanes SMALLINT DEFAULT NULL
+	disk_model VARCHAR(36) UNIQUE NOT NULL,
+	disk_capacity SMALLINT DEFAULT NULL,
+	disk_write_speed SMALLINT DEFAULT NULL,
+	disk_read_speed SMALLINT DEFAULT NULL,
+	disk_mtbf INTEGER DEFAULT NULL,
+	disk_tbw SMALLINT DEFAULT NULL,
+	disk_tbr SMALLINT DEFAULT NULL,
+	min_temp SMALLINT DEFAULT NULL,
+	max_temp SMALLINT DEFAULT NULL,
+	disk_interface VARCHAR(4) DEFAULT NULL,
+	disk_type VARCHAR(4) DEFAULT NULL,
+	spinning BOOLEAN DEFAULT NULL,
+	spin_speed SMALLINT DEFAULT NULL,
+	power_cycles INTEGER DEFAULT NULL,
+	pcie_gen SMALLINT DEFAULT NULL,
+	pcie_lanes SMALLINT DEFAULT NULL
 );
 
 INSERT INTO static_disk_stats
@@ -367,34 +367,15 @@ CREATE TABLE IF NOT EXISTS live_images (
     screenshot TEXT DEFAULT NULL
 );
 
-DROP TABLE IF EXISTS static_departments;
-CREATE TABLE IF NOT EXISTS static_departments (
-  department VARCHAR(128) UNIQUE NOT NULL,
-  department_formatted VARCHAR(128) NOT NULL,
-  owner VARCHAR(64) NOT NULL,
-  department_bool BOOLEAN NOT NULL DEFAULT FALSE
+CREATE TABLE IF NOT EXISTS static_department_info (
+  department_name VARCHAR(64) PRIMARY KEY,
+  department_name_formatted VARCHAR(64) NOT NULL,
+  department_owner VARCHAR(64) DEFAULT NULL
 );
-
-INSERT INTO static_departments (
-  department,
-  department_formatted,
-  owner,
-  department_bool
-) VALUES
-  ('techComm', 'Tech Commons', 'Matthew Harvey', TRUE),
-  ('execSupport', 'Exec. Support', 'Kevin Vu', TRUE),
-  ('shrl', 'SHRL', 'Alex Tran', TRUE),
-  ('pre-property', 'Pre-Property', 'Matthew Harvey', FALSE),
-  ('o365', 'Office 365', 'Andy Moon', FALSE),
-  ('property', 'Property', 'Unknown', FALSE),
-  ('tss-apple', 'Apple Devices', 'Mark Norgan', FALSE),
-  ('uit-security', 'UIT Security', 'Kevin Vu', FALSE),
-  ('itac', 'ITAC', 'ITAC', FALSE)
-;
 
 DROP TABLE IF EXISTS static_job_names;
 CREATE TABLE IF NOT EXISTS static_job_names (
-  job VARCHAR(24) UNIQUE NOT NULL,
+  job VARCHAR(24) PRIMARY KEY,
   job_readable VARCHAR(24) DEFAULT NULL,
   job_rank SMALLINT DEFAULT NULL,
   job_html_bool BOOLEAN DEFAULT NULL
@@ -419,23 +400,15 @@ VALUES
     ;
 
 
-DROP TABLE IF EXISTS static_domains;
-CREATE TABLE IF NOT EXISTS static_domains (
-  domain VARCHAR(24) UNIQUE NOT NULL,
-  domain_formatted VARCHAR(36) DEFAULT NULL
+CREATE TABLE IF NOT EXISTS static_ad_domains (
+  domain_name VARCHAR(64) PRIMARY KEY,
+  domain_formatted VARCHAR(64) DEFAULT NULL,
+	domain_sort_order SMALLINT NOT NULL DEFAULT 0
 );
 
-INSERT INTO 
-    static_domains (domain, domain_formatted)
-VALUES
-    ('IT-TSS-CheckOut', 'TSS Laptop Checkout'),
-    ('IT-TSS-Teamleads', 'TSS ITSC Team Leads')
-    ;
 
-
-DROP TABLE IF EXISTS static_image_names;
 CREATE TABLE IF NOT EXISTS static_image_names (
-    image_name VARCHAR(36) UNIQUE NOT NULL,
+    image_name VARCHAR(36) PRIMARY KEY,
     image_os_author VARCHAR(24) DEFAULT NULL,
     image_version VARCHAR(24) DEFAULT NULL,
     image_platform_vendor VARCHAR(24) DEFAULT NULL,
@@ -453,6 +426,7 @@ VALUES
     ('TechCommons-Dell-HelpDesk', 'Microsoft', 'Windows 11', 'Dell', 'Latitude 7420', 'Windows 11'),
     ('SHRL-Dell-Desktops', 'Microsoft', 'Windows 11', 'Dell', NULL, 'Windows 11'),
     ('Ubuntu-Desktop', 'Canonical', '24.04.2 LTS', 'Dell', NULL, 'Ubuntu Desktop')
+    ON CONFLICT (image_name) DO NOTHING
     ;
 
 
@@ -466,110 +440,101 @@ CREATE TABLE IF NOT EXISTS notes (
     bugs TEXT DEFAULT NULL
 );
 
-DROP TABLE IF EXISTS static_notes;
-CREATE TABLE IF NOT EXISTS static_notes (
-    note VARCHAR(64) UNIQUE NOT NULL,
-    note_readable VARCHAR(64) NOT NULL,
-    sort_order SMALLINT DEFAULT NULL
+
+CREATE TABLE IF NOT EXISTS static_note_info (
+	note_type VARCHAR(64) PRIMARY KEY,
+	note_type_readable VARCHAR(64) NOT NULL,
+	sort_order SMALLINT DEFAULT NULL
 );
 
-INSERT INTO static_notes (note, note_readable, sort_order) VALUES 
-    ('todo', 'Short-Term', 10),
-    ('projects', 'Projects', 20),
-    ('misc', 'Misc. Notes', 30),
-    ('bugs', 'Software Bugs 🐛', 40)
+INSERT INTO static_note_info (note_type, note_type_readable, sort_order) VALUES 
+	('todo', 'Short-Term', 10),
+	('projects', 'Projects', 20),
+	('misc', 'Misc. Notes', 30),
+	('bugs', 'Software Bugs 🐛', 40)
 ;
 
 
-CREATE TABLE IF NOT EXISTS checkouts (
-    time TIMESTAMP(3) UNIQUE NOT NULL,
-    tagnumber INTEGER DEFAULT NULL,
-    customer_name VARCHAR(48) DEFAULT NULL,
-    customer_psid VARCHAR(24) DEFAULT NULL,
-    checkout_bool BOOLEAN DEFAULT FALSE,
-    checkout_date DATE DEFAULT NULL,
-    return_date DATE DEFAULT NULL,
-    checkout_group VARCHAR(48) DEFAULT NULL,
-    note VARCHAR(512) DEFAULT NULL
+CREATE TABLE IF NOT EXISTS checkout_log (
+	log_entry_time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP PRIMARY KEY,
+	tagnumber INTEGER NOT NULL,
+	customer_name VARCHAR(48) DEFAULT NULL,
+	checkout_bool BOOLEAN DEFAULT FALSE,
+	checkout_date DATE DEFAULT NULL,
+	return_date DATE DEFAULT NULL,
+	checkout_group VARCHAR(48) DEFAULT NULL,
+	note VARCHAR(512) DEFAULT NULL
 );
 
 
-DROP TABLE IF EXISTS static_emojis;
-CREATE TABLE IF NOT EXISTS static_emojis (
-    keyword VARCHAR(64) UNIQUE NOT NULL,
-    regex VARCHAR(64) DEFAULT NULL,
-    replacement VARCHAR(64) DEFAULT NULL,
-    text_bool BOOLEAN DEFAULT NULL,
-    case_sensitive_bool BOOLEAN DEFAULT NULL
-);
-
-INSERT INTO static_emojis (keyword, regex, replacement, text_bool, case_sensitive_bool) VALUES 
-    (':)', '\:\)', '😀', NULL, NULL),
-    (':D', '\:D\)', '😁', NULL, TRUE),
-    (';)', '\;\)', '😉', NULL, NULL),
-    (':P', '\:P', '😋', NULL, NULL),
-    (':|', '\:\|', '😑', NULL, NULL),
-    (':0', '\:0', '😲', NULL, NULL),
-    (':O', '\:O', '😲', NULL, NULL),
-    (':(', '\:\(', '😞', NULL, NULL),
-    (':<', '\:\<', '😡', NULL, NULL),
-    (':\', '\:\\', '😕', NULL, NULL),
-    (';(', '\;\(', '😢', NULL, NULL),
-    ('check', '\:check', '✅', TRUE, TRUE),
-    ('done', '\:done', '✅', TRUE, TRUE),
-    ('x', '\:x', '❌', TRUE, NULL),
-    ('cancel', '\:cancel', '🚫', TRUE, TRUE),
-    ('working', '\:working', '⌛', TRUE, TRUE),
-    ('waiting', '\:waiting', '⌛', TRUE, TRUE),
-    ('inprogress', '\:inprogress', '⌛', TRUE, TRUE),
-    ('shurg', '\:shrug', '🤷', TRUE, TRUE),
-    ('clock', '\:clock', '🕓', TRUE, TRUE),
-    ('warning', '\:warning', '⚠️', TRUE, TRUE),
-    ('arrow', '\:arrow', '⏩', TRUE, TRUE),
-    ('bug', '\:bug', '🐛', TRUE, TRUE),
-    ('poop', '\:poop', '💩', TRUE, TRUE),
-    ('star', '\:star', '⭐', TRUE, TRUE),
-    ('heart', '\:heart', '❤️', TRUE, TRUE),
-    ('love', '\:love', '❤️', TRUE, TRUE),
-    ('fire', '\:fire', '🔥', TRUE, TRUE),
-    ('like', '\:like', '👍', TRUE, TRUE),
-    ('dislike', '\:dislike', '👎', TRUE, TRUE),
-    ('info', '\:info', 'ℹ️', TRUE, TRUE),
-    ('pin', '\:pin', '📌', TRUE, TRUE),
-    ('clap', '\:clap', '👏', TRUE, TRUE),
-    ('celebrate', '\:celebrate', '🥳', TRUE, TRUE),
-    ('hmm', '\:hmm', '🤔', TRUE, TRUE),
-    ('alert', '\:alert', '🚨', TRUE, TRUE),
-    ('mindblown', '\:mindblown', '🤯', TRUE, TRUE),
-    ('shock', '\:shock', '⚡', TRUE, TRUE),
-    ('wow', '\:wow', '😲', TRUE, TRUE),
-    ('eyes', '\:eyes', '👀', TRUE, TRUE),
-    ('looking', '\:looking', '👀', TRUE, TRUE)
-;
-
--- DROP TABLE IF EXISTS client_location_status;
--- CREATE TABLE client_location_status (
---     status VARCHAR(24) UNIQUE NOT NULL
+-- DROP TABLE IF EXISTS static_emojis;
+-- CREATE TABLE IF NOT EXISTS static_emojis (
+--     keyword VARCHAR(64) PRIMARY KEY,
+--     regex VARCHAR(64) DEFAULT NULL,
+--     replacement VARCHAR(64) DEFAULT NULL,
+--     text_bool BOOLEAN DEFAULT NULL,
+--     case_sensitive_bool BOOLEAN DEFAULT NULL
 -- );
--- INSERT INTO client_location_status (status) VALUES
---   ('storage'), 
---   ('checked-out'), 
---   ('needs-repair'), 
---   ('retired'), 
---   ('lost'), 
---   ('other');
 
-DROP TABLE IF EXISTS static_client_statuses;
+-- INSERT INTO static_emojis (keyword, regex, replacement, text_bool, case_sensitive_bool) VALUES 
+--   (':)', '\:\)', '😀', NULL, NULL),
+--   (':D', '\:D\)', '😁', NULL, TRUE),
+--   (';)', '\;\)', '😉', NULL, NULL),
+--   (':P', '\:P', '😋', NULL, NULL),
+--   (':|', '\:\|', '😑', NULL, NULL),
+--   (':0', '\:0', '😲', NULL, NULL),
+--   (':O', '\:O', '😲', NULL, NULL),
+--   (':(', '\:\(', '😞', NULL, NULL),
+--   (':<', '\:\<', '😡', NULL, NULL),
+--   (':\', '\:\\', '😕', NULL, NULL),
+--   (';(', '\;\(', '😢', NULL, NULL),
+--   ('check', '\:check', '✅', TRUE, TRUE),
+--   ('done', '\:done', '✅', TRUE, TRUE),
+--   ('x', '\:x', '❌', TRUE, NULL),
+--   ('cancel', '\:cancel', '🚫', TRUE, TRUE),
+--   ('working', '\:working', '⌛', TRUE, TRUE),
+--   ('waiting', '\:waiting', '⌛', TRUE, TRUE),
+--   ('inprogress', '\:inprogress', '⌛', TRUE, TRUE),
+--   ('shurg', '\:shrug', '🤷', TRUE, TRUE),
+--   ('clock', '\:clock', '🕓', TRUE, TRUE),
+--   ('warning', '\:warning', '⚠️', TRUE, TRUE),
+--   ('arrow', '\:arrow', '⏩', TRUE, TRUE),
+--   ('bug', '\:bug', '🐛', TRUE, TRUE),
+--   ('poop', '\:poop', '💩', TRUE, TRUE),
+--   ('star', '\:star', '⭐', TRUE, TRUE),
+--   ('heart', '\:heart', '❤️', TRUE, TRUE),
+--   ('love', '\:love', '❤️', TRUE, TRUE),
+--   ('fire', '\:fire', '🔥', TRUE, TRUE),
+--   ('like', '\:like', '👍', TRUE, TRUE),
+--   ('dislike', '\:dislike', '👎', TRUE, TRUE),
+--   ('info', '\:info', 'ℹ️', TRUE, TRUE),
+--   ('pin', '\:pin', '📌', TRUE, TRUE),
+--   ('clap', '\:clap', '👏', TRUE, TRUE),
+--   ('celebrate', '\:celebrate', '🥳', TRUE, TRUE),
+--   ('hmm', '\:hmm', '🤔', TRUE, TRUE),
+--   ('alert', '\:alert', '🚨', TRUE, TRUE),
+--   ('mindblown', '\:mindblown', '🤯', TRUE, TRUE),
+--   ('shock', '\:shock', '⚡', TRUE, TRUE),
+--   ('wow', '\:wow', '😲', TRUE, TRUE),
+--   ('eyes', '\:eyes', '👀', TRUE, TRUE),
+--   ('looking', '\:looking', '👀', TRUE, TRUE)
+-- ;
+
 CREATE TABLE IF NOT EXISTS static_client_statuses (
-    status VARCHAR(24) UNIQUE NOT NULL,
+    status VARCHAR(24) PRIMARY KEY,
     status_formatted VARCHAR(36) DEFAULT NULL,
     sort_order SMALLINT DEFAULT NULL
 );
 
 INSERT INTO static_client_statuses (status, status_formatted, sort_order) VALUES
-  ('storage', 'Storage', 10),
-  ('checked-out', 'Checked Out', 20),
-  ('needs-repair', 'Needs Repair', 30),
-  ('retired', 'Retired', 40),
-  ('lost', 'Lost', 50),
-  ('other', 'Other', 60);
+  ('in-use', 'In Use', 10),
+  ('available', 'Available', 20),
+  ('needs-imaging', 'Needs Imaging', 30),
+  ('reserved-for-checkout', 'Reserved for Checkout', 40),
+  ('checked-out', 'Checked Out', 50),
+  ('storage', 'Storage', 60),
+  ('needs-repair', 'Needs Repair', 70),
+  ('retired', 'Retired', 80),
+  ('lost', 'Lost', 90),
+  ('other', 'Other', 100) ON CONFLICT (status) DO NOTHING
+  ;

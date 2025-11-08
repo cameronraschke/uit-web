@@ -44,7 +44,7 @@ func (repo *Repo) GetAllTags(ctx context.Context) ([]int, error) {
 }
 
 func (repo *Repo) GetDepartments(ctx context.Context) (map[string]string, error) {
-	rows, err := repo.DB.QueryContext(ctx, "SELECT department, department_formatted FROM static_departments ORDER BY department_formatted;")
+	rows, err := repo.DB.QueryContext(ctx, "SELECT department, department_formatted FROM static_department_info ORDER BY department_formatted;")
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (repo *Repo) GetDepartments(ctx context.Context) (map[string]string, error)
 }
 
 func (repo *Repo) GetDomains(ctx context.Context) (map[string]string, error) {
-	rows, err := repo.DB.QueryContext(ctx, "SELECT domain, domain_formatted FROM static_domains ORDER BY domain_formatted;")
+	rows, err := repo.DB.QueryContext(ctx, "SELECT domain, domain_formatted FROM static_ad_domains ORDER BY domain_formatted;")
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +215,7 @@ func (repo *Repo) GetHardwareIdentifiers(ctx context.Context, tag int64) (*Hardw
 
 func (repo *Repo) GetBiosData(ctx context.Context, tag int64) (*BiosData, error) {
 	sqlQuery := `SELECT client_health.tagnumber, client_health.bios_version, client_health.bios_updated, 
-	client_health.bios_date, client_health.tpm_version 
+	client_health.tpm_version 
 	FROM client_health WHERE client_health.tagnumber = $1;`
 
 	var biosData BiosData
@@ -259,7 +259,7 @@ func (repo *Repo) GetOsData(ctx context.Context, tag int64) (*OsData, error) {
 func (repo *Repo) GetActiveJobs(ctx context.Context, tag int64) (*ActiveJobs, error) {
 	sqlQuery := `SELECT remote.tagnumber, remote.job_queued, remote.job_active, t1.queue_position
 	FROM remote
-	LEFT JOIN (SELECT tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS queue_position FROM job_queue) AS t1 
+	LEFT JOIN (SELECT tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY present DESC) AS queue_position FROM remote) AS t1 
 		ON remote.tagnumber = t1.tagnumber
 	WHERE remote.tagnumber = $1;`
 
@@ -282,7 +282,8 @@ func (repo *Repo) GetAvailableJobs(ctx context.Context, tag int64) (*AvailableJo
 	(CASE 
 		WHEN (remote.job_queued IS NULL) THEN TRUE
 		ELSE FALSE
-	END) AS job_available,
+	END) AS job_available
+	FROM remote
 	WHERE remote.tagnumber = $1`
 
 	var availableJobs AvailableJobs
@@ -332,14 +333,14 @@ func (repo *Repo) GetNotes(ctx context.Context, noteType string) (*NotesTable, e
 
 func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]DashboardInventorySummary, error) {
 	sqlQuery := `WITH latest_locations AS (
-		SELECT DISTINCT ON (locations.tagnumber) locations.tagnumber, locations.department
+		SELECT DISTINCT ON (locations.tagnumber) locations.tagnumber, locations.department_name
 		FROM locations
 		ORDER BY locations.tagnumber, locations.time DESC
 	),
 	latest_checkouts AS (
-		SELECT DISTINCT ON (checkouts.tagnumber) checkouts.tagnumber, checkouts.checkout_date, checkouts.return_date
-		FROM checkouts
-		ORDER BY checkouts.tagnumber, checkouts.time DESC
+		SELECT DISTINCT ON (checkout_log.tagnumber) checkout_log.tagnumber, checkout_log.checkout_date, checkout_log.return_date
+		FROM checkout_log
+		ORDER BY checkout_log.tagnumber, checkout_log.log_entry_time DESC
 	),
 	systems AS (
 		SELECT system_data.tagnumber, system_data.system_model
@@ -350,7 +351,7 @@ func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]Dashboard
 		SELECT systems.system_model,
 			(latest_checkouts.checkout_date IS NOT NULL AND latest_checkouts.return_date IS NULL)
 				OR (latest_checkouts.return_date IS NOT NULL AND latest_checkouts.return_date > NOW()) AS is_checked_out,
-			(latest_locations.department IS NOT NULL AND latest_locations.department NOT IN ('property', 'pre-property')) AS loc_ok
+			(latest_locations.department_name IS NOT NULL AND latest_locations.department_name NOT IN ('property', 'pre-property')) AS loc_ok
 		FROM systems
 		LEFT JOIN latest_checkouts ON latest_checkouts.tagnumber = systems.tagnumber
 		LEFT JOIN latest_locations ON latest_locations.tagnumber = systems.tagnumber
@@ -391,7 +392,7 @@ func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]Dashboard
 
 func (repo *Repo) GetLocationFormData(ctx context.Context, tag int64) (*InventoryFormAutofill, error) {
 	sqlQuery := `SELECT locations.time, locations.tagnumber, locations.system_serial, locations.location, system_data.system_manufacturer, system_data.system_model,
-	locations.department, locations.domain, locations.broken, locations.status, locations.disk_removed, locations.note
+	locations.department_name, locations.ad_domain, locations.is_broken, locations.client_status, locations.disk_removed, locations.note
 	FROM locations
 	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
@@ -523,25 +524,25 @@ func (repo *Repo) GetClientImageManifestByUUID(ctx context.Context, uuid string)
 func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *InventoryFilterOptions) ([]*InventoryTableData, error) {
 	sqlCode := `SELECT locations.tagnumber, locations.system_serial, locations.location, 
 		locationFormatting(locations.location) AS location_formatted,
-		system_data.system_manufacturer, system_data.system_model, locations.department, static_departments.department_formatted,
-		locations.domain, static_domains.domain_formatted, client_health.os_installed, client_health.os_name, static_client_statuses.status_formatted,
-		locations.broken, locations.note, locations.time AS last_updated
+		system_data.system_manufacturer, system_data.system_model, locations.department_name, static_department_info.department_name_formatted,
+		locations.ad_domain, static_ad_domains.domain_formatted, client_health.os_installed, client_health.os_name, static_client_statuses.status_formatted,
+		locations.is_broken, locations.note, locations.time AS last_updated
 		FROM locations
 		LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
 		LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
-		LEFT JOIN static_departments ON locations.department = static_departments.department
-		LEFT JOIN static_domains ON locations.domain = static_domains.domain
-		LEFT JOIN static_client_statuses ON locations.status = static_client_statuses.status
+		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
+		LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
+		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status
 		WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 		AND ($1::bigint IS NULL OR locations.tagnumber = $1)
 		AND ($2::text IS NULL OR locations.system_serial = $2)
 		AND ($3::text IS NULL OR locations.location = $3)
 		AND ($4::text IS NULL OR system_data.system_manufacturer = $4)
 		AND ($5::text IS NULL OR system_data.system_model = $5)
-		AND ($6::text IS NULL OR locations.department = $6)
-		AND ($7::text IS NULL OR locations.domain = $7)
-		AND ($8::text IS NULL OR locations.status = $8)
-		AND ($9::boolean IS NULL OR locations.broken = $9)
+		AND ($6::text IS NULL OR locations.department_name = $6)
+		AND ($7::text IS NULL OR locations.ad_domain = $7)
+		AND ($8::text IS NULL OR locations.client_status = $8)
+		AND ($9::boolean IS NULL OR locations.is_broken = $9)
 		AND (
 			$10::boolean IS NULL OR 
 			(

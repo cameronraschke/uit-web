@@ -17,20 +17,21 @@ func (repo *Repo) InsertNewNote(ctx context.Context, time time.Time, noteType, n
 	return err
 }
 
-func (repo *Repo) InsertInventory(ctx context.Context, tagnumber int64, systemSerial *string, location *string, department *string, domain *string, broken *bool, status *string, note *string) error {
-	sqlCode := `INSERT INTO locations (time, tagnumber, system_serial, location, department, domain, broken, status, note) 
+func (repo *Repo) InsertInventory(ctx context.Context, tagnumber *int64, systemSerial *string, location *string, isBroken *bool, diskRemoved *bool, departmentName *string, domain *string, note *string, clientStatus *string) error {
+	sqlCode := `INSERT INTO locations (time, tagnumber, system_serial, location, is_broken, disk_removed, department_name, ad_domain, note, client_status) 
 		VALUES 
-	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8);`
+	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9);`
 
 	_, err := repo.DB.ExecContext(ctx, sqlCode,
-		tagnumber,
+		toNullInt64(tagnumber),
 		toNullString(systemSerial),
 		toNullString(location),
-		toNullString(department),
+		toNullBool(isBroken),
+		toNullBool(diskRemoved),
+		toNullString(departmentName),
 		toNullString(domain),
-		toNullBool(broken),
-		toNullString(status),
 		toNullString(note),
+		toNullString(clientStatus),
 	)
 	return err
 }

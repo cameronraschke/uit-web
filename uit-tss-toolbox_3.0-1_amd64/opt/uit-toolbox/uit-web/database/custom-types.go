@@ -83,16 +83,18 @@ type InventoryFormAutofill struct {
 }
 
 type InventoryUpdateFormInput struct {
-	Tagnumber          *int64  `json:"tagnumber"`
-	SystemSerial       *string `json:"system_serial"`
-	Location           *string `json:"location"`
-	SystemManufacturer *string `json:"system_manufacturer"`
-	SystemModel        *string `json:"system_model"`
-	Department         *string `json:"department"`
-	Domain             *string `json:"domain"`
-	Broken             *bool   `json:"broken"`
-	Status             *string `json:"status"`
-	Note               *string `json:"note"`
+	Time               *time.Time `json:"time"`
+	Tagnumber          *int64     `json:"tagnumber"`
+	SystemSerial       *string    `json:"system_serial"`
+	Location           *string    `json:"location"`
+	Broken             *bool      `json:"is_broken"`
+	DiskRemoved        *bool      `json:"disk_removed"`
+	Department         *string    `json:"department"`
+	Domain             *string    `json:"domain"`
+	Note               *string    `json:"note"`
+	Status             *string    `json:"status"`
+	SystemManufacturer *string    `json:"system_manufacturer"`
+	SystemModel        *string    `json:"system_model"`
 }
 
 type ImageManifest struct {
