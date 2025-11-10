@@ -258,8 +258,9 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     }
 
     const data = await response.text();
-		if (!data || data.trim().length === 0) {
-			throw new Error("No response data from server after inventory update");
+		const returnedJson = JSON.parse(data);
+		if (!returnedJson || !returnedJson.tagnumber) {
+			throw new Error("Invalid response from server after inventory update");
 		}
 		fileInput.value = "";
 		inventoryLookupWarningMessage.style.display = "none";

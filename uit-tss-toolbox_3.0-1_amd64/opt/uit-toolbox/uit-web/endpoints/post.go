@@ -680,10 +680,13 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var jsonResponse struct {
-		Message string `json:"message"`
+	var jsonResponse = struct {
+		Tagnumber int64  `json:"tagnumber"`
+		Message   string `json:"message"`
+	}{
+		Tagnumber: tagnumber,
+		Message:   "update successful",
 	}
-	jsonResponse.Message = "update successful"
 
 	middleware.WriteJson(w, http.StatusOK, jsonResponse)
 }
