@@ -257,14 +257,10 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
       throw new Error("Server returned an error: " + response.status + " " + response.statusText);
     }
 
-    const data = await response.json();
-    if (!data || !data.json) {
-      throw new Error("No return data from inventory update");
-    }
-    const returnedJson = JSON.parse(base64ToJson(data.json));
-    if (!returnedJson) {
-      throw new Error("No return data from inventory update");
-    }
+    const data = await response.text();
+		if (!data || data.trim().length === 0) {
+			throw new Error("No response data from server after inventory update");
+		}
 		fileInput.value = "";
 		inventoryLookupWarningMessage.style.display = "none";
 		inventoryLookupLastUpdateTime.textContent = "";
