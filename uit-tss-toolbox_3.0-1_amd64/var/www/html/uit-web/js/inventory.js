@@ -291,19 +291,21 @@ async function getLocationFormData(tag) {
 
 async function populateLocationForm(tag) {
   const locationFormData = await getLocationFormData(tag);
-  if (locationFormData && location) {
+  if (locationFormData) {
 		if (locationFormData.last_update_time) {
 			const lastUpdate = new Date(locationFormData.last_update_time);
-			inventoryLookupLastUpdateTime.textContent = `Last updated: ${lastUpdate.toLocaleString()}`;
+			inventoryLookupLastUpdateTime.textContent = `Last updated: ${lastUpdate.toLocaleString()}` || '';
+		} else {
+			inventoryLookupLastUpdateTime.textContent = '';
 		}
-    if (locationFormData.location) inventoryLocationInput.value = locationFormData.location;
-    if (locationFormData.system_manufacturer) inventoryUpdateForm.querySelector("#system_manufacturer").value = locationFormData.system_manufacturer;
-    if (locationFormData.system_model) inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model;
-    if (locationFormData.department) inventoryUpdateForm.querySelector("#department").value = locationFormData.department;
-    if (locationFormData.ad_domain) inventoryUpdateForm.querySelector("#ad_domain").value = locationFormData.ad_domain;
-    if (typeof locationFormData.is_broken === "boolean") inventoryUpdateForm.querySelector("#is_broken").value = locationFormData.is_broken;
-    if (typeof locationFormData.status === "string") inventoryUpdateForm.querySelector("#status").value = locationFormData.status;
-    if (locationFormData.note) inventoryUpdateForm.querySelector("#note").value = locationFormData.note;
+    if (locationFormData.location) inventoryLocationInput.value = locationFormData.location || '';
+    if (locationFormData.system_manufacturer) inventoryUpdateForm.querySelector("#system_manufacturer").value = locationFormData.system_manufacturer || '';
+    if (locationFormData.system_model) inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model || '';
+    if (locationFormData.department) inventoryUpdateForm.querySelector("#department").value = locationFormData.department || '';
+    if (locationFormData.ad_domain) inventoryUpdateForm.querySelector("#ad_domain").value = locationFormData.ad_domain || '';
+    if (typeof locationFormData.is_broken === "boolean") inventoryUpdateForm.querySelector("#is_broken").value = locationFormData.is_broken || 'false';
+    if (typeof locationFormData.status === "string") inventoryUpdateForm.querySelector("#status").value = locationFormData.status || '';
+    if (locationFormData.note) inventoryUpdateForm.querySelector("#note").value = locationFormData.note || '';
   }
 }
 
