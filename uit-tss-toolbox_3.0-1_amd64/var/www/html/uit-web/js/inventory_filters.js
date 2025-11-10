@@ -3,6 +3,21 @@ let allModelsData = [];
 const currentURL = new URL(window.location.href);
 const queryParams = new URLSearchParams(currentURL.search);
 
+function updateURLParameters(urlParameter, value) {
+	const newURL = new URL(window.location.href);
+	if (value) {
+		newURL.searchParams.set(urlParameter, value);
+	} else {
+		newURL.searchParams.delete(urlParameter);
+	}
+	if (newURL.searchParams.toString()) {
+		history.replaceState(null, '', newURL.pathname + '?' + newURL.searchParams.toString());
+	} else {
+		history.replaceState(null, '', newURL.pathname);
+	}
+	
+}
+
 // Location filter
 const filterLocation = document.getElementById('inventory-filter-location')
 filterLocation.value = queryParams.get('location_formatted') || '';
@@ -22,35 +37,8 @@ const filterManufacturerReset = document.getElementById('inventory-filter-manufa
 const filterModel = document.getElementById('inventory-filter-model')
 filterModel.value = queryParams.get('system_model') || '';
 const filterModelReset = document.getElementById('inventory-filter-model-reset')
-
-filterManufacturer.addEventListener("change", async (event) => {
-  filterManufacturerReset.style.display = 'inline-block';
-  populateModelSelect(filterManufacturer.value || null);
-  fetchFilteredInventoryData();
-});
-filterManufacturerReset.addEventListener("click", async (event) => {
-  event.preventDefault();
-  filterManufacturerReset.style.display = 'none';
-  filterManufacturer.value = '';
-  // Also reset model select
-  filterModelReset.style.display = 'none';
-  filterModel.value = '';
-  loadManufacturersAndModels();
-  fetchFilteredInventoryData();
-});
-
-// Model filter
-filterModel.addEventListener("change", async (event) => {
-  filterModelReset.style.display = 'inline-block';
-  fetchFilteredInventoryData();
-});
-filterModelReset.addEventListener("click", async (event) => {
-  event.preventDefault();
-  filterModelReset.style.display = 'none';
-  filterModel.value = '';
-  populateModelSelect();
-  fetchFilteredInventoryData();
-});
+createFilterResetHandler(filterManufacturer, filterManufacturerReset);
+createFilterResetHandler(filterModel, filterModelReset);
 
 // Domain filter
 const filterDomain = document.getElementById('inventory-filter-domain')
@@ -80,26 +68,37 @@ createFilterResetHandler(filterHasImages, filterHasImagesReset);
 function createFilterResetHandler(filterInput, resetButton) {
   filterInput.addEventListener("change", async () => {
     resetButton.style.display = 'inline-block';
+		if (filterInput === filterManufacturer) {
+			populateModelSelect(filterInput.value || null);
+		}
     await fetchFilteredInventoryData();
   });
   
   resetButton.addEventListener("click", async (event) => {
     event.preventDefault();
     resetButton.style.display = 'none';
-    filterInput.value = '';
+		filterInput.value = '';
     await fetchFilteredInventoryData();
   });
 }
 
 async function fetchFilteredInventoryData(csvDownload = false) {
   const location = filterLocation.value.trim() || null;
+	updateURLParameters('location', location);
   const department = filterDepartment.value.trim() || null;
+	updateURLParameters('department_name', department);
   const manufacturer = filterManufacturer.value.trim() || null;
+	updateURLParameters('system_manufacturer', manufacturer);
   const model = filterModel.value.trim() || null;
+	updateURLParameters('system_model', model);
   const domain = filterDomain.value.trim() || null;
+	updateURLParameters('ad_domain', domain);
   const status = filterStatus.value.trim() || null;
+	updateURLParameters('status', status);
   const broken = filterBroken.value.trim() || null;
+	updateURLParameters('is_broken', broken);
   const hasImages = filterHasImages.value.trim() || null;
+	updateURLParameters('has_images', hasImages);
 
   try {
 		const tableData = await getInventoryTableData(
@@ -128,12 +127,14 @@ inventoryFilterForm.addEventListener("submit", async (event) => {
 const inventoryFilterResetButton = document.getElementById('inventory-filter-form-reset-button');
 inventoryFilterResetButton.addEventListener("click", async (event) => {
   event.preventDefault();
+	history.replaceState(null, '', window.location.pathname);
   inventoryFilterForm.reset();
   document.querySelectorAll('.inventory-filter-reset').forEach(elem => {
     elem.style.display = 'none';
   });
-  loadManufacturersAndModels();
-  fetchFilteredInventoryData();
+	await Promise.all([
+  	fetchFilteredInventoryData()
+	]);
 });
 
 function populateManufacturerSelect() {
