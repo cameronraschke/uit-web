@@ -45,10 +45,11 @@ async function getTagOrSerial(tagnumber, serial) {
   }
 }
 
-inventoryLookupForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const lookupTag = inventoryLookupTagInput.value;
-  const lookupSerial = inventoryLookupSerialInput.value;
+async function submitInventoryLookup() {
+	const searchParams = new URLSearchParams(window.location.search);
+	const lookupTag = inventoryLookupTagInput.value || searchParams.get('tagnumber') || null;
+  const lookupSerial = inventoryLookupSerialInput.value || searchParams.get('system_serial') || null;
+
   const lookupResult = await getTagOrSerial(lookupTag, lookupSerial);
   if (!lookupTag && !lookupSerial) {
     inventoryLookupWarningMessage.style.display = "block";
@@ -70,6 +71,8 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
     inventoryLookupWarningMessage.textContent = "Tag number must be exactly 6 digits long.";
     return;
   }
+	
+	history.replaceState(null, '', window.location.pathname + `?tagnumber=${inventoryLookupTagInput.value || ''}`);
   await populateLocationForm(Number(lookupTag));
 
   inventoryUpdateSection.style.display = "block";
@@ -100,6 +103,11 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
   } else {
     clientImagesLink.style.display = "none";
   }
+}
+
+inventoryLookupForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+	await submitInventoryLookup();
 });
 
 function resetInventoryForm() {
@@ -120,6 +128,7 @@ function resetInventoryForm() {
   inventoryLookupWarningMessage.style.display = "none";
   inventoryLookupWarningMessage.textContent = "";
 	inventoryLookupLastUpdateTime.textContent = "";
+	history.replaceState(null, '', window.location.pathname);
   inventoryLookupTagInput.focus();
 }
 
@@ -294,18 +303,25 @@ async function populateLocationForm(tag) {
   if (locationFormData) {
 		if (locationFormData.last_update_time) {
 			const lastUpdate = new Date(locationFormData.last_update_time);
-			inventoryLookupLastUpdateTime.textContent = `Last updated: ${lastUpdate.toLocaleString()}` || '';
+			if (isNaN(lastUpdate.getTime())) {
+				inventoryLookupLastUpdateTime.textContent = 'Uknown timestamp of last update';
+			} else {
+				inventoryLookupLastUpdateTime.textContent = `Last updated: ${lastUpdate.toLocaleString()}` || '';
+			}
 		} else {
-			inventoryLookupLastUpdateTime.textContent = '';
+			inventoryLookupLastUpdateTime.textContent = 'Uknown timestamp of last update';
 		}
-    if (locationFormData.location) inventoryLocationInput.value = locationFormData.location || '';
-    if (locationFormData.system_manufacturer) inventoryUpdateForm.querySelector("#system_manufacturer").value = locationFormData.system_manufacturer || '';
-    if (locationFormData.system_model) inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model || '';
-    if (locationFormData.department) inventoryUpdateForm.querySelector("#department").value = locationFormData.department || '';
-    if (locationFormData.ad_domain) inventoryUpdateForm.querySelector("#ad_domain").value = locationFormData.ad_domain || '';
-    if (typeof locationFormData.is_broken === "boolean") inventoryUpdateForm.querySelector("#is_broken").value = locationFormData.is_broken || 'false';
-    if (typeof locationFormData.status === "string") inventoryUpdateForm.querySelector("#status").value = locationFormData.status || '';
-    if (locationFormData.note) inventoryUpdateForm.querySelector("#note").value = locationFormData.note || '';
+    inventoryLocationInput.value = locationFormData.location || '';
+    inventoryUpdateForm.querySelector("#system_manufacturer").value = locationFormData.system_manufacturer || '';
+    inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model || '';
+    inventoryUpdateForm.querySelector("#department").value = locationFormData.department || '';
+    inventoryUpdateForm.querySelector("#ad_domain").value = locationFormData.ad_domain || '';
+		const brokenValue = typeof locationFormData.is_broken === "boolean" 
+			? String(locationFormData.is_broken) 
+			: '';
+		inventoryUpdateForm.querySelector("#is_broken").value = brokenValue;
+    inventoryUpdateForm.querySelector("#status").value = locationFormData.status || '';
+    inventoryUpdateForm.querySelector("#note").value = locationFormData.note || '';
   }
 }
 
@@ -325,6 +341,11 @@ csvDownloadButton.addEventListener('click', async (event) => {
 
 function initializeInventoryPage() {
   Promise.all([fetchFilteredInventoryData(), loadManufacturersAndModels()]);
+	const urlParams = new URLSearchParams(window.location.search);
+	if (urlParams.get('tagnumber')) {
+		inventoryLookupTagInput.value = urlParams.get('tagnumber');
+		submitInventoryLookup();
+	}
 }
 document.addEventListener("DOMContentLoaded", () => {
   initializeInventoryPage();

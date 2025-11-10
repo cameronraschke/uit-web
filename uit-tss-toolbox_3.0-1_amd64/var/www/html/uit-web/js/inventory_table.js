@@ -1,4 +1,5 @@
 const rowCountElement = document.getElementById('inventory-table-rowcount');
+const formAnchor = document.querySelector('#inventory-section');
 
 async function getInventoryTableData(csvDownload = false, filterTag, filterSerial, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages) {
   const query = new URLSearchParams();
@@ -61,14 +62,14 @@ async function renderInventoryTable(tableData = null) {
       if (row.tagnumber) {
 				tagCell.dataset.tagnumber = row.tagnumber;
 				const tagCellLink = document.createElement('a');
-				tagCellLink.setAttribute('href', `#inventory-section`);
 				tagCellLink.textContent = row.tagnumber;
 				tagCell.appendChild(tagCellLink);
-				tagCell.addEventListener('click', () => {
+				tagCellLink.addEventListener('click', () => {
 					const tagLookupInput = document.getElementById('inventory-tag-lookup');
 					tagLookupInput.value = row.tagnumber;
-					populateLocationForm(Number(tagCell.dataset.tagnumber));
+					submitInventoryLookup();
     			fetchFilteredInventoryData();
+					formAnchor.scrollTo(0, 0);
         });
       } else {
         tagCell.dataset.tagnumber = null;
@@ -158,16 +159,13 @@ async function renderInventoryTable(tableData = null) {
       tr.appendChild(statusCell);
 
       const brokenCell = document.createElement('td');
-      if (row.is_broken === true) {
-        brokenCell.textContent = 'Broken';
-        brokenCell.dataset.is_broken = 'true';
-      } else if (row.is_broken === false) {
-        brokenCell.textContent = 'Functional';
-        brokenCell.dataset.is_broken = 'false';
-      } else {
-        brokenCell.textContent = 'N/A';
-        brokenCell.dataset.is_broken = null;
-      }
+			if (typeof row.is_broken === 'boolean') {
+				brokenCell.textContent = row.is_broken ? 'Broken' : 'Functional';
+				brokenCell.dataset.is_broken = String(row.is_broken);
+			} else {
+				brokenCell.textContent = 'N/A';
+				brokenCell.dataset.is_broken = 'null';
+			}
       tr.appendChild(brokenCell);
 
       const noteCell = document.createElement('td');

@@ -128,7 +128,7 @@ type InventoryTableData struct {
 	OsInstalled         *bool      `json:"os_installed"`
 	OsName              *string    `json:"os_name"`
 	Status              *string    `json:"status"`
-	Broken              *bool      `json:"broken"`
+	Broken              *bool      `json:"is_broken"`
 	Note                *string    `json:"note"`
 	LastUpdated         *time.Time `json:"last_updated"`
 }
