@@ -58,3 +58,37 @@ body {
 	text-align: left;
 	bottom: 5%;
 }
+
+#div1 {
+	border-bottom: 1px solid black;
+}
+#div2 {
+	width: 60%;
+}
+#div3 {
+	width: 30%; 
+	margin-left: 3%;
+}
+#div4 {
+	width: 45%
+}
+#div5 {
+	width: 45%;
+	margin-left: 3%;
+}
+#div6 {
+	width: 60%;
+}
+#div7 {
+	width: 30%;
+	margin-left: 3%;
+}
+
+#span1 {
+	background-color:rgb(230, 230, 230);
+	height: 3em;
+}
+#span2 {
+	background-color:rgb(230, 230, 230);
+	height: 3em;
+}
