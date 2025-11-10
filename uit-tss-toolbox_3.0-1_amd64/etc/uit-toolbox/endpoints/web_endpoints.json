@@ -61,5 +61,16 @@
     "file_path": "/var/www/html/uit-web/client_images.html",
     "endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
-  }
+  },
+	"/print-page" : {
+		"file_path": "/var/www/html/uit-web/checkout-form.html",
+		"endpoint_type": "web_content",
+		"content_type": "text/html; charset=utf-8"
+	},
+	"/images/uh-logo.png": {
+		"file_path": "/var/www/html/uit-web/images/uh-logo.png",
+		"auth_required": false,
+		"endpoint_type": "web_content",
+		"content_type": "image/png"
+	}
 }

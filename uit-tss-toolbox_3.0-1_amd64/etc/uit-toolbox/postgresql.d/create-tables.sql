@@ -452,6 +452,7 @@ INSERT INTO static_note_info (note_type, note_type_readable, sort_order) VALUES
 	('projects', 'Projects', 20),
 	('misc', 'Misc. Notes', 30),
 	('bugs', 'Software Bugs 🐛', 40)
+	ON CONFLICT (note_type) DO NOTHING
 ;
 
 

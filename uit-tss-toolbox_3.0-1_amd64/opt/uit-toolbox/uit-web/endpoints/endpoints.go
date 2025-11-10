@@ -158,6 +158,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
+	requestQueries, _ := middleware.GetRequestQueryFromContext(ctx)
 
 	log.Debug("File request from " + requestIP.String() + " for " + requestURL)
 
@@ -272,6 +273,12 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		urlTag := req.URL.Query().Get("tagnumber")
 		urlTag = strings.TrimSpace(urlTag)
 
+		checkoutDate := requestQueries.Get("checkout_date")
+
+		returnDate := requestQueries.Get("return_date")
+
+		customerName := requestQueries.Get("customer_name")
+
 		templateData := struct {
 			JsNonce        string
 			WebmasterName  string
@@ -281,6 +288,9 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			ClientTag      string
 			Statuses       map[string]string
 			Locations      map[string]string
+			CheckoutDate   string
+			ReturnDate     string
+			CustomerName   string
 		}{
 			JsNonce:        nonce,
 			WebmasterName:  webmasterName,
@@ -290,6 +300,9 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			ClientTag:      urlTag,
 			Statuses:       statuses,
 			Locations:      locations,
+			CheckoutDate:   checkoutDate,
+			ReturnDate:     returnDate,
+			CustomerName:   customerName,
 		}
 
 		// Execute the template
