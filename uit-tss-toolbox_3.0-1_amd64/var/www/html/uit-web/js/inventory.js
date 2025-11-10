@@ -254,7 +254,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     });
 
     if (!response.ok) {
-      throw new Error("Failed to update inventory");
+      throw new Error("Server returned an error: " + response.status + " " + response.statusText);
     }
 
     const data = await response.json();
@@ -265,6 +265,9 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     if (!returnedJson) {
       throw new Error("No return data from inventory update");
     }
+		fileInput.value = "";
+		inventoryLookupWarningMessage.style.display = "none";
+		inventoryLookupLastUpdateTime.textContent = "";
     await populateLocationForm(Number(returnedJson.tagnumber));
     renderInventoryTable();
   } catch (error) {
