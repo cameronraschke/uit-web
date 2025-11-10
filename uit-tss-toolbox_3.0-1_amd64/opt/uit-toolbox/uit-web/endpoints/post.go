@@ -620,8 +620,12 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			log.Error("Failed to create directories for uploaded file for inventory update: " + err.Error() + " (" + requestIP.String() + ")")
 		}
 
+		if err := os.Chmod(imageDirectoryPath, 0755); err != nil {
+			log.Error("Failed to set directory permissions: " + err.Error() + " (" + requestIP.String() + ")")
+		}
+
 		fullFilePath := filepath.Join(imageDirectoryPath, fileName)
-		if err := os.WriteFile(fullFilePath, fileData, 0755); err != nil {
+		if err := os.WriteFile(fullFilePath, fileData, 0644); err != nil {
 			log.Error("Failed to save uploaded file for inventory update: " + err.Error() + " (" + requestIP.String() + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
