@@ -65,7 +65,10 @@ async function renderInventoryTable(tableData = null) {
 				tagCellLink.setAttribute('href', `/inventory?tagnumber=${encodeURIComponent(row.tagnumber)}`);
 				tagCellLink.textContent = row.tagnumber;
 				tagCell.appendChild(tagCellLink);
-				tagCellLink.addEventListener('click', () => {
+				tagCellLink.addEventListener('click', (event) => {
+					if (event.ctrlKey || event.metaKey) {
+						return; // Allow default behavior for Ctrl/Cmd + click
+					}
 					const tagLookupInput = document.getElementById('inventory-tag-lookup');
 					tagLookupInput.value = row.tagnumber;
 					submitInventoryLookup();
