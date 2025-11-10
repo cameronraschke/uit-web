@@ -1,6 +1,7 @@
 let updatingInventory = false;
 
 // Inventory update form (and lookup)
+const inventoryLookupLastUpdateTime = document.getElementById('last-update-time-message');
 const inventoryLookupWarningMessage = document.getElementById('existing-inventory-message');
 const inventoryLookupForm = document.getElementById('inventory-lookup-form');
 const inventoryLookupTagInput = document.getElementById('inventory-tag-lookup');
@@ -118,6 +119,7 @@ function resetInventoryForm() {
   inventoryUpdateSection.style.display = "none";
   inventoryLookupWarningMessage.style.display = "none";
   inventoryLookupWarningMessage.textContent = "";
+	inventoryLookupLastUpdateTime.textContent = "";
   inventoryLookupTagInput.focus();
 }
 
@@ -289,6 +291,10 @@ async function getLocationFormData(tag) {
 async function populateLocationForm(tag) {
   const locationFormData = await getLocationFormData(tag);
   if (locationFormData && location) {
+		if (locationFormData.last_update_time) {
+			const lastUpdate = new Date(locationFormData.last_update_time);
+			inventoryLookupLastUpdateTime.textContent = `Last updated: ${lastUpdate.toLocaleString()}`;
+		}
     if (locationFormData.location) inventoryLocationInput.value = locationFormData.location;
     if (locationFormData.system_manufacturer) inventoryUpdateForm.querySelector("#system_manufacturer").value = locationFormData.system_manufacturer;
     if (locationFormData.system_model) inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model;

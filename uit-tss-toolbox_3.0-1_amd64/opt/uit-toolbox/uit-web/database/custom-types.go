@@ -68,14 +68,14 @@ type AllTags struct {
 }
 
 type InventoryFormAutofill struct {
-	Time               *time.Time `json:"time"`
+	Time               *time.Time `json:"last_update_time"`
 	Tagnumber          *int       `json:"tagnumber"`
 	SystemSerial       *string    `json:"system_serial"`
 	Location           *string    `json:"location"`
 	SystemManufacturer *string    `json:"system_manufacturer"`
 	SystemModel        *string    `json:"system_model"`
 	Status             *string    `json:"status"`
-	Broken             *bool      `json:"broken"`
+	Broken             *bool      `json:"is_broken"`
 	DiskRemoved        *bool      `json:"disk_removed"`
 	Department         *string    `json:"department"`
 	Domain             *string    `json:"domain"`
