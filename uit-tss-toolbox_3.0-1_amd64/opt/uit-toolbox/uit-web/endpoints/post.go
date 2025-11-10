@@ -676,7 +676,12 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	middleware.WriteJson(w, http.StatusOK, "Update successful")
+	var jsonResponse struct {
+		Message string `json:"message"`
+	}
+	jsonResponse.Message = "update successful"
+
+	middleware.WriteJson(w, http.StatusOK, jsonResponse)
 }
 
 func TogglePinImage(w http.ResponseWriter, req *http.Request) {
