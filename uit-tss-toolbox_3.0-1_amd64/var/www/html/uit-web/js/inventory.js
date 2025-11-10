@@ -214,7 +214,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     jsonObject["location"] = getInputValue("#location");
     jsonObject["system_manufacturer"] = getInputValue("#system_manufacturer");
     jsonObject["system_model"] = getInputValue("#system_model");
-    jsonObject["department"] = getInputValue("#department");
+    jsonObject["department_name"] = getInputValue("#department_name");
     jsonObject["ad_domain"] = getInputValue("#ad_domain");
     const brokenBool = getInputValue("#is_broken");
       if (brokenBool === "true") jsonObject["is_broken"] = true;

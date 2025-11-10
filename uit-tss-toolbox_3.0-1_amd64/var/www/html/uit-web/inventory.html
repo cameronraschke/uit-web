@@ -87,8 +87,8 @@
             <div class="vertical-spacer"></div>
             <div class="grid-container inventory inventory-update-form">
               <div class="inventory-lookup-label"><p class="bold">Department and AD Domain:</p></div>
-              <div><label for="department" class="required-field">Department:</label></div>
-              <div><select id="department" name="department">
+              <div><label for="department_name" class="required-field">Department:</label></div>
+              <div><select id="department_name" name="department_name">
                 <option value="" disabled selected>Select Department</option>
                 <option value="">None</option>
                 {{- range $department, $departmentReadable := .Departments }}

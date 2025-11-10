@@ -722,10 +722,10 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		Location:           getStr("location"),
 		SystemManufacturer: getStr("system_manufacturer"),
 		SystemModel:        getStr("system_model"),
-		Department:         getStr("department"),
-		Domain:             getStr("domain"),
+		Department:         getStr("department_name"),
+		Domain:             getStr("ad_domain"),
 		Status:             getStr("status"),
-		Broken:             getBool("broken"),
+		Broken:             getBool("is_broken"),
 		HasImages:          getBool("has_images"),
 	}
 

@@ -77,7 +77,7 @@ type InventoryFormAutofill struct {
 	Status             *string    `json:"status"`
 	Broken             *bool      `json:"is_broken"`
 	DiskRemoved        *bool      `json:"disk_removed"`
-	Department         *string    `json:"department"`
+	Department         *string    `json:"department_name"`
 	Domain             *string    `json:"ad_domain"`
 	Note               *string    `json:"note"`
 }
@@ -89,7 +89,7 @@ type InventoryUpdateFormInput struct {
 	Location           *string    `json:"location"`
 	Broken             *bool      `json:"is_broken"`
 	DiskRemoved        *bool      `json:"disk_removed"`
-	Department         *string    `json:"department"`
+	Department         *string    `json:"department_name"`
 	Domain             *string    `json:"ad_domain"`
 	Note               *string    `json:"note"`
 	Status             *string    `json:"status"`
@@ -121,7 +121,7 @@ type InventoryTableData struct {
 	LocationFormatted   *string    `json:"location_formatted"`
 	SystemManufacturer  *string    `json:"system_manufacturer"`
 	SystemModel         *string    `json:"system_model"`
-	Department          *string    `json:"department"`
+	Department          *string    `json:"department_name"`
 	DepartmentFormatted *string    `json:"department_formatted"`
 	Domain              *string    `json:"domain"`
 	DomainFormatted     *string    `json:"domain_formatted"`
@@ -139,10 +139,10 @@ type InventoryFilterOptions struct {
 	Location           *string `json:"location"`
 	SystemManufacturer *string `json:"system_manufacturer"`
 	SystemModel        *string `json:"system_model"`
-	Department         *string `json:"department"`
-	Domain             *string `json:"domain"`
+	Department         *string `json:"department_name"`
+	Domain             *string `json:"ad_domain"`
 	Status             *string `json:"status"`
-	Broken             *bool   `json:"broken"`
+	Broken             *bool   `json:"is_broken"`
 	HasImages          *bool   `json:"has_images"`
 }
 
