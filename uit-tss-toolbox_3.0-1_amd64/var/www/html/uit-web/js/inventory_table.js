@@ -11,7 +11,7 @@ async function getInventoryTableData(csvDownload = false, filterTag, filterSeria
   if (filterModel) query.append("system_model", filterModel);
   if (filterDomain) query.append("ad_domain", filterDomain);
   if (filterStatus) query.append("status", filterStatus);
-  if (filterBroken) query.append("broken", filterBroken);
+  if (filterBroken) query.append("is_broken", filterBroken);
   if (filterHasImages) query.append("has_images", filterHasImages);
   if (csvDownload) query.append("csv", "true");
   try {
