@@ -8,7 +8,7 @@ async function getInventoryTableData(csvDownload = false, filterTag, filterSeria
   if (filterDepartment) query.append("department", filterDepartment);
   if (filterManufacturer) query.append("system_manufacturer", filterManufacturer);
   if (filterModel) query.append("system_model", filterModel);
-  if (filterDomain) query.append("domain", filterDomain);
+  if (filterDomain) query.append("ad_domain", filterDomain);
   if (filterStatus) query.append("status", filterStatus);
   if (filterBroken) query.append("broken", filterBroken);
   if (filterHasImages) query.append("has_images", filterHasImages);
