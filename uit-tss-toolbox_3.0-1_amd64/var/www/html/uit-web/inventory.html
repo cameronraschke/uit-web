@@ -106,8 +106,8 @@
             <div class="vertical-spacer"></div>
             <div class="grid-container inventory inventory-update-form">
               <div class="inventory-lookup-label"><p class="bold">Health and Status:</p></div>
-              <label for="broken" class="required-field">Is it Broken?</label>
-              <select id="broken" name="broken">
+              <label for="is_broken" class="required-field">Is it Broken?</label>
+              <select id="is_broken" name="is_broken">
                 <option value="" disabled selected>Is it Broken?</option>
                 <option value="true">Yes, it is broken</option>
                 <option value="false">No, it isn't broken</option>
@@ -201,7 +201,7 @@
               </select>
               <a id="inventory-filter-status-reset" class="inventory-filter-reset" href="">x</a></span>
             <span>
-              <select id="inventory-filter-broken" name="broken" form="inventory-filter-form">
+              <select id="inventory-filter-broken" name="is_broken" form="inventory-filter-form">
                 <option value="" selected disabled>Broken?</option>
                 <option value="true">Yes - Is broken</option>
                 <option value="false">No - Is functional</option>

@@ -205,10 +205,10 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     jsonObject["system_model"] = getInputValue("#system_model");
     jsonObject["department"] = getInputValue("#department");
     jsonObject["domain"] = getInputValue("#domain");
-    const brokenBool = getInputValue("#broken");
-      if (brokenBool === "true") jsonObject["broken"] = true;
-      else if (brokenBool === "false") jsonObject["broken"] = false;
-      else jsonObject["broken"] = null;
+    const brokenBool = getInputValue("#is_broken");
+      if (brokenBool === "true") jsonObject["is_broken"] = true;
+      else if (brokenBool === "false") jsonObject["is_broken"] = false;
+      else jsonObject["is_broken"] = null;
     jsonObject["status"] = getInputValue("#status");
     jsonObject["note"] = getInputValue("#note");
 
@@ -294,7 +294,7 @@ async function populateLocationForm(tag) {
     if (locationFormData.system_model) inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model;
     if (locationFormData.department) inventoryUpdateForm.querySelector("#department").value = locationFormData.department;
     if (locationFormData.domain) inventoryUpdateForm.querySelector("#domain").value = locationFormData.domain;
-    if (typeof locationFormData.is_broken === "boolean") inventoryUpdateForm.querySelector("#broken").value = locationFormData.is_broken;
+    if (typeof locationFormData.is_broken === "boolean") inventoryUpdateForm.querySelector("#is_broken").value = locationFormData.is_broken;
     if (typeof locationFormData.status === "string") inventoryUpdateForm.querySelector("#status").value = locationFormData.status;
     if (locationFormData.note) inventoryUpdateForm.querySelector("#note").value = locationFormData.note;
   }
