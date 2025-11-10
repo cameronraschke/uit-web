@@ -272,6 +272,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     renderInventoryTable();
   } catch (error) {
     console.error("Error updating inventory:", error);
+		alert("Error updating inventory: " + error.message);
   } finally {
     updatingInventory = false;
     inventoryUpdateSubmitButton.disabled = false;
