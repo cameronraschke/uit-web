@@ -1,24 +1,24 @@
 const rowCountElement = document.getElementById('inventory-table-rowcount');
 const formAnchor = document.querySelector('#inventory-section');
 
-async function getInventoryTableData(csvDownload = false, filterTag, filterSerial, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages) {
-  const query = new URLSearchParams();
-  if (filterTag) query.append("tagnumber", filterTag);
-  if (filterSerial) query.append("system_serial", filterSerial);
-  if (filterLocation) query.append("location", filterLocation);
-  if (filterDepartment) query.append("department_name", filterDepartment);
-  if (filterManufacturer) query.append("system_manufacturer", filterManufacturer);
-  if (filterModel) query.append("system_model", filterModel);
-  if (filterDomain) query.append("ad_domain", filterDomain);
-  if (filterStatus) query.append("status", filterStatus);
-  if (filterBroken) query.append("is_broken", filterBroken);
-  if (filterHasImages) query.append("has_images", filterHasImages);
-  if (csvDownload) query.append("csv", "true");
+async function getInventoryTableData(csvDownload = false, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages) {
+	const newURL = new URL(window.location.href);
+  const query = new URLSearchParams(newURL.search);
+  if (filterLocation) query.set("location", filterLocation);
+  if (filterDepartment) query.set("department_name", filterDepartment);
+  if (filterManufacturer) query.set("system_manufacturer", filterManufacturer);
+  if (filterModel) query.set("system_model", filterModel);
+  if (filterDomain) query.set("ad_domain", filterDomain);
+  if (filterStatus) query.set("status", filterStatus);
+  if (filterBroken) query.set("is_broken", filterBroken);
+  if (filterHasImages) query.set("has_images", filterHasImages);
+  if (csvDownload) query.set("csv", "true");
   try {
     if (csvDownload) {
       location.href = `/api/inventory?${query.toString()}`;
       return;
     }
+		history.replaceState(null, '', newURL.pathname + '?' + query.toString());
     const response = await fetch(`/api/inventory?${query.toString()}`);
     const rawData = await response.text();
     const jsonData = rawData.trim() ? JSON.parse(rawData) : [];

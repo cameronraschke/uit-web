@@ -1,47 +1,32 @@
 let allModelsData = [];
 
-// Filter form
-const filterTag = document.getElementById('inventory-filter-tagnumber')
-const filterSerial = document.getElementById('inventory-filter-serial')
+const currentURL = new URL(window.location.href);
+const queryParams = new URLSearchParams(currentURL.search);
 
 // Location filter
 const filterLocation = document.getElementById('inventory-filter-location')
+filterLocation.value = queryParams.get('location_formatted') || '';
 const filterLocationReset = document.getElementById('inventory-filter-location-reset')
-filterLocation.addEventListener("change", async (event) => {
-  document.getElementById('inventory-filter-location-reset').style.display = 'inline-block';
-  await fetchFilteredInventoryData();
-});
-filterLocationReset.addEventListener("click", async (event) => {
-  event.preventDefault();
-  filterLocationReset.style.display = 'none';
-  filterLocation.value = '';
-  await fetchFilteredInventoryData();
-});
+createFilterResetHandler(filterLocation, filterLocationReset);
+
 // Department filter
 const filterDepartment = document.getElementById('inventory-filter-department')
+filterDepartment.value = queryParams.get('department') || '';
 const filterDepartmentReset = document.getElementById('inventory-filter-department-reset')
-filterDepartment.addEventListener("change", async (event) => {
-  filterDepartmentReset.style.display = 'inline-block';
-  await fetchFilteredInventoryData();
-});
-filterDepartmentReset.addEventListener("click", async (event) => {
-  event.preventDefault();
-  filterDepartmentReset.style.display = 'none';
-  filterDepartment.value = '';
-  await fetchFilteredInventoryData();
-});
+createFilterResetHandler(filterDepartment, filterDepartmentReset);
 
 // Manufacturer & model filters
 const filterManufacturer = document.getElementById('inventory-filter-manufacturer')
+filterManufacturer.value = queryParams.get('system_manufacturer') || '';
 const filterManufacturerReset = document.getElementById('inventory-filter-manufacturer-reset')
 const filterModel = document.getElementById('inventory-filter-model')
+filterModel.value = queryParams.get('system_model') || '';
 const filterModelReset = document.getElementById('inventory-filter-model-reset')
 
 filterManufacturer.addEventListener("change", async (event) => {
   filterManufacturerReset.style.display = 'inline-block';
   populateModelSelect(filterManufacturer.value || null);
-  await updateModelOptionsBasedOnManufacturer();
-  await fetchFilteredInventoryData();
+  fetchFilteredInventoryData();
 });
 filterManufacturerReset.addEventListener("click", async (event) => {
   event.preventDefault();
@@ -50,82 +35,63 @@ filterManufacturerReset.addEventListener("click", async (event) => {
   // Also reset model select
   filterModelReset.style.display = 'none';
   filterModel.value = '';
-  await loadManufacturersAndModels();
-  await fetchFilteredInventoryData();
+  loadManufacturersAndModels();
+  fetchFilteredInventoryData();
 });
 
 // Model filter
 filterModel.addEventListener("change", async (event) => {
   filterModelReset.style.display = 'inline-block';
-  await fetchFilteredInventoryData();
+  fetchFilteredInventoryData();
 });
 filterModelReset.addEventListener("click", async (event) => {
   event.preventDefault();
   filterModelReset.style.display = 'none';
   filterModel.value = '';
   populateModelSelect();
-  await fetchFilteredInventoryData();
+  fetchFilteredInventoryData();
 });
 
 // Domain filter
 const filterDomain = document.getElementById('inventory-filter-domain')
+filterDomain.value = queryParams.get('ad_domain') || '';
 const filterDomainReset = document.getElementById('inventory-filter-domain-reset')
-filterDomain.addEventListener("change", async (event) => {
-  filterDomainReset.style.display = 'inline-block';
-  await fetchFilteredInventoryData();
-});
-filterDomainReset.addEventListener("click", async (event) => {
-  event.preventDefault();
-  filterDomainReset.style.display = 'none';
-  filterDomain.value = '';
-  await fetchFilteredInventoryData();
-});
+createFilterResetHandler(filterDomain, filterDomainReset);
 
 // Status filter
 const filterStatus = document.getElementById('inventory-filter-status')
+filterStatus.value = queryParams.get('status') || '';
 const filterStatusReset = document.getElementById('inventory-filter-status-reset')
-filterStatus.addEventListener("change", async (event) => {
-  filterStatusReset.style.display = 'inline-block';
-  await fetchFilteredInventoryData();
-});
-filterStatusReset.addEventListener("click", async (event) => {
-  event.preventDefault();
-  filterStatusReset.style.display = 'none';
-  filterStatus.value = '';
-  await fetchFilteredInventoryData();
-});
+createFilterResetHandler(filterStatus, filterStatusReset);
 
 // Broken filter
 const filterBroken = document.getElementById('inventory-filter-broken')
+filterBroken.value = queryParams.get('is_broken') || '';
 const filterBrokenReset = document.getElementById('inventory-filter-broken-reset')
-filterBroken.addEventListener("change", async (event) => {
-  document.getElementById('inventory-filter-broken-reset').style.display = 'inline-block';
-  await fetchFilteredInventoryData();
-});
-filterBrokenReset.addEventListener("click", async (event) => {
-  event.preventDefault();
-  filterBrokenReset.style.display = 'none';
-  filterBroken.value = '';
-  await fetchFilteredInventoryData();
-});
+createFilterResetHandler(filterBroken, filterBrokenReset);
 
 // Has Images filter
 const filterHasImages = document.getElementById('inventory-filter-has_images')
+filterHasImages.value = queryParams.get('has_images') || '';
 const filterHasImagesReset = document.getElementById('inventory-filter-has_images-reset')
-filterHasImages.addEventListener("change", async (event) => {
-  document.getElementById('inventory-filter-has_images-reset').style.display = 'inline-block';
-  await fetchFilteredInventoryData();
-});
-filterHasImagesReset.addEventListener("click", async (event) => {
-  event.preventDefault();
-  filterHasImagesReset.style.display = 'none';
-  filterHasImages.value = '';
-  await fetchFilteredInventoryData();
-});
+createFilterResetHandler(filterHasImages, filterHasImagesReset);
+
+// Reset filter
+function createFilterResetHandler(filterInput, resetButton) {
+  filterInput.addEventListener("change", async () => {
+    resetButton.style.display = 'inline-block';
+    await fetchFilteredInventoryData();
+  });
+  
+  resetButton.addEventListener("click", async (event) => {
+    event.preventDefault();
+    resetButton.style.display = 'none';
+    filterInput.value = '';
+    await fetchFilteredInventoryData();
+  });
+}
 
 async function fetchFilteredInventoryData(csvDownload = false) {
-  const tag = filterTag.value.trim() || null;
-  const serial = filterSerial.value.trim() || null;
   const location = filterLocation.value.trim() || null;
   const department = filterDepartment.value.trim() || null;
   const manufacturer = filterManufacturer.value.trim() || null;
@@ -136,7 +102,17 @@ async function fetchFilteredInventoryData(csvDownload = false) {
   const hasImages = filterHasImages.value.trim() || null;
 
   try {
-    const tableData = await getInventoryTableData(csvDownload, tag, serial, location, department, manufacturer, model, domain, status, broken, hasImages);
+		const tableData = await getInventoryTableData(
+      csvDownload,
+      location,
+      department,
+      manufacturer,
+      model,
+      domain,
+      status,
+      broken,
+      hasImages
+    );
     await renderInventoryTable(tableData);
   } catch (error) {
     console.error("Error fetching inventory data:", error);
@@ -146,7 +122,7 @@ async function fetchFilteredInventoryData(csvDownload = false) {
 const inventoryFilterForm = document.getElementById('inventory-filter-form');
 inventoryFilterForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  await fetchFilteredInventoryData();
+  fetchFilteredInventoryData();
 });
 
 const inventoryFilterResetButton = document.getElementById('inventory-filter-form-reset-button');
@@ -156,8 +132,8 @@ inventoryFilterResetButton.addEventListener("click", async (event) => {
   document.querySelectorAll('.inventory-filter-reset').forEach(elem => {
     elem.style.display = 'none';
   });
-  await loadManufacturersAndModels();
-  await fetchFilteredInventoryData();
+  loadManufacturersAndModels();
+  fetchFilteredInventoryData();
 });
 
 function populateManufacturerSelect() {
@@ -248,12 +224,4 @@ async function loadManufacturersAndModels() {
   } catch (error) {
     console.error('Error fetching models:', error);
   }
-}
-
-async function updateModelOptionsBasedOnManufacturer() {
-  const manufacturerSelect = document.getElementById('inventory-filter-manufacturer');
-  const selectedManufacturer = manufacturerSelect.value || null;
-  
-  // Repopulate model select with filtered options
-  populateModelSelect(selectedManufacturer);
 }
