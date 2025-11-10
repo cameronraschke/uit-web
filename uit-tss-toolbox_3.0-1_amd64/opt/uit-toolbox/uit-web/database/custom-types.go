@@ -78,7 +78,7 @@ type InventoryFormAutofill struct {
 	Broken             *bool      `json:"is_broken"`
 	DiskRemoved        *bool      `json:"disk_removed"`
 	Department         *string    `json:"department"`
-	Domain             *string    `json:"domain"`
+	Domain             *string    `json:"ad_domain"`
 	Note               *string    `json:"note"`
 }
 
@@ -90,7 +90,7 @@ type InventoryUpdateFormInput struct {
 	Broken             *bool      `json:"is_broken"`
 	DiskRemoved        *bool      `json:"disk_removed"`
 	Department         *string    `json:"department"`
-	Domain             *string    `json:"domain"`
+	Domain             *string    `json:"ad_domain"`
 	Note               *string    `json:"note"`
 	Status             *string    `json:"status"`
 	SystemManufacturer *string    `json:"system_manufacturer"`

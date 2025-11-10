@@ -70,7 +70,7 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
     inventoryLookupWarningMessage.textContent = "Tag number must be exactly 6 digits long.";
     return;
   }
-  await populateLocationForm(lookupTag);
+  await populateLocationForm(Number(lookupTag));
 
   inventoryUpdateSection.style.display = "block";
   if (lookupResult) {
@@ -206,7 +206,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     jsonObject["system_manufacturer"] = getInputValue("#system_manufacturer");
     jsonObject["system_model"] = getInputValue("#system_model");
     jsonObject["department"] = getInputValue("#department");
-    jsonObject["domain"] = getInputValue("#domain");
+    jsonObject["ad_domain"] = getInputValue("#ad_domain");
     const brokenBool = getInputValue("#is_broken");
       if (brokenBool === "true") jsonObject["is_broken"] = true;
       else if (brokenBool === "false") jsonObject["is_broken"] = false;
@@ -266,7 +266,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
 		inventoryLookupWarningMessage.style.display = "none";
 		inventoryLookupLastUpdateTime.textContent = "";
     await populateLocationForm(Number(returnedJson.tagnumber));
-    renderInventoryTable();
+    await fetchFilteredInventoryData();
   } catch (error) {
     console.error("Error updating inventory:", error);
 		alert("Error updating inventory: " + error.message);
@@ -300,7 +300,7 @@ async function populateLocationForm(tag) {
     if (locationFormData.system_manufacturer) inventoryUpdateForm.querySelector("#system_manufacturer").value = locationFormData.system_manufacturer;
     if (locationFormData.system_model) inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model;
     if (locationFormData.department) inventoryUpdateForm.querySelector("#department").value = locationFormData.department;
-    if (locationFormData.domain) inventoryUpdateForm.querySelector("#domain").value = locationFormData.domain;
+    if (locationFormData.ad_domain) inventoryUpdateForm.querySelector("#ad_domain").value = locationFormData.ad_domain;
     if (typeof locationFormData.is_broken === "boolean") inventoryUpdateForm.querySelector("#is_broken").value = locationFormData.is_broken;
     if (typeof locationFormData.status === "string") inventoryUpdateForm.querySelector("#status").value = locationFormData.status;
     if (locationFormData.note) inventoryUpdateForm.querySelector("#note").value = locationFormData.note;

@@ -95,8 +95,8 @@
                 <option value="{{ $department }}">{{ $departmentReadable }}</option>
                 {{- end }}
               </select></div>
-              <div><label for="domain" class="required-field">AD Domain:</label></div>
-              <div><select id="domain" name="domain">
+              <div><label for="ad_domain" class="required-field">AD Domain:</label></div>
+              <div><select id="ad_domain" name="ad_domain">
                 <option value="" disabled selected>Select AD Domain</option>
                 <option value="">None</option>
                 {{- range $domain, $domainReadable := .Domains }}
@@ -186,7 +186,7 @@
               </select>
               <a id="inventory-filter-model-reset" class="inventory-filter-reset" href="">x</a></span>
             <span>
-              <select id="inventory-filter-domain" name="domain" form="inventory-filter-form">
+              <select id="inventory-filter-domain" name="ad_domain" form="inventory-filter-form">
                 <option value="" selected disabled>AD Domain</option>
                 {{ range $domain, $domainReadable := .Domains }}
                   <option value="{{ $domain }}">{{ $domainReadable }}</option>

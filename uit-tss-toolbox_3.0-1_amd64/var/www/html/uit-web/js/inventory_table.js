@@ -59,14 +59,16 @@ async function renderInventoryTable(tableData = null) {
       
       const tagCell = document.createElement('td');
       if (row.tagnumber) {
-        tagCell.dataset.tagnumber = row.tagnumber;
-        const tagCellLink = document.createElement('a');
-        tagCellLink.setAttribute('href', `#inventory-section`);
-        tagCellLink.textContent = row.tagnumber;
-        tagCell.appendChild(tagCellLink);
-        tagCell.addEventListener('click', () => {
-          const tagLookupInput = document.getElementById('inventory-tag-lookup');
-          tagLookupInput.value = row.tagnumber;
+				tagCell.dataset.tagnumber = row.tagnumber;
+				const tagCellLink = document.createElement('a');
+				tagCellLink.setAttribute('href', `#inventory-section`);
+				tagCellLink.textContent = row.tagnumber;
+				tagCell.appendChild(tagCellLink);
+				tagCell.addEventListener('click', () => {
+					const tagLookupInput = document.getElementById('inventory-tag-lookup');
+					tagLookupInput.value = row.tagnumber;
+					populateLocationForm(Number(tagCell.dataset.tagnumber));
+    			fetchFilteredInventoryData();
         });
       } else {
         tagCell.dataset.tagnumber = null;
