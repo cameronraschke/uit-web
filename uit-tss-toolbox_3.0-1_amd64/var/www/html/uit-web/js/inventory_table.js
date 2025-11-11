@@ -13,11 +13,11 @@ const urlFilterKeys = [
 	"csv"
 ]
 
-async function getInventoryTableData(csvDownload = false, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages) {
+async function getInventoryTableData(csvDownload = false, tagnumber, systemSerial, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages) {
 	const newURL = new URL(window.location.href);
   const query = new URLSearchParams();
-	const tagnumber = query.get("tagnumber", tagnumber);
-	const systemSerial = query.get("system_serial", systemSerial);
+	if (tagnumber) query.set("tagnumber", tagnumber);
+	if (systemSerial) query.set("system_serial", systemSerial);
   if (filterLocation) query.set("location", filterLocation);
   if (filterDepartment) query.set("department_name", filterDepartment);
   if (filterManufacturer) query.set("system_manufacturer", filterManufacturer);
@@ -27,26 +27,21 @@ async function getInventoryTableData(csvDownload = false, filterLocation, filter
   if (filterBroken) query.set("is_broken", filterBroken);
   if (filterHasImages) query.set("has_images", filterHasImages);
   if (csvDownload) query.set("csv", "true");
+	const modifiedAPIQuery = query;
+	modifiedAPIQuery.delete("tagnumber");
+	modifiedAPIQuery.delete("system_serial");
   try {
     if (csvDownload) {
-      location.href = `/api/inventory?${query.toString()}`;
+			
+      location.href = `/api/inventory?${modifiedAPIQuery.toString()}`;
       return;
     }
 		if (query.toString().length > 0) {
 			history.replaceState(null, '', newURL.pathname + '?' + query.toString());
-		} else if (tagnumber || systemSerial) {
-			const nonAPIQuery = new URLSearchParams();
-			nonAPIQuery.set("tagnumber", tagnumber || '');
-			nonAPIQuery.set("system_serial", systemSerial || '');
-			query.forEach((value, key) => {
-				if (!urlFilterKeys.includes(key)) {
-					nonAPIQuery.set(key, value);
-				}});
-			history.replaceState(null, '', newURL.pathname + '?' + nonAPIQuery.toString());
 		} else {
 			history.replaceState(null, '', newURL.pathname);
 		}
-    const response = await fetch(`/api/inventory?${query.toString()}`);
+    const response = await fetch(`/api/inventory?${modifiedAPIQuery.toString()}`);
     const rawData = await response.text();
     const jsonData = rawData.trim() ? JSON.parse(rawData) : [];
     if (jsonData && typeof jsonData === 'object' && !Array.isArray(jsonData) && Object.prototype.hasOwnProperty.call(jsonData, 'error')) {
