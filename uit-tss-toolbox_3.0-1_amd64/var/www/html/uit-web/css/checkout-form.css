@@ -1,94 +1,72 @@
 * {
 	font-family: sans-serif;
+	margin: 0;
 }
 body {
-	margin: 0% 7% 7% 7%;
+	margin: 0.5in 0.3in 0.5in 0.3in;
+	font-size: 14px;
 }
+
+h1 {
+	text-align: center;
+	font-size: 24px;
+	margin: 0.2in 0 0.2in 0;
+}
+
+h2 {
+	text-align: center;
+	font-size: 22px;
+	margin: 0.2in 0 0.2in 0;
+}
+
+p {
+	text-align: center;
+	font-size: 18px;
+	margin: 0.1in 0 0.1in 0;
+}
+
+span {
+	border-bottom: 1px solid black;
+}
+
 .uh-logo {
-	margin: 5% 0% 5% 0%;
-	max-width: 100%;
-	max-height: 20%;
+	margin: 0 auto 0.5cm auto;
+	max-height: 1.5in;
 }
 .uh-logo img {
 	max-width: 100%;
 	height: auto;
 }
-.page-content {
-	margin: 1% 1% 1% 1%;
-}
-.page-content h1 {
-	text-align: center;
-	font-size: 28px;
-}
-.page-content p {
-	text-align: center;
-	font-size: 18px;
-}
-.tagnumber {
-	margin: 3% 0% 3% 0%;
-	font-size: 24px;
-	text-align: center;
-}
-.signature {
-	margin: 1% 0% 1% 0%;
-	text-align: left;
-	font-size: 18px;
-	width: auto;
-}
-.signature div {
-	display: inline-block;
-}
-.signature p {
-	display: table;
-}
-.signature span {
-	display: table-cell;
-	width: 100%;
-	border-bottom: 2px solid black;
-	text-align: center;
-}
-.customer-info {
-	font-size: 22px;
-	border-bottom: 1px solid black;
-}
+
 .contact-info {
-	text-align: left;
+	margin-top: 0.3in;
 }
-.footer {
+.contact-info p {
+	font-size: 12px;
 	text-align: left;
-	bottom: 5%;
+	margin: 0.1em 0;
 }
 
-#div1 {
-	border-bottom: 1px solid black;
-}
-#div2 {
-	width: 60%;
-}
-#div3 {
-	width: 30%; 
-	margin-left: 3%;
-}
-#div4 {
-	width: 45%
-}
-#div5 {
-	width: 45%;
-	margin-left: 3%;
-}
-#div6 {
-	width: 60%;
-}
-#div7 {
-	width: 30%;
-	margin-left: 3%;
+.grid-container {
+	border-top: 0.5px dashed black;
+	padding-top: 0.2in;
+	display: grid;
+	gap: 0.1in;
+	margin-top: 0.3in;
+	justify-content: left;
+	align-items: end;
+	grid-template:
+		"a b c d" 1.5cm 
+		"e f g h" 1.5cm
+		"i j k l " 1.5cm / 0.3fr 2fr 0.3fr 1fr;
 }
 
-#span1 {
-	background-color:rgb(230, 230, 230);
-	height: 3em;
+.grid-container > p {
+	margin: 0;
+	font-size: 14px;
 }
-#span2 {
-	background-color:rgb(230, 230, 230);
-	height: 3em;
+
+.signature {
+	background: rgba(211, 211, 211, 0.336);
+	height: 1.3cm;
 }

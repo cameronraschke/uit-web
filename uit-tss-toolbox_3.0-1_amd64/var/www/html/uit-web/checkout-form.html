@@ -8,24 +8,24 @@
     <div class="uh-logo">
       <img src="/images/uh-logo.png">
     </div>
-    <div class="page-content">
-      <h1><b>University Information Technology (UIT) - Laptop Checkout Program</b></h1>
+    <div>
+      <h2><b>University Information Technology (UIT) - Laptop Checkout Program</b></h2>
     </div>
-    <div class="page-content">
+    <div>
       <p>
         We hope that you enjoy using this laptop. We have pre-installed a few apps for you, 
         including Microsoft Office, Microsoft Outlook, Microsoft Teams, Zoom, Chrome, Edge, Firefox, 
         LockDown Browser, and Cisco Secure Client (VPN).
       </p>
     </div>
-    <div class="page-content"> 
+    <div> 
       <p>
         Please treat our laptops with respect. Many other UH community members 
         will use these laptops after you, so we ask that you return this laptop 
         in the same condition in which you received it.
       </p>
     </div>
-    <div class="page-content">
+    <div>
       <p>
         <!--To login to this laptop, please use the following credentials:
         <br>Username: <b><u>Student</u></b>
@@ -33,16 +33,16 @@
         To login to this laptop, please use your <b><u>CougarNet ID</u></b> and <b><u>CougarNet Password</u></b>
       </p>
     </div>
-    <div id="div1" class="page-content">
+    <div id="div1">
       <p>
         When you return this laptop back to our office, 
         we make sure that all of your data is completely and securely erased.
       </p>
     </div>
-    <div class="tagnumber">
-        <h2>The number associated with this laptop is <b>{{ .ClientTag }}</b></h2>
+    <div>
+        <h1>The number associated with this laptop is <b>{{ .ClientTag }}</b></h1>
     </div>
-    <div class="page-content">
+    <div>
       <p>
         <i>
           In receiving this laptop loan from UIT, I agree to the following: 
@@ -60,37 +60,19 @@
         </i>
       </p>
     </div>
-    <div class="signature">
-      <div id="div2">
-        <p>Customer Name: <span>{{ .CustomerName }}</span></p>
-      </div>
-      <div id="div3">
-        <p>Checkout Date: <span>{{ .CheckoutDate }}</span></p>
-      </div>
-    </div>
-    <div class="signature">
-      <div id="div4">
-        <p>Customer MyUH/PSID: <span></span></p>
-      </div>
-      <div id="div5">
-        <p>Return Date: <span>{{ .ReturnDate }}</span></p>
-      </div>
-    </div>
-    <div class="signature">
-      <div id="div6">
-        <p>Customer Signature: </span><span id="span1"></span></p>
-      </div>
-      <div id="div7">
-        <p>Date: <span id="span2"></span></p>
-      </div>
+    <div class="grid-container">
+			<p>Customer Name:</p> <span>{{ .CustomerName }}</span>
+			<p>Customer PSID:</p> <span></span>
+			<p>Checkout Date:</p> <span>{{ .CheckoutDate }}</span>
+			<p>Return Date:</p> <span>{{ .ReturnDate }}</span>
+			<p>Customer Signature:</p> </span><span class="signature"> </span>
+			<p>Date:</p> <span class="signature"> </span>
     </div>
     <div class="contact-info">
-      <p>
-      Please reach out to our office with any questions or concerns:
-      <br><b>Phone</b>: (713) 743-1411
-      <br><b>Email</b>: uitsupport@uh.edu
-      <br><b>Live Chat</b>: https://gethelp.uh.edu/live_chat (Select UIT Support Center)
-    </p>
+      <p>Please reach out to our office with any questions or concerns:</p>
+			<p><b>Phone</b>: (713) 743-1411</p>
+      <p><b>Email</b>: uitsupport@uh.edu</p>
+      <p><b>Live Chat</b>: https://uh.edu/uit (Click the red chat icon in the bottom right corner)</p>
     </div>
   </body>
 </html>

@@ -17,6 +17,9 @@ const inventoryUpdateCancelButton = document.getElementById('inventory-update-ca
 const tagDatalist = document.getElementById('inventory-tag-suggestions');
 const clientImagesLink = document.getElementById('client_images_link');
 
+const statusesThatIndicateBroken = ["needs-repair"];
+const statusesThatIndicateCheckout = ["checked-out", "reserved-for-checkout"];
+
 async function getTagOrSerial(tagnumber, serial) {
   const query = new URLSearchParams();
   if (tagnumber) {
@@ -108,31 +111,41 @@ async function submitInventoryLookup() {
 inventoryLookupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 	await submitInventoryLookup();
+	await updateCheckoutStatus();
+	await updateBrokenStatus();
 });
 
 const clientStatus = inventoryUpdateForm.querySelector("#status");
-clientStatus.addEventListener("change", () => {
-	if (clientStatus.value === "needs-repair") {
-		inventoryUpdateForm.querySelector("#is_broken").value = "true";
-	} else {
-		inventoryUpdateForm.querySelector("#is_broken").value = "false";
-	}
-	if (clientStatus.value === "checked-out" || clientStatus.value === "reserved-for-checkout") {
+clientStatus.addEventListener("change", async () => {
+	await updateCheckoutStatus();
+	await updateBrokenStatus();
+});
+
+async function updateCheckoutStatus() {
+	if (statusesThatIndicateCheckout.includes(clientStatus.value)) {
 		const printCheckoutURL = document.createElement('div');
 		printCheckoutURL.id = 'print-checkout-link';
-		printCheckoutURL.innerHTML = `
-			<a href="/checkout-form?tagnumber=${encodeURIComponent(inventoryLookupTagInput.value)}" target="_blank">
-				Print Checkout Form
-			</a>
-		`;
+		const printCheckoutAnchor = document.createElement('a');
+		printCheckoutAnchor.setAttribute('href', `/checkout-form?tagnumber=${encodeURIComponent(inventoryLookupTagInput.value)}`);
+		printCheckoutAnchor.setAttribute('target', '_blank');
+		printCheckoutAnchor.textContent = 'Print Checkout Form';
 		inventoryUpdateForm.querySelector("#status").after(printCheckoutURL);
+		printCheckoutURL.appendChild(printCheckoutAnchor);
 	} else {
 		const existingLink = document.getElementById('print-checkout-link');
 		if (existingLink) {
 			existingLink.remove();
 		}
 	}
-});
+}
+
+async function updateBrokenStatus() {
+	if (statusesThatIndicateBroken.includes(clientStatus.value)) {
+		inventoryUpdateForm.querySelector("#is_broken").value = "true";
+	} else {
+		inventoryUpdateForm.querySelector("#is_broken").value = "false";
+	}
+}
 
 function resetInventoryForm() {
   inventoryLookupForm.reset();
@@ -347,6 +360,8 @@ async function populateLocationForm(tag) {
     inventoryUpdateForm.querySelector("#status").value = locationFormData.status || '';
     inventoryUpdateForm.querySelector("#note").value = locationFormData.note || '';
   }
+	await updateCheckoutStatus();
+	await updateBrokenStatus();
 }
 
 const csvDownloadButton = document.getElementById('inventory-filter-download-button');
