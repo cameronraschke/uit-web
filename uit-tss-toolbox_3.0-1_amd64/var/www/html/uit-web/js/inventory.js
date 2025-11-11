@@ -75,7 +75,7 @@ async function submitInventoryLookup() {
     return;
   }
 	
-	history.replaceState(null, '', window.location.pathname + `?tagnumber=${encodeURIComponent(lookupTag || '')}&system_serial=${encodeURIComponent(lookupSerial || '')}`);
+	history.replaceState(null, '', window.location.pathname + `?update=true&tagnumber=${encodeURIComponent(lookupTag || '')}`);
   await populateLocationForm(Number(lookupTag));
 
   inventoryUpdateSection.style.display = "block";

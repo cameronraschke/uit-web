@@ -15,32 +15,38 @@ const urlFilterKeys = [
 
 async function getInventoryTableData(csvDownload = false, tagnumber, systemSerial, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages) {
 	const newURL = new URL(window.location.href);
-  const query = new URLSearchParams();
-	if (tagnumber) query.set("tagnumber", tagnumber);
-	if (systemSerial) query.set("system_serial", systemSerial);
-  if (filterLocation) query.set("location", filterLocation);
-  if (filterDepartment) query.set("department_name", filterDepartment);
-  if (filterManufacturer) query.set("system_manufacturer", filterManufacturer);
-  if (filterModel) query.set("system_model", filterModel);
-  if (filterDomain) query.set("ad_domain", filterDomain);
-  if (filterStatus) query.set("status", filterStatus);
-  if (filterBroken) query.set("is_broken", filterBroken);
-  if (filterHasImages) query.set("has_images", filterHasImages);
-  if (csvDownload) query.set("csv", "true");
-	const modifiedAPIQuery = query;
-	modifiedAPIQuery.delete("tagnumber");
-	modifiedAPIQuery.delete("system_serial");
+  const browserQuery = new URLSearchParams();
+
+	if (tagnumber) browserQuery.set("tagnumber", tagnumber);
+	if (systemSerial) browserQuery.set("system_serial", systemSerial);
+  if (filterLocation) browserQuery.set("location", filterLocation);
+  if (filterDepartment) browserQuery.set("department_name", filterDepartment);
+  if (filterManufacturer) browserQuery.set("system_manufacturer", filterManufacturer);
+  if (filterModel) browserQuery.set("system_model", filterModel);
+  if (filterDomain) browserQuery.set("ad_domain", filterDomain);
+  if (filterStatus) browserQuery.set("status", filterStatus);
+  if (filterBroken) browserQuery.set("is_broken", filterBroken);
+  if (filterHasImages) browserQuery.set("has_images", filterHasImages);
+  if (csvDownload) browserQuery.set("csv", "true");
+	
+	const modifiedAPIQuery = new URLSearchParams(browserQuery);
+	if (browserQuery.get("update") === "true") {
+		modifiedAPIQuery.delete("tagnumber");
+		modifiedAPIQuery.delete("system_serial");
+	}
+
   try {
     if (csvDownload) {
-			
       location.href = `/api/inventory?${modifiedAPIQuery.toString()}`;
       return;
     }
-		if (query.toString().length > 0) {
-			history.replaceState(null, '', newURL.pathname + '?' + query.toString());
+
+		if (browserQuery.toString().length > 0) {
+			history.replaceState(null, '', newURL.pathname + '?' + browserQuery.toString());
 		} else {
 			history.replaceState(null, '', newURL.pathname);
 		}
+
     const response = await fetch(`/api/inventory?${modifiedAPIQuery.toString()}`);
     const rawData = await response.text();
     const jsonData = rawData.trim() ? JSON.parse(rawData) : [];
@@ -86,10 +92,11 @@ async function renderInventoryTable(tableData = null) {
       if (jsonRow.tagnumber) {
 				tagCell.dataset.tagnumber = jsonRow.tagnumber;
 				const tagCellAnchor = document.createElement('a');
-				tagCellAnchor.setAttribute('href', `/inventory?tagnumber=${encodeURIComponent(jsonRow.tagnumber)}`);
+				tagCellAnchor.setAttribute('href', `/inventory?update=true&tagnumber=${encodeURIComponent(jsonRow.tagnumber)}`);
 				tagCellAnchor.textContent = jsonRow.tagnumber;
 				tagCell.appendChild(tagCellAnchor);
 				tagCellAnchor.addEventListener('click', async (event) => {
+					event.preventDefault();
 					if (event.ctrlKey || event.metaKey) {
 						return; // Allow default behavior for Ctrl/Cmd + click
 					}
@@ -133,7 +140,7 @@ async function renderInventoryTable(tableData = null) {
       if (jsonRow.location_formatted) {
         locationCell.dataset.location_formatted = jsonRow.location_formatted;
         const locationCellLink = document.createElement('a');
-        locationCellLink.setAttribute('href', `/locations?search=${encodeURIComponent(jsonRow.location_formatted)}`);
+        locationCellLink.setAttribute('href', `/inventory?search=${encodeURIComponent(jsonRow.location_formatted)}`);
         locationCellLink.textContent = jsonRow.location_formatted;
         locationCell.appendChild(locationCellLink);
       } else {
