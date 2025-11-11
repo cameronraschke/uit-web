@@ -27,6 +27,7 @@ p {
 
 span {
 	border-bottom: 1px solid black;
+	text-align: center;
 }
 
 .uh-logo {
@@ -66,7 +67,43 @@ span {
 	font-size: 14px;
 }
 
-.signature {
-	background: rgba(211, 211, 211, 0.336);
-	height: 1.3cm;
+.print-form {
+	border: 2px dotted red;
+	margin: 5% 0 5% 0;
+	padding: 1% 0 1% 0;
+	width: 100%;
+	top: 0;
+	left: 0;
+}
+
+.print-form input {
+	padding: 3px;
+	font-size: 14px;
+	margin: 1%;
+	text-align: left;
+}
+
+.print-form label {
+	font-size: 14px;
+	margin: 1% 0% 0% 1%;
+	text-align: left;
+}
+
+.print-form button {
+	margin: 1% 0% 1% 1%;
+	padding: 5px;
+	font-size: 14px;
+	cursor: pointer;
+}
+
+@media print {
+	#printCheckoutFormContainer {
+		display: none !important;
+	}
+}
+
+@media screen {
+	#printCheckoutFormContainer {
+		display: block !important;
+	}
 }

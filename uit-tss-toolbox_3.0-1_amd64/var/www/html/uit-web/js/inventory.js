@@ -75,7 +75,7 @@ async function submitInventoryLookup() {
     return;
   }
 	
-	history.replaceState(null, '', window.location.pathname + `?tagnumber=${inventoryLookupTagInput.value || ''}`);
+	history.replaceState(null, '', window.location.pathname + `?tagnumber=${encodeURIComponent(lookupTag || '')}&system_serial=${encodeURIComponent(lookupSerial || '')}`);
   await populateLocationForm(Number(lookupTag));
 
   inventoryUpdateSection.style.display = "block";
@@ -122,19 +122,17 @@ clientStatus.addEventListener("change", async () => {
 });
 
 async function updateCheckoutStatus() {
+	const printCheckoutDiv = document.getElementById('print-checkout-link');
 	if (statusesThatIndicateCheckout.includes(clientStatus.value)) {
-		const printCheckoutURL = document.createElement('div');
-		printCheckoutURL.id = 'print-checkout-link';
 		const printCheckoutAnchor = document.createElement('a');
 		printCheckoutAnchor.setAttribute('href', `/checkout-form?tagnumber=${encodeURIComponent(inventoryLookupTagInput.value)}`);
 		printCheckoutAnchor.setAttribute('target', '_blank');
 		printCheckoutAnchor.textContent = 'Print Checkout Form';
-		inventoryUpdateForm.querySelector("#status").after(printCheckoutURL);
-		printCheckoutURL.appendChild(printCheckoutAnchor);
+		printCheckoutDiv.innerHTML = '';
+		printCheckoutDiv.appendChild(printCheckoutAnchor);
 	} else {
-		const existingLink = document.getElementById('print-checkout-link');
-		if (existingLink) {
-			existingLink.remove();
+		if (printCheckoutDiv) {
+			printCheckoutDiv.innerHTML = '';
 		}
 	}
 }

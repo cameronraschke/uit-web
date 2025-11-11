@@ -5,6 +5,28 @@
 		<title>UIT - Laptop Checkout Form</title>
   </head>
   <body>
+		<div class="print-form" id="printCheckoutFormContainer">
+			<h2>Please print this form and have the customer sign it before handing over the laptop.</h2>
+			
+			<form  id="printCheckoutForm">
+				<label for="print_customer_name">Customer Name</label><br />
+				<input type="text" id="print_customer_name" value="{{ .CustomerName }}" />
+				<br />
+
+				<label for="print_customer_psid">Customer PSID</label><br />
+				<input type="text" id="print_customer_psid" value="" />
+				<br />
+				
+				<label for="print_checkout_date">Checkout Date</label><br />
+				<input type="date" id="print_checkout_date" value="{{ .CheckoutDate }}" />
+				<br />
+
+				<label for="print_return_date">Return Date</label><br />
+				<input type="date" id="print_return_date" value="{{ .ReturnDate }}" />
+				<br />
+				<button type="button" id="confirmAndPrint">Confirm and Print</button>
+			</form>
+		</div>
     <div class="uh-logo">
       <img src="/images/uh-logo.png">
     </div>
@@ -61,10 +83,10 @@
       </p>
     </div>
     <div class="grid-container">
-			<p>Customer Name:</p> <span>{{ .CustomerName }}</span>
-			<p>Customer PSID:</p> <span></span>
-			<p>Checkout Date:</p> <span>{{ .CheckoutDate }}</span>
-			<p>Return Date:</p> <span>{{ .ReturnDate }}</span>
+			<p>Customer Name:</p> <span id="customer_name">{{ .CustomerName }}</span>
+			<p>Customer PSID:</p> <span id="customer_psid"></span>
+			<p>Checkout Date:</p> <span id="checkout_date">{{ .CheckoutDate }}</span>
+			<p>Return Date:</p> <span id="return_date">{{ .ReturnDate }}</span>
 			<p>Customer Signature:</p> </span><span class="signature"> </span>
 			<p>Date:</p> <span class="signature"> </span>
     </div>
