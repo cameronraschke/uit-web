@@ -49,6 +49,7 @@ async function getTagOrSerial(tagnumber, serial) {
 }
 
 async function submitInventoryLookup() {
+	await setFiltersFromURL();
 	const searchParams = new URLSearchParams(window.location.search);
 	const lookupTag = inventoryLookupTagInput.value || searchParams.get('tagnumber') || null;
   const lookupSerial = inventoryLookupSerialInput.value || searchParams.get('system_serial') || null;
@@ -145,7 +146,7 @@ async function updateBrokenStatus() {
 	}
 }
 
-function resetInventoryForm() {
+function resetInventoryLookupAndUpdateForm() {
   inventoryLookupForm.reset();
   inventoryUpdateForm.reset();
   inventoryLookupTagInput.value = "";
@@ -163,13 +164,12 @@ function resetInventoryForm() {
   inventoryLookupWarningMessage.style.display = "none";
   inventoryLookupWarningMessage.textContent = "";
 	inventoryLookupLastUpdateTime.textContent = "";
-	history.replaceState(null, '', window.location.pathname);
   inventoryLookupTagInput.focus();
 }
 
 inventoryLookupResetButton.addEventListener("click", (event) => {
   event.preventDefault();
-  resetInventoryForm();
+  resetInventorySearchQuery();
 });
 
 clientMoreDetailsButton.addEventListener("click", (event) => {
@@ -180,9 +180,17 @@ clientMoreDetailsButton.addEventListener("click", (event) => {
   }
 });
 
+function resetInventorySearchQuery() {
+	url = new URL(window.location);
+	url.searchParams.delete('tagnumber');
+	url.searchParams.delete('system_serial');
+	url.searchParams.delete('update');
+	history.replaceState(null, '', url.toString());
+}
+
 inventoryUpdateCancelButton.addEventListener("click", (event) => {
   event.preventDefault();
-  resetInventoryForm();
+  resetInventoryLookupAndUpdateForm();
 });
 
 function renderTagOptions(tags) {
@@ -232,6 +240,8 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
   inventoryUpdateSubmitButton.disabled = true;
   if (updatingInventory) return;
   updatingInventory = true;
+
+	await setFiltersFromURL();
 
   try {
     const jsonObject = {};
@@ -376,15 +386,20 @@ csvDownloadButton.addEventListener('click', async (event) => {
   }
 });
 
-function initializeInventoryPage() {
-  Promise.all([fetchFilteredInventoryData(), loadManufacturersAndModels()]);
+async function initializeInventoryPage() {
+	await loadAllManufacturersAndModels();
+	await setFiltersFromURL();
+	await initializeSearch();
+	await populateModelSelect(filterManufacturer.value || null);
+  await fetchFilteredInventoryData()
 	const urlParams = new URLSearchParams(window.location.search);
-	if (urlParams.get('tagnumber')) {
+	if (urlParams.get('tagnumber') && urlParams.get('update') === 'true') {
 		inventoryLookupTagInput.value = urlParams.get('tagnumber');
-		submitInventoryLookup();
+		await submitInventoryLookup();
 	}
 }
-document.addEventListener("DOMContentLoaded", () => {
-  initializeInventoryPage();
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await initializeInventoryPage();
 });
 

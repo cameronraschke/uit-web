@@ -1,3 +1,20 @@
+const filterLocation = document.getElementById('inventory-filter-location');
+const filterLocationReset = document.getElementById('inventory-filter-location-reset');
+const filterDepartment = document.getElementById('inventory-filter-department');
+const filterDepartmentReset = document.getElementById('inventory-filter-department-reset');
+const filterManufacturer = document.getElementById('inventory-filter-manufacturer');
+const filterManufacturerReset = document.getElementById('inventory-filter-manufacturer-reset');
+const filterModel = document.getElementById('inventory-filter-model');
+const filterModelReset = document.getElementById('inventory-filter-model-reset');
+const filterDomain = document.getElementById('inventory-filter-domain');
+const filterDomainReset = document.getElementById('inventory-filter-domain-reset');
+const filterStatus = document.getElementById('inventory-filter-status');
+const filterStatusReset = document.getElementById('inventory-filter-status-reset');
+const filterBroken = document.getElementById('inventory-filter-broken');
+const filterBrokenReset = document.getElementById('inventory-filter-broken-reset');
+const filterHasImages = document.getElementById('inventory-filter-has_images');
+const filterHasImagesReset = document.getElementById('inventory-filter-has_images-reset');
+
 let allModelsData = [];
 
 const currentURL = new URL(window.location.href);
@@ -17,71 +34,86 @@ function updateURLParameters(urlParameter, value) {
 	}
 }
 
-// Location filter
-const filterLocation = document.getElementById('inventory-filter-location')
-filterLocation.value = queryParams.get('location') || '';
-const filterLocationReset = document.getElementById('inventory-filter-location-reset')
-createFilterResetHandler(filterLocation, filterLocationReset);
+async function initializeSearch() {
+	await setFiltersFromURL();
 
-// Department filter
-const filterDepartment = document.getElementById('inventory-filter-department')
-filterDepartment.value = queryParams.get('department') || '';
-const filterDepartmentReset = document.getElementById('inventory-filter-department-reset')
-createFilterResetHandler(filterDepartment, filterDepartmentReset);
+	createFilterResetHandler(filterLocation, filterLocationReset);
+	createFilterResetHandler(filterDepartment, filterDepartmentReset);
+	createFilterResetHandler(filterManufacturer, filterManufacturerReset);
+	createFilterResetHandler(filterModel, filterModelReset);
+	createFilterResetHandler(filterDomain, filterDomainReset);
+	createFilterResetHandler(filterStatus, filterStatusReset);
+	createFilterResetHandler(filterBroken, filterBrokenReset);
+	createFilterResetHandler(filterHasImages, filterHasImagesReset);
 
-// Manufacturer & model filters
-const filterManufacturer = document.getElementById('inventory-filter-manufacturer')
-filterManufacturer.value = queryParams.get('system_manufacturer') || '';
-const filterManufacturerReset = document.getElementById('inventory-filter-manufacturer-reset')
-const filterModel = document.getElementById('inventory-filter-model')
-filterModel.value = queryParams.get('system_model') || '';
-const filterModelReset = document.getElementById('inventory-filter-model-reset')
-createFilterResetHandler(filterManufacturer, filterManufacturerReset);
-createFilterResetHandler(filterModel, filterModelReset);
-
-// Domain filter
-const filterDomain = document.getElementById('inventory-filter-domain')
-filterDomain.value = queryParams.get('ad_domain') || '';
-const filterDomainReset = document.getElementById('inventory-filter-domain-reset')
-createFilterResetHandler(filterDomain, filterDomainReset);
-
-// Status filter
-const filterStatus = document.getElementById('inventory-filter-status')
-filterStatus.value = queryParams.get('status') || '';
-const filterStatusReset = document.getElementById('inventory-filter-status-reset')
-createFilterResetHandler(filterStatus, filterStatusReset);
-
-// Broken filter
-const filterBroken = document.getElementById('inventory-filter-broken')
-filterBroken.value = queryParams.get('is_broken') || '';
-const filterBrokenReset = document.getElementById('inventory-filter-broken-reset')
-createFilterResetHandler(filterBroken, filterBrokenReset);
-
-// Has Images filter
-const filterHasImages = document.getElementById('inventory-filter-has_images')
-filterHasImages.value = queryParams.get('has_images') || '';
-const filterHasImagesReset = document.getElementById('inventory-filter-has_images-reset')
-createFilterResetHandler(filterHasImages, filterHasImagesReset);
+	if (filterLocation.value) filterLocationReset.style.display = 'inline-block';
+	if (filterDepartment.value) filterDepartmentReset.style.display = 'inline-block';
+	if (filterManufacturer.value) filterManufacturerReset.style.display = 'inline-block';
+	if (filterModel.value) filterModelReset.style.display = 'inline-block';
+	if (filterDomain.value) filterDomainReset.style.display = 'inline-block';
+	if (filterStatus.value) filterStatusReset.style.display = 'inline-block';
+	if (filterBroken.value) filterBrokenReset.style.display = 'inline-block';
+	if (filterHasImages.value) filterHasImagesReset.style.display = 'inline-block';
+}
 
 // Reset filter
-function createFilterResetHandler(filterInput, resetButton) {
-  filterInput.addEventListener("change", async () => {
-    resetButton.style.display = 'inline-block';
-		if (filterInput === filterManufacturer) {
-			populateModelSelect(filterInput.value || null);
+function createFilterResetHandler(filterElement, resetButton) {
+	if (!filterElement || !resetButton) return;
+	if (filterElement.value && filterElement.value.length > 0) {
+		resetButton.style.display = 'inline-block';
+	}
+
+	filterElement.addEventListener("change", async () => {
+		resetButton.style.display = 'inline-block';
+		const paramName = getURLParamName(filterElement);
+		updateURLParameters(paramName, filterElement.value);
+		if (filterElement === filterManufacturer) {
+			await populateModelSelect(filterElement.value || null);
 		}
-    await fetchFilteredInventoryData();
-  });
+		await fetchFilteredInventoryData();
+	});
   
-  resetButton.addEventListener("click", async (event) => {
-    event.preventDefault();
-    resetButton.style.display = 'none';
-		filterInput.value = '';
-		if (filterInput === filterManufacturer || filterInput === filterModel) {
-			loadManufacturersAndModels();
+	resetButton.addEventListener("click", async (event) => {
+		event.preventDefault();
+		resetButton.style.display = 'none';
+		filterElement.value = '';
+		const paramName = getURLParamName(filterElement);
+		updateURLParameters(paramName, null);
+		if (filterElement === filterManufacturer) {
+			filterModel.value = '';
+			filterModelReset.style.display = 'none';
+			updateURLParameters('system_model', null);
+			await loadAllManufacturersAndModels();
 		}
-    await fetchFilteredInventoryData();
-  });
+		if (filterElement === filterModel) {
+			await populateModelSelect(filterManufacturer.value || null);
+		}
+		await fetchFilteredInventoryData();
+	});
+}
+
+function getURLParamName(filterElement) {
+	if (filterElement === filterLocation) return 'location';
+	if (filterElement === filterDepartment) return 'department_name';
+	if (filterElement === filterManufacturer) return 'system_manufacturer';
+	if (filterElement === filterModel) return 'system_model';
+	if (filterElement === filterDomain) return 'ad_domain';
+	if (filterElement === filterStatus) return 'status';
+	if (filterElement === filterBroken) return 'is_broken';
+	if (filterElement === filterHasImages) return 'has_images';
+	return '';
+}
+
+async function setFiltersFromURL() {
+	const currentParams = new URLSearchParams(window.location.search);
+	filterLocation.value = currentParams.get('location') || '';
+	filterDepartment.value = currentParams.get('department_name') || '';
+	filterManufacturer.value = currentParams.get('system_manufacturer') || '';
+	filterModel.value = currentParams.get('system_model') || '';
+	filterDomain.value = currentParams.get('ad_domain') || '';
+	filterStatus.value = currentParams.get('status') || '';
+	filterBroken.value = currentParams.get('is_broken') || '';
+	filterHasImages.value = currentParams.get('has_images') || '';
 }
 
 async function fetchFilteredInventoryData(csvDownload = false) {
@@ -160,13 +192,16 @@ inventoryFilterResetButton.addEventListener("click", async (event) => {
   document.querySelectorAll('.inventory-filter-reset').forEach(elem => {
     elem.style.display = 'none';
   });
-	await loadManufacturersAndModels();
+	currentURL.search = '';
+	await loadAllManufacturersAndModels();
   await fetchFilteredInventoryData();
 });
 
-function populateManufacturerSelect() {
+async function populateManufacturerSelect() {
   const manufacturerSelect = document.getElementById('inventory-filter-manufacturer');
   if (!manufacturerSelect) return;
+
+	const savedValue = manufacturerSelect.value;
 
   // Get manufacturers
   const manufacturersMap = new Map();
@@ -182,7 +217,6 @@ function populateManufacturerSelect() {
   defaultOption.value = '';
   defaultOption.textContent = 'Manufacturer';
   defaultOption.selected = true;
-  defaultOption.disabled = true;
   manufacturerSelect.appendChild(defaultOption);
 
   // Sort by formatted name
@@ -196,11 +230,19 @@ function populateManufacturerSelect() {
     option.textContent = manufacturerFormatted;
     manufacturerSelect.appendChild(option);
   });
+
+	if (savedValue && manufacturersMap.has(savedValue)) {
+    manufacturerSelect.value = savedValue;
+  } else {
+    manufacturerSelect.value = '';
+  }
 }
 
-function populateModelSelect(selectedManufacturer = null) {
+async function populateModelSelect(selectedManufacturer = null) {
   const modelSelect = document.getElementById('inventory-filter-model');
   if (!modelSelect) return;
+
+	const savedValue = modelSelect.value;
 
   // Filter models by manufacturer if one is selected
   const filteredModels = selectedManufacturer
@@ -220,7 +262,6 @@ function populateModelSelect(selectedManufacturer = null) {
   const defaultOption = document.createElement('option');
   defaultOption.value = '';
   defaultOption.textContent = 'Model';
-  defaultOption.selected = true;
   defaultOption.disabled = true;
   modelSelect.appendChild(defaultOption);
 
@@ -235,10 +276,15 @@ function populateModelSelect(selectedManufacturer = null) {
     option.textContent = modelFormatted;
     modelSelect.appendChild(option);
   });
+
+	if (savedValue && modelsMap.has(savedValue)) {
+    modelSelect.value = savedValue;
+  } else {
+    modelSelect.value = '';
+  }
 }
 
-
-async function loadManufacturersAndModels() {
+async function loadAllManufacturersAndModels() {
   try {
     const response = await fetchData('/api/models');
     if (!response) {
@@ -246,8 +292,8 @@ async function loadManufacturersAndModels() {
     }
 
     allModelsData = Array.isArray(response) ? response : [];
-    populateManufacturerSelect();
-    populateModelSelect();
+    await populateManufacturerSelect();
+    await populateModelSelect();
 
   } catch (error) {
     console.error('Error fetching models:', error);

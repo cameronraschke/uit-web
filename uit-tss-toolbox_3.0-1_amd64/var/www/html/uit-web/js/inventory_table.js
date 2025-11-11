@@ -1,17 +1,125 @@
 const rowCountElement = document.getElementById('inventory-table-rowcount');
 const formAnchor = document.querySelector('#inventory-section');
 
-const urlFilterKeys = [
-	"location",
-	"department_name",
-	"system_manufacturer",
-	"system_model",
-	"ad_domain",
-	"status",
-	"is_broken",
-	"has_images",
-	"csv"
-];
+function createTextCell(value, options = {}) {
+  const cell = document.createElement('td');
+  
+  if (!value) {
+    cell.textContent = 'N/A';
+    cell.dataset[options.datasetKey] = null;
+    return cell;
+  }
+  
+  if (options.datasetKey) {
+    cell.dataset[options.datasetKey] = value;
+  }
+  
+  if (options.link) {
+    const anchor = document.createElement('a');
+    anchor.href = options.link;
+    anchor.textContent = value;
+    if (options.onClick) {
+      anchor.addEventListener('click', options.onClick);
+    }
+    cell.appendChild(anchor);
+  } else if (options.truncate && value.length > options.truncate) {
+    cell.textContent = value.substring(0, options.truncate) + '...';
+    cell.title = value;
+    cell.style.cursor = 'pointer';
+    cell.addEventListener('click', () => {
+      cell.textContent = value;
+    }, { once: true });
+  } else {
+    cell.textContent = value;
+  }
+  
+  return cell;
+}
+
+function createManufacturerModelCell(jsonRow) {
+  const cell = document.createElement('td');
+  
+  if (!jsonRow.system_manufacturer || !jsonRow.system_model) {
+    cell.textContent = 'N/A';
+    return cell;
+  }
+  
+  cell.dataset.system_manufacturer = jsonRow.system_manufacturer;
+  cell.dataset.system_model = jsonRow.system_model;
+  
+	if (jsonRow.system_manufacturer === null) {
+		jsonRow.system_manufacturer = 'Unknown Manufacturer';
+	} else if (jsonRow.system_model === null) {
+		jsonRow.system_model = 'Unknown Model';
+	}
+
+  const fullText = `${jsonRow.system_manufacturer}/${jsonRow.system_model}`;
+  
+  if (fullText.length > 30) {
+    const truncated = `${jsonRow.system_manufacturer.substring(0, 10)}.../${jsonRow.system_model.substring(0, 17)}...`;
+    cell.textContent = truncated;
+    cell.title = fullText;
+    cell.style.cursor = 'pointer';
+    cell.addEventListener('click', () => {
+      cell.textContent = fullText;
+    }, { once: true });
+  } else {
+    cell.textContent = fullText;
+  }
+  
+  return cell;
+}
+
+// Boolean broken status
+function createBooleanCell(isBroken) {
+  const cell = document.createElement('td');
+  
+  if (typeof isBroken === 'boolean') {
+    cell.textContent = isBroken ? 'Broken' : 'Functional';
+    cell.dataset.is_broken = String(isBroken);
+  } else {
+    cell.textContent = 'N/A';
+    cell.dataset.is_broken = 'null';
+  }
+  
+  return cell;
+}
+
+// Date formatting
+function createTimestampCell(dateValue) {
+  const cell = document.createElement('td');
+  
+  if (!dateValue) {
+    cell.textContent = 'N/A';
+    return cell;
+  }
+  
+  const date = new Date(dateValue);
+  
+  if (isNaN(date.getTime())) {
+    cell.textContent = 'Unknown date';
+  } else {
+    const formatted = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    cell.dataset.last_updated = formatted;
+    cell.textContent = formatted;
+  }
+  
+  return cell;
+}
+
+// Empty table state
+function renderEmptyTable(tableBody, message) {
+  rowCountElement.textContent = '0 entries';
+  tableBody.innerHTML = '';
+  
+  const jsonRow = document.createElement('tr');
+  const cell = document.createElement('td');
+  cell.colSpan = 10;
+  cell.textContent = message;
+  jsonRow.appendChild(cell);
+  tableBody.appendChild(jsonRow);
+}
+
 
 async function renderInventoryTable(tableData = null) {
   const tableBody = document.getElementById('inventory-table-body')
@@ -19,195 +127,93 @@ async function renderInventoryTable(tableData = null) {
     if (!tableData) {
       throw new Error('No table data provided.');
     }
-    if (!Array.isArray(tableData) || tableData.length === 0) {
+    if (!tableData || !Array.isArray(tableData) || tableData.length === 0) {
       throw new Error('Table data is empty or invalid.');
     }
-    const tableDataSorted = tableData.sort((a, b) => {
-      const dateA = new Date(a.last_update || 0);
-      const dateB = new Date(b.last_update || 0);
-      return dateB - dateA;
-    });
+   
+		const tableDataSorted = [...tableData].sort((a, b) => 
+      new Date(b.last_update || 0) - new Date(a.last_update || 0)
+    );
 
 		// Row count
-    let rowCount = tableDataSorted.length;
-    if (!rowCount || rowCount === 0) {
-      rowCount = 0;
-    }
-    rowCountElement.textContent = `${rowCount} entries`;
+    rowCountElement.textContent = `${tableDataSorted.length} entries`;
+
+		const fragment = document.createDocumentFragment();
 
 		// Table body
-    tableBody.innerHTML = '';
-    const fragment = document.createDocumentFragment();
     for (const jsonRow of tableDataSorted) {
       const tr = document.createElement('tr');
       
-      const tagCell = document.createElement('td');
-      if (jsonRow.tagnumber) {
-				tagCell.dataset.tagnumber = jsonRow.tagnumber;
-				const tagCellAnchor = document.createElement('a');
-				tagCellAnchor.setAttribute('href', `/inventory?update=true&tagnumber=${encodeURIComponent(jsonRow.tagnumber)}`);
-				tagCellAnchor.textContent = jsonRow.tagnumber;
-				tagCell.appendChild(tagCellAnchor);
-				tagCellAnchor.addEventListener('click', async (event) => {
-					event.preventDefault();
-					if (event.ctrlKey || event.metaKey) {
-						return; // Allow default behavior for Ctrl/Cmd + click
-					}
-					const tagLookupInput = document.getElementById('inventory-tag-lookup');
-					tagLookupInput.value = jsonRow.tagnumber;
-					
-					try {
-						await Promise.all [submitInventoryLookup(), fetchFilteredInventoryData()];
-					} catch (error) {
-						console.error('Error handling tag click:', error);
-					} finally {
-						formAnchor.scrollTo(0, 0);
-					}
-        });
-      } else {
-        tagCell.dataset.tagnumber = null;
-        tagCell.textContent = 'N/A';
-      }
+			// Tag Number with link and click handler
+      const tagCell = createTextCell(jsonRow.tagnumber, {
+        datasetKey: 'tagnumber',
+        link: `/inventory?update=true&tagnumber=${encodeURIComponent(jsonRow.tagnumber || '')}`,
+        onClick: async (event) => {
+          event.preventDefault();
+          if (event.ctrlKey || event.metaKey) return;
+          
+          const tagLookupInput = document.getElementById('inventory-tag-lookup');
+          tagLookupInput.value = jsonRow.tagnumber;
+          
+          try {
+            await Promise.all([submitInventoryLookup(), fetchFilteredInventoryData()]);
+          } catch (error) {
+            console.error('Error handling tag click:', error);
+          } finally {
+            formAnchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      });
       tr.appendChild(tagCell);
 
-      const serialCell = document.createElement('td');
-      if (jsonRow.system_serial) {
-        serialCell.dataset.system_serial = jsonRow.system_serial;
-        if (jsonRow.system_serial.length > 12) {
-          serialCell.textContent = jsonRow.system_serial.substring(0, 12) + '...';
-          serialCell.title = jsonRow.system_serial;
-          serialCell.style.cursor = 'pointer';
-          serialCell.addEventListener('click', () => {
-            serialCell.textContent = jsonRow.system_serial;
-          }, { once: true });
-        } else {
-          serialCell.textContent = jsonRow.system_serial;
-        }
-      } else {
-        serialCell.dataset.system_serial = null;
-        serialCell.textContent = 'N/A';
-      }
-      tr.appendChild(serialCell);
+			// Serial Number with truncation and click to expand
+      tr.appendChild(createTextCell(jsonRow.system_serial, {
+        datasetKey: 'system_serial',
+        truncate: 12
+      }));
 
-      const locationCell = document.createElement('td');
-      if (jsonRow.location_formatted) {
-        locationCell.dataset.location_formatted = jsonRow.location_formatted;
-        const locationCellLink = document.createElement('a');
-        locationCellLink.setAttribute('href', `/inventory?search=${encodeURIComponent(jsonRow.location_formatted)}`);
-        locationCellLink.textContent = jsonRow.location_formatted;
-        locationCell.appendChild(locationCellLink);
-      } else {
-        locationCell.dataset.location_formatted = null;
-        locationCell.textContent = 'N/A';
-      }
-      tr.appendChild(locationCell);
+			// Location with link
+      tr.appendChild(createTextCell(jsonRow.location_formatted, {
+        datasetKey: 'location_formatted',
+        link: `/inventory?location=${encodeURIComponent(jsonRow.location_formatted || '')}`
+      }));
 
-      const manufacturerCell = document.createElement('td');
-      if (jsonRow.system_manufacturer && jsonRow.system_model) {
-        manufacturerCell.dataset.system_manufacturer = jsonRow.system_manufacturer;
-        manufacturerCell.dataset.system_model = jsonRow.system_model;
-        if (jsonRow.system_manufacturer.length > 10) {
-          const manufacturerText = document.createElement('span');
-          manufacturerText.textContent = jsonRow.system_manufacturer.substring(0, 10) + '...';
-          manufacturerText.title = jsonRow.system_manufacturer;
-          manufacturerText.style.cursor = 'pointer';
-          manufacturerCell.appendChild(manufacturerText);
-        } else {
-          manufacturerCell.textContent = jsonRow.system_manufacturer;
-        }
+			// Manufacturer and Model combined cell
+      tr.appendChild(createManufacturerModelCell(jsonRow));
 
-        manufacturerCell.textContent += '/';
+			// Department
+      tr.appendChild(createTextCell(jsonRow.department_formatted, {
+        datasetKey: 'department_formatted'
+      }));
 
-        if (jsonRow.system_model.length > 17) {
-          const modelText = document.createElement('span');
-          modelText.textContent = jsonRow.system_model.substring(0, 17) + '...';
-          modelText.title = jsonRow.system_model;
-          modelText.style.cursor = 'pointer';
-          manufacturerCell.appendChild(modelText);
-        } else {
-          manufacturerCell.textContent += jsonRow.system_model;
-        }
+      // Domain
+      tr.appendChild(createTextCell(jsonRow.domain_formatted, {
+        datasetKey: 'domain_formatted'
+      }));
 
-        manufacturerCell.addEventListener('click', () => {
-          manufacturerCell.textContent = `${jsonRow.system_manufacturer}/${jsonRow.system_model}`;
-        }, { once: true });
-      } else {
-        manufacturerCell.textContent = 'N/A';
-      }
-      tr.appendChild(manufacturerCell);
+      // Status
+      tr.appendChild(createTextCell(jsonRow.status, {
+        datasetKey: 'status'
+      }));
 
-      const departmentCell = document.createElement('td');
-      departmentCell.textContent = jsonRow.department_formatted || 'N/A';
-      departmentCell.dataset.department_formatted = jsonRow.department_formatted || null;
-      tr.appendChild(departmentCell);
+      // Broken status
+      tr.appendChild(createBooleanCell(jsonRow.is_broken));
 
-      const domainCell = document.createElement('td');
-      domainCell.textContent = jsonRow.domain_formatted || 'N/A';
-      domainCell.dataset.domain_formatted = jsonRow.domain_formatted || null;
-      tr.appendChild(domainCell);
+      // Note (truncated)
+      tr.appendChild(createTextCell(jsonRow.note, {
+        datasetKey: 'note',
+        truncate: 61
+      }));
 
-      const statusCell = document.createElement('td');
-      statusCell.textContent = jsonRow.status || 'N/A';
-      statusCell.dataset.status = jsonRow.status || null;
-      tr.appendChild(statusCell);
-
-      const brokenCell = document.createElement('td');
-			if (typeof jsonRow.is_broken === 'boolean') {
-				brokenCell.textContent = jsonRow.is_broken ? 'Broken' : 'Functional';
-				brokenCell.dataset.is_broken = String(jsonRow.is_broken);
-			} else {
-				brokenCell.textContent = 'N/A';
-				brokenCell.dataset.is_broken = 'null';
-			}
-      tr.appendChild(brokenCell);
-
-      const noteCell = document.createElement('td');
-      if (jsonRow.note) {
-        noteCell.dataset.note = jsonRow.note;
-        if (jsonRow.note.length > 61) {
-          noteCell.textContent = jsonRow.note.substring(0, 61) + '...';
-          noteCell.title = jsonRow.note;
-          noteCell.style.cursor = 'pointer';
-        } else {
-          noteCell.textContent = jsonRow.note;
-        }
-        noteCell.addEventListener('click', () => {
-          noteCell.textContent = jsonRow.note;
-        }, { once: true });
-      } else {
-        noteCell.dataset.note = null;
-        noteCell.textContent = 'N/A';
-      }
-      tr.appendChild(noteCell);
-
-      const lastUpdateCell = document.createElement('td');
-      if (jsonRow.last_updated) {
-        const lastUpdateDate = new Date(jsonRow.last_updated);
-        if (isNaN(lastUpdateDate.getTime())) {
-          lastUpdateCell.textContent = 'Unknown date';
-        } else {
-          const timeFormatted = lastUpdateDate.toLocaleDateString() + ' ' + lastUpdateDate.toLocaleTimeString();
-          lastUpdateCell.dataset.last_updated = timeFormatted;
-          lastUpdateCell.textContent = timeFormatted;
-        }
-      } else {
-        lastUpdateCell.textContent = 'N/A';
-      }
-      tr.appendChild(lastUpdateCell);
+      // Last Updated
+      tr.appendChild(createTimestampCell(jsonRow.last_updated));
 
       fragment.appendChild(tr);
     }
+    tableBody.innerHTML = '';
     tableBody.appendChild(fragment);
   } catch (error) {
-    // console.error('Error rendering inventory table:', error.message);
-    rowCountElement.textContent = `0 entries`;
-    tableBody.innerHTML = '';
-    const errRow = document.createElement('tr');
-    const errCell = document.createElement('td');
-    errCell.colSpan = 10;
-    errCell.textContent = 'No results found.';
-    errRow.appendChild(errCell);
-    tableBody.appendChild(errRow);
-    return;
+		console.error('Error rendering inventory table:', error);
+    renderEmptyTable(tableBody, 'No results found.');
   }
 }
