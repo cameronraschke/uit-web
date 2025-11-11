@@ -55,7 +55,7 @@
     "endpoint_type": "web_content",
     "content_type": "text/javascript; charset=utf-8"
   },
-	"checkout_form.js": {
+	"/js/checkout_form.js": {
 		"file_path": "/var/www/html/uit-web/js/checkout_form.js",
 		"endpoint_type": "web_content",
 		"content_type": "text/javascript; charset=utf-8"
