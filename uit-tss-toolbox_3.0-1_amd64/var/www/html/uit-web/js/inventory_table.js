@@ -11,54 +11,7 @@ const urlFilterKeys = [
 	"is_broken",
 	"has_images",
 	"csv"
-]
-
-async function getInventoryTableData(csvDownload = false, tagnumber, systemSerial, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages) {
-	const newURL = new URL(window.location.href);
-  const browserQuery = new URLSearchParams();
-
-	if (tagnumber) browserQuery.set("tagnumber", tagnumber);
-	if (systemSerial) browserQuery.set("system_serial", systemSerial);
-  if (filterLocation) browserQuery.set("location", filterLocation);
-  if (filterDepartment) browserQuery.set("department_name", filterDepartment);
-  if (filterManufacturer) browserQuery.set("system_manufacturer", filterManufacturer);
-  if (filterModel) browserQuery.set("system_model", filterModel);
-  if (filterDomain) browserQuery.set("ad_domain", filterDomain);
-  if (filterStatus) browserQuery.set("status", filterStatus);
-  if (filterBroken) browserQuery.set("is_broken", filterBroken);
-  if (filterHasImages) browserQuery.set("has_images", filterHasImages);
-  if (csvDownload) browserQuery.set("csv", "true");
-	
-	const modifiedAPIQuery = new URLSearchParams(browserQuery);
-	if (browserQuery.get("update") === "true") {
-		modifiedAPIQuery.delete("tagnumber");
-		modifiedAPIQuery.delete("system_serial");
-	}
-
-  try {
-    if (csvDownload) {
-      location.href = `/api/inventory?${modifiedAPIQuery.toString()}`;
-      return;
-    }
-
-		if (browserQuery.toString().length > 0) {
-			history.replaceState(null, '', newURL.pathname + '?' + browserQuery.toString());
-		} else {
-			history.replaceState(null, '', newURL.pathname);
-		}
-
-    const response = await fetch(`/api/inventory?${modifiedAPIQuery.toString()}`);
-    const rawData = await response.text();
-    const jsonData = rawData.trim() ? JSON.parse(rawData) : [];
-    if (jsonData && typeof jsonData === 'object' && !Array.isArray(jsonData) && Object.prototype.hasOwnProperty.call(jsonData, 'error')) {
-      throw new Error(String(jsonData.error || 'Unknown server error'));
-    }
-    return jsonData;
-  } catch (error) {
-    console.error('Error fetching inventory data:', error);
-    return [];
-  }
-}
+];
 
 async function renderInventoryTable(tableData = null) {
   const tableBody = document.getElementById('inventory-table-body')

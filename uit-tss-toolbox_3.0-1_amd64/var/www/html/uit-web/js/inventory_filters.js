@@ -85,42 +85,62 @@ function createFilterResetHandler(filterInput, resetButton) {
 }
 
 async function fetchFilteredInventoryData(csvDownload = false) {
-	const url = new URL(window.location.href);
-	const urlParams = new URLSearchParams(url.search);
-	const tagnumber = urlParams.get('tagnumber') || null;
-	const systemSerial = urlParams.get('system_serial') || null;
-  const location = filterLocation.value.trim() || urlParams.get('location') || null;
-	updateURLParameters('location', location);
-  const department = filterDepartment.value.trim() || null;
-	updateURLParameters('department_name', department);
-  const manufacturer = filterManufacturer.value.trim() || null;
-	updateURLParameters('system_manufacturer', manufacturer);
-  const model = filterModel.value.trim() || null;
-	updateURLParameters('system_model', model);
-  const domain = filterDomain.value.trim() || null;
-	updateURLParameters('ad_domain', domain);
-  const status = filterStatus.value.trim() || null;
-	updateURLParameters('status', status);
-  const broken = filterBroken.value.trim() || null;
-	updateURLParameters('is_broken', broken);
-  const hasImages = filterHasImages.value.trim() || null;
-	updateURLParameters('has_images', hasImages);
+	const currentParams = new URLSearchParams(window.location.search);
+
+	const update = currentParams.get('update');
+	const tagnumber = currentParams.get('tagnumber') || null;
+	const systemSerial = currentParams.get('system_serial') || null;
+
+	const location = filterLocation.value.trim() || null;
+	const department = filterDepartment.value.trim() || null;
+	const manufacturer = filterManufacturer.value.trim() || null;
+	const model = filterModel.value.trim() || null;
+	const domain = filterDomain.value.trim() || null;
+	const status = filterStatus.value.trim() || null;
+	const broken = filterBroken.value.trim() || null;
+	const hasImages = filterHasImages.value.trim() || null;
+
+	const browserQuery = new URLSearchParams();
+	if (update) browserQuery.set('update', update);
+	if (tagnumber) browserQuery.set('tagnumber', tagnumber);
+	if (systemSerial) browserQuery.set('system_serial', systemSerial);
+	if (location) browserQuery.set('location', location);
+	if (department) browserQuery.set('department_name', department);
+	if (manufacturer) browserQuery.set('system_manufacturer', manufacturer);
+	if (model) browserQuery.set('system_model', model);
+	if (domain) browserQuery.set('ad_domain', domain);
+	if (status) browserQuery.set('status', status);
+	if (broken) browserQuery.set('is_broken', broken);
+	if (hasImages) browserQuery.set('has_images', hasImages);
+
+	const apiQuery = new URLSearchParams(browserQuery); // Copy
+	if (update === "true") {
+		apiQuery.delete("update");
+		apiQuery.delete("tagnumber");
+		apiQuery.delete("system_serial");
+	}
+
+	const newURL = new URL(window.location.href);
+	newURL.search = browserQuery.toString();
+	if (browserQuery.toString()) {
+		history.replaceState(null, '', newURL.pathname + '?' + browserQuery.toString());
+	} else {
+		history.replaceState(null, '', newURL.pathname);
+	}
+
+	if (csvDownload) {
+		location.href = `/api/inventory?${apiQuery.toString()}`;
+		return;
+	}
 
   try {
-		const tableData = await getInventoryTableData(
-      csvDownload,
-			tagnumber,
-			systemSerial,
-      location,
-      department,
-      manufacturer,
-      model,
-      domain,
-      status,
-      broken,
-      hasImages
-    );
-    await renderInventoryTable(tableData);
+    const response = await fetch(`/api/inventory?${apiQuery.toString()}`);
+    const rawData = await response.text();
+    const jsonData = rawData.trim() ? JSON.parse(rawData) : [];
+    if (jsonData && typeof jsonData === 'object' && !Array.isArray(jsonData) && Object.prototype.hasOwnProperty.call(jsonData, 'error')) {
+      throw new Error(String(jsonData.error || 'Unknown server error'));
+    }
+    await renderInventoryTable(jsonData);
   } catch (error) {
     console.error("Error fetching inventory data:", error);
   }
