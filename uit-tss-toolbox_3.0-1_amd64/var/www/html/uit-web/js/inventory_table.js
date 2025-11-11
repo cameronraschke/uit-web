@@ -16,6 +16,8 @@ const urlFilterKeys = [
 async function getInventoryTableData(csvDownload = false, filterLocation, filterDepartment, filterManufacturer, filterModel, filterDomain, filterStatus, filterBroken, filterHasImages) {
 	const newURL = new URL(window.location.href);
   const query = new URLSearchParams();
+	const tagnumber = query.get("tagnumber", tagnumber);
+	const systemSerial = query.get("system_serial", systemSerial);
   if (filterLocation) query.set("location", filterLocation);
   if (filterDepartment) query.set("department_name", filterDepartment);
   if (filterManufacturer) query.set("system_manufacturer", filterManufacturer);
@@ -32,6 +34,15 @@ async function getInventoryTableData(csvDownload = false, filterLocation, filter
     }
 		if (query.toString().length > 0) {
 			history.replaceState(null, '', newURL.pathname + '?' + query.toString());
+		} else if (tagnumber || systemSerial) {
+			const nonAPIQuery = new URLSearchParams();
+			nonAPIQuery.set("tagnumber", tagnumber || '');
+			nonAPIQuery.set("system_serial", systemSerial || '');
+			query.forEach((value, key) => {
+				if (!urlFilterKeys.includes(key)) {
+					nonAPIQuery.set(key, value);
+				}});
+			history.replaceState(null, '', newURL.pathname + '?' + nonAPIQuery.toString());
 		} else {
 			history.replaceState(null, '', newURL.pathname);
 		}

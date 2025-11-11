@@ -87,6 +87,8 @@ function createFilterResetHandler(filterInput, resetButton) {
 async function fetchFilteredInventoryData(csvDownload = false) {
 	const url = new URL(window.location.href);
 	const urlParams = new URLSearchParams(url.search);
+	const tagnumber = urlParams.get('tagnumber') || null;
+	const systemSerial = urlParams.get('system_serial') || null;
   const location = filterLocation.value.trim() || urlParams.get('location') || null;
 	updateURLParameters('location', location);
   const department = filterDepartment.value.trim() || null;
@@ -107,6 +109,8 @@ async function fetchFilteredInventoryData(csvDownload = false) {
   try {
 		const tableData = await getInventoryTableData(
       csvDownload,
+			tagnumber,
+			systemSerial,
       location,
       department,
       manufacturer,
