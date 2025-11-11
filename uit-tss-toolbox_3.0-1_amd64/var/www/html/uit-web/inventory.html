@@ -89,7 +89,7 @@
               <div class="inventory-lookup-label"><p class="bold">Department and AD Domain:</p></div>
               <div><label for="department_name" class="required-field">Department:</label></div>
               <div><select id="department_name" name="department_name">
-                <option value="" disabled>Select Department</option>
+                <option value="" disabled selected>Select Department</option>
                 <option value="">None</option>
                 {{- range $department, $departmentReadable := .Departments }}
                 <option value="{{ $department }}">{{ $departmentReadable }}</option>
@@ -97,7 +97,7 @@
               </select></div>
               <div><label for="ad_domain" class="required-field">AD Domain:</label></div>
               <div><select id="ad_domain" name="ad_domain">
-                <option value="" disabled>Select AD Domain</option>
+                <option value="" disabled selected>Select AD Domain</option>
                 <option value="">None</option>
                 {{- range $domain, $domainReadable := .Domains }}
                 <option value="{{ $domain }}">{{ $domainReadable }}</option>
@@ -109,13 +109,13 @@
               <div class="inventory-lookup-label"><p class="bold">Health and Status:</p></div>
               <label for="is_broken" class="required-field">Is it Broken?</label>
               <select id="is_broken" name="is_broken">
-                <option value="" disabled>Is it Broken?</option>
+                <option value="" disabled selected>Is it Broken?</option>
                 <option value="true">Yes, it is broken</option>
                 <option value="false">No, it isn't broken</option>
               </select>
               <label for="status" class="required-field">Status:</label>
               <select id="status" name="status">
-                <option value="" disabled>Select Status</option>
+                <option value="" disabled selected>Select Status</option>
                 {{ range $status, $statusReadable := .Statuses }}
                   <option value="{{ $status }}">{{ $statusReadable }}</option>
                 {{ end }}
@@ -147,7 +147,7 @@
           <div class="grid-container inventory inventory-filter-form">
             <span>
               <select id="inventory-filter-location" name="location" form="inventory-filter-form">
-                <option value="" disabled>Location</option>
+                <option value="" disabled selected>Location</option>
                 {{ range $location, $locationReadable := .Locations }}
                   <option value="{{ $location }}">{{ $locationReadable }}</option>
                 {{ end }}
@@ -156,7 +156,7 @@
             </span>
             <span>
               <select id="inventory-filter-department" name="department_name" form="inventory-filter-form">
-                <option value="" disabled>Department</option>
+                <option value="" disabled selected>Department</option>
                 {{ range $department, $departmentReadable := .Departments }}
                   <option value="{{ $department }}">{{ $departmentReadable }}</option>
                 {{ end }}
@@ -165,18 +165,18 @@
             </span>
             <span>
               <select id="inventory-filter-manufacturer" name="manufacturer" form="inventory-filter-form">
-                <option value="" disabled>Manufacturer</option>
+                <option value="" disabled selected>Manufacturer</option>
               </select>
               <a id="inventory-filter-manufacturer-reset" class="inventory-filter-reset" href="">x</a>
             </span>
             <span>
               <select id="inventory-filter-model" name="model" form="inventory-filter-form">
-                <option value="" disabled>Model</option>
+                <option value="" disabled selected>Model</option>
               </select>
               <a id="inventory-filter-model-reset" class="inventory-filter-reset" href="">x</a></span>
             <span>
               <select id="inventory-filter-domain" name="ad_domain" form="inventory-filter-form">
-                <option value="" disabled>AD Domain</option>
+                <option value="" disabled selected>AD Domain</option>
                 {{ range $domain, $domainReadable := .Domains }}
                   <option value="{{ $domain }}">{{ $domainReadable }}</option>
                 {{ end }}
@@ -184,7 +184,7 @@
               <a id="inventory-filter-domain-reset" class="inventory-filter-reset" href="">x</a></span>
             <span>
               <select id="inventory-filter-status" name="status" form="inventory-filter-form">
-                <option value="" disabled>Status</option>
+                <option value="" disabled selected>Status</option>
                 {{ range $status, $statusReadable := .Statuses }}
                   <option value="{{ $status }}">{{ $statusReadable }}</option>
                 {{ end }}
@@ -192,14 +192,14 @@
               <a id="inventory-filter-status-reset" class="inventory-filter-reset" href="">x</a></span>
             <span>
               <select id="inventory-filter-broken" name="is_broken" form="inventory-filter-form">
-                <option value="" disabled>Broken?</option>
+                <option value="" disabled selected>Broken?</option>
                 <option value="true">Yes - Is broken</option>
                 <option value="false">No - Is functional</option>
               </select>
               <a id="inventory-filter-broken-reset" class="inventory-filter-reset" href="">x</a></span>
             <span>
               <select id="inventory-filter-has_images" name="has_images" form="inventory-filter-form">
-                <option value="" disabled>Has Images?</option>
+                <option value="" disabled selected>Has Images?</option>
                 <option value="true">Yes - Has images</option>
                 <option value="false">No - Missing images</option>
               </select>

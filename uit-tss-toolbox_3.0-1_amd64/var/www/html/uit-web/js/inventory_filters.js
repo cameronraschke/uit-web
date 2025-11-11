@@ -216,6 +216,7 @@ async function populateManufacturerSelect() {
   const defaultOption = document.createElement('option');
   defaultOption.value = '';
   defaultOption.textContent = 'Manufacturer';
+  defaultOption.disabled = true;
   defaultOption.selected = true;
   manufacturerSelect.appendChild(defaultOption);
 
@@ -263,6 +264,7 @@ async function populateModelSelect(selectedManufacturer = null) {
   defaultOption.value = '';
   defaultOption.textContent = 'Model';
   defaultOption.disabled = true;
+  defaultOption.selected = true;
   modelSelect.appendChild(defaultOption);
 
   // Sort by formatted name
