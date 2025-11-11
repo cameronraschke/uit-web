@@ -194,6 +194,15 @@ inventoryFilterResetButton.addEventListener("click", async (event) => {
   });
 	currentURL.search = '';
 	await loadAllManufacturersAndModels();
+
+	const modelSelect = document.getElementById('inventory-filter-model');
+  modelSelect.innerHTML = '';
+  const defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.textContent = 'Model';
+  defaultOption.selected = true;
+  modelSelect.appendChild(defaultOption);
+
   await fetchFilteredInventoryData();
 });
 
@@ -216,7 +225,6 @@ async function populateManufacturerSelect() {
   const defaultOption = document.createElement('option');
   defaultOption.value = '';
   defaultOption.textContent = 'Manufacturer';
-  defaultOption.disabled = true;
   defaultOption.selected = true;
   manufacturerSelect.appendChild(defaultOption);
 
@@ -232,11 +240,7 @@ async function populateManufacturerSelect() {
     manufacturerSelect.appendChild(option);
   });
 
-	if (savedValue && manufacturersMap.has(savedValue)) {
-    manufacturerSelect.value = savedValue;
-  } else {
-    manufacturerSelect.value = '';
-  }
+	manufacturerSelect.value = savedValue && manufacturersMap.has(savedValue) ? savedValue : '';
 }
 
 async function populateModelSelect(selectedManufacturer = null) {
@@ -245,10 +249,19 @@ async function populateModelSelect(selectedManufacturer = null) {
 
 	const savedValue = modelSelect.value;
 
+	if (!selectedManufacturer) {
+    modelSelect.innerHTML = '';
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Model';
+    defaultOption.selected = true;
+    modelSelect.appendChild(defaultOption);
+    return;
+  }
+
   // Filter models by manufacturer if one is selected
-  const filteredModels = selectedManufacturer
-    ? allModelsData.filter(item => item.system_manufacturer === selectedManufacturer)
-    : allModelsData;
+  const filteredModels = allModelsData.filter(item => item.system_manufacturer === selectedManufacturer);
+
 
   // Get models
   const modelsMap = new Map();
@@ -263,7 +276,6 @@ async function populateModelSelect(selectedManufacturer = null) {
   const defaultOption = document.createElement('option');
   defaultOption.value = '';
   defaultOption.textContent = 'Model';
-  defaultOption.disabled = true;
   defaultOption.selected = true;
   modelSelect.appendChild(defaultOption);
 
@@ -279,11 +291,7 @@ async function populateModelSelect(selectedManufacturer = null) {
     modelSelect.appendChild(option);
   });
 
-	if (savedValue && modelsMap.has(savedValue)) {
-    modelSelect.value = savedValue;
-  } else {
-    modelSelect.value = '';
-  }
+	modelSelect.value = savedValue && modelsMap.has(savedValue) ? savedValue : '';
 }
 
 async function loadAllManufacturersAndModels() {
@@ -295,7 +303,6 @@ async function loadAllManufacturersAndModels() {
 
     allModelsData = Array.isArray(response) ? response : [];
     await populateManufacturerSelect();
-    await populateModelSelect();
 
   } catch (error) {
     console.error('Error fetching models:', error);
