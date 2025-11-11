@@ -110,6 +110,30 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
 	await submitInventoryLookup();
 });
 
+const clientStatus = inventoryUpdateForm.querySelector("#status");
+clientStatus.addEventListener("change", () => {
+	if (clientStatus.value === "needs-repair") {
+		inventoryUpdateForm.querySelector("#is_broken").value = "true";
+	} else {
+		inventoryUpdateForm.querySelector("#is_broken").value = "false";
+	}
+	if (clientStatus.value === "checked-out" || clientStatus.value === "reserved-for-checkout") {
+		const printCheckoutURL = document.createElement('div');
+		printCheckoutURL.id = 'print-checkout-link';
+		printCheckoutURL.innerHTML = `
+			<a href="/checkout-form?tagnumber=${encodeURIComponent(inventoryLookupTagInput.value)}" target="_blank">
+				Print Checkout Form
+			</a>
+		`;
+		inventoryUpdateForm.querySelector("#status").after(printCheckoutURL);
+	} else {
+		const existingLink = document.getElementById('print-checkout-link');
+		if (existingLink) {
+			existingLink.remove();
+		}
+	}
+});
+
 function resetInventoryForm() {
   inventoryLookupForm.reset();
   inventoryUpdateForm.reset();
@@ -314,7 +338,7 @@ async function populateLocationForm(tag) {
     inventoryLocationInput.value = locationFormData.location || '';
     inventoryUpdateForm.querySelector("#system_manufacturer").value = locationFormData.system_manufacturer || '';
     inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model || '';
-    inventoryUpdateForm.querySelector("#department").value = locationFormData.department || '';
+    inventoryUpdateForm.querySelector("#department_name").value = locationFormData.department_name || '';
     inventoryUpdateForm.querySelector("#ad_domain").value = locationFormData.ad_domain || '';
 		const brokenValue = typeof locationFormData.is_broken === "boolean" 
 			? String(locationFormData.is_broken) 

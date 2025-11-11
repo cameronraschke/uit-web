@@ -2,7 +2,7 @@
 <html lang="en-US">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="stylesheet" href="/css/desktop.css" />
     <link rel="stylesheet" href="/css/inventory.css" />
@@ -154,7 +154,7 @@
               <a id="inventory-filter-location-reset" class="inventory-filter-reset" href="">x</a>
             </span>
             <span>
-              <select id="inventory-filter-department" name="department" form="inventory-filter-form">
+              <select id="inventory-filter-department" name="department_name" form="inventory-filter-form">
                 <option value="" selected disabled>Department</option>
                 {{ range $department, $departmentReadable := .Departments }}
                   <option value="{{ $department }}">{{ $departmentReadable }}</option>

@@ -15,12 +15,11 @@ function updateURLParameters(urlParameter, value) {
 	} else {
 		history.replaceState(null, '', newURL.pathname);
 	}
-	
 }
 
 // Location filter
 const filterLocation = document.getElementById('inventory-filter-location')
-filterLocation.value = queryParams.get('location_formatted') || '';
+filterLocation.value = queryParams.get('location') || '';
 const filterLocationReset = document.getElementById('inventory-filter-location-reset')
 createFilterResetHandler(filterLocation, filterLocationReset);
 
@@ -78,12 +77,17 @@ function createFilterResetHandler(filterInput, resetButton) {
     event.preventDefault();
     resetButton.style.display = 'none';
 		filterInput.value = '';
+		if (filterInput === filterManufacturer || filterInput === filterModel) {
+			loadManufacturersAndModels();
+		}
     await fetchFilteredInventoryData();
   });
 }
 
 async function fetchFilteredInventoryData(csvDownload = false) {
-  const location = filterLocation.value.trim() || null;
+	const url = new URL(window.location.href);
+	const urlParams = new URLSearchParams(url.search);
+  const location = filterLocation.value.trim() || urlParams.get('location') || null;
 	updateURLParameters('location', location);
   const department = filterDepartment.value.trim() || null;
 	updateURLParameters('department_name', department);
@@ -132,9 +136,8 @@ inventoryFilterResetButton.addEventListener("click", async (event) => {
   document.querySelectorAll('.inventory-filter-reset').forEach(elem => {
     elem.style.display = 'none';
   });
-	await Promise.all([
-  	fetchFilteredInventoryData()
-	]);
+	await loadManufacturersAndModels();
+  await fetchFilteredInventoryData();
 });
 
 function populateManufacturerSelect() {
