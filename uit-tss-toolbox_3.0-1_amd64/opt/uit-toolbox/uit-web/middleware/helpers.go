@@ -119,17 +119,17 @@ func GetNonceFromRequestContext(r *http.Request) (nonce string, ok bool) {
 	return GetNonceFromContext(r.Context())
 }
 
-func withWebEndpointConfig(ctx context.Context, endpoint *config.WebEndpoint) (context.Context, error) {
+func withWebEndpointConfig(ctx context.Context, endpoint *config.WebEndpointConfig) (context.Context, error) {
 	if endpoint == nil {
 		return ctx, errors.New("nil endpoint config")
 	}
 	return context.WithValue(ctx, requestEndpointKey, *endpoint), nil
 }
-func GetWebEndpointConfigFromContext(ctx context.Context) (endpoint config.WebEndpoint, ok bool) {
-	endpoint, ok = ctx.Value(requestEndpointKey).(config.WebEndpoint)
+func GetWebEndpointConfigFromContext(ctx context.Context) (endpoint config.WebEndpointConfig, ok bool) {
+	endpoint, ok = ctx.Value(requestEndpointKey).(config.WebEndpointConfig)
 	return endpoint, ok
 }
-func GetWebEndpointConfigFromRequestContext(req *http.Request) (endpoint config.WebEndpoint, ok bool) {
+func GetWebEndpointConfigFromRequestContext(req *http.Request) (endpoint config.WebEndpointConfig, ok bool) {
 	return GetWebEndpointConfigFromContext(req.Context())
 }
 

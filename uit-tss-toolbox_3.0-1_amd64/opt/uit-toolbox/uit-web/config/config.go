@@ -457,11 +457,12 @@ func InitApp() (*AppState, error) {
 			return nil, fmt.Errorf("failed to unmarshal web endpoints config JSON: %w", err)
 		}
 		for endpointPath, endpointData := range webEndpoints {
-			merged := WebEndpoint{
+			merged := WebEndpointConfig{
 				FilePath:       endpointData.FilePath,
 				AllowedMethods: endpointData.AllowedMethods,
 				TLSRequired:    endpointData.TLSRequired,
 				AuthRequired:   endpointData.AuthRequired,
+				Requires:       endpointData.Requires,
 				ACLUsers:       endpointData.ACLUsers,
 				ACLGroups:      endpointData.ACLGroups,
 				HTTPVersion:    endpointData.HTTPVersion,
@@ -481,6 +482,21 @@ func InitApp() (*AppState, error) {
 			if merged.AuthRequired == nil {
 				merged.AuthRequired = new(bool)
 				*merged.AuthRequired = true
+			}
+			if merged.Requires == nil {
+				merged.Requires = []string{}
+				// merged.Requires = []string{
+				// 	"nonce",
+				// 	"webmaster_contact",
+				// 	"departments",
+				// 	"domains",
+				// 	"statuses",
+				// 	"locations",
+				// 	"client_tag",
+				// 	"checkout_date",
+				// 	"return_date",
+				// 	"customer_name",
+				// }
 			}
 			if merged.Redirect == nil {
 				merged.Redirect = new(bool)

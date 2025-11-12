@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"text/template"
@@ -13,6 +14,20 @@ import (
 	database "uit-toolbox/database"
 	middleware "uit-toolbox/middleware"
 )
+
+type HttpTemplateResponseData struct {
+	JsNonce        string
+	WebmasterName  string
+	WebmasterEmail string
+	Departments    map[string]string
+	Domains        map[string]string
+	ClientTag      string
+	Statuses       map[string]string
+	Locations      map[string]string
+	CheckoutDate   string
+	ReturnDate     string
+	CustomerName   string
+}
 
 type ServerTime struct {
 	Time string `json:"server_time"`
@@ -36,29 +51,32 @@ func ConvertTagnumber(tag string) (int64, error) {
 		return 0, errors.New("tagnumber is empty")
 	}
 	tagnumber, err := strconv.ParseInt(tag, 10, 64)
-	if err != nil || tagnumber < 1 || tagnumber > 999999 {
-		return 0, errors.New("invalid tagnumber" + err.Error())
+	if err != nil {
+		return 0, errors.New("invalid tagnumber: " + err.Error())
+	}
+	if tagnumber < 1 || tagnumber > 999999 {
+		return 0, errors.New("invalid tagnumber: out of range")
 	}
 	return tagnumber, nil
 }
 
 func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
+	log, loggerExists, err := middleware.GetLoggerFromContext(ctx)
+	if !loggerExists || err != nil {
 		fmt.Println("Failed to get logger from context for FileServerHandler: " + err.Error())
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	requestIP, ok := middleware.GetRequestIPFromRequestContext(req)
-	if !ok {
+	requestIP, requestIPExists := middleware.GetRequestIPFromRequestContext(req)
+	if !requestIPExists {
 		log.Warning("No IP address stored in context for FileServerHandler")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
-	resolvedPath, ok := middleware.GetRequestFileFromRequestContext(req)
-	if !ok {
+	resolvedPath, resolvedPathExists := middleware.GetRequestFileFromRequestContext(req)
+	if !resolvedPathExists {
 		log.Warning("no requested file stored in context")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
@@ -125,14 +143,13 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("ETag", fmt.Sprintf(`"%x-%x"`, metadata.ModTime().Unix(), metadata.Size()))
 	w.Header().Set("Cache-Control", "private, max-age=300")
 
-	// Serve the file
-	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), f)
-
 	if ctx.Err() != nil {
-		log.Warning("Request cancelled while serving file: " + resolvedPath + " to " + requestIP.String() + " (" + ctx.Err().Error() + ")")
-		middleware.WriteJsonError(w, http.StatusRequestTimeout)
+		log.HTTPWarning(req, "Context cancelled while serving file: "+resolvedPath+": "+ctx.Err().Error())
 		return
 	}
+
+	// Serve the file
+	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), f)
 
 	log.Info("Served file: " + resolvedPath + " to " + requestIP.String())
 }
@@ -170,7 +187,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	filePath, err := config.GetWebEndpointFilePath(endpointData)
-	if err != nil || strings.TrimSpace(filePath) == "" {
+	if err != nil {
 		log.Warning("Cannot get file path for endpoint: " + requestedPath + " (" + err.Error() + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
@@ -219,94 +236,113 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	w.Header().Set("Content-Type", contentType)
 
+	var parsedHTMLTemplate *template.Template
 	if strings.HasSuffix(filePath, ".html") {
-		// Generate nonce
-		nonce, ok := middleware.GetNonceFromRequestContext(req)
-		if !ok {
-			log.Error("Error retrieving CSP nonce from context")
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		parsedHTMLTemplate, err := template.ParseFiles(filePath)
+
+		parsedHTMLTemplate, err = template.ParseFiles(filePath)
 		if err != nil {
 			log.Warning("Cannot parse template file (" + filePath + "): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		webmasterName, webmasterEmail, err := config.GetWebmasterContact()
-		if err != nil {
-			log.Error("Cannot get webmaster contact info: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
 
 		db := database.NewRepo(config.GetDatabaseConn())
-
-		departments, err := db.GetDepartments(ctx)
-		if err != nil {
-			log.Error("Cannot get department list from database: " + err.Error())
+		if db == nil {
+			log.Warning("Cannot get database connection for template endpoint: " + requestedPath)
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
-		domains, err := db.GetDomains(ctx)
-		if err != nil {
-			log.Error("Cannot get domain list from database: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		var httpTemplateResponseData = HttpTemplateResponseData{}
+		if endpointData.Requires != nil {
 
-		statuses, err := db.GetStatuses(ctx)
-		if err != nil {
-			log.Error("Cannot get status list from database: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+			// Generate nonce
+			if slices.Contains(endpointData.Requires, "nonce") {
+				nonce, ok := middleware.GetNonceFromRequestContext(req)
+				if !ok {
+					log.Error("Error retrieving CSP nonce from context")
+					middleware.WriteJsonError(w, http.StatusInternalServerError)
+					return
+				}
+				httpTemplateResponseData.JsNonce = nonce
+			}
 
-		locations, err := db.GetLocations(ctx)
-		if err != nil {
-			log.Error("Cannot get location list from database: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+			if slices.Contains(endpointData.Requires, "webmaster_contact") {
+				webmasterName, webmasterEmail, err := config.GetWebmasterContact()
+				if err != nil {
+					log.Error("Cannot get webmaster contact info: " + err.Error())
+					middleware.WriteJsonError(w, http.StatusInternalServerError)
+					return
+				}
+				httpTemplateResponseData.WebmasterName = webmasterName
+				httpTemplateResponseData.WebmasterEmail = webmasterEmail
+			}
 
-		urlTag := req.URL.Query().Get("tagnumber")
-		urlTag = strings.TrimSpace(urlTag)
+			if slices.Contains(endpointData.Requires, "departments") {
+				departments, err := db.GetDepartments(ctx)
+				if err != nil {
+					log.Error("Cannot get department list from database: " + err.Error())
+					middleware.WriteJsonError(w, http.StatusInternalServerError)
+					return
+				}
+				httpTemplateResponseData.Departments = departments
+			}
 
-		checkoutDate := requestQueries.Get("checkout_date")
+			if slices.Contains(endpointData.Requires, "domains") {
+				domains, err := db.GetDomains(ctx)
+				if err != nil {
+					log.Error("Cannot get domain list from database: " + err.Error())
+					middleware.WriteJsonError(w, http.StatusInternalServerError)
+					return
+				}
+				httpTemplateResponseData.Domains = domains
+			}
 
-		returnDate := requestQueries.Get("return_date")
+			if slices.Contains(endpointData.Requires, "statuses") {
+				statuses, err := db.GetStatuses(ctx)
+				if err != nil {
+					log.Error("Cannot get status list from database: " + err.Error())
+					middleware.WriteJsonError(w, http.StatusInternalServerError)
+					return
+				}
+				httpTemplateResponseData.Statuses = statuses
+			}
 
-		customerName := requestQueries.Get("customer_name")
+			if slices.Contains(endpointData.Requires, "locations") {
+				locations, err := db.GetLocations(ctx)
+				if err != nil {
+					log.Error("Cannot get location list from database: " + err.Error())
+					middleware.WriteJsonError(w, http.StatusInternalServerError)
+					return
+				}
+				httpTemplateResponseData.Locations = locations
+			}
 
-		templateData := struct {
-			JsNonce        string
-			WebmasterName  string
-			WebmasterEmail string
-			Departments    map[string]string
-			Domains        map[string]string
-			ClientTag      string
-			Statuses       map[string]string
-			Locations      map[string]string
-			CheckoutDate   string
-			ReturnDate     string
-			CustomerName   string
-		}{
-			JsNonce:        nonce,
-			WebmasterName:  webmasterName,
-			WebmasterEmail: webmasterEmail,
-			Departments:    departments,
-			Domains:        domains,
-			ClientTag:      urlTag,
-			Statuses:       statuses,
-			Locations:      locations,
-			CheckoutDate:   checkoutDate,
-			ReturnDate:     returnDate,
-			CustomerName:   customerName,
+			if slices.Contains(endpointData.Requires, "client_tag") {
+				urlTag := req.URL.Query().Get("tagnumber")
+				tagnumber, err := ConvertTagnumber(urlTag)
+				if err != nil {
+					log.Warning("Invalid tagnumber in URL: " + urlTag + " (" + err.Error() + ")")
+					middleware.WriteJsonError(w, http.StatusBadRequest)
+					return
+				}
+				httpTemplateResponseData.ClientTag = strconv.FormatInt(tagnumber, 10)
+			}
+
+			if slices.Contains(endpointData.Requires, "checkout_date") ||
+				slices.Contains(endpointData.Requires, "return_date") ||
+				slices.Contains(endpointData.Requires, "customer_name") {
+				checkoutDate := requestQueries.Get("checkout_date")
+				returnDate := requestQueries.Get("return_date")
+				customerName := requestQueries.Get("customer_name")
+				httpTemplateResponseData.CheckoutDate = checkoutDate
+				httpTemplateResponseData.ReturnDate = returnDate
+				httpTemplateResponseData.CustomerName = customerName
+			}
 		}
 
 		// Execute the template
-		err = parsedHTMLTemplate.Execute(w, templateData)
+		err = parsedHTMLTemplate.Execute(w, httpTemplateResponseData)
 		if err != nil {
 			log.Error("Error executing template for " + filePath + ": " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -322,27 +358,27 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("ETag", fmt.Sprintf(`"%x-%x"`, metadata.ModTime().Unix(), metadata.Size()))
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 
-	// Serve the file
-	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), file)
-
 	if ctx.Err() != nil {
-		log.Warning("Request cancelled while serving file: " + requestedPath + " to " + requestIP.String() + " (" + ctx.Err().Error() + ")")
+		log.HTTPWarning(req, "Context cancelled while serving path: "+requestedPath+": "+ctx.Err().Error())
 		return
 	}
+
+	// Serve the file
+	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), file)
 
 	log.Debug("Served file: " + requestedPath + " to " + requestIP.String())
 }
 
 func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
+	log, loggerExists, err := middleware.GetLoggerFromContext(ctx)
+	if !loggerExists || err != nil {
 		fmt.Println("Failed to get logger from context for LogoutHandler: " + err.Error())
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	requestIP, ok := middleware.GetRequestIPFromContext(ctx)
-	if !ok {
+	requestIP, requestIPExists := middleware.GetRequestIPFromContext(ctx)
+	if !requestIPExists {
 		log.HTTPWarning(req, "No IP address stored in context for LogoutHandler")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
@@ -356,7 +392,7 @@ func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 		http.Redirect(w, req, "/login", http.StatusSeeOther)
 		return
 	}
-	if requestSessionIDCookie == nil || strings.TrimSpace(requestSessionIDCookie.Value) == "" {
+	if err == http.ErrNoCookie || requestSessionIDCookie == nil || strings.TrimSpace(requestSessionIDCookie.Value) == "" {
 		log.HTTPInfo(req, "No session ID cookie provided for logout")
 		http.Redirect(w, req, "/login", http.StatusSeeOther)
 		return
@@ -377,8 +413,8 @@ func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 
 func RejectRequest(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
+	log, loggerExists, err := middleware.GetLoggerFromContext(ctx)
+	if !loggerExists || err != nil {
 		fmt.Println("Failed to get logger from context for RejectRequest: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return

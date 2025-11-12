@@ -1,20 +1,20 @@
 let updatingInventory = false;
 
 // Inventory update form (and lookup)
-const inventoryLookupLastUpdateTime = document.getElementById('last-update-time-message');
+const lastUpdateTimeMessage = document.getElementById('last-update-time-message');
 const inventoryLookupWarningMessage = document.getElementById('existing-inventory-message');
 const inventoryLookupForm = document.getElementById('inventory-lookup-form');
 const inventoryLookupTagInput = document.getElementById('inventory-tag-lookup');
-const inventoryLookupSerialInput = document.getElementById('inventory-serial-lookup');
-const inventoryLookupSubmitButton = document.getElementById('inventory-lookup-submit-button');
-const inventoryLookupResetButton = document.getElementById('inventory-lookup-reset-button');
+const inventoryLookupSystemSerialInput = document.getElementById('inventory-serial-lookup');
+const inventoryLookupFormSubmitButton = document.getElementById('inventory-lookup-submit-button');
+const inventoryLookupFormResetButton = document.getElementById('inventory-lookup-reset-button');
 const clientMoreDetailsButton = document.getElementById('client-more-details');
 const inventoryUpdateForm = document.getElementById('inventory-update-form');
-const inventoryUpdateSection = document.getElementById('inventory-update-section');
-const inventoryLocationInput = document.getElementById('location');
-const inventoryUpdateSubmitButton = document.getElementById('inventory-update-submit-button');
-const inventoryUpdateCancelButton = document.getElementById('inventory-update-cancel-button');
-const tagDatalist = document.getElementById('inventory-tag-suggestions');
+const inventoryUpdateFormSection = document.getElementById('inventory-update-section');
+const inventoryUpdateLocationInput = document.getElementById('location');
+const inventoryUpdateFormSubmitButton = document.getElementById('inventory-update-submit-button');
+const inventoryUpdateFormCancelButton = document.getElementById('inventory-update-cancel-button');
+const allTagsDatalist = document.getElementById('inventory-tag-suggestions');
 const clientImagesLink = document.getElementById('client_images_link');
 
 const statusesThatIndicateBroken = ["needs-repair"];
@@ -31,18 +31,15 @@ async function getTagOrSerial(tagnumber, serial) {
     return;
   }
   try {
-    const request = await fetchData(`/api/lookup?${query.toString()}`);
-    if (!request) {
+    const response = await fetchData(`/api/lookup?${query.toString()}`);
+    if (!response) {
       throw new Error("Cannot parse json from /api/lookup");
     }
-
     const returnObject = {
-      tagnumber: request.tagnumber, 
-      system_serial: request.system_serial
-    }
-
+      tagnumber: response.tagnumber, 
+      system_serial: response.system_serial
+    };
     return returnObject;
-
   } catch(error) {
     console.log("Error getting tag/serial: " + error.message);
   }
@@ -52,7 +49,7 @@ async function submitInventoryLookup() {
 	await setFiltersFromURL();
 	const searchParams = new URLSearchParams(window.location.search);
 	const lookupTag = inventoryLookupTagInput.value || searchParams.get('tagnumber') || null;
-  const lookupSerial = inventoryLookupSerialInput.value || searchParams.get('system_serial') || null;
+  const lookupSerial = inventoryLookupSystemSerialInput.value || searchParams.get('system_serial') || null;
 
   const lookupResult = await getTagOrSerial(lookupTag, lookupSerial);
   if (!lookupTag && !lookupSerial) {
@@ -79,26 +76,26 @@ async function submitInventoryLookup() {
 	history.replaceState(null, '', window.location.pathname + `?update=true&tagnumber=${encodeURIComponent(lookupTag || '')}`);
   await populateLocationForm(Number(lookupTag));
 
-  inventoryUpdateSection.style.display = "block";
+  inventoryUpdateFormSection.style.display = "block";
   if (lookupResult) {
     inventoryLookupTagInput.value = lookupResult.tagnumber || "";
-    inventoryLookupSerialInput.value = lookupResult.system_serial || "";
+    inventoryLookupSystemSerialInput.value = lookupResult.system_serial || "";
     inventoryLookupTagInput.disabled = true;
-    inventoryLookupSerialInput.disabled = true;
+    inventoryLookupSystemSerialInput.disabled = true;
     inventoryLookupTagInput.style.backgroundColor = "gainsboro";
-    inventoryLookupSerialInput.style.backgroundColor = "gainsboro";
-    inventoryLocationInput.focus();
+    inventoryLookupSystemSerialInput.style.backgroundColor = "gainsboro";
+    inventoryUpdateLocationInput.focus();
   } else {
     inventoryLookupWarningMessage.style.display = "block";
     inventoryLookupWarningMessage.textContent = "No inventory entry was found for the provided tag number or serial number. A new entry can be created.";
     if (!inventoryLookupTagInput.value) inventoryLookupTagInput.focus();
-    else if (!inventoryLookupSerialInput.value) inventoryLookupSerialInput.focus();
+    else if (!inventoryLookupSystemSerialInput.value) inventoryLookupSystemSerialInput.focus();
   }
 
-  inventoryLookupSubmitButton.disabled = true;
-  inventoryLookupSubmitButton.style.cursor = "not-allowed";
-  inventoryLookupSubmitButton.style.border = "1px solid gray";
-  inventoryLookupResetButton.style.display = "inline-block";
+  inventoryLookupFormSubmitButton.disabled = true;
+  inventoryLookupFormSubmitButton.style.cursor = "not-allowed";
+  inventoryLookupFormSubmitButton.style.border = "1px solid gray";
+  inventoryLookupFormResetButton.style.display = "inline-block";
   clientMoreDetailsButton.style.display = "inline-block";
   if (lookupTag) {
     clientImagesLink.href = `/client_images?tagnumber=${lookupTag || ''}`;
@@ -152,22 +149,22 @@ function resetInventoryLookupAndUpdateForm() {
   inventoryLookupTagInput.value = "";
   inventoryLookupTagInput.style.backgroundColor = "initial";
   inventoryLookupTagInput.disabled = false;
-  inventoryLookupSerialInput.value = "";
-  inventoryLookupSerialInput.style.backgroundColor = "initial";
-  inventoryLookupSerialInput.disabled = false;
-  inventoryLookupSubmitButton.style.cursor = "pointer";
-  inventoryLookupSubmitButton.style.border = "1px solid black";
-  inventoryLookupSubmitButton.disabled = false;
-  inventoryLookupResetButton.style.display = "none";
+  inventoryLookupSystemSerialInput.value = "";
+  inventoryLookupSystemSerialInput.style.backgroundColor = "initial";
+  inventoryLookupSystemSerialInput.disabled = false;
+  inventoryLookupFormSubmitButton.style.cursor = "pointer";
+  inventoryLookupFormSubmitButton.style.border = "1px solid black";
+  inventoryLookupFormSubmitButton.disabled = false;
+  inventoryLookupFormResetButton.style.display = "none";
   clientMoreDetailsButton.style.display = "none";
-  inventoryUpdateSection.style.display = "none";
+  inventoryUpdateFormSection.style.display = "none";
   inventoryLookupWarningMessage.style.display = "none";
   inventoryLookupWarningMessage.textContent = "";
-	inventoryLookupLastUpdateTime.textContent = "";
+	lastUpdateTimeMessage.textContent = "";
   inventoryLookupTagInput.focus();
 }
 
-inventoryLookupResetButton.addEventListener("click", (event) => {
+inventoryLookupFormResetButton.addEventListener("click", (event) => {
   event.preventDefault();
   resetInventorySearchQuery();
 });
@@ -188,18 +185,19 @@ function resetInventorySearchQuery() {
 	history.replaceState(null, '', url.toString());
 }
 
-inventoryUpdateCancelButton.addEventListener("click", (event) => {
+inventoryUpdateFormCancelButton.addEventListener("click", (event) => {
   event.preventDefault();
   resetInventoryLookupAndUpdateForm();
+	updateURLParameters();
 });
 
 function renderTagOptions(tags) {
-  if (!tagDatalist) {
+  if (!allTagsDatalist) {
     console.warn("No tag datalist found");
     return;
   }
   
-  tagDatalist.innerHTML = '';
+  allTagsDatalist.innerHTML = '';
   let maxTags = 20;
   if (checkMobile()) {
     maxTags = 0;
@@ -208,7 +206,7 @@ function renderTagOptions(tags) {
   (tags || []).slice(0, maxTags).forEach(tag => {
     const option = document.createElement('option');
     option.value = tag;
-    tagDatalist.appendChild(option);
+    allTagsDatalist.appendChild(option);
   });
 }
 
@@ -229,7 +227,7 @@ inventoryLookupTagInput.addEventListener("keyup", (event) => {
     ? allTags.filter(tag => String(tag).trim().includes(searchTerm))
     : allTags;
   if (filteredTags.includes(searchTerm)) {
-    tagDatalist.innerHTML = '';
+    allTagsDatalist.innerHTML = '';
   } else {
     renderTagOptions(filteredTags);
   }
@@ -237,7 +235,7 @@ inventoryLookupTagInput.addEventListener("keyup", (event) => {
 
 inventoryUpdateForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  inventoryUpdateSubmitButton.disabled = true;
+  inventoryUpdateFormSubmitButton.disabled = true;
   if (updatingInventory) return;
   updatingInventory = true;
 
@@ -246,10 +244,10 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
   try {
     const jsonObject = {};
     const inventoryLookupTagInput = inventoryLookupForm.querySelector("#inventory-tag-lookup");
-    const inventoryLookupSerialInput = inventoryLookupForm.querySelector("#inventory-serial-lookup");
+    const inventoryLookupSystemSerialInput = inventoryLookupForm.querySelector("#inventory-serial-lookup");
     jsonObject.tagnumber = inventoryLookupTagInput && inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : null;
-    jsonObject.system_serial = inventoryLookupSerialInput && inventoryLookupSerialInput.value ? String(inventoryLookupSerialInput.value) : null;
-    if (!inventoryLookupTagInput && !inventoryLookupSerialInput) {
+    jsonObject.system_serial = inventoryLookupSystemSerialInput && inventoryLookupSystemSerialInput.value ? String(inventoryLookupSystemSerialInput.value) : null;
+    if (!inventoryLookupTagInput && !inventoryLookupSystemSerialInput) {
       throw new Error("No tag or serial input fields found in DOM");
     }
     const getInputValue = (documentID) => {
@@ -318,7 +316,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
 		}
 		fileInput.value = "";
 		inventoryLookupWarningMessage.style.display = "none";
-		inventoryLookupLastUpdateTime.textContent = "";
+		lastUpdateTimeMessage.textContent = "";
     await populateLocationForm(Number(returnedJson.tagnumber));
     await fetchFilteredInventoryData();
   } catch (error) {
@@ -326,7 +324,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
 		alert("Error updating inventory: " + error.message);
   } finally {
     updatingInventory = false;
-    inventoryUpdateSubmitButton.disabled = false;
+    inventoryUpdateFormSubmitButton.disabled = false;
   }
 });
 
@@ -349,14 +347,14 @@ async function populateLocationForm(tag) {
 		if (locationFormData.last_update_time) {
 			const lastUpdate = new Date(locationFormData.last_update_time);
 			if (isNaN(lastUpdate.getTime())) {
-				inventoryLookupLastUpdateTime.textContent = 'Uknown timestamp of last update';
+				lastUpdateTimeMessage.textContent = 'Uknown timestamp of last update';
 			} else {
-				inventoryLookupLastUpdateTime.textContent = `Last updated: ${lastUpdate.toLocaleString()}` || '';
+				lastUpdateTimeMessage.textContent = `Last updated: ${lastUpdate.toLocaleString()}` || '';
 			}
 		} else {
-			inventoryLookupLastUpdateTime.textContent = 'Uknown timestamp of last update';
+			lastUpdateTimeMessage.textContent = 'Uknown timestamp of last update';
 		}
-    inventoryLocationInput.value = locationFormData.location || '';
+    inventoryUpdateLocationInput.value = locationFormData.location || '';
     inventoryUpdateForm.querySelector("#system_manufacturer").value = locationFormData.system_manufacturer || '';
     inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model || '';
     inventoryUpdateForm.querySelector("#department_name").value = locationFormData.department_name || '';
@@ -372,7 +370,7 @@ async function populateLocationForm(tag) {
 	await updateBrokenStatus();
 }
 
-const csvDownloadButton = document.getElementById('inventory-filter-download-button');
+const csvDownloadButton = document.getElementById('inventory-search-download-button');
 csvDownloadButton.addEventListener('click', async (event) => {
   event.preventDefault();
   csvDownloadButton.disabled = true;

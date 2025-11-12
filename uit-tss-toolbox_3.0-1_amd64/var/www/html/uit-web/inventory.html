@@ -142,71 +142,71 @@
       </div>
 
       <div class="flex-box inventory">
-        <form id="inventory-filter-form">
+        <form id="inventory-search-form">
           <div class="inventory-lookup-label"><h3>Advanced Search</h3></div>
-          <div class="grid-container inventory inventory-filter-form">
+          <div class="grid-container inventory inventory-search-form">
             <span>
-              <select id="inventory-filter-location" name="location" form="inventory-filter-form">
+              <select id="inventory-search-location" name="location" form="inventory-search-form">
                 <option value="" disabled selected>Location</option>
                 {{ range $location, $locationReadable := .Locations }}
                   <option value="{{ $location }}">{{ $locationReadable }}</option>
                 {{ end }}
               </select>
-              <a id="inventory-filter-location-reset" class="inventory-filter-reset" href="">x</a>
+              <a id="inventory-search-location-reset" class="inventory-search-reset" href="">x</a>
             </span>
             <span>
-              <select id="inventory-filter-department" name="department_name" form="inventory-filter-form">
+              <select id="inventory-search-department" name="department_name" form="inventory-search-form">
                 <option value="" disabled selected>Department</option>
                 {{ range $department, $departmentReadable := .Departments }}
                   <option value="{{ $department }}">{{ $departmentReadable }}</option>
                 {{ end }}
               </select>
-              <a id="inventory-filter-department-reset" class="inventory-filter-reset" href="">x</a>
+              <a id="inventory-search-department-reset" class="inventory-search-reset" href="">x</a>
             </span>
             <span>
-              <select id="inventory-filter-manufacturer" name="manufacturer" form="inventory-filter-form">
+              <select id="inventory-search-manufacturer" name="manufacturer" form="inventory-search-form">
                 <option value="" disabled selected>Manufacturer</option>
               </select>
-              <a id="inventory-filter-manufacturer-reset" class="inventory-filter-reset" href="">x</a>
+              <a id="inventory-search-manufacturer-reset" class="inventory-search-reset" href="">x</a>
             </span>
             <span>
-              <select id="inventory-filter-model" name="model" form="inventory-filter-form">
+              <select id="inventory-search-model" name="model" form="inventory-search-form">
                 <option value="" disabled selected>Model</option>
               </select>
-              <a id="inventory-filter-model-reset" class="inventory-filter-reset" href="">x</a></span>
+              <a id="inventory-search-model-reset" class="inventory-search-reset" href="">x</a></span>
             <span>
-              <select id="inventory-filter-domain" name="ad_domain" form="inventory-filter-form">
+              <select id="inventory-search-domain" name="ad_domain" form="inventory-search-form">
                 <option value="" disabled selected>AD Domain</option>
                 {{ range $domain, $domainReadable := .Domains }}
                   <option value="{{ $domain }}">{{ $domainReadable }}</option>
                 {{ end }}
               </select>
-              <a id="inventory-filter-domain-reset" class="inventory-filter-reset" href="">x</a></span>
+              <a id="inventory-search-domain-reset" class="inventory-search-reset" href="">x</a></span>
             <span>
-              <select id="inventory-filter-status" name="status" form="inventory-filter-form">
+              <select id="inventory-search-status" name="status" form="inventory-search-form">
                 <option value="" disabled selected>Status</option>
                 {{ range $status, $statusReadable := .Statuses }}
                   <option value="{{ $status }}">{{ $statusReadable }}</option>
                 {{ end }}
               </select>
-              <a id="inventory-filter-status-reset" class="inventory-filter-reset" href="">x</a></span>
+              <a id="inventory-search-status-reset" class="inventory-search-reset" href="">x</a></span>
             <span>
-              <select id="inventory-filter-broken" name="is_broken" form="inventory-filter-form">
+              <select id="inventory-search-broken" name="is_broken" form="inventory-search-form">
                 <option value="" disabled selected>Broken?</option>
                 <option value="true">Yes - Is broken</option>
                 <option value="false">No - Is functional</option>
               </select>
-              <a id="inventory-filter-broken-reset" class="inventory-filter-reset" href="">x</a></span>
+              <a id="inventory-search-broken-reset" class="inventory-search-reset" href="">x</a></span>
             <span>
-              <select id="inventory-filter-has_images" name="has_images" form="inventory-filter-form">
+              <select id="inventory-search-has_images" name="has_images" form="inventory-search-form">
                 <option value="" disabled selected>Has Images?</option>
                 <option value="true">Yes - Has images</option>
                 <option value="false">No - Missing images</option>
               </select>
-              <a id="inventory-filter-has_images-reset" class="inventory-filter-reset" href="">x</a>
+              <a id="inventory-search-has_images-reset" class="inventory-search-reset" href="">x</a>
             </span>
-            <button type="submit" class="submit" id="inventory-filter-download-button">Download Results</button>
-            <button id="inventory-filter-form-reset-button" type="reset" class="cancel" id="inventory-reset-button">Reset Search</button>
+            <button type="submit" class="submit" id="inventory-search-download-button">Download Results</button>
+            <button id="inventory-search-form-reset-button" type="reset" class="cancel" id="inventory-reset-button">Reset Search</button>
           </form>
           <div class="vertical-spacer"></div>
         </div>
