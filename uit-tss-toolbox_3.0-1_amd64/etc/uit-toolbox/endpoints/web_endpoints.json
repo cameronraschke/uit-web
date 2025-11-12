@@ -32,11 +32,13 @@
   },
   "/footer": {
     "file_path": "/var/www/html/uit-web/footer.html",
+		"requires": ["webmaster_contact"],
     "endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
   },
   "/login": {
     "file_path": "/var/www/html/uit-web/login.html",
+		"requires": ["nonce", "webmaster_contact"],
     "allowed_methods": ["OPTIONS", "GET", "POST"],
     "auth_required": false,
     "endpoint_type": "web_content",
@@ -44,26 +46,31 @@
   },
   "/logout": {
     "file_path": "/var/www/html/uit-web/logout.html",
+		"requires": ["nonce"],
     "endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
   },
   "/dashboard": {
     "file_path": "/var/www/html/uit-web/dashboard.html",
+		"requires": ["nonce"],
     "endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
   },
   "/inventory": {
     "file_path": "/var/www/html/uit-web/inventory.html",
+		"requires": ["nonce", "departments", "domains", "statuses", "locations"],
     "endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
   },
   "/client_images": {
     "file_path": "/var/www/html/uit-web/client_images.html",
+		"requires": ["nonce", "client_tag"],
     "endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
   },
 	"/checkout-form" : {
 		"file_path": "/var/www/html/uit-web/checkout-form.html",
+		"requires": ["nonce", "customer_name", "checkout_date", "return_date", "client_tag"],
 		"endpoint_type": "web_content",
 		"content_type": "text/html; charset=utf-8"
 	},
