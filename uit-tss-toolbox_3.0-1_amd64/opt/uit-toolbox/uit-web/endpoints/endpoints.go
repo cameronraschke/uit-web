@@ -253,7 +253,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		var httpTemplateResponseData = HttpTemplateResponseData{
+		var httpTemplateResponseData = &HttpTemplateResponseData{
 			Departments: make(map[string]string), // Empty maps to avoid nil map errors in templates
 			Domains:     make(map[string]string),
 			Statuses:    make(map[string]string),
@@ -263,8 +263,8 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 
 			// Generate nonce
 			if slices.Contains(endpointData.Requires, "nonce") {
-				nonce, ok := middleware.GetNonceFromRequestContext(req)
-				if !ok {
+				nonce, nonceExists := middleware.GetNonceFromRequestContext(req)
+				if !nonceExists {
 					log.Error("Error retrieving CSP nonce from context")
 					middleware.WriteJsonError(w, http.StatusInternalServerError)
 					return
