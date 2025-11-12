@@ -3,12 +3,12 @@ package endpoints
 import (
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
-	"text/template"
 	"time"
 	config "uit-toolbox/config"
 	database "uit-toolbox/database"
@@ -157,25 +157,37 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := config.GetLogger()
-	requestIP, ok := middleware.GetRequestIPFromRequestContext(req)
+	requestIP, ok := middleware.GetRequestIPFromContext(ctx)
 	if !ok {
 		log.Warning("No IP address stored in context")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestURL, ok := middleware.GetRequestURLFromRequestContext(req)
+	requestURL, ok := middleware.GetRequestURLFromContext(ctx)
 	if !ok {
 		log.Warning("No URL stored in context")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestedPath, ok := middleware.GetRequestPathFromRequestContext(req)
+	requestedPath, ok := middleware.GetRequestPathFromContext(ctx)
 	if !ok {
 		log.Warning("no requested file stored in context")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	requestQueries, _ := middleware.GetRequestQueryFromContext(ctx)
+
+	nonce, nonceExists := middleware.GetNonceFromContext(ctx)
+	if !nonceExists {
+		log.Error("Error retrieving CSP nonce from context")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if nonce == "" {
+		log.Error("CSP nonce is empty")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
 
 	log.Debug("File request from " + requestIP.String() + " for " + requestURL)
 
@@ -263,12 +275,6 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 
 			// Generate nonce
 			if slices.Contains(endpointData.Requires, "nonce") {
-				nonce, nonceExists := middleware.GetNonceFromRequestContext(req)
-				if !nonceExists {
-					log.Error("Error retrieving CSP nonce from context")
-					middleware.WriteJsonError(w, http.StatusInternalServerError)
-					return
-				}
 				httpTemplateResponseData.JsNonce = nonce
 			}
 

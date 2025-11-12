@@ -45,7 +45,7 @@
   border-radius: 1rem;
 }
 
-.grid-container.inventory.inventory-filter-form {
+.grid-container.inventory.inventory-search-form {
   grid-template-columns: 1fr 1fr;
   gap: 0.5dvw;
   padding: 1dvw;
@@ -53,15 +53,15 @@
   border-radius: 1rem;
 }
 
-.grid-container.inventory.inventory-filter-form select {
+.grid-container.inventory.inventory-search-form select {
   width: 85%;
 }
 
-.grid-container.inventory.inventory-filter-form input[type="text"] {
+.grid-container.inventory.inventory-search-form input[type="text"] {
   width: 80%;
 }
 
-.grid-container.inventory.inventory-filter-form a {
+.grid-container.inventory.inventory-search-form a {
   margin-left: 3%;
   text-align: center;
   color: red;
