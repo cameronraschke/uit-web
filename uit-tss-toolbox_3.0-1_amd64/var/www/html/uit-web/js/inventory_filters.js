@@ -54,6 +54,8 @@ async function initializeSearch() {
 	if (filterStatus.value) filterStatusReset.style.display = 'inline-block';
 	if (filterBroken.value) filterBrokenReset.style.display = 'inline-block';
 	if (filterHasImages.value) filterHasImagesReset.style.display = 'inline-block';
+
+	filterModel.disabled = !filterManufacturer.value;
 }
 
 // Reset search
@@ -68,7 +70,13 @@ function createFilterResetHandler(filterElement, resetButton) {
 		const paramName = getURLParamName(filterElement);
 		updateURLParameters(paramName, filterElement.value);
 		if (filterElement === filterManufacturer) {
+			filterModel.disabled = !filterManufacturer.value;
 			await populateModelSelect(filterElement.value || null);
+			if (!filterManufacturer.value) {
+        filterModel.value = '';
+        filterModelReset.style.display = 'none';
+        updateURLParameters('system_model', null);
+      }
 		}
 		await fetchFilteredInventoryData();
 	});
@@ -82,6 +90,7 @@ function createFilterResetHandler(filterElement, resetButton) {
 		if (filterElement === filterManufacturer) {
 			filterModel.value = '';
 			filterModelReset.style.display = 'none';
+			filterModel.disabled = true;
 			updateURLParameters('system_model', null);
 			await loadAllManufacturersAndModels();
 			const manufacturerSelect = document.getElementById('inventory-search-manufacturer');
@@ -90,6 +99,7 @@ function createFilterResetHandler(filterElement, resetButton) {
 		}
 		if (filterElement === filterModel) {
 			await populateModelSelect(filterManufacturer.value || null);
+      filterModel.disabled = !filterManufacturer.value;
 		}
 		await fetchFilteredInventoryData();
 	});
@@ -205,7 +215,8 @@ inventoryFilterResetButton.addEventListener("click", async (event) => {
   defaultOption.textContent = 'Model';
   defaultOption.selected = true;
   modelSelect.appendChild(defaultOption);
-
+	modelSelect.disabled = true;
+	
   await fetchFilteredInventoryData();
 });
 
@@ -247,18 +258,18 @@ async function populateModelSelect(selectedManufacturer = null) {
   const modelSelect = document.getElementById('inventory-search-model');
   if (!modelSelect) return;
 
-	const savedValue = modelSelect.value;
-
 	if (!selectedManufacturer) {
-		modelSelect.innerHTML = '';
-		const defaultOption = document.createElement('option');
-		defaultOption.value = '';
-		defaultOption.textContent = 'Model';
-		// Do NOT disable the placeholder
-		defaultOption.selected = true;
-		modelSelect.appendChild(defaultOption);
-		return;
-	}
+    modelSelect.innerHTML = '';
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Model';
+    defaultOption.selected = true;
+    modelSelect.appendChild(defaultOption);
+    modelSelect.disabled = true;
+    return;
+  }
+
+	const savedValue = modelSelect.value;
 
   // Filter models by manufacturer if one is selected
   const filteredModels = allModelsData.filter(item => item.system_manufacturer === selectedManufacturer);
@@ -289,6 +300,7 @@ async function populateModelSelect(selectedManufacturer = null) {
     modelSelect.appendChild(option);
   });
 
+	modelSelect.disabled = false;
 	modelSelect.value = (savedValue && modelsMap.has(savedValue)) ? savedValue : '';
 }
 
