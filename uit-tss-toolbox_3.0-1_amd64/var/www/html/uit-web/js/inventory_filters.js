@@ -84,6 +84,9 @@ function createFilterResetHandler(filterElement, resetButton) {
 			filterModelReset.style.display = 'none';
 			updateURLParameters('system_model', null);
 			await loadAllManufacturersAndModels();
+			const manufacturerSelect = document.getElementById('inventory-search-manufacturer');
+			if (manufacturerSelect) manufacturerSelect.value = '';
+			await populateModelSelect(null);
 		}
 		if (filterElement === filterModel) {
 			await populateModelSelect(filterManufacturer.value || null);
@@ -229,10 +232,7 @@ async function populateManufacturerSelect() {
   manufacturerSelect.appendChild(defaultOption);
 
   // Sort by formatted name
-  const sortedManufacturers = Array.from(manufacturersMap.entries()).sort((a, b) => 
-    a[1].localeCompare(b[1])
-  );
-
+  const sortedManufacturers = Array.from(manufacturersMap.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   sortedManufacturers.forEach(([manufacturer, manufacturerFormatted]) => {
     const option = document.createElement('option');
     option.value = manufacturer;
@@ -240,7 +240,7 @@ async function populateManufacturerSelect() {
     manufacturerSelect.appendChild(option);
   });
 
-	manufacturerSelect.value = savedValue && manufacturersMap.has(savedValue) ? savedValue : '';
+  manufacturerSelect.value = (savedValue && manufacturersMap.has(savedValue)) ? savedValue : '';
 }
 
 async function populateModelSelect(selectedManufacturer = null) {
@@ -250,17 +250,18 @@ async function populateModelSelect(selectedManufacturer = null) {
 	const savedValue = modelSelect.value;
 
 	if (!selectedManufacturer) {
-    modelSelect.innerHTML = '';
-    const defaultOption = document.createElement('option');
-    defaultOption.value = '';
-    defaultOption.textContent = 'Model';
-    defaultOption.selected = true;
-    modelSelect.appendChild(defaultOption);
-    return;
-  }
+		modelSelect.innerHTML = '';
+		const defaultOption = document.createElement('option');
+		defaultOption.value = '';
+		defaultOption.textContent = 'Model';
+		// Do NOT disable the placeholder
+		defaultOption.selected = true;
+		modelSelect.appendChild(defaultOption);
+		return;
+	}
 
   // Filter models by manufacturer if one is selected
-  const filteredModels = allModelsData.search(item => item.system_manufacturer === selectedManufacturer);
+  const filteredModels = allModelsData.filter(item => item.system_manufacturer === selectedManufacturer);
 
 
   // Get models
@@ -272,18 +273,15 @@ async function populateModelSelect(selectedManufacturer = null) {
   });
 
   // Clear and rebuild model select options
-  modelSelect.innerHTML = '';
-  const defaultOption = document.createElement('option');
-  defaultOption.value = '';
-  defaultOption.textContent = 'Model';
-  defaultOption.selected = true;
-  modelSelect.appendChild(defaultOption);
+	modelSelect.innerHTML = '';
+	const defaultOption = document.createElement('option');
+	defaultOption.value = '';
+	defaultOption.textContent = 'Model';
+	defaultOption.selected = true;
+	modelSelect.appendChild(defaultOption);
 
   // Sort by formatted name
-  const sortedModels = Array.from(modelsMap.entries()).sort((a, b) => 
-    a[1].localeCompare(b[1])
-  );
-
+  const sortedModels = Array.from(modelsMap.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   sortedModels.forEach(([model, modelFormatted]) => {
     const option = document.createElement('option');
     option.value = model;
@@ -291,7 +289,7 @@ async function populateModelSelect(selectedManufacturer = null) {
     modelSelect.appendChild(option);
   });
 
-	modelSelect.value = savedValue && modelsMap.has(savedValue) ? savedValue : '';
+	modelSelect.value = (savedValue && modelsMap.has(savedValue)) ? savedValue : '';
 }
 
 async function loadAllManufacturersAndModels() {

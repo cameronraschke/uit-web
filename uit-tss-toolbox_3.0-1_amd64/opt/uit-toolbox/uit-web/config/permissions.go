@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 )
 
 type PermissionConfig struct {
@@ -49,7 +48,6 @@ const (
 
 var (
 	ErrInvalidEndpointPermission = errors.New("invalid endpoint permission")
-	mu                           sync.RWMutex
 )
 
 func InitPermissions() (*PermissionConfig, error) {
