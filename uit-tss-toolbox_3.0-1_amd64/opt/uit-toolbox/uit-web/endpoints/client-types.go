@@ -6,6 +6,13 @@ type ClientAuth struct {
 	AuthToken string `json:"auth_token,omitempty"`
 }
 
+type ClientResourceUsageData struct {
+	EnergyUsage  float64 `json:"energy_usage,omitempty"`
+	CpuUsage     float64 `json:"cpu_usage,omitempty"`
+	MemUsage     float64 `json:"mem_usage,omitempty"`
+	NetworkUsage float64 `json:"network_usage,omitempty"`
+}
+
 type ClientData struct {
 	Tagnumber          int64               `json:"tagnumber,omitempty"`
 	Serial             string              `json:"serial,omitempty"`
@@ -21,12 +28,11 @@ type ClientData struct {
 	TimeSynced         *bool               `json:"time_synced,omitempty"`
 	Hardware           *ClientHardwareData `json:"hardware_data,omitempty"`
 	Software           *ClientSoftwareData `json:"software_data,omitempty"`
-	RealtimeSystemData *RealtimeClientData `json:"realtime_system_data,omitempty"`
-	RealtimeJobData    *RealtimeJobData    `json:"realtime_job_data,omitempty"`
-	JobData            *ClientJobData      `json:"job_data,omitempty"`
+	RealtimeSystemData *RealtimeSystemData `json:"realtime_system_data,omitempty"`
+	JobData            *JobData            `json:"job_data,omitempty"`
 }
 
-type RealtimeClientData struct {
+type RealtimeSystemData struct {
 	LastHeardTimestamp *time.Time               `json:"last_heard_timestamp,omitempty"`
 	BootTimestamp      *time.Time               `json:"boot_timestamp,omitempty"`
 	CurrentTimestamp   *time.Time               `json:"current_timestamp,omitempty"`
@@ -36,6 +42,33 @@ type RealtimeClientData struct {
 	Software           *ClientSoftwareData      `json:"software,omitempty"`
 	ResourceUsage      *ClientResourceUsageData `json:"resource_usage,omitempty"`
 	Base64Screenshot   string                   `json:"base64_screenshot,omitempty"`
+}
+
+type JobData struct {
+	UUID               string                   `json:"uuid,omitempty"`
+	QueuedRemotely     *bool                    `json:"queued_remotely,omitempty"`
+	Mode               string                   `json:"mode,omitempty"`
+	SelectedDisk       string                   `json:"selected_disk,omitempty"`
+	EraseQueued        *bool                    `json:"erase_queued,omitempty"`
+	EraseMode          string                   `json:"erase_mode,omitempty"`
+	SecureEraseCapable *bool                    `json:"secure_erase_capable,omitempty"`
+	UsedSecureErase    *bool                    `json:"used_secure_erase,omitempty"`
+	EraseVerified      *bool                    `json:"erase_verified,omitempty"`
+	EraseVerifyPcnt    float64                  `json:"erase_verify_percent,omitempty"`
+	EraseCompleted     *bool                    `json:"erase_completed,omitempty"`
+	CloneQueued        *bool                    `json:"clone_queued,omitempty"`
+	CloneMode          string                   `json:"clone_mode,omitempty"`
+	CloneImageName     string                   `json:"clone_image_name,omitempty"`
+	CloneSourceHost    string                   `json:"clone_source_host,omitempty"`
+	CloneCompleted     *bool                    `json:"clone_completed,omitempty"`
+	Failed             *bool                    `json:"failed,omitempty"`
+	FailedMessage      string                   `json:"failed_message,omitempty"`
+	StartTime          *time.Time               `json:"start_time,omitempty"`
+	EndTime            *time.Time               `json:"end_time,omitempty"`
+	Duration           time.Duration            `json:"duration,omitempty"`
+	AvgResourceUsage   *ClientResourceUsageData `json:"avg_resource_usage,omitempty"`
+	Hibernated         *bool                    `json:"hibernated,omitempty"`
+	Realtime           *RealtimeJobData         `json:"realtime_job_data,omitempty"`
 }
 
 type RealtimeJobData struct {
@@ -51,46 +84,14 @@ type RealtimeJobData struct {
 	JobStatusMessage  string        `json:"job_status_message,omitempty"`
 }
 
-type ClientJobData struct {
-	JobUUID            string                   `json:"job_uuid,omitempty"`
-	JobQueuedRemotely  *bool                    `json:"job_queued_remotely,omitempty"`
-	JobMode            string                   `json:"job_mode,omitempty"`
-	SelectedDisk       string                   `json:"selected_disk,omitempty"`
-	EraseJobQueued     *bool                    `json:"erase_job_queued,omitempty"`
-	EraseMode          string                   `json:"erase_mode,omitempty"`
-	SecureEraseCapable *bool                    `json:"secure_erase_capable,omitempty"`
-	UsedSecureErase    *bool                    `json:"used_secure_erase,omitempty"`
-	EraseVerified      *bool                    `json:"erase_verified,omitempty"`
-	EraseVerifyPcnt    float64                  `json:"erase_verify_percent,omitempty"`
-	EraseCompleted     *bool                    `json:"erase_completed,omitempty"`
-	CloneJobQueued     *bool                    `json:"clone_job_queued,omitempty"`
-	CloneMode          string                   `json:"clone_mode,omitempty"`
-	CloneImageName     string                   `json:"clone_image_name,omitempty"`
-	CloneSourceHost    string                   `json:"clone_source_host,omitempty"`
-	CloneCompleted     *bool                    `json:"clone_completed,omitempty"`
-	JobFailed          *bool                    `json:"job_failed,omitempty"`
-	JobStartTime       *time.Time               `json:"job_start_time,omitempty"`
-	JobEndTime         *time.Time               `json:"job_end_time,omitempty"`
-	JobDuration        time.Duration            `json:"job_duration,omitempty"`
-	AvgResourceUsage   *ClientResourceUsageData `json:"avg_resource_usage,omitempty"`
-	Hibernated         *bool                    `json:"hibernated,omitempty"`
-}
-
-type ClientResourceUsageData struct {
-	EnergyUsage  float64 `json:"energy_usage,omitempty"`
-	CpuUsage     float64 `json:"cpu_usage,omitempty"`
-	MemUsage     float64 `json:"mem_usage,omitempty"`
-	NetworkUsage float64 `json:"network_usage,omitempty"`
-}
-
 type ClientSoftwareData struct {
-	OSInstalled   *bool                    `json:"os_installed,omitempty"`
-	OSName        string                   `json:"os_name,omitempty"`
-	OSVersion     string                   `json:"os_version,omitempty"`
-	OSInstallTime *time.Time               `json:"os_installed_time,omitempty"`
-	ImageName     string                   `json:"image_name,omitempty"`
-	CPU           *CPUSoftwareData         `json:"cpu,omitempty"`
-	Motherboard   *MotherboardSoftwareData `json:"motherboard,omitempty"`
+	OSInstalled          *bool                    `json:"os_installed,omitempty"`
+	OSName               string                   `json:"os_name,omitempty"`
+	OSVersion            string                   `json:"os_version,omitempty"`
+	OSInstalledTimestamp *time.Time               `json:"os_installed_timestamp,omitempty"`
+	ImageName            string                   `json:"image_name,omitempty"`
+	CPU                  *CPUSoftwareData         `json:"cpu,omitempty"`
+	Motherboard          *MotherboardSoftwareData `json:"motherboard,omitempty"`
 }
 
 type CPUSoftwareData struct {
@@ -99,13 +100,13 @@ type CPUSoftwareData struct {
 }
 
 type MotherboardSoftwareData struct {
-	BIOSUpdated       *bool            `json:"bios_updated,omitempty"`
-	BIOSVersion       string           `json:"bios_version,omitempty"`
-	BIOSDate          string           `json:"bios_date,omitempty"`
-	FirmwareRevision  string           `json:"firmware_revision,omitempty"`
-	UEFIEnabled       *bool            `json:"uefi_enabled,omitempty"`
-	TPM               *TPMSoftwareData `json:"tpm,omitempty"`
-	SecureBootEnabled *bool            `json:"secure_boot_enabled,omitempty"`
+	BIOSUpdated          *bool            `json:"bios_updated,omitempty"`
+	BIOSVersion          string           `json:"bios_version,omitempty"`
+	BIOSDate             string           `json:"bios_date,omitempty"`
+	BIOSFirmwareRevision string           `json:"bios_firmware_revision,omitempty"`
+	UEFIEnabled          *bool            `json:"uefi_enabled,omitempty"`
+	TPM                  *TPMSoftwareData `json:"tpm,omitempty"`
+	SecureBootEnabled    *bool            `json:"secure_boot_enabled,omitempty"`
 }
 
 type TPMSoftwareData struct {
@@ -144,7 +145,7 @@ type CPUHardwareData struct {
 	L3CacheKB              float64          `json:"l3_cache_kb,omitempty"`
 	ThermalProbeWorking    map[string]*bool `json:"thermal_probe_working,omitempty"`
 	ThermalProbeResolution *float64         `json:"thermal_probe_resolution,omitempty"`
-	Temp                   int64            `json:"temp,omitempty"`
+	Temperature            int64            `json:"temperature,omitempty"`
 }
 
 type MotherboardHardwareData struct {
@@ -172,15 +173,14 @@ type MemoryHardwareData struct {
 }
 
 type NetworkHardwareData struct {
-	MACAddr    string `json:"mac_addr,omitempty"`
-	Type       string `json:"type,omitempty"`
-	Wired      *bool  `json:"wired,omitempty"`
-	Wireless   *bool  `json:"wireless,omitempty"`
-	Model      string `json:"model,omitempty"`
-	NetworkUp  *bool  `json:"network_up,omitempty"`
-	IPAddress  string `json:"ip_address,omitempty"`
-	Netmask    string `json:"netmask,omitempty"`
-	LinkStatus *bool  `json:"link_status,omitempty"`
+	MACAddr       string `json:"mac_addr,omitempty"`
+	Type          string `json:"type,omitempty"`
+	Wired         *bool  `json:"wired,omitempty"`
+	Wireless      *bool  `json:"wireless,omitempty"`
+	Model         string `json:"model,omitempty"`
+	NetworkLinkUp *bool  `json:"network_link_up,omitempty"`
+	IPAddress     string `json:"ip_address,omitempty"`
+	Netmask       string `json:"netmask,omitempty"`
 }
 
 type GraphicsHardwareData struct {
@@ -257,7 +257,7 @@ type PowerSupplyHardwareData struct {
 	MaxWattage      int64  `json:"max_wattage,omitempty"`
 	PowerSupplySafe *bool  `json:"power_supply_safe,omitempty"`
 	Status          string `json:"status,omitempty"`
-	HotPlug         *bool  `json:"hot_plug,omitempty"`
+	HotPlugCapable  *bool  `json:"hot_plug_capable,omitempty"`
 }
 
 type TPMHardwareData struct {
