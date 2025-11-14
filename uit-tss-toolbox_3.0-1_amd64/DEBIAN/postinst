@@ -111,6 +111,12 @@ done
   mv -v /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64.deb /srv/uit-toolbox/client/pkg/uit-toolbox-client.deb
 )
 
+# Create Golang binary
+rm /srv/uit-toolbox/client/pkg/uit-client
+(cd /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/opt/uit-toolbox/uit-client/
+	/usr/local/go/bin/go build -o /srv/uit-toolbox/client/pkg/uit-client .
+)
+
 if [[ ! -f /srv/uit-toolbox/client/pkg/go-latest.linux-amd64.tar.gz ]]; then
   echo "Downloading Golang..."
   wget 'https://go.dev/dl/go1.25.4.linux-amd64.tar.gz' \
