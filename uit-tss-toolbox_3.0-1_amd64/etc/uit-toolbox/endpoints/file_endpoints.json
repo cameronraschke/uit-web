@@ -62,6 +62,13 @@
     "http_version": "HTTP/1.1",
     "endpoint_type": "static_file",
     "content_type": "text/plain; charset=utf-8"
-  }
-
+  },
+	"/client/src/go-latest.linux-amd64.tar.gz": {
+		"file_path": "/srv/uit-toolbox/client/pkg/go-latest.linux-amd64.tar.gz",
+		"tls_required": false,
+		"auth_required": false,
+		"http_version": "HTTP/1.1",
+		"endpoint_type": "static_file",
+		"content_type": "application/gzip"
+	}
 }

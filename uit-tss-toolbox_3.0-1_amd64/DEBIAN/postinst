@@ -113,7 +113,7 @@ done
 
 if [[ ! -f /srv/uit-toolbox/client/pkg/go-latest.linux-amd64.tar.gz ]]; then
   echo "Downloading Golang..."
-  wget 'https://go.dev/dl/go1.25.1.linux-amd64.tar.gz' \
+  wget 'https://go.dev/dl/go1.25.4.linux-amd64.tar.gz' \
     --output-document=/srv/uit-toolbox/client/pkg/go-latest.linux-amd64.tar.gz
 fi
 
