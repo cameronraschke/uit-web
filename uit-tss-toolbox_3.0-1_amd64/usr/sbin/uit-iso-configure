@@ -284,6 +284,8 @@ done
 dpkg --install /root/uit-toolbox-client.deb &>/dev/null
 echo "${GREEN}Done.${RESET}"
 
+export PATH="$PATH:/usr/local/go/bin"
+
 rm /root/uit-toolbox-client.deb
 
 /usr/sbin/uit-toolbox-client
