@@ -116,7 +116,7 @@ rm /srv/uit-toolbox/client/pkg/uit-client
 (cd /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/opt/uit-toolbox/uit-client/
 	sudo /usr/local/go/bin/go build -buildvcs=false -o /srv/uit-toolbox/client/pkg/uit-client .
 )
-chmod root:root /srv/uit-toolbox/client/pkg/uit-client
+chown root:root /srv/uit-toolbox/client/pkg/uit-client
 chmod 644 /srv/uit-toolbox/client/pkg/uit-client
 
 if [[ ! -f /srv/uit-toolbox/client/pkg/go-latest.linux-amd64.tar.gz ]]; then
