@@ -191,12 +191,23 @@ type GraphicsHardwareData struct {
 }
 
 type DiskHardwareData struct {
-	Type                     string  `json:"type,omitempty"`
-	LinuxAlias               string  `json:"linux_alias,omitempty"`
 	Model                    string  `json:"model,omitempty"`
+	Manufacturer             string  `json:"manufacturer,omitempty"`
+	LinuxAlias               string  `json:"linux_alias,omitempty"`
+	Type                     string  `json:"type,omitempty"`
+	LinuxDevicePath          string  `json:"linux_device_path,omitempty"`
+	LinuxMajorNumber         int64   `json:"linux_major_number,omitempty"`
+	LinuxMinorNumber         int64   `json:"linux_minor_number,omitempty"`
+	InterfaceType            string  `json:"interface_type,omitempty"`
 	Serial                   string  `json:"serial,omitempty"`
+	WWID                     string  `json:"wwid,omitempty"`
+	NvmeQualifiedName        string  `json:"nvme_qualified_name,omitempty"`
+	CapacityMiB              float64 `json:"capacity_mib,omitempty"`
+	LogicalBlockSize         int64   `json:"logical_block_size,omitempty"`
+	PhysicalBlockSize        int64   `json:"physical_block_size,omitempty"`
+	SectorCount              int64   `json:"sector_count,omitempty"`
 	Firmware                 string  `json:"firmware,omitempty"`
-	CapacityGB               float64 `json:"capacity_gb,omitempty"`
+	Rotating                 *bool   `json:"rotating,omitempty"`
 	Removable                *bool   `json:"removable,omitempty"`
 	TotalReadsLBAs           int64   `json:"total_reads_lbas,omitempty"`
 	TotalWritesLBAs          int64   `json:"total_writes_lbas,omitempty"`
@@ -212,6 +223,10 @@ type DiskHardwareData struct {
 	SMARTTemperature         float64 `json:"smart_temperature,omitempty"`
 	SMARTErrors              int64   `json:"smart_errors,omitempty"`
 	SMARTDataIntegrityErrors int64   `json:"smart_data_integrity_errors,omitempty"`
+	PCIeCurrentLinkSpeed     string  `json:"pcie_current_link_speed,omitempty"`
+	PCIeMaxLinkSpeed         string  `json:"pcie_max_link_speed,omitempty"`
+	PCIeCurrentLinkWidth     string  `json:"pcie_current_link_width,omitempty"`
+	PCIeMaxLinkWidth         string  `json:"pcie_max_link_width,omitempty"`
 }
 
 type BatteryHardwareData struct {
