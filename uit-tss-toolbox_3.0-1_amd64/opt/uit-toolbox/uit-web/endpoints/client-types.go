@@ -122,6 +122,7 @@ type ClientHardwareData struct {
 	Graphics    *GraphicsHardwareData          `json:"graphics,omitempty"`
 	Disks       map[string]DiskHardwareData    `json:"disks,omitempty"`
 	Battery     *BatteryHardwareData           `json:"battery,omitempty"`
+	Wireless    *WirelessHardwareData          `json:"wireless,omitempty"`
 	Chassis     *ChassisHardwareData           `json:"chassis,omitempty"`
 	PowerSupply *PowerSupplyHardwareData       `json:"power_supply,omitempty"`
 	TPM         *TPMHardwareData               `json:"tpm,omitempty"`
@@ -184,15 +185,16 @@ type NetworkHardwareData struct {
 }
 
 type GraphicsHardwareData struct {
-	ScreenWidth  int64 `json:"screen_width,omitempty"`
-	ScreenHeight int64 `json:"screen_height,omitempty"`
-	TerminalRows int64 `json:"terminal_rows,omitempty"`
-	TerminalCols int64 `json:"terminal_cols,omitempty"`
+	HasBuiltInScreen *bool `json:"has_built_in_screen,omitempty"`
+	HasTouchscreen   *bool `json:"has_touchscreen,omitempty"`
+	HasDedicatedGPU  *bool `json:"has_dedicated_gpu,omitempty"`
+	ScreenWidth      int64 `json:"screen_width,omitempty"`
+	ScreenHeight     int64 `json:"screen_height,omitempty"`
+	TerminalRows     int64 `json:"terminal_rows,omitempty"`
+	TerminalCols     int64 `json:"terminal_cols,omitempty"`
 }
 
 type DiskHardwareData struct {
-	Model                    string  `json:"model,omitempty"`
-	Manufacturer             string  `json:"manufacturer,omitempty"`
 	LinuxAlias               string  `json:"linux_alias,omitempty"`
 	Type                     string  `json:"type,omitempty"`
 	LinuxDevicePath          string  `json:"linux_device_path,omitempty"`
@@ -202,11 +204,14 @@ type DiskHardwareData struct {
 	Serial                   string  `json:"serial,omitempty"`
 	WWID                     string  `json:"wwid,omitempty"`
 	NvmeQualifiedName        string  `json:"nvme_qualified_name,omitempty"`
+	Model                    string  `json:"model,omitempty"`
+	Manufacturer             string  `json:"manufacturer,omitempty"`
 	CapacityMiB              float64 `json:"capacity_mib,omitempty"`
 	LogicalBlockSize         int64   `json:"logical_block_size,omitempty"`
 	PhysicalBlockSize        int64   `json:"physical_block_size,omitempty"`
 	SectorCount              int64   `json:"sector_count,omitempty"`
 	Firmware                 string  `json:"firmware,omitempty"`
+	DeviceState              string  `json:"device_state,omitempty"`
 	Rotating                 *bool   `json:"rotating,omitempty"`
 	Removable                *bool   `json:"removable,omitempty"`
 	TotalReadsLBAs           int64   `json:"total_reads_lbas,omitempty"`
@@ -241,6 +246,17 @@ type BatteryHardwareData struct {
 	HealthPercent   float64 `json:"health_percent,omitempty"`
 	CurrentCharge   float64 `json:"current_charge,omitempty"`
 	Status          string  `json:"status,omitempty"`
+}
+
+type WirelessHardwareData struct {
+	HasWiFi               *bool  `json:"has_wifi,omitempty"`
+	HasBluetooth          *bool  `json:"has_bluetooth,omitempty"`
+	WiFiVersion           string `json:"wifi_version,omitempty"`
+	WiFiManufacturer      string `json:"wifi_manufacturer,omitempty"`
+	WiFiModel             string `json:"wifi_model,omitempty"`
+	BluetoothVersion      string `json:"bluetooth_version,omitempty"`
+	BluetoothManufacturer string `json:"bluetooth_manufacturer,omitempty"`
+	BluetoothModel        string `json:"bluetooth_model,omitempty"`
 }
 
 type ChassisHardwareData struct {
