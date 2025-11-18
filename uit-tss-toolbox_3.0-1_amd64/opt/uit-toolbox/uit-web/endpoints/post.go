@@ -470,7 +470,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// acquired_date
-	if inventoryUpdate.AcquiredDate != nil && strings.TrimSpace(*inventoryUpdate.AcquiredDateString) != "" {
+	if inventoryUpdate.AcquiredDateString != nil && strings.TrimSpace(*inventoryUpdate.AcquiredDateString) != "" {
 		parsedTime, err := time.Parse("2006-01-02", *inventoryUpdate.AcquiredDateString)
 		if err != nil {
 			log.Warning("Invalid acquired date format for inventory update: " + requestIP.String())
