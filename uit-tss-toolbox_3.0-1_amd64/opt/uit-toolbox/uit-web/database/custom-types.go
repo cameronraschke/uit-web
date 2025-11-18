@@ -102,8 +102,8 @@ type InventoryUpdateFormInput struct {
 	Building           *string    `json:"building"`
 	Room               *string    `json:"room"`
 	PropertyCustodian  *string    `json:"property_custodian"`
-	AcquiredDateString *string    `json:"acquired_date"`
-	AcquiredDate       *time.Time `json:"-"`
+	AcquiredDateString *string    `json:"-"`
+	AcquiredDate       *time.Time `json:"acquired_date"`
 }
 
 type ImageManifest struct {
