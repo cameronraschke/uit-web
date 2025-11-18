@@ -407,14 +407,18 @@ func (repo *Repo) GetLocationFormData(ctx context.Context, tag int64) (*Inventor
 		&inventoryUpdateForm.Tagnumber,
 		&inventoryUpdateForm.SystemSerial,
 		&inventoryUpdateForm.Location,
+		&inventoryUpdateForm.Building,
+		&inventoryUpdateForm.Room,
 		&inventoryUpdateForm.SystemManufacturer,
 		&inventoryUpdateForm.SystemModel,
 		&inventoryUpdateForm.Department,
+		&inventoryUpdateForm.PropertyCustodian,
 		&inventoryUpdateForm.Domain,
 		&inventoryUpdateForm.Broken,
 		&inventoryUpdateForm.Status,
 		&inventoryUpdateForm.DiskRemoved,
 		&inventoryUpdateForm.Note,
+		&inventoryUpdateForm.AcquiredDate,
 	); err != nil {
 		return nil, err
 	}
