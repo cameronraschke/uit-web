@@ -166,7 +166,8 @@ function resetInventoryLookupAndUpdateForm() {
 
 inventoryLookupFormResetButton.addEventListener("click", (event) => {
   event.preventDefault();
-  resetInventorySearchQuery();
+  resetInventoryLookupAndUpdateForm();
+	updateURLParameters();
 });
 
 clientMoreDetailsButton.addEventListener("click", (event) => {
