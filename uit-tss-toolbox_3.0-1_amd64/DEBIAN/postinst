@@ -91,7 +91,7 @@ done
 checkNullConfigVals
 
 for i in ${!configArr[@]}; do
-  for file in $(find /usr/sbin/ -type f -name 'uit-*'; find /var/www/html/uit-web \( -path "/var/www/html/uit-web/transcode" -o  -path "/var/www/html/uit-web/images" \) -prune -o -type f -print; find /etc/dnsmasq.d/uit-dhcp.conf -type f ; find /srv/uit-toolbox/client/src/ -type f; find /etc/uit-toolbox/certs.d/ -type f -name '*.cfg'; find /etc/chrony/conf.d/ -type f -name *.conf; find /etc/dnsmasq.d/ -type f -name *.conf); do
+  for file in $(find /usr/sbin/ -type f -name 'uit-*'; find /var/www/html/uit-web \( -path "/var/www/html/uit-web/transcode" -o  -path "/var/www/html/uit-web/images" \) -prune -o -type f -print; find /etc/dnsmasq.d/uit-dhcp.conf -type f ; find /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/opt/uit-toolbox/include.php -type f; find /etc/uit-toolbox/certs.d/ -type f -name '*.cfg'; find /etc/chrony/conf.d/ -type f -name *.conf; find /etc/dnsmasq.d/ -type f -name *.conf); do
     if [[ -f $file ]]; then
       sanitizedValue=${configArr[$i]//\//\\/}
       sed --in-place "s/${i}/${sanitizedValue}/g" ${file}
