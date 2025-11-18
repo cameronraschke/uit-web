@@ -268,7 +268,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
       else if (brokenBool === "false") jsonObject["is_broken"] = false;
       else jsonObject["is_broken"] = null;
     jsonObject["status"] = getInputValue("#status");
-		jsonObject["acquired_date"] = getInputValue("#acquired_date");
+		jsonObject["acquired_date"] = new Date(getInputValue("#acquired_date")).toUTCString || null;
     jsonObject["note"] = getInputValue("#note");
 
     // const jsonBase64 = jsonToBase64(JSON.stringify(jsonObject));

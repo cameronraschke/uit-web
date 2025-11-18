@@ -83,7 +83,7 @@ type InventoryFormAutofill struct {
 	PropertyCustodian  *string    `json:"property_custodian"`
 	Domain             *string    `json:"ad_domain"`
 	Note               *string    `json:"note"`
-	AcquiredDate       *string    `json:"acquired_date"`
+	AcquiredDate       *time.Time `json:"acquired_date"`
 }
 
 type InventoryUpdateFormInput struct {
