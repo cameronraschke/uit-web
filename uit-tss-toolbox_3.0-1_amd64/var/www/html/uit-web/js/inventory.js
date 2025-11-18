@@ -268,7 +268,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
       else if (brokenBool === "false") jsonObject["is_broken"] = false;
       else jsonObject["is_broken"] = null;
     jsonObject["status"] = getInputValue("#status");
-		jsonObject["acquired_date"] = new Date(getInputValue("#acquired_date")).toString() || null;
+		jsonObject["acquired_date"] = new Date(getInputValue("#acquired_date")).toISOString() || null;
     jsonObject["note"] = getInputValue("#note");
 
     // const jsonBase64 = jsonToBase64(JSON.stringify(jsonObject));
@@ -372,7 +372,7 @@ async function populateLocationForm(tag) {
 			: '';
 		inventoryUpdateForm.querySelector("#is_broken").value = brokenValue;
     inventoryUpdateForm.querySelector("#status").value = locationFormData.status || '';
-		const parsedDate = Date.parse(inventoryUpdateForm.querySelector("#acquired_date").value) || null;
+		const parsedDate = inventoryUpdateForm.querySelector("#acquired_date").value.toISOString() || null;
 		if (!isNaN(parsedDate) && parsedDate && parsedDate instanceof Date && parsedDate > 0) {
 			const acquiredDate = new Date(parsedDate);
 			const year = acquiredDate.getFullYear();

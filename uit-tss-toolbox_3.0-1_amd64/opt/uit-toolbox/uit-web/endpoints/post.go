@@ -469,6 +469,14 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		log.Info("No system model provided for inventory update: " + requestIP.String())
 	}
 
+	// acquired date
+	if inventoryUpdate.AcquiredDate != nil {
+		acquiredDateUTC := inventoryUpdate.AcquiredDate.UTC()
+		inventoryUpdate.AcquiredDate = &acquiredDateUTC
+	} else {
+		log.Info("No acquired date provided for inventory update: " + requestIP.String())
+	}
+
 	// Image (base64, optional, max 64MB, multiple file uploads supported)
 	var files []*multipart.FileHeader
 	if req.MultipartForm != nil && req.MultipartForm.File != nil {
