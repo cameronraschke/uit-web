@@ -72,12 +72,15 @@ type InventoryFormAutofill struct {
 	Tagnumber          *int       `json:"tagnumber"`
 	SystemSerial       *string    `json:"system_serial"`
 	Location           *string    `json:"location"`
+	Building           *string    `json:"building"`
+	Room               *string    `json:"room"`
 	SystemManufacturer *string    `json:"system_manufacturer"`
 	SystemModel        *string    `json:"system_model"`
 	Status             *string    `json:"status"`
 	Broken             *bool      `json:"is_broken"`
 	DiskRemoved        *bool      `json:"disk_removed"`
 	Department         *string    `json:"department_name"`
+	PropertyCustodian  *string    `json:"property_custodian"`
 	Domain             *string    `json:"ad_domain"`
 	Note               *string    `json:"note"`
 }
@@ -95,6 +98,9 @@ type InventoryUpdateFormInput struct {
 	Status             *string    `json:"status"`
 	SystemManufacturer *string    `json:"system_manufacturer"`
 	SystemModel        *string    `json:"system_model"`
+	Building           *string    `json:"building"`
+	Room               *string    `json:"room"`
+	PropertyCustodian  *string    `json:"property_custodian"`
 }
 
 type ImageManifest struct {

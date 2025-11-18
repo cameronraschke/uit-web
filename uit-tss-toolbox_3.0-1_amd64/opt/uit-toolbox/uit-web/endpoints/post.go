@@ -667,7 +667,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 
 	// No pointers here, pointers in repo
 	// tagnumber and broken bool are converted above
-	err = updateRepo.InsertInventory(ctx, inventoryUpdate.Tagnumber, inventoryUpdate.SystemSerial, inventoryUpdate.Location, inventoryUpdate.Broken, inventoryUpdate.DiskRemoved, inventoryUpdate.Department, inventoryUpdate.Domain, inventoryUpdate.Note, inventoryUpdate.Status)
+	err = updateRepo.InsertInventory(ctx, &inventoryUpdate)
 	if err != nil {
 		log.Error("Failed to update inventory data: " + err.Error() + " (" + requestIP.String() + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)

@@ -17,21 +17,24 @@ func (repo *Repo) InsertNewNote(ctx context.Context, time time.Time, noteType, n
 	return err
 }
 
-func (repo *Repo) InsertInventory(ctx context.Context, tagnumber *int64, systemSerial *string, location *string, isBroken *bool, diskRemoved *bool, departmentName *string, domain *string, note *string, clientStatus *string) error {
-	sqlCode := `INSERT INTO locations (time, tagnumber, system_serial, location, is_broken, disk_removed, department_name, ad_domain, note, client_status) 
+func (repo *Repo) InsertInventory(ctx context.Context, inventoryUpdateFormInput *InventoryUpdateFormInput) error {
+	sqlCode := `INSERT INTO locations (time, tagnumber, system_serial, location, building, room, is_broken, disk_removed, department_name, property_custodian, ad_domain, note, client_status) 
 		VALUES 
 	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9);`
 
 	_, err := repo.DB.ExecContext(ctx, sqlCode,
-		toNullInt64(tagnumber),
-		toNullString(systemSerial),
-		toNullString(location),
-		toNullBool(isBroken),
-		toNullBool(diskRemoved),
-		toNullString(departmentName),
-		toNullString(domain),
-		toNullString(note),
-		toNullString(clientStatus),
+		toNullInt64(inventoryUpdateFormInput.Tagnumber),
+		toNullString(inventoryUpdateFormInput.SystemSerial),
+		toNullString(inventoryUpdateFormInput.Location),
+		toNullString(inventoryUpdateFormInput.Building),
+		toNullString(inventoryUpdateFormInput.Room),
+		toNullBool(inventoryUpdateFormInput.Broken),
+		toNullBool(inventoryUpdateFormInput.DiskRemoved),
+		toNullString(inventoryUpdateFormInput.Department),
+		toNullString(inventoryUpdateFormInput.PropertyCustodian),
+		toNullString(inventoryUpdateFormInput.Domain),
+		toNullString(inventoryUpdateFormInput.Note),
+		toNullString(inventoryUpdateFormInput.Status),
 	)
 	return err
 }

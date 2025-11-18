@@ -58,7 +58,7 @@
             <input type="hidden" id="csrf-token" value="" />
             <div class="grid-container inventory inventory-update-form">
               <div class="inventory-lookup-label"><p class="bold">Location, Manufacturer, and Model:</p></div>
-              <div><p class="required-field">Location:</p></div>
+              <div><p class="required-field">Location/Building/Room:</p></div>
               <div><p class="required-field">Manufacturer/Model:</p></div>
               <div><input type="text" id="location" name="location"
                 placeholder="Location" 
@@ -74,7 +74,14 @@
                   autocorrect="off"
                   autocapitalize="off" />
               </div>
-              <div></div>
+              <div>
+								<input type="text" id="building" name="building"
+                  placeholder="Building" 
+                  maxlength="64" 
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off" />
+							</div>
               <div>
                 <input type="text" id="system_model" name="system_model"
                   placeholder="Model" 
@@ -83,6 +90,14 @@
                   autocorrect="off"
                   autocapitalize="off" />
               </div>
+							<div>
+								<input type="text" id="room" name="room"
+                  placeholder="Room" 
+                  maxlength="64" 
+                  autocomplete="off"
+                  autocorrect="off"
+                  autocapitalize="off" />
+							</div>
             </div>
             <div class="vertical-spacer"></div>
             <div class="grid-container inventory inventory-update-form">
@@ -95,6 +110,13 @@
                 <option value="{{ $department }}">{{ $departmentReadable }}</option>
                 {{- end }}
               </select></div>
+							<div><label for="property_custodian">Property Custodian:</label></div>
+							<div><input type="text" id="property_custodian" name="property_custodian"
+									placeholder="Property Custodian" 
+									maxlength="64" 
+									autocomplete="off"
+									autocorrect="off"
+									autocapitalize="off" /></div>
               <div><label for="ad_domain" class="required-field">AD Domain:</label></div>
               <div><select id="ad_domain" name="ad_domain">
                 <option value="" disabled selected>Select AD Domain</option>

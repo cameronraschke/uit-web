@@ -74,6 +74,9 @@ CREATE TABLE IF NOT EXISTS locations (
 	ad_domain VARCHAR(64) REFERENCES static_ad_domains(domain_name) DEFAULT NULL,
 	note VARCHAR(512) DEFAULT NULL,
 	client_status VARCHAR(24) REFERENCES static_client_statuses(status) DEFAULT NULL
+	building VARCHAR(64) DEFAULT NULL,
+	room VARCHAR(64) DEFAULT NULL,
+	property_custodian VARCHAR(64) DEFAULT NULL
 );
 
 

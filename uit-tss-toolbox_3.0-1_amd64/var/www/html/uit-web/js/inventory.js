@@ -256,9 +256,12 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
       return input && input.value ? String(input.value) : null;
     };
     jsonObject["location"] = getInputValue("#location");
+		jsonObject["building"] = getInputValue("#building");
+		jsonObject["room"] = getInputValue("#room");
     jsonObject["system_manufacturer"] = getInputValue("#system_manufacturer");
     jsonObject["system_model"] = getInputValue("#system_model");
     jsonObject["department_name"] = getInputValue("#department_name");
+		jsonObject["property_custodian"] = getInputValue("#property_custodian");
     jsonObject["ad_domain"] = getInputValue("#ad_domain");
     const brokenBool = getInputValue("#is_broken");
       if (brokenBool === "true") jsonObject["is_broken"] = true;
@@ -356,9 +359,12 @@ async function populateLocationForm(tag) {
 			lastUpdateTimeMessage.textContent = 'Uknown timestamp of last update';
 		}
     inventoryUpdateLocationInput.value = locationFormData.location || '';
+		inventoryUpdateForm.querySelector("#building").value = locationFormData.building || '';
+		inventoryUpdateForm.querySelector("#room").value = locationFormData.room || '';
     inventoryUpdateForm.querySelector("#system_manufacturer").value = locationFormData.system_manufacturer || '';
     inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model || '';
     inventoryUpdateForm.querySelector("#department_name").value = locationFormData.department_name || '';
+		inventoryUpdateForm.querySelector("#property_custodian").value = locationFormData.property_custodian || '';
     inventoryUpdateForm.querySelector("#ad_domain").value = locationFormData.ad_domain || '';
 		const brokenValue = typeof locationFormData.is_broken === "boolean" 
 			? String(locationFormData.is_broken) 
