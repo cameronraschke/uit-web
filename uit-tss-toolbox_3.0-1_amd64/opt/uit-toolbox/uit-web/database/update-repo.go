@@ -22,16 +22,6 @@ func (repo *Repo) InsertInventory(ctx context.Context, inventoryUpdateFormInput 
 		VALUES 
 	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
 
-	timeInputLayout := "2006-01-02"
-	if inventoryUpdateFormInput.AcquiredDateString != nil && *inventoryUpdateFormInput.AcquiredDateString != "" {
-		parsedTime, err := time.Parse(timeInputLayout, *inventoryUpdateFormInput.AcquiredDateString)
-		if err != nil {
-			return errors.New("failed to parse acquired date: " + err.Error())
-		}
-		inventoryUpdateFormInput.AcquiredDate = &parsedTime
-	} else {
-		inventoryUpdateFormInput.AcquiredDate = nil
-	}
 	_, err := repo.DB.ExecContext(ctx, sqlCode,
 		toNullInt64(inventoryUpdateFormInput.Tagnumber),
 		toNullString(inventoryUpdateFormInput.SystemSerial),
