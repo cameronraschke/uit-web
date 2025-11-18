@@ -20,7 +20,7 @@ func (repo *Repo) InsertNewNote(ctx context.Context, time time.Time, noteType, n
 func (repo *Repo) InsertInventory(ctx context.Context, inventoryUpdateFormInput *InventoryUpdateFormInput) error {
 	sqlCode := `INSERT INTO locations (time, tagnumber, system_serial, location, building, room, is_broken, disk_removed, department_name, property_custodian, ad_domain, note, client_status) 
 		VALUES 
-	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9);`
+	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);`
 
 	_, err := repo.DB.ExecContext(ctx, sqlCode,
 		toNullInt64(inventoryUpdateFormInput.Tagnumber),
