@@ -18,10 +18,20 @@ func (repo *Repo) InsertNewNote(ctx context.Context, time time.Time, noteType, n
 }
 
 func (repo *Repo) InsertInventory(ctx context.Context, inventoryUpdateFormInput *InventoryUpdateFormInput) error {
-	sqlCode := `INSERT INTO locations (time, tagnumber, system_serial, location, building, room, is_broken, disk_removed, department_name, property_custodian, ad_domain, note, client_status) 
+	sqlCode := `INSERT INTO locations (time, tagnumber, system_serial, location, building, room, is_broken, disk_removed, department_name, property_custodian, ad_domain, note, client_status, acquired_date) 
 		VALUES 
-	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);`
+	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
 
+	timeInputLayout := "2006-01-02"
+	if inventoryUpdateFormInput.AcquiredDateString != nil && *inventoryUpdateFormInput.AcquiredDateString != "" {
+		parsedTime, err := time.Parse(timeInputLayout, *inventoryUpdateFormInput.AcquiredDateString)
+		if err != nil {
+			return errors.New("failed to parse acquired date: " + err.Error())
+		}
+		inventoryUpdateFormInput.AcquiredDate = &parsedTime
+	} else {
+		inventoryUpdateFormInput.AcquiredDate = nil
+	}
 	_, err := repo.DB.ExecContext(ctx, sqlCode,
 		toNullInt64(inventoryUpdateFormInput.Tagnumber),
 		toNullString(inventoryUpdateFormInput.SystemSerial),
@@ -35,6 +45,7 @@ func (repo *Repo) InsertInventory(ctx context.Context, inventoryUpdateFormInput 
 		toNullString(inventoryUpdateFormInput.Domain),
 		toNullString(inventoryUpdateFormInput.Note),
 		toNullString(inventoryUpdateFormInput.Status),
+		toNullTime(inventoryUpdateFormInput.AcquiredDate),
 	)
 	return err
 }

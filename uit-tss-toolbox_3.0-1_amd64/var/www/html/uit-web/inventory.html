@@ -136,13 +136,15 @@
                 <option value="false">No, it isn't broken</option>
               </select>
               <label for="status" class="required-field">Status:</label>
-              <select id="status" name="status">
-                <option value="" disabled selected>Select Status</option>
-                {{ range $status, $statusReadable := .Statuses }}
-                  <option value="{{ $status }}">{{ $statusReadable }}</option>
-                {{ end }}
-              </select>
-							<div id="print-checkout-link"></div>
+              <div>
+								<select id="status" name="status">
+									<option value="" disabled selected>Select Status</option>
+									{{ range $status, $statusReadable := .Statuses }}
+										<option value="{{ $status }}">{{ $statusReadable }}</option>
+									{{ end }}
+								</select>
+								<div id="print-checkout-link"></div>
+							</div>
 							<label for="acquired_date">Date Acquired:</label>
 							<input type="date" id="acquired_date" name="acquired_date" />
             </div>
