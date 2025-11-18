@@ -101,6 +101,7 @@ type InventoryUpdateFormInput struct {
 	Building           *string    `json:"building"`
 	Room               *string    `json:"room"`
 	PropertyCustodian  *string    `json:"property_custodian"`
+	AcquiredDate       *time.Time `json:"acquired_date"`
 }
 
 type ImageManifest struct {

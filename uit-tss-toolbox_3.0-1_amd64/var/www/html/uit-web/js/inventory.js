@@ -268,6 +268,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
       else if (brokenBool === "false") jsonObject["is_broken"] = false;
       else jsonObject["is_broken"] = null;
     jsonObject["status"] = getInputValue("#status");
+		jsonObject["acquired_date"] = getInputValue("#acquired_date");
     jsonObject["note"] = getInputValue("#note");
 
     // const jsonBase64 = jsonToBase64(JSON.stringify(jsonObject));
@@ -371,6 +372,7 @@ async function populateLocationForm(tag) {
 			: '';
 		inventoryUpdateForm.querySelector("#is_broken").value = brokenValue;
     inventoryUpdateForm.querySelector("#status").value = locationFormData.status || '';
+		inventoryUpdateForm.querySelector("#acquired_date").value = locationFormData.acquired_date || '';
     inventoryUpdateForm.querySelector("#note").value = locationFormData.note || '';
   }
 	await updateCheckoutStatus();

@@ -76,7 +76,8 @@ CREATE TABLE IF NOT EXISTS locations (
 	client_status VARCHAR(24) REFERENCES static_client_statuses(status) DEFAULT NULL,
 	building VARCHAR(64) DEFAULT NULL,
 	room VARCHAR(64) DEFAULT NULL,
-	property_custodian VARCHAR(64) DEFAULT NULL
+	property_custodian VARCHAR(64) DEFAULT NULL,
+	acquired_date TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 
 
