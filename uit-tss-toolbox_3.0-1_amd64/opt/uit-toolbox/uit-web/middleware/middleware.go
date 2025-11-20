@@ -924,19 +924,20 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 
 func CookieAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromRequestContext(req)
+		ctx := req.Context()
+		log, ok, err := GetLoggerFromContext(ctx)
 		if !ok || err != nil {
 			fmt.Println("Error getting logger from context in CookieAuthMiddleware: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		requestIP, ok := GetRequestIPFromRequestContext(req)
+		requestIP, ok := GetRequestIPFromContext(ctx)
 		if !ok {
 			log.Warning("No IP address stored in context")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		requestPath, ok := GetRequestPathFromRequestContext(req)
+		requestPath, ok := GetRequestPathFromContext(ctx)
 		if !ok {
 			log.Warning("No URL stored in context")
 			WriteJsonError(w, http.StatusInternalServerError)
@@ -951,6 +952,18 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 		if sessionErr != nil || basicErr != nil || bearerErr != nil {
 			if sessionErr != nil && sessionErr != http.ErrNoCookie {
 				log.HTTPWarning(req, "Error retrieving UIT auth cookies: "+sessionErr.Error())
+			}
+			allowedIPs, err := config.GetAllowedLANIPs()
+			if err != nil {
+				log.Error("Error getting allowed LAN IPs: " + err.Error())
+				WriteJsonError(w, http.StatusInternalServerError)
+				return
+			}
+			for _, allowedIP := range allowedIPs {
+				if allowedIP.Contains(requestIP) {
+					next.ServeHTTP(w, req)
+					return
+				}
 			}
 			log.HTTPInfo(req, "No auth cookies found in request: sessionID error: "+fmt.Sprintf("%v", sessionErr)+", basic cookie error: "+fmt.Sprintf("%v", basicErr)+", bearer cookie error: "+fmt.Sprintf("%v", bearerErr))
 			// WriteJsonError(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)

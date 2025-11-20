@@ -821,3 +821,20 @@ func SetRequestTimeout(timeoutType string, timeout time.Duration) error {
 		return fmt.Errorf("invalid timeout type: %s", timeoutType)
 	}
 }
+
+func GetAllowedLANIPs() ([]netip.Prefix, error) {
+	appState := GetAppState()
+	if appState == nil {
+		return nil, fmt.Errorf("%s", "cannot retrieve allowed LAN IPs, app state is not initialized")
+	}
+	var allowedIPs []netip.Prefix
+	appState.AllowedLANIPs.Range(func(k, v any) bool {
+		ipRange, ok := k.(netip.Prefix)
+		if !ok || ipRange == (netip.Prefix{}) {
+			return true
+		}
+		allowedIPs = append(allowedIPs, ipRange)
+		return true
+	})
+	return allowedIPs, nil
+}
