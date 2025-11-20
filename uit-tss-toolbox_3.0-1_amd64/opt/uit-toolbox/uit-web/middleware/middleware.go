@@ -264,38 +264,24 @@ func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		majorVersion, minorVersion, ok := http.ParseHTTPVersion(endpointConfig.HTTPVersion)
+		endpointConfigMajorVersion, _, ok := http.ParseHTTPVersion(endpointConfig.HTTPVersion)
 		if !ok {
 			log.Warning("Invalid HTTP version in endpoint config: " + endpointConfig.HTTPVersion + " (" + requestIP.String() + "" + req.Method + " " + req.URL.Path + ")")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
-		switch majorVersion {
-		case 1:
-			if req.ProtoMajor == 1 && req.ProtoMinor == 1 && minorVersion == 1 {
-				next.ServeHTTP(w, req)
-			} else {
-				log.Warning("Unsupported HTTP version: HTTP/" + strconv.Itoa(req.ProtoMajor) + "." + strconv.Itoa(req.ProtoMinor) + " < " + endpointConfig.HTTPVersion + " (" + requestIP.String() + "" + req.Method + " " + req.URL.Path + ")")
-				w.Header().Set("Upgrade", "HTTP/2")
-				WriteJsonError(w, http.StatusUpgradeRequired)
-				return
-			}
-		case 2:
-			if req.ProtoMajor == 2 && req.ProtoMinor == 0 && minorVersion == 0 {
-				next.ServeHTTP(w, req)
-			} else {
-				log.Warning("Unsupported HTTP version: HTTP/" + strconv.Itoa(req.ProtoMajor) + "." + strconv.Itoa(req.ProtoMinor) + " < " + endpointConfig.HTTPVersion + " (" + requestIP.String() + "" + req.Method + " " + req.URL.Path + ")")
-				w.Header().Set("Upgrade", "HTTP/2")
-				WriteJsonError(w, http.StatusUpgradeRequired)
-				return
-			}
-		default:
-			log.Warning("Unsupported HTTP version: HTTP/" + strconv.Itoa(req.ProtoMajor) + "." + strconv.Itoa(req.ProtoMinor) + " < " + endpointConfig.HTTPVersion + " (" + requestIP.String() + "" + req.Method + " " + req.URL.Path + ")")
-			w.Header().Set("Upgrade", "HTTP/2")
-			WriteJsonError(w, http.StatusUpgradeRequired)
+		if endpointConfigMajorVersion == 1 && req.ProtoMajor >= 1 { // HTTP/1.x
+			next.ServeHTTP(w, req)
+			return
+		} else if endpointConfigMajorVersion == 2 && req.ProtoMajor == 2 { // HTTP/2
+			next.ServeHTTP(w, req)
 			return
 		}
+
+		log.HTTPWarning(req, "Unsupported HTTP version: HTTP/"+strconv.Itoa(req.ProtoMajor)+"."+strconv.Itoa(req.ProtoMinor)+" < "+endpointConfig.HTTPVersion)
+		w.Header().Set("Upgrade", "HTTP/2")
+		WriteJsonError(w, http.StatusUpgradeRequired)
 	})
 }
 
