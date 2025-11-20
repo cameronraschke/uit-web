@@ -3,7 +3,7 @@ package database
 import "time"
 
 type ClientLookup struct {
-	Tagnumber    int    `json:"tagnumber"`
+	Tagnumber    int64  `json:"tagnumber"`
 	SystemSerial string `json:"system_serial"`
 }
 

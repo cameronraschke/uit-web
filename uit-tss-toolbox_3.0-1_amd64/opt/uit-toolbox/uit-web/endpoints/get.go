@@ -39,13 +39,23 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// No consequence for missing tag, acceptable if lookup by serial
-	tagnumber, _ := ConvertTagnumber(urlQueries.Get("tagnumber"))
-	systemSerial := strings.TrimSpace(urlQueries.Get("system_serial"))
+	var tagStr = strings.TrimSpace(urlQueries.Get("tagnumber"))
+	var systemSerial = strings.TrimSpace(urlQueries.Get("system_serial"))
+	var tagnumber int64
 
-	if tagnumber == 0 && systemSerial == "" {
-		log.HTTPWarning(req, "No tagnumber or system_serial provided in request")
+	if tagStr == "" && systemSerial == "" {
+		log.HTTPWarning(req, "No tagnumber or system_serial provided in client lookup request")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
+	}
+
+	if tagStr != "" && systemSerial != "" {
+		tagnumber, err = ConvertTagnumber(urlQueries.Get("tagnumber"))
+		if err != nil {
+			log.HTTPWarning(req, "Cannot convert tagnumber to int64 in GetClientLookup: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
 	}
 
 	db := config.GetDatabaseConn()
@@ -800,6 +810,11 @@ func GetClientConfig(w http.ResponseWriter, req *http.Request) {
 		"UIT_WEB_HTTP_PORT":    clientConfig.UIT_WEB_HTTP_PORT,
 		"UIT_WEB_HTTPS_HOST":   clientConfig.UIT_WEB_HTTPS_HOST,
 		"UIT_WEB_HTTPS_PORT":   clientConfig.UIT_WEB_HTTPS_PORT,
+	}
+
+	if req.URL.Query().Get("json") == "true" {
+		middleware.WriteJson(w, http.StatusOK, clientConfigMap)
+		return
 	}
 
 	var response string
