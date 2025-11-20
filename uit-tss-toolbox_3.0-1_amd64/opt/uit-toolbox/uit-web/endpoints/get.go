@@ -797,6 +797,11 @@ func GetClientConfig(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if req.URL.Query().Get("json") == "true" {
+		middleware.WriteJson(w, http.StatusOK, clientConfig)
+		return
+	}
+
 	clientConfigMap := map[string]string{
 		"UIT_CLIENT_DB_USER":   clientConfig.UIT_CLIENT_DB_USER,
 		"UIT_CLIENT_DB_PASSWD": clientConfig.UIT_CLIENT_DB_PASSWD,
@@ -810,11 +815,6 @@ func GetClientConfig(w http.ResponseWriter, req *http.Request) {
 		"UIT_WEB_HTTP_PORT":    clientConfig.UIT_WEB_HTTP_PORT,
 		"UIT_WEB_HTTPS_HOST":   clientConfig.UIT_WEB_HTTPS_HOST,
 		"UIT_WEB_HTTPS_PORT":   clientConfig.UIT_WEB_HTTPS_PORT,
-	}
-
-	if req.URL.Query().Get("json") == "true" {
-		middleware.WriteJson(w, http.StatusOK, clientConfigMap)
-		return
 	}
 
 	var response string
