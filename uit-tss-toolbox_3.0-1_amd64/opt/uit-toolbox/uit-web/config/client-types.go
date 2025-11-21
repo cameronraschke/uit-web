@@ -1,6 +1,10 @@
-package endpoints
+package config
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type ClientAuth struct {
 	AuthToken string `json:"auth_token,omitempty"`
@@ -21,7 +25,7 @@ type ClientData struct {
 	ProductFamily      string              `json:"product_family,omitempty"`
 	ProductName        string              `json:"product_name,omitempty"`
 	SKU                string              `json:"sku,omitempty"`
-	UUID               string              `json:"uuid,omitempty"`
+	UUID               uuid.UUID           `json:"uuid,omitempty"`
 	OEMStrings         map[string]string   `json:"oem_strings,omitempty"`
 	BootDuration       time.Duration       `json:"boot_duration,omitempty"`
 	ConnectedToHost    *bool               `json:"connected_to_host,omitempty"`
