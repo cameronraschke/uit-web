@@ -1,6 +1,7 @@
 package config
 
 import (
+	"net/netip"
 	"time"
 
 	"github.com/google/uuid"
@@ -178,14 +179,14 @@ type MemoryHardwareData struct {
 }
 
 type NetworkHardwareData struct {
-	MACAddress    string `json:"mac_addr,omitempty"`
-	Type          string `json:"type,omitempty"`
-	Wired         *bool  `json:"wired,omitempty"`
-	Wireless      *bool  `json:"wireless,omitempty"`
-	Model         string `json:"model,omitempty"`
-	NetworkLinkUp *bool  `json:"network_link_up,omitempty"`
-	IPAddress     string `json:"ip_address,omitempty"`
-	Netmask       string `json:"netmask,omitempty"`
+	MACAddress    string       `json:"mac_addr,omitempty"`
+	Type          string       `json:"type,omitempty"`
+	Wired         *bool        `json:"wired,omitempty"`
+	Wireless      *bool        `json:"wireless,omitempty"`
+	Model         string       `json:"model,omitempty"`
+	NetworkLinkUp *bool        `json:"network_link_up,omitempty"`
+	IPAddress     []netip.Addr `json:"ip_address,omitempty"`
+	Netmask       string       `json:"netmask,omitempty"`
 }
 
 type GraphicsHardwareData struct {
