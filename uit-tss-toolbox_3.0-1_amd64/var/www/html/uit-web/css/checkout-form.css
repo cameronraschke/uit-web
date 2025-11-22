@@ -97,13 +97,13 @@ span {
 }
 
 @media print {
-	#printCheckoutFormContainer {
+	#print-checkout-form-container {
 		display: none !important;
 	}
 }
 
 @media screen {
-	#printCheckoutFormContainer {
+	#print-checkout-form-container {
 		display: block !important;
 	}
 }

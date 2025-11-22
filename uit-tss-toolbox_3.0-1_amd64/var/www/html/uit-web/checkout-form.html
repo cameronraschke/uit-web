@@ -5,26 +5,26 @@
 		<title>UIT - Laptop Checkout Form</title>
   </head>
   <body>
-		<div class="print-form" id="printCheckoutFormContainer">
+		<div class="print-form" id="print-checkout-form-container">
 			<h2>Please print this form and have the customer sign it before handing over the laptop.</h2>
 			
-			<form  id="printCheckoutForm">
-				<label for="print_customer_name">Customer Name</label><br />
-				<input type="text" id="print_customer_name" value="{{ .CustomerName }}" />
+			<form id="print-checkout-form">
+				<label for="print-customer-name">Customer Name</label><br />
+				<input type="text" id="print-customer-name" value="{{ .CustomerName }}" />
 				<br />
 
-				<label for="print_customer_psid">Customer PSID</label><br />
-				<input type="text" id="print_customer_psid" value="" />
+				<label for="print-customer-psid">Customer PSID</label><br />
+				<input type="text" id="print-customer-psid" value="" />
 				<br />
 				
-				<label for="print_checkout_date">Checkout Date</label><br />
-				<input type="date" id="print_checkout_date" value="{{ .CheckoutDate }}" />
+				<label for="print-checkout-date">Checkout Date</label><br />
+				<input type="date" id="print-checkout-date" value="{{ .CheckoutDate }}" />
 				<br />
 
-				<label for="print_return_date">Return Date</label><br />
-				<input type="date" id="print_return_date" value="{{ .ReturnDate }}" />
+				<label for="print-return-date">Return Date</label><br />
+				<input type="date" id="print-return-date" value="{{ .ReturnDate }}" />
 				<br />
-				<button type="button" id="confirmAndPrint">Confirm and Print</button>
+				<button type="button" id="confirm-and-print">Confirm and Print</button>
 			</form>
 		</div>
     <div class="uh-logo">
@@ -49,9 +49,6 @@
     </div>
     <div>
       <p>
-        <!--To login to this laptop, please use the following credentials:
-        <br>Username: <b><u>Student</u></b>
-        <br>Password: <b><u>UHouston!</u></b>-->
         To login to this laptop, please use your <b><u>CougarNet ID</u></b> and <b><u>CougarNet Password</u></b>
       </p>
     </div>

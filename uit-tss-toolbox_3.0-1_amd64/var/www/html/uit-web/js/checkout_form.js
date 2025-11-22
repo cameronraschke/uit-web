@@ -1,11 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
-	const printCheckoutFormContainer = document.getElementById('printCheckoutFormContainer');
-	const printCheckoutForm = document.getElementById('printCheckoutForm');
-	const customerName = document.getElementById('print_customer_name');
-	const customerPSID = document.getElementById('print_customer_psid');
-	const checkoutDate = document.getElementById('print_checkout_date');
-	const returnDate = document.getElementById('print_return_date');
-	const confirmAndPrint = document.getElementById('confirmAndPrint');
+	const printCheckoutFormContainer = document.getElementById('print-checkout-form-container');
+	const printCheckoutForm = document.getElementById('print-checkout-form');
+	const customerName = document.getElementById('print-customer-name');
+	const customerPSID = document.getElementById('print-customer-psid');
+	const checkoutDate = document.getElementById('print-checkout-date');
+	const returnDate = document.getElementById('print-return-date');
+	const confirmAndPrint = document.getElementById('confirm-and-print');
 	
 
 	confirmAndPrint.addEventListener('click', () => {
