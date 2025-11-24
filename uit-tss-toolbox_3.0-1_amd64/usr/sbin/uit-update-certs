@@ -25,6 +25,8 @@ if [[ $1 == "--update-ca" ]]; then
     certtool --generate-self-signed --load-privkey "${ROOT_KEY}" --template "${ROOT_CFG}" --outfile "${ROOT_CRT}"
     chown root:root "${ROOT_KEY}"
     chmod 600 "${ROOT_KEY}"
+		chown root:root "${ROOT_CRT}"
+		chmod 600 "${ROOT_CRT}"
     update-ca-certificates
 		echo "Root CA created/updated."
 fi
@@ -42,6 +44,8 @@ if [[ $1 == "--update-intermediate" ]]; then
 	certtool --generate-certificate --load-privkey "${INT_KEY}" --template "${INT_CFG}" --load-ca-certificate "${ROOT_CRT}" --load-ca-privkey "${ROOT_KEY}" --outfile "${INT_CRT}"
 	chown root:root "${INT_KEY}"
 	chmod 600 "${INT_KEY}"
+	chown root:root "${INT_CRT}"
+	chmod 600 "${INT_CRT}"
 	update-ca-certificates
 	echo "Intermediate CA created/updated."
 fi
@@ -57,15 +61,16 @@ rm -f "${WWW_KEY}" "${WWW_CRT}" "${WWW_REQ}"
 certtool --generate-privkey --outfile "${WWW_KEY}"
 certtool --generate-request --load-privkey "${WWW_KEY}" --template "${WWW_CFG}" --outfile "${WWW_REQ}"
 certtool --generate-certificate --load-request "${WWW_REQ}" --template "${WWW_CFG}" --load-ca-certificate "${INT_CRT}" --load-ca-privkey "${INT_KEY}" --outfile "${WWW_CRT}"
-
 chown root:uitweb "${WWW_KEY}"
 chmod 640 "${WWW_KEY}"
+chown root:uitweb "${WWW_CRT}"
+chmod 640 "${WWW_CRT}"
 
 update-ca-certificates
 
 cat "$WWW_CRT" "$INT_CRT" > /usr/local/share/ca-certificates/uit-web.chain.crt
 chown root:uitweb /usr/local/share/ca-certificates/uit-web.chain.crt
-chmod 644 /usr/local/share/ca-certificates/uit-web.chain.crt
+chmod 640 /usr/local/share/ca-certificates/uit-web.chain.crt
 
 echo "New chain created: /usr/local/share/ca-certificates/uit-web.chain.crt"
 

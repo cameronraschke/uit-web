@@ -24,7 +24,7 @@
     "content_type": "application/octet-stream"
   },
   "/client/certs/uit-ca.crt": {
-    "file_path": "/srv/uit-toolbox/client/certs/uit-ca.crt",
+    "file_path": "/usr/local/share/ca-certificates/uit-ca.crt",
     "tls_required": false,
     "auth_required": false,
     "http_version": "HTTP/1.1",
@@ -32,7 +32,7 @@
     "content_type": "application/x-x509-ca-cert"
   },
   "/client/certs/uit-web.crt": {
-    "file_path": "/srv/uit-toolbox/client/certs/uit-web.crt",
+    "file_path": "/usr/local/share/ca-certificates/uit-web.crt",
     "tls_required": false,
     "auth_required": false,
     "http_version": "HTTP/1.1",
@@ -40,7 +40,7 @@
     "content_type": "application/x-x509-user-cert"
   },
 	"/client/certs/uit-ca-intermediate.crt": {
-		"file_path": "/srv/uit-toolbox/client/certs/uit-ca-intermediate.crt",
+		"file_path": "/usr/local/share/ca-certificates/uit-ca-intermediate.crt",
 		"tls_required": false,
 		"auth_required": false,
 		"http_version": "HTTP/1.1",
@@ -48,7 +48,7 @@
 		"content_type": "application/x-x509-ca-cert"
 	},
 	"/client/certs/uit-web.chain.crt": {
-		"file_path": "/srv/uit-toolbox/client/certs/uit-web.chain.crt",
+		"file_path": "/usr/local/share/ca-certificates/uit-web.chain.crt",
 		"tls_required": false,
 		"auth_required": false,
 		"http_version": "HTTP/1.1",
@@ -73,7 +73,7 @@
   },
   "/client/api/configs/uit-client": {
     "file_path": "/srv/uit-toolbox/client/configs/uit-client.conf",
-    "tls_required": false,
+    "tls_required": true,
     "auth_required": false,
     "http_version": "HTTP/1.1",
     "endpoint_type": "static_file",

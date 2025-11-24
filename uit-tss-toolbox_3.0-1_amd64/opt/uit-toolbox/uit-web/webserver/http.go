@@ -40,7 +40,6 @@ func StartFileServer(ctx context.Context, serverHost string) error {
 	httpMux := http.NewServeMux()
 	httpMux.Handle("/client/", fileServerFullChain.thenFunc(endpoints.FileServerHandler))
 	httpMux.Handle("/client", fileServerFullChain.thenFunc(endpoints.RejectRequest))
-	httpMux.Handle("/client/api/configs/uit-client", fileServerBaseChain.thenFunc(endpoints.GetClientConfig))
 	httpMux.Handle("/", fileServerBaseChain.thenFunc(endpoints.RejectRequest))
 
 	log.Info("Starting HTTP file server...")

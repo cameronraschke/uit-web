@@ -58,6 +58,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsFullAPIChain := append(httpsBaseChain, httpsBaseAPIChain...)
 
 	httpsMux := http.NewServeMux()
+	httpsMux.Handle("GET /client/api/configs/uit-client", httpsFullAPIChain.thenFunc(endpoints.GetClientConfig))
 	httpsMux.Handle("GET /api/server_time", httpsFullAPIChain.thenFunc(endpoints.GetServerTime))
 	httpsMux.Handle("GET /api/lookup", httpsFullAPIChain.thenFunc(endpoints.GetClientLookup))
 	httpsMux.Handle("GET /api/all_tags", httpsFullAPIChain.thenFunc(endpoints.GetAllTags))
