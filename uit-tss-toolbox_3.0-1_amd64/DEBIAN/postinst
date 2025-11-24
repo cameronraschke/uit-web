@@ -179,13 +179,7 @@ chown uitweb:uit /etc/uit-toolbox/ -R
 find /etc/uit-toolbox/ -type d -exec chmod 750 {} \;
 find /etc/uit-toolbox/ -type f -exec chmod 640 {} \;
 
-chown uitweb:uit /srv/uit-toolbox/client/configs/
-chmod 750 /srv/uit-toolbox/client/configs/
-chown uitweb:uit /srv/uit-toolbox/client/pkg/
-chmod 750 /srv/uit-toolbox/client/pkg/
-chown uitweb:uit /srv/uit-toolbox/client/src/
-chmod 750 /srv/uit-toolbox/client/src/
-find /srv/uit-toolbox/client/ ! -path "/srv/uit-toolbox/client/iso" ! -path "/srv/uit-toolbox/client/iso/*" -exec chown uitweb:uit {} \;
+find /srv/uit-toolbox/ ! -path "/srv/uit-toolbox/client/iso" ! -path "/srv/uit-toolbox/client/iso/*" -exec chown uitweb:uit {} \;
 find /srv/uit-toolbox/ -type d -not -path "*/iso*" -exec chmod 750 {} \;
 find /srv/uit-toolbox/ -type f -not -path "*/iso/*" -exec chmod 640 {} \;
 
