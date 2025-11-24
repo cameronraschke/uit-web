@@ -141,16 +141,20 @@ if [[ -d /srv/uit-toolbox/client/certs ]]; then
     mkdir -p /srv/uit-toolbox/client/certs/
 fi
 if [[ ! -f /usr/local/share/ca-certificates/uit-ca.crt ]]; then
-    uit-update-certs --update-ca
-  elif [[ ! -f /usr/local/share/ca-certificates/uit-web.crt ]]; then
-    uit-update-certs
+	uit-update-certs --update-ca
+fi
+if [[ ! -f /usr/local/share/ca-certificates/uit-ca-intermediate.crt ]]; then
+	uit-update-certs --update-intermediate
+fi
+if [[ ! -f /usr/local/share/ca-certificates/uit-web.crt ]]; then
+	uit-update-certs
 fi
 
 cp /usr/local/share/ca-certificates/uit-ca.crt /srv/uit-toolbox/client/certs/uit-ca.crt
 cp /usr/local/share/ca-certificates/uit-web.crt /srv/uit-toolbox/client/certs/uit-web.crt
 cp /usr/local/share/ca-certificates/uit-ca.crt /etc/uit-toolbox/certs/uit-ca.crt
 cp /usr/local/share/ca-certificates/uit-web.crt /etc/uit-toolbox/certs/uit-web.crt
-cp /usr/local/share/ca-certificates/uit-web.key /etc/uit-toolbox/certs/uit-web.key
+cp /usr/local/share/ca-certificates/uit-web.chain.pem /srv/uit-toolbox/client/certs/uit-web.chain.pem
 
 
 # Update SQL tables & procedures
@@ -184,14 +188,12 @@ echo -e "\n" >> /etc/cron.d/uit-cron
 chown uitweb:uit /etc/uit-toolbox/ -R
 find /etc/uit-toolbox/ -type d -exec chmod 750 {} \;
 find /etc/uit-toolbox/ -type f -exec chmod 640 {} \;
-chown root:uitweb /etc/uit-toolbox/certs/ -R
-find /etc/uit-toolbox/certs/ -type d -exec chmod 750 {} \;
-find /etc/uit-toolbox/certs/ -type f -exec chmod 640 {} \;
 
 find /srv/uit-toolbox/client/ -type d ! -path "/srv/uit-toolbox/client/iso" ! -path "/srv/uit-toolbox/client/iso/*" -exec chown uitweb:uit {} \;
 find /srv/uit-toolbox/ -type d -not -path "*/iso*" -exec chmod 755 {} \;
 find /srv/uit-toolbox/ -type f -not -path "*/iso/*" -exec chmod 664 {} \;
 chmod 644 /srv/uit-toolbox/client/certs/uit-ca.crt
+chmod 644 /srv/uit-toolbox/client/certs/uit-ca-intermediate.crt
 chmod 644 /srv/uit-toolbox/client/certs/uit-web.crt
 
 chmod 750 /usr/sbin/uit-*

@@ -8,21 +8,69 @@ if [[ "$EUID" > 0 ]]; then
   exit 0
 fi
 
+ROOT_CFG=/etc/uit-toolbox/certs.d/uit-ca.cfg
+ROOT_KEY=/usr/local/share/ca-certificates/uit-ca.key
+ROOT_CRT=/usr/local/share/ca-certificates/uit-ca.crt
+INT_CFG=/etc/uit-toolbox/certs.d/uit-intermediate.cfg
+INT_KEY=/usr/local/share/ca-certificates/uit-ca-intermediate.key
+INT_CRT=/usr/local/share/ca-certificates/uit-ca-intermediate.crt
+WWW_CFG=/etc/uit-toolbox/certs.d/uit-web.cfg
+WWW_KEY=/usr/local/share/ca-certificates/uit-web.key
+WWW_CRT=/usr/local/share/ca-certificates/uit-web.crt
+WWW_REQ=/etc/uit-toolbox/certs.d/uit-web.crq
+
 # Create/replace CA with --update-ca option
 if [[ $1 == "--update-ca" ]]; then
-    certtool --generate-privkey --sec-param High --key-type=ecdsa --outfile /usr/local/share/ca-certificates/uit-ca.key
-    certtool --generate-self-signed --load-privkey /usr/local/share/ca-certificates/uit-ca.key --template /etc/uit-toolbox/certs.d/uit-ca.cfg --outfile /usr/local/share/ca-certificates/uit-ca.crt
+    certtool --generate-privkey --sec-param High --key-type=ecdsa --outfile "${ROOT_KEY}"
+    certtool --generate-self-signed --load-privkey "${ROOT_KEY}" --template "${ROOT_CFG}" --outfile "${ROOT_CRT}"
+    chown root:root "${ROOT_KEY}"
+    chmod 600 "${ROOT_KEY}"
     update-ca-certificates
-    chown root:root /usr/local/share/ca-certificates/uit-ca.key
-    chmod 600 /usr/local/share/ca-certificates/uit-ca.key
+		echo "Root CA created/updated."
 fi
 
-# Always creates new cert from CA
-certtool --generate-privkey --outfile /usr/local/share/ca-certificates/uit-web.key
-certtool --generate-request --load-privkey /usr/local/share/ca-certificates/uit-web.key --template /etc/uit-toolbox/certs.d/uit-web.cfg --outfile /etc/uit-toolbox/certs.d/uit-web.crq
-certtool --generate-certificate --load-request /etc/uit-toolbox/certs.d/uit-web.crq --template /etc/uit-toolbox/certs.d/uit-web.cfg --load-ca-certificate /usr/local/share/ca-certificates/uit-ca.crt --load-ca-privkey /usr/local/share/ca-certificates/uit-ca.key --outfile /usr/local/share/ca-certificates/uit-web.crt
-update-ca-certificates
-chmod 640 /usr/local/share/ca-certificates/uit-web.key
-chown root:www-data /usr/local/share/ca-certificates/uit-web.key
 
-certtool --certificate-info --infile /usr/local/share/ca-certificates/uit-web.crt
+# Create/replace intermediate CA with --update-intermediate option
+if [[ $1 == "--update-intermediate" ]]; then
+	if [[ ! -f "${ROOT_CRT}" || ! -f "${ROOT_KEY}" ]]; then
+		echo "Root CA not found - create/update root CA first with --update-ca"
+		exit 1
+	fi
+	echo "Creating/replacing intermediate CA..."
+	rm -f "${INT_KEY}" "${INT_CRT}"
+	certtool --generate-privkey --sec-param High --key-type=ecdsa --outfile "${INT_KEY}"
+	certtool --generate-certificate --load-privkey "${INT_KEY}" --template "${INT_CFG}" --load-ca-certificate "${ROOT_CRT}" --load-ca-privkey "${ROOT_KEY}" --outfile "${INT_CRT}"
+	chown root:root "${INT_KEY}"
+	chmod 600 "${INT_KEY}"
+	update-ca-certificates
+	echo "Intermediate CA created/updated."
+fi
+
+
+# Always creates new web cert from CA
+if [[ ! -f "${INT_CRT}" || ! -f "${INT_KEY}" ]]; then
+		echo "Intermediate CA not found - create/update intermediate CA first with --update-intermediate"
+		exit 1
+fi
+echo "Creating/replacing uit-web certificate..."
+rm -f "${WWW_KEY}" "${WWW_CRT}" "${WWW_REQ}"
+certtool --generate-privkey --outfile "${WWW_KEY}"
+certtool --generate-request --load-privkey "${WWW_KEY}" --template "${WWW_CFG}" --outfile "${WWW_REQ}"
+certtool --generate-certificate --load-request "${WWW_REQ}" --template "${WWW_CFG}" --load-ca-certificate "${INT_CRT}" --load-ca-privkey "${INT_KEY}" --outfile "${WWW_CRT}"
+
+chown root:uitweb "${WWW_KEY}"
+chmod 640 "${WWW_KEY}"
+
+update-ca-certificates
+
+cat "$SRV_CRT" "$INT_CRT" > /usr/local/share/ca-certificates/uit-web.chain.pem
+chown root:root /usr/local/share/ca-certificates/uit-web.chain.pem
+chmod 640 /usr/local/share/ca-certificates/uit-web.chain.pem
+
+echo "New chain created: /usr/local/share/ca-certificates/uit-web.chain.pem"
+
+# certtool --certificate-info --infile "${WWW_CRT}"
+
+read -p "Press [Enter] key to restart uit-web.service..."
+systemctl restart uit-web.service
+exit 0
