@@ -63,7 +63,7 @@ chmod 640 "${WWW_KEY}"
 
 update-ca-certificates
 
-cat "$SRV_CRT" "$INT_CRT" > /usr/local/share/ca-certificates/uit-web.chain.pem
+cat "$WWW_CRT" "$INT_CRT" > /usr/local/share/ca-certificates/uit-web.chain.pem
 chown root:root /usr/local/share/ca-certificates/uit-web.chain.pem
 chmod 640 /usr/local/share/ca-certificates/uit-web.chain.pem
 
