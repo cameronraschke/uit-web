@@ -63,11 +63,11 @@ chmod 640 "${WWW_KEY}"
 
 update-ca-certificates
 
-cat "$WWW_CRT" "$INT_CRT" > /usr/local/share/ca-certificates/uit-web.chain.pem
-chown root:root /usr/local/share/ca-certificates/uit-web.chain.pem
-chmod 640 /usr/local/share/ca-certificates/uit-web.chain.pem
+cat "$WWW_CRT" "$INT_CRT" > /usr/local/share/ca-certificates/uit-web.chain.crt
+chown root:uitweb /usr/local/share/ca-certificates/uit-web.chain.crt
+chmod 644 /usr/local/share/ca-certificates/uit-web.chain.crt
 
-echo "New chain created: /usr/local/share/ca-certificates/uit-web.chain.pem"
+echo "New chain created: /usr/local/share/ca-certificates/uit-web.chain.crt"
 
 # certtool --certificate-info --infile "${WWW_CRT}"
 

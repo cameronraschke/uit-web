@@ -154,7 +154,7 @@ cp /usr/local/share/ca-certificates/uit-ca.crt /srv/uit-toolbox/client/certs/uit
 cp /usr/local/share/ca-certificates/uit-web.crt /srv/uit-toolbox/client/certs/uit-web.crt
 cp /usr/local/share/ca-certificates/uit-ca.crt /etc/uit-toolbox/certs/uit-ca.crt
 cp /usr/local/share/ca-certificates/uit-web.crt /etc/uit-toolbox/certs/uit-web.crt
-cp /usr/local/share/ca-certificates/uit-web.chain.pem /srv/uit-toolbox/client/certs/uit-web.chain.pem
+cp /usr/local/share/ca-certificates/uit-web.chain.crt /srv/uit-toolbox/client/certs/uit-web.chain.crt
 
 
 # Update SQL tables & procedures
