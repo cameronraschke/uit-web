@@ -22,7 +22,7 @@ if [[ -f /tmp/debian-live.deb ]]; then
 fi
 
 apt purge live-build -y
-wget http://ftp.us.debian.org/debian/pool/main/l/live-build/live-build_20250505_all.deb \
+wget http://ftp.us.debian.org/debian/pool/main/l/live-build/live-build_20250814_all.deb \
 	--output-document=/tmp/debian-live.deb
 apt install /tmp/debian-live.deb -y
 
