@@ -151,6 +151,7 @@ if [[ ! -f /usr/local/share/ca-certificates/uit-web.crt ]]; then
 fi
 
 cp /usr/local/share/ca-certificates/uit-ca.crt /srv/uit-toolbox/client/certs/uit-ca.crt
+cp /usr/local/share/ca-certificates/uit-ca-intermediate.crt /srv/uit-toolbox/client/certs/uit-ca-intermediate.crt
 cp /usr/local/share/ca-certificates/uit-web.crt /srv/uit-toolbox/client/certs/uit-web.crt
 cp /usr/local/share/ca-certificates/uit-ca.crt /etc/uit-toolbox/certs/uit-ca.crt
 cp /usr/local/share/ca-certificates/uit-web.crt /etc/uit-toolbox/certs/uit-web.crt
