@@ -166,6 +166,7 @@ function resetInventoryLookupAndUpdateForm() {
 
 inventoryLookupFormResetButton.addEventListener("click", (event) => {
   event.preventDefault();
+	history.replaceState(null, '', window.location.pathname);
   resetInventoryLookupAndUpdateForm();
 	updateURLParameters();
 });
@@ -188,6 +189,7 @@ function resetInventorySearchQuery() {
 
 inventoryUpdateFormCancelButton.addEventListener("click", (event) => {
   event.preventDefault();
+	history.replaceState(null, '', window.location.pathname);
   resetInventoryLookupAndUpdateForm();
 	updateURLParameters();
 });

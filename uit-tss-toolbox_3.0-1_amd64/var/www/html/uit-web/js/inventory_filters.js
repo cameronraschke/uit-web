@@ -174,7 +174,7 @@ async function fetchFilteredInventoryData(csvDownload = false) {
 	}
 
 	if (csvDownload) {
-		location.href = `/api/inventory?${apiQuery.toString()}`;
+		window.location.href = `/api/inventory?csv=true&${apiQuery.toString()}`;
 		return;
 	}
 
