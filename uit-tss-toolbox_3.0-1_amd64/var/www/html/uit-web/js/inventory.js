@@ -110,13 +110,11 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 	await submitInventoryLookup();
 	await updateCheckoutStatus();
-	await updateBrokenStatus();
 });
 
 const clientStatus = inventoryUpdateForm.querySelector("#status");
 clientStatus.addEventListener("change", async () => {
 	await updateCheckoutStatus();
-	await updateBrokenStatus();
 });
 
 async function updateCheckoutStatus() {
@@ -132,14 +130,6 @@ async function updateCheckoutStatus() {
 		if (printCheckoutDiv) {
 			printCheckoutDiv.innerHTML = '';
 		}
-	}
-}
-
-async function updateBrokenStatus() {
-	if (statusesThatIndicateBroken.includes(clientStatus.value)) {
-		inventoryUpdateForm.querySelector("#is_broken").value = "true";
-	} else {
-		inventoryUpdateForm.querySelector("#is_broken").value = "false";
 	}
 }
 
@@ -392,7 +382,6 @@ async function populateLocationForm(tag) {
     inventoryUpdateForm.querySelector("#note").value = locationFormData.note || '';
   }
 	await updateCheckoutStatus();
-	await updateBrokenStatus();
 }
 
 const csvDownloadButton = document.getElementById('inventory-search-download-button');
