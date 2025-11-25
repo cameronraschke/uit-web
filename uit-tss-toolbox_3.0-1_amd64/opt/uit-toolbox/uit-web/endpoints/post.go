@@ -347,11 +347,11 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !middleware.IsPrintableASCII([]byte(*inventoryUpdate.Location)) {
-		log.Warning("Non-printable ASCII characters in location field for inventory update: " + requestIP.String())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
+	// if !middleware.IsPrintableASCII([]byte(*inventoryUpdate.Location)) {
+	// 	log.Warning("Non-printable ASCII characters in location field for inventory update: " + requestIP.String())
+	// 	middleware.WriteJsonError(w, http.StatusBadRequest)
+	// 	return
+	// }
 	*inventoryUpdate.Location = strings.TrimSpace(*inventoryUpdate.Location)
 
 	// Broken (optional, bool)
