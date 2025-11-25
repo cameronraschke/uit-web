@@ -377,15 +377,16 @@ async function populateLocationForm(tag) {
 		const acquiredDateValue = locationFormData.acquired_date
 			? new Date(locationFormData.acquired_date)
 			: null;
-		const parsedDate = acquiredDateValue.toISOString() || null;
-		if (!isNaN(parsedDate) && parsedDate && parsedDate instanceof Date && parsedDate > 0) {
-			const acquiredDate = new Date(parsedDate);
-			const year = acquiredDate.getFullYear();
-			const month = String(acquiredDate.getMonth() + 1).padStart(2, '0');
-			const day = String(acquiredDate.getDate()).padStart(2, '0');
+		if (acquiredDateValue && !isNaN(acquiredDateValue.getTime())) {
+			const year = acquiredDateValue.getFullYear();
+			const month = String(acquiredDateValue.getMonth() + 1).padStart(2, '0');
+			const day = String(acquiredDateValue.getDate()).padStart(2, '0');
 			const acquiredDateFormatted = `${year}-${month}-${day}`;
-			acquiredDateValue = acquiredDateFormatted || '';
+			inventoryUpdateForm.querySelector("#acquired_date").value = acquiredDateFormatted;
+		} else {
+			inventoryUpdateForm.querySelector("#acquired_date").value = '';
 		}
+
     inventoryUpdateForm.querySelector("#note").value = locationFormData.note || '';
   }
 	await updateCheckoutStatus();
