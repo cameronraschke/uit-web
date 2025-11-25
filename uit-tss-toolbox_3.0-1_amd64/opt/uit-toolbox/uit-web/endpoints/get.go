@@ -49,7 +49,7 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if tagStr != "" && systemSerial != "" {
+	if tagStr != "" {
 		tagnumber, err = ConvertTagnumber(urlQueries.Get("tagnumber"))
 		if err != nil {
 			log.HTTPWarning(req, "Cannot convert tagnumber to int64 in GetClientLookup: "+err.Error())
