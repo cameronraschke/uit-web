@@ -263,11 +263,6 @@ echo "${GREEN}Done.${RESET}"
 
 echo ""
 echo "${BOLD}Installing the client package${RESET}"
-wget 'http://10.0.0.1:8080/client/pkg/go-latest.linux-amd64.tar.gz' --output-document=/root/go-latest.linux-amd64.tar.gz
-if [[ -d /usr/local/go ]]; then
-  rm -rf /usr/local/go
-fi
-tar -C /usr/local -xzf /root/go-latest.linux-amd64.tar.gz &>/dev/null
 if [[ $(dpkg-query -l | grep --quiet uit-toolbox-client; echo $?) == 0 ]]; then
 	dpkg --purge uit-toolbox-client 
 fi
@@ -276,9 +271,9 @@ if [[ -f /root/uit-toolbox-client.deb ]]; then
 	rm /root/uit-toolbox-client.deb
 fi
 
-curl 'http://10.0.0.1:8080/client/pkg/uit-toolbox-client.deb' --output /root/uit-toolbox-client.deb &>/dev/null
+curl --silent --show-error 'http://10.0.0.1:8080/client/pkg/uit-toolbox-client.deb' --output /root/uit-toolbox-client.deb
 while [[ ! -f /root/uit-toolbox-client.deb ]]; do
-	curl 'http://10.0.0.1:8080/client/pkg/uit-toolbox-client.deb' --output /root/uit-toolbox-client.deb &>/dev/null
+	curl --silent --show-error 'http://10.0.0.1:8080/client/pkg/uit-toolbox-client.deb' --output /root/uit-toolbox-client.deb
 	sleep 1
 done
 dpkg --install /root/uit-toolbox-client.deb &>/dev/null
