@@ -11,26 +11,18 @@ type ClientAuth struct {
 	AuthToken string `json:"auth_token,omitempty"`
 }
 
-type ClientResourceUsageData struct {
-	EnergyUsage  float64 `json:"energy_usage,omitempty"`
-	CpuUsage     float64 `json:"cpu_usage,omitempty"`
-	MemUsage     float64 `json:"mem_usage,omitempty"`
-	NetworkUsage float64 `json:"network_usage,omitempty"`
-}
-
 type ClientData struct {
-	Tagnumber          int64               `json:"tagnumber,omitempty"`
-	Serial             string              `json:"serial,omitempty"`
-	Manufacturer       string              `json:"manufacturer,omitempty"`
-	Model              string              `json:"model,omitempty"`
-	ProductFamily      string              `json:"product_family,omitempty"`
-	ProductName        string              `json:"product_name,omitempty"`
-	SKU                string              `json:"sku,omitempty"`
-	UUID               string              `json:"uuid,omitempty"`
-	OEMStrings         map[string]string   `json:"oem_strings,omitempty"`
+	Tagnumber          *int64              `json:"tagnumber,omitempty"`
+	Serial             *string             `json:"serial,omitempty"`
+	Manufacturer       *string             `json:"manufacturer,omitempty"`
+	Model              *string             `json:"model,omitempty"`
+	ProductFamily      *string             `json:"product_family,omitempty"`
+	ProductName        *string             `json:"product_name,omitempty"`
+	SKU                *string             `json:"sku,omitempty"`
+	UUID               *string             `json:"uuid,omitempty"`
 	BootDuration       time.Duration       `json:"boot_duration,omitempty"`
 	ConnectedToHost    *bool               `json:"connected_to_host,omitempty"`
-	TimeSynced         *bool               `json:"time_synced,omitempty"`
+	NTPSynced          *bool               `json:"ntp_synced,omitempty"`
 	Hardware           *ClientHardwareData `json:"hardware_data,omitempty"`
 	Software           *ClientSoftwareData `json:"software_data,omitempty"`
 	RealtimeSystemData *RealtimeSystemData `json:"realtime_system_data,omitempty"`
@@ -46,77 +38,74 @@ type RealtimeSystemData struct {
 	Hardware           *ClientHardwareData      `json:"hardware,omitempty"`
 	Software           *ClientSoftwareData      `json:"software,omitempty"`
 	ResourceUsage      *ClientResourceUsageData `json:"resource_usage,omitempty"`
-	Base64Screenshot   string                   `json:"base64_screenshot,omitempty"`
+	Base64Screenshot   *string                  `json:"base64_screenshot,omitempty"`
 }
 
 type JobData struct {
 	UUID               uuid.UUID                `json:"uuid,omitempty"`
 	QueuedRemotely     *bool                    `json:"queued_remotely,omitempty"`
-	Mode               string                   `json:"mode,omitempty"`
-	SelectedDisk       string                   `json:"selected_disk,omitempty"`
+	Mode               *string                  `json:"mode,omitempty"`
+	SelectedDisk       *string                  `json:"selected_disk,omitempty"`
 	EraseQueued        *bool                    `json:"erase_queued,omitempty"`
-	EraseMode          string                   `json:"erase_mode,omitempty"`
+	EraseMode          *string                  `json:"erase_mode,omitempty"`
 	SecureEraseCapable *bool                    `json:"secure_erase_capable,omitempty"`
 	UsedSecureErase    *bool                    `json:"used_secure_erase,omitempty"`
 	EraseVerified      *bool                    `json:"erase_verified,omitempty"`
-	EraseVerifyPcnt    float64                  `json:"erase_verify_percent,omitempty"`
+	EraseVerifyPcnt    *float64                 `json:"erase_verify_percent,omitempty"`
 	EraseCompleted     *bool                    `json:"erase_completed,omitempty"`
 	CloneQueued        *bool                    `json:"clone_queued,omitempty"`
-	CloneMode          string                   `json:"clone_mode,omitempty"`
-	CloneImageName     string                   `json:"clone_image_name,omitempty"`
-	CloneSourceHost    string                   `json:"clone_source_host,omitempty"`
+	CloneMode          *string                  `json:"clone_mode,omitempty"`
+	CloneImageName     *string                  `json:"clone_image_name,omitempty"`
+	CloneSourceHost    *string                  `json:"clone_source_host,omitempty"`
 	CloneCompleted     *bool                    `json:"clone_completed,omitempty"`
-	Failed             *bool                    `json:"failed,omitempty"`
-	FailedMessage      string                   `json:"failed_message,omitempty"`
+	Failed             *bool                    `json:"job_failed,omitempty"`
+	FailedMessage      *string                  `json:"job_failed_message,omitempty"`
 	StartTime          *time.Time               `json:"start_time,omitempty"`
 	EndTime            *time.Time               `json:"end_time,omitempty"`
 	Duration           time.Duration            `json:"duration,omitempty"`
 	AvgResourceUsage   *ClientResourceUsageData `json:"avg_resource_usage,omitempty"`
 	Hibernated         *bool                    `json:"hibernated,omitempty"`
-	Realtime           *RealtimeJobData         `json:"realtime_job_data,omitempty"`
+	Realtime           *JobQueueData            `json:"realtime_job_data,omitempty"`
 }
 
-type RealtimeJobData struct {
-	JobName           string        `json:"job_name,omitempty"`
-	JobNameFormatted  string        `json:"job_name_formatted,omitempty"`
+type ClientResourceUsageData struct {
+	EnergyUsage  *float64 `json:"energy_usage,omitempty"`
+	CpuUsage     *float64 `json:"cpu_usage,omitempty"`
+	MemUsage     *float64 `json:"mem_usage,omitempty"`
+	NetworkUsage *float64 `json:"network_usage,omitempty"`
+}
+
+type JobQueueData struct {
+	JobName           *string       `json:"job_name,omitempty"`
+	JobNameFormatted  *string       `json:"job_name_formatted,omitempty"`
 	JobQueued         *bool         `json:"job_queued,omitempty"`
-	JobQueuePosition  int64         `json:"job_queue_position,omitempty"`
+	JobRequiresQueue  *bool         `json:"job_requires_queue,omitempty"`
+	JobQueuePosition  *int64        `json:"job_queue_position,omitempty"`
 	JobQueuedOverride *bool         `json:"job_queue_override,omitempty"`
 	JobActive         *bool         `json:"job_active,omitempty"`
 	JobAvailable      *bool         `json:"job_available,omitempty"`
-	JobProgress       float64       `json:"job_progress,omitempty"`
+	JobProgress       *float64      `json:"job_progress,omitempty"`
 	JobDuration       time.Duration `json:"job_duration,omitempty"`
-	JobStatusMessage  string        `json:"job_status_message,omitempty"`
+	JobStatusMessage  *string       `json:"job_status_message,omitempty"`
 }
 
 type ClientSoftwareData struct {
 	OSInstalled          *bool                    `json:"os_installed,omitempty"`
-	OSName               string                   `json:"os_name,omitempty"`
-	OSVersion            string                   `json:"os_version,omitempty"`
+	OSName               *string                  `json:"os_name,omitempty"`
+	OSVersion            *string                  `json:"os_version,omitempty"`
 	OSInstalledTimestamp *time.Time               `json:"os_installed_timestamp,omitempty"`
-	ImageName            string                   `json:"image_name,omitempty"`
-	CPU                  *CPUSoftwareData         `json:"cpu,omitempty"`
+	ImageName            *string                  `json:"image_name,omitempty"`
 	Motherboard          *MotherboardSoftwareData `json:"motherboard,omitempty"`
 }
 
-type CPUSoftwareData struct {
-	SupportedFlags  []string `json:"supported_flags,omitempty"`
-	Characteristics []string `json:"characteristics,omitempty"`
-}
-
 type MotherboardSoftwareData struct {
-	BIOSUpdated          *bool            `json:"bios_updated,omitempty"`
-	BIOSVersion          string           `json:"bios_version,omitempty"`
-	BIOSDate             string           `json:"bios_date,omitempty"`
-	BIOSFirmwareRevision string           `json:"bios_firmware_revision,omitempty"`
-	UEFIEnabled          *bool            `json:"uefi_enabled,omitempty"`
-	TPM                  *TPMSoftwareData `json:"tpm,omitempty"`
-	SecureBootEnabled    *bool            `json:"secure_boot_enabled,omitempty"`
-}
-
-type TPMSoftwareData struct {
-	Enabled         *bool  `json:"enabled,omitempty"`
-	FirmwareVersion string `json:"firmware_version,omitempty"`
+	BIOSUpdated          *bool   `json:"bios_updated,omitempty"`
+	BIOSVersion          *string `json:"bios_version,omitempty"`
+	BIOSDate             *string `json:"bios_date,omitempty"`
+	BIOSFirmwareRevision *string `json:"bios_firmware_revision,omitempty"`
+	UEFIEnabled          *bool   `json:"uefi_enabled,omitempty"`
+	SecureBootEnabled    *bool   `json:"secure_boot_enabled,omitempty"`
+	TPMEnabled           *bool   `json:"tpm,omitempty"`
 }
 
 type ClientHardwareData struct {
@@ -134,149 +123,149 @@ type ClientHardwareData struct {
 }
 
 type CPUHardwareData struct {
-	ID                     string           `json:"id,omitempty"`
-	Signature              string           `json:"signature,omitempty"`
-	Manufacturer           string           `json:"manufacturer,omitempty"`
-	ProductFamily          string           `json:"product_family,omitempty"`
-	Model                  string           `json:"model,omitempty"`
-	Socket                 string           `json:"socket,omitempty"`
-	Version                string           `json:"version,omitempty"`
-	Voltage                float64          `json:"voltage,omitempty"`
-	PhysicalCores          int              `json:"physical_cores,omitempty"`
-	LogicalCores           int              `json:"logical_cores,omitempty"`
-	CurrentSpeedMHz        float64          `json:"current_speed_mhz,omitempty"`
-	MaxSpeedMHz            float64          `json:"max_speed_mhz,omitempty"`
-	L1CacheKB              float64          `json:"l1_cache_kb,omitempty"`
-	L2CacheKB              float64          `json:"l2_cache_kb,omitempty"`
-	L3CacheKB              float64          `json:"l3_cache_kb,omitempty"`
+	ID                     *string          `json:"id,omitempty"`
+	Signature              *string          `json:"signature,omitempty"`
+	Manufacturer           *string          `json:"manufacturer,omitempty"`
+	ProductFamily          *string          `json:"product_family,omitempty"`
+	Model                  *string          `json:"model,omitempty"`
+	Socket                 *string          `json:"socket,omitempty"`
+	Version                *string          `json:"version,omitempty"`
+	Voltage                *float64         `json:"voltage,omitempty"`
+	PhysicalCores          *int64           `json:"physical_cores,omitempty"`
+	LogicalCores           *int64           `json:"logical_cores,omitempty"`
+	CurrentSpeedMHz        *float64         `json:"current_speed_mhz,omitempty"`
+	MaxSpeedMHz            *float64         `json:"max_speed_mhz,omitempty"`
+	L1CacheKB              *float64         `json:"l1_cache_kb,omitempty"`
+	L2CacheKB              *float64         `json:"l2_cache_kb,omitempty"`
+	L3CacheKB              *float64         `json:"l3_cache_kb,omitempty"`
 	ThermalProbeWorking    map[string]*bool `json:"thermal_probe_working,omitempty"`
 	ThermalProbeResolution *float64         `json:"thermal_probe_resolution,omitempty"`
 	Temperature            int64            `json:"temperature,omitempty"`
 }
 
 type MotherboardHardwareData struct {
-	Serial                 string           `json:"serial,omitempty"`
-	Model                  string           `json:"model,omitempty"`
-	Manufacturer           string           `json:"manufacturer,omitempty"`
-	TotalRAMSlots          int64            `json:"total_ram_slots,omitempty"`
-	PCIELanes              map[string]int64 `json:"pcie_lanes,omitempty"`
-	M2Slots                map[string]int64 `json:"m2_slots,omitempty"`
-	ThermalProbeWorking    map[string]*bool `json:"thermal_probe_working,omitempty"`
-	ThermalProbeResolution *float64         `json:"thermal_probe_resolution,omitempty"`
+	Serial                 *string           `json:"serial,omitempty"`
+	Model                  *string           `json:"model,omitempty"`
+	Manufacturer           *string           `json:"manufacturer,omitempty"`
+	TotalRAMSlots          *int64            `json:"total_ram_slots,omitempty"`
+	PCIELanes              map[string]*int64 `json:"pcie_lanes,omitempty"`
+	M2Slots                map[string]*int64 `json:"m2_slots,omitempty"`
+	ThermalProbeWorking    map[string]*bool  `json:"thermal_probe_working,omitempty"`
+	ThermalProbeResolution *float64          `json:"thermal_probe_resolution,omitempty"`
 }
 
 type MemoryHardwareData struct {
-	Serial       string  `json:"serial,omitempty"`
-	AssestTag    string  `json:"asset_tag,omitempty"`
-	PartNumber   string  `json:"part_number,omitempty"`
-	Rank         int64   `json:"rank,omitempty"`
-	CapacityGB   int64   `json:"capacity_gb,omitempty"`
-	SpeedMHz     int64   `json:"speed_mhz,omitempty"`
-	Voltage      float64 `json:"voltage,omitempty"`
-	FormFactor   string  `json:"form_factor,omitempty"`
-	Type         string  `json:"type,omitempty"`
-	Manufacturer string  `json:"manufacturer,omitempty"`
+	Serial       *string  `json:"serial,omitempty"`
+	AssestTag    *string  `json:"asset_tag,omitempty"`
+	PartNumber   *string  `json:"part_number,omitempty"`
+	Rank         *int64   `json:"rank,omitempty"`
+	CapacityGB   *int64   `json:"capacity_gb,omitempty"`
+	SpeedMHz     *int64   `json:"speed_mhz,omitempty"`
+	Voltage      *float64 `json:"voltage,omitempty"`
+	FormFactor   *string  `json:"form_factor,omitempty"`
+	Type         *string  `json:"type,omitempty"`
+	Manufacturer *string  `json:"manufacturer,omitempty"`
 }
 
 type NetworkHardwareData struct {
-	MACAddress    string       `json:"mac_addr,omitempty"`
-	Type          string       `json:"type,omitempty"`
+	MACAddress    *string      `json:"mac_addr,omitempty"`
+	Type          *string      `json:"type,omitempty"`
 	Wired         *bool        `json:"wired,omitempty"`
 	Wireless      *bool        `json:"wireless,omitempty"`
-	Model         string       `json:"model,omitempty"`
+	Model         *string      `json:"model,omitempty"`
 	NetworkLinkUp *bool        `json:"network_link_up,omitempty"`
 	IPAddress     []netip.Addr `json:"ip_address,omitempty"`
-	Netmask       string       `json:"netmask,omitempty"`
+	Netmask       *string      `json:"netmask,omitempty"`
 }
 
 type GraphicsHardwareData struct {
-	HasBuiltInScreen *bool `json:"has_built_in_screen,omitempty"`
-	HasTouchscreen   *bool `json:"has_touchscreen,omitempty"`
-	HasDedicatedGPU  *bool `json:"has_dedicated_gpu,omitempty"`
-	ScreenWidth      int64 `json:"screen_width,omitempty"`
-	ScreenHeight     int64 `json:"screen_height,omitempty"`
-	TerminalRows     int64 `json:"terminal_rows,omitempty"`
-	TerminalCols     int64 `json:"terminal_cols,omitempty"`
+	HasBuiltInScreen *bool  `json:"has_built_in_screen,omitempty"`
+	HasTouchscreen   *bool  `json:"has_touchscreen,omitempty"`
+	HasDedicatedGPU  *bool  `json:"has_dedicated_gpu,omitempty"`
+	ScreenWidth      *int64 `json:"screen_width,omitempty"`
+	ScreenHeight     *int64 `json:"screen_height,omitempty"`
+	TerminalRows     *int64 `json:"terminal_rows,omitempty"`
+	TerminalCols     *int64 `json:"terminal_cols,omitempty"`
 }
 
 type DiskHardwareData struct {
-	LinuxAlias               string  `json:"linux_alias,omitempty"`
-	Type                     string  `json:"type,omitempty"`
-	LinuxDevicePath          string  `json:"linux_device_path,omitempty"`
-	LinuxMajorNumber         int64   `json:"linux_major_number,omitempty"`
-	LinuxMinorNumber         int64   `json:"linux_minor_number,omitempty"`
-	InterfaceType            string  `json:"interface_type,omitempty"`
-	Serial                   string  `json:"serial,omitempty"`
-	WWID                     string  `json:"wwid,omitempty"`
-	NvmeQualifiedName        string  `json:"nvme_qualified_name,omitempty"`
-	Model                    string  `json:"model,omitempty"`
-	Manufacturer             string  `json:"manufacturer,omitempty"`
-	CapacityMiB              float64 `json:"capacity_mib,omitempty"`
-	LogicalBlockSize         int64   `json:"logical_block_size,omitempty"`
-	PhysicalBlockSize        int64   `json:"physical_block_size,omitempty"`
-	SectorCount              int64   `json:"sector_count,omitempty"`
-	Firmware                 string  `json:"firmware,omitempty"`
-	DeviceState              string  `json:"device_state,omitempty"`
-	Rotating                 *bool   `json:"rotating,omitempty"`
-	Removable                *bool   `json:"removable,omitempty"`
-	TotalReadsLBAs           int64   `json:"total_reads_lbas,omitempty"`
-	TotalWritesLBAs          int64   `json:"total_writes_lbas,omitempty"`
-	TotalReadsGiB            float64 `json:"total_reads_gib,omitempty"`
-	TotalWritesGiB           float64 `json:"total_writes_gib,omitempty"`
-	TotalUptimeHrs           float64 `json:"total_uptime_hrs,omitempty"`
-	TotalPowerCycles         int64   `json:"total_power_cycles,omitempty"`
-	Temperature              float64 `json:"temperature,omitempty"`
-	MaxTemperature           float64 `json:"max_temperature,omitempty"`
-	SMARTSupported           *bool   `json:"smart_supported,omitempty"`
-	SMARTEnabled             *bool   `json:"smart_enabled,omitempty"`
-	SMARTCheckCompleted      *bool   `json:"smart_check_completed,omitempty"`
-	SMARTTemperature         float64 `json:"smart_temperature,omitempty"`
-	SMARTErrors              int64   `json:"smart_errors,omitempty"`
-	SMARTDataIntegrityErrors int64   `json:"smart_data_integrity_errors,omitempty"`
-	PCIeCurrentLinkSpeed     string  `json:"pcie_current_link_speed,omitempty"`
-	PCIeMaxLinkSpeed         string  `json:"pcie_max_link_speed,omitempty"`
-	PCIeCurrentLinkWidth     string  `json:"pcie_current_link_width,omitempty"`
-	PCIeMaxLinkWidth         string  `json:"pcie_max_link_width,omitempty"`
+	LinuxAlias               *string  `json:"linux_alias,omitempty"`
+	Type                     *string  `json:"type,omitempty"`
+	LinuxDevicePath          *string  `json:"linux_device_path,omitempty"`
+	LinuxMajorNumber         *int64   `json:"linux_major_number,omitempty"`
+	LinuxMinorNumber         *int64   `json:"linux_minor_number,omitempty"`
+	InterfaceType            *string  `json:"interface_type,omitempty"`
+	Serial                   *string  `json:"serial,omitempty"`
+	WWID                     *string  `json:"wwid,omitempty"`
+	NvmeQualifiedName        *string  `json:"nvme_qualified_name,omitempty"`
+	Model                    *string  `json:"model,omitempty"`
+	Manufacturer             *string  `json:"manufacturer,omitempty"`
+	CapacityMiB              *float64 `json:"capacity_mib,omitempty"`
+	LogicalBlockSize         *int64   `json:"logical_block_size,omitempty"`
+	PhysicalBlockSize        *int64   `json:"physical_block_size,omitempty"`
+	SectorCount              *int64   `json:"sector_count,omitempty"`
+	Firmware                 *string  `json:"firmware,omitempty"`
+	DeviceState              *string  `json:"device_state,omitempty"`
+	Rotating                 *bool    `json:"rotating,omitempty"`
+	Removable                *bool    `json:"removable,omitempty"`
+	TotalReadsLBAs           *int64   `json:"total_reads_lbas,omitempty"`
+	TotalWritesLBAs          *int64   `json:"total_writes_lbas,omitempty"`
+	TotalReadsGiB            *float64 `json:"total_reads_gib,omitempty"`
+	TotalWritesGiB           *float64 `json:"total_writes_gib,omitempty"`
+	TotalUptimeHrs           *float64 `json:"total_uptime_hrs,omitempty"`
+	TotalPowerCycles         *int64   `json:"total_power_cycles,omitempty"`
+	Temperature              *float64 `json:"temperature,omitempty"`
+	MaxTemperature           *float64 `json:"max_temperature,omitempty"`
+	SMARTSupported           *bool    `json:"smart_supported,omitempty"`
+	SMARTEnabled             *bool    `json:"smart_enabled,omitempty"`
+	SMARTCheckCompleted      *bool    `json:"smart_check_completed,omitempty"`
+	SMARTTemperature         *float64 `json:"smart_temperature,omitempty"`
+	SMARTErrors              *int64   `json:"smart_errors,omitempty"`
+	SMARTDataIntegrityErrors *int64   `json:"smart_data_integrity_errors,omitempty"`
+	PCIeCurrentLinkSpeed     *string  `json:"pcie_current_link_speed,omitempty"`
+	PCIeMaxLinkSpeed         *string  `json:"pcie_max_link_speed,omitempty"`
+	PCIeCurrentLinkWidth     *string  `json:"pcie_current_link_width,omitempty"`
+	PCIeMaxLinkWidth         *string  `json:"pcie_max_link_width,omitempty"`
 }
 
 type BatteryHardwareData struct {
-	HasBattery      *bool   `json:"has_battery,omitempty"`
-	Manufacturer    string  `json:"manufacturer,omitempty"`
-	ManufactureDate string  `json:"manufacture_date,omitempty"`
-	Serial          string  `json:"serial,omitempty"`
-	ChargeCycles    int64   `json:"charge_cycles,omitempty"`
-	DesignMWh       float64 `json:"design_mwh,omitempty"`
-	FullMWh         float64 `json:"full_mwh,omitempty"`
-	CurrentMWh      float64 `json:"current_mwh,omitempty"`
-	HealthPercent   float64 `json:"health_percent,omitempty"`
-	CurrentCharge   float64 `json:"current_charge,omitempty"`
-	Status          string  `json:"status,omitempty"`
+	HasBattery      *bool    `json:"has_battery,omitempty"`
+	Manufacturer    *string  `json:"manufacturer,omitempty"`
+	ManufactureDate *string  `json:"manufacture_date,omitempty"`
+	Serial          *string  `json:"serial,omitempty"`
+	ChargeCycles    *int64   `json:"charge_cycles,omitempty"`
+	DesignMWh       *float64 `json:"design_mwh,omitempty"`
+	FullMWh         *float64 `json:"full_mwh,omitempty"`
+	CurrentMWh      *float64 `json:"current_mwh,omitempty"`
+	HealthPercent   *float64 `json:"health_percent,omitempty"`
+	CurrentCharge   *float64 `json:"current_charge,omitempty"`
+	Status          *string  `json:"status,omitempty"`
 }
 
 type WirelessHardwareData struct {
-	HasWiFi               *bool  `json:"has_wifi,omitempty"`
-	HasBluetooth          *bool  `json:"has_bluetooth,omitempty"`
-	WiFiVersion           string `json:"wifi_version,omitempty"`
-	WiFiManufacturer      string `json:"wifi_manufacturer,omitempty"`
-	WiFiModel             string `json:"wifi_model,omitempty"`
-	BluetoothVersion      string `json:"bluetooth_version,omitempty"`
-	BluetoothManufacturer string `json:"bluetooth_manufacturer,omitempty"`
-	BluetoothModel        string `json:"bluetooth_model,omitempty"`
+	HasWiFi               *bool   `json:"has_wifi,omitempty"`
+	HasBluetooth          *bool   `json:"has_bluetooth,omitempty"`
+	WiFiVersion           *string `json:"wifi_version,omitempty"`
+	WiFiManufacturer      *string `json:"wifi_manufacturer,omitempty"`
+	WiFiModel             *string `json:"wifi_model,omitempty"`
+	BluetoothVersion      *string `json:"bluetooth_version,omitempty"`
+	BluetoothManufacturer *string `json:"bluetooth_manufacturer,omitempty"`
+	BluetoothModel        *string `json:"bluetooth_model,omitempty"`
 }
 
 type ChassisHardwareData struct {
-	Type             string             `json:"type,omitempty"`
+	Type             *string            `json:"type,omitempty"`
 	LockPresent      *bool              `json:"lock_present,omitempty"`
-	Serial           string             `json:"serial,omitempty"`
-	AssetTag         string             `json:"asset_tag,omitempty"`
+	Serial           *string            `json:"serial,omitempty"`
+	AssetTag         *string            `json:"asset_tag,omitempty"`
 	BootUpSafe       *bool              `json:"boot_up_safe,omitempty"`
 	ThermalSafe      *bool              `json:"thermal_safe,omitempty"`
 	HasRJ45          *bool              `json:"has_rj45,omitempty"`
-	DisplayPortPorts int64              `json:"display_port_ports,omitempty"`
-	HDMIPorts        int64              `json:"hdmi_ports,omitempty"`
-	VGAPorts         int64              `json:"vga_ports,omitempty"`
-	DVIPorts         int64              `json:"dvi_ports,omitempty"`
-	SerialPorts      int64              `json:"serial_ports,omitempty"`
+	DisplayPortPorts *int64             `json:"display_port_ports,omitempty"`
+	HDMIPorts        *int64             `json:"hdmi_ports,omitempty"`
+	VGAPorts         *int64             `json:"vga_ports,omitempty"`
+	DVIPorts         *int64             `json:"dvi_ports,omitempty"`
+	SerialPorts      *int64             `json:"serial_ports,omitempty"`
 	UBS1Ports        map[string]int64   `json:"usb1_ports,omitempty"`
 	USB2Ports        map[string]int64   `json:"usb2_ports,omitempty"`
 	USB3Ports        map[string]int64   `json:"usb3_ports,omitempty"`
@@ -286,17 +275,17 @@ type ChassisHardwareData struct {
 }
 
 type PowerSupplyHardwareData struct {
-	Manufacturer    string `json:"manufacturer,omitempty"`
-	Model           string `json:"model,omitempty"`
-	Serial          string `json:"serial,omitempty"`
-	Location        string `json:"location,omitempty"`
-	MaxWattage      int64  `json:"max_wattage,omitempty"`
-	PowerSupplySafe *bool  `json:"power_supply_safe,omitempty"`
-	Status          string `json:"status,omitempty"`
-	HotPlugCapable  *bool  `json:"hot_plug_capable,omitempty"`
+	Manufacturer    *string `json:"manufacturer,omitempty"`
+	Model           *string `json:"model,omitempty"`
+	Serial          *string `json:"serial,omitempty"`
+	Location        *string `json:"location,omitempty"`
+	MaxWattage      *int64  `json:"max_wattage,omitempty"`
+	PowerSupplySafe *bool   `json:"power_supply_safe,omitempty"`
+	Status          *string `json:"status,omitempty"`
+	HotPlugCapable  *bool   `json:"hot_plug_capable,omitempty"`
 }
 
 type TPMHardwareData struct {
-	Present      *bool  `json:"present,omitempty"`
-	Manufacturer string `json:"manufacturer,omitempty"`
+	Present      *bool   `json:"present,omitempty"`
+	Manufacturer *string `json:"manufacturer,omitempty"`
 }
