@@ -1,7 +1,10 @@
 package config
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/netip"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -44,7 +47,7 @@ type RealtimeSystemData struct {
 type JobData struct {
 	UUID               uuid.UUID                `json:"uuid,omitempty"`
 	QueuedRemotely     *bool                    `json:"queued_remotely,omitempty"`
-	Mode               *string                  `json:"mode,omitempty"`
+	Mode               *JobMode                 `json:"mode,omitempty"`
 	SelectedDisk       *string                  `json:"selected_disk,omitempty"`
 	EraseQueued        *bool                    `json:"erase_queued,omitempty"`
 	EraseMode          *string                  `json:"erase_mode,omitempty"`
@@ -144,14 +147,14 @@ type CPUHardwareData struct {
 }
 
 type MotherboardHardwareData struct {
-	Serial                 *string           `json:"serial,omitempty"`
-	Model                  *string           `json:"model,omitempty"`
-	Manufacturer           *string           `json:"manufacturer,omitempty"`
-	TotalRAMSlots          *int64            `json:"total_ram_slots,omitempty"`
-	PCIELanes              map[string]*int64 `json:"pcie_lanes,omitempty"`
-	M2Slots                map[string]*int64 `json:"m2_slots,omitempty"`
-	ThermalProbeWorking    map[string]*bool  `json:"thermal_probe_working,omitempty"`
-	ThermalProbeResolution *float64          `json:"thermal_probe_resolution,omitempty"`
+	Serial                 *string          `json:"serial,omitempty"`
+	Model                  *string          `json:"model,omitempty"`
+	Manufacturer           *string          `json:"manufacturer,omitempty"`
+	TotalRAMSlots          *int64           `json:"total_ram_slots,omitempty"`
+	PCIELanes              map[string]int64 `json:"pcie_lanes,omitempty"`
+	M2Slots                map[string]int64 `json:"m2_slots,omitempty"`
+	ThermalProbeWorking    map[string]*bool `json:"thermal_probe_working,omitempty"`
+	ThermalProbeResolution *float64         `json:"thermal_probe_resolution,omitempty"`
 }
 
 type MemoryHardwareData struct {
@@ -266,7 +269,7 @@ type ChassisHardwareData struct {
 	VGAPorts         *int64             `json:"vga_ports,omitempty"`
 	DVIPorts         *int64             `json:"dvi_ports,omitempty"`
 	SerialPorts      *int64             `json:"serial_ports,omitempty"`
-	UBS1Ports        map[string]int64   `json:"usb1_ports,omitempty"`
+	USB1Ports        map[string]int64   `json:"usb1_ports,omitempty"`
 	USB2Ports        map[string]int64   `json:"usb2_ports,omitempty"`
 	USB3Ports        map[string]int64   `json:"usb3_ports,omitempty"`
 	SATAPorts        map[string]int64   `json:"sata_ports,omitempty"`
@@ -288,4 +291,96 @@ type PowerSupplyHardwareData struct {
 type TPMHardwareData struct {
 	Present      *bool   `json:"present,omitempty"`
 	Manufacturer *string `json:"manufacturer,omitempty"`
+}
+
+// --- JobMode enum and JSON marshalling ---
+
+type JobMode int
+
+const (
+	JobModeNone JobMode = iota + 1
+	JobModeErase
+	JobModeClone
+	JobModeEraseAndClone
+)
+
+var JobModeMap = map[string]JobMode{
+	"None":          JobModeNone,
+	"Erase":         JobModeErase,
+	"Clone":         JobModeClone,
+	"EraseAndClone": JobModeEraseAndClone,
+}
+
+// normalizeJobMode lowercases and removes non-alphanumeric characters.
+// This lets us accept variants like "erase_and-clone" or " Erase And Clone ".
+func normalizeJobMode(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.ToLower(s)
+	var b strings.Builder
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+// ParseJobMode converts a string to a JobMode using JobModeMap with normalization.
+// Returns a pointer to the parsed value, or an error if invalid.
+func ParseJobMode(s string) (*JobMode, error) {
+	// First, try exact match for canonical keys
+	if jm, ok := JobModeMap[s]; ok {
+		v := jm
+		return &v, nil
+	}
+	// Then, try normalized match (case-insensitive, ignore spaces/underscores/hyphens)
+	norm := normalizeJobMode(s)
+	for k, jm := range JobModeMap {
+		if normalizeJobMode(k) == norm {
+			v := jm
+			return &v, nil
+		}
+	}
+	return nil, fmt.Errorf("invalid JobMode: %s", s)
+}
+
+func (jm JobMode) IsValid() bool {
+	if jm < JobModeNone || jm > JobModeEraseAndClone {
+		return false
+	}
+	return true
+}
+
+func (jm JobMode) String() string {
+	if !jm.IsValid() {
+		return "Invalid"
+	}
+	switch jm {
+	case JobModeNone:
+		return "None"
+	case JobModeErase:
+		return "Erase"
+	case JobModeClone:
+		return "Clone"
+	case JobModeEraseAndClone:
+		return "EraseAndClone"
+	default:
+		return "Invalid"
+	}
+}
+
+func (jm JobMode) MarshalJSON() ([]byte, error) {
+	return json.Marshal(jm.String())
+}
+
+func (jm *JobMode) UnmarshalJSON(data []byte) error {
+	var str string
+	if err := json.Unmarshal(data, &str); err != nil {
+		return err
+	}
+	if val, ok := JobModeMap[str]; ok {
+		*jm = val
+		return nil
+	}
+	return fmt.Errorf("invalid JobMode: %s", str)
 }
