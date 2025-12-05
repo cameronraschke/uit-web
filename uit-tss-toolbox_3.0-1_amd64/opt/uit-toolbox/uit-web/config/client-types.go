@@ -1,3 +1,5 @@
+//go:build linux && amd64
+
 package config
 
 import (
@@ -327,25 +329,36 @@ func normalizeJobMode(s string) string {
 
 // ParseJobMode converts a string to a JobMode using JobModeMap with normalization.
 // Returns a pointer to the parsed value, or an error if invalid.
-func ParseJobMode(s string) (*JobMode, error) {
-	// First, try exact match for canonical keys
-	if jm, ok := JobModeMap[s]; ok {
-		v := jm
+func ParseJobMode(modeStr string) (*JobMode, error) {
+	// Try exact match for canonical keys
+	if mode, ok := JobModeMap[modeStr]; ok {
+		v := mode
 		return &v, nil
 	}
-	// Then, try normalized match (case-insensitive, ignore spaces/underscores/hyphens)
-	norm := normalizeJobMode(s)
-	for k, jm := range JobModeMap {
-		if normalizeJobMode(k) == norm {
+	// Next, try normalized match
+	normalizedJobMode := normalizeJobMode(modeStr)
+	for jmStr, jm := range JobModeMap {
+		if normalizeJobMode(jmStr) == normalizedJobMode {
 			v := jm
 			return &v, nil
 		}
 	}
-	return nil, fmt.Errorf("invalid JobMode: %s", s)
+	return nil, fmt.Errorf("invalid JobMode: %s", modeStr)
 }
 
 func (jm JobMode) IsValid() bool {
-	if jm < JobModeNone || jm > JobModeEraseAndClone {
+	var jmMin int
+	var jmMax int
+
+	for _, val := range JobModeMap {
+		if int(val) < jmMin || jmMin == 0 {
+			jmMin = int(val)
+		}
+		if int(val) > jmMax {
+			jmMax = int(val)
+		}
+	}
+	if int(jm) < jmMin || int(jm) > jmMax {
 		return false
 	}
 	return true
@@ -355,18 +368,12 @@ func (jm JobMode) String() string {
 	if !jm.IsValid() {
 		return "Invalid"
 	}
-	switch jm {
-	case JobModeNone:
-		return "None"
-	case JobModeErase:
-		return "Erase"
-	case JobModeClone:
-		return "Clone"
-	case JobModeEraseAndClone:
-		return "EraseAndClone"
-	default:
-		return "Invalid"
+	for str, val := range JobModeMap {
+		if val == jm {
+			return str
+		}
 	}
+	return "Invalid"
 }
 
 func (jm JobMode) MarshalJSON() ([]byte, error) {
