@@ -13,49 +13,49 @@
     <div><h1>UIT - ITSC Inventory Management</h1></div>
 
     <div class="flex-container login">
-      <div class="flex-box login">
-        <div><form id="login-form" method="POST">
-          <fieldset>
-            <legend><b>Login</b></legend>
-            <div><label for="username">Username<sup id="username-star">*</sup></label></div>
-            <div>
-              <input
-                type="text"
-                id="username"
-                name="username"
-                form="login-form"
-                inputmode="email"
-                minlength="3"
-                maxlength="20"
-                autocomplete="off"
-                autocorrect="off"
-                autocapitalize="off"
-                autofocus
-                required />
-            </div>
-            <div><label for="password">Password<sup id="password-star">*</sup></label></div>
-            <div>
-              <input 
-                type="password" 
-                id="password"
-                name="password"
-                form="login-form"
-                inputmode="text"
-                minlength="8"
-                maxlength="64"
-                autocomplete="off"
-                autocorrect="off"
-                autocapitalize="off"
-                required />
-            </div>
-            <div class="message"><p id="login-error" class="error-message"></p></div>
-            <div><small><a href="/forgot-password">Forgot password?</a></small></div>
-            <div class="flex-container login button">
-              <button type="submit" id="login-button" form="login-form">Login</button>
-            </div>
-          </fieldset>
-        </form></div>
-      </div>
+			<div class="flex-box login">
+				<form id="login-form" method="POST">
+					<fieldset>
+						<legend><b>Login</b></legend>
+						<div><label for="username">Username<sup id="username-star">*</sup></label></div>
+						<div>
+							<input
+								type="text"
+								id="username"
+								name="username"
+								form="login-form"
+								inputmode="email"
+								minlength="3"
+								maxlength="20"
+								autocomplete="off"
+								autocorrect="off"
+								autocapitalize="off"
+								autofocus
+								required />
+						</div>
+						<div><label for="password">Password<sup id="password-star">*</sup></label></div>
+						<div>
+							<input 
+								type="password" 
+								id="password"
+								name="password"
+								form="login-form"
+								inputmode="text"
+								minlength="8"
+								maxlength="64"
+								autocomplete="off"
+								autocorrect="off"
+								autocapitalize="off"
+								required />
+						</div>
+						<div class="message"><p id="login-error" class="error-message"></p></div>
+						<div><small><a href="/forgot-password">Forgot password?</a></small></div>
+						<div>
+							<button type="submit" id="login-button" form="login-form">Login</button>
+						</div>
+					</fieldset>
+				</form>
+			</div>
     </div>
 
     <div id="uit-footer" class="flex-container footer">

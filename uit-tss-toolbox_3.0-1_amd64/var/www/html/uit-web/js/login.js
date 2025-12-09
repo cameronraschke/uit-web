@@ -54,7 +54,7 @@ function openTokenDB() {
 function checkUsernameValidity() {
     const usernameValid = usernameInput.checkValidity();
     if (!usernameValid) {
-        usernameStar.style.display = "block";
+        usernameStar.style.display = "inline-block";
         usernameStar.style.color = "red";
     } else {
         usernameStar.style.display = "none";
@@ -65,7 +65,7 @@ function checkUsernameValidity() {
 function checkPasswordValidity() {
     const passwordValid = passwordInput.checkValidity();
     if (!passwordValid) {
-        passwordStar.style.display = "block";
+        passwordStar.style.display = "inline-block";
         passwordStar.style.color = "red";
     } else {
         passwordStar.style.display = "none";

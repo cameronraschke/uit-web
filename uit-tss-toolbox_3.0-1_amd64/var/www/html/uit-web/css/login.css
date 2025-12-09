@@ -4,57 +4,38 @@ div {
 }
 
 .flex-container.login {
-  display: flex;
-  flex-direction: row;
-  font-size: 1.1rem;
   align-items: center;
   justify-content: center;
 }
 
-.flex-container.login.button {
-  align-items: center;
-}
-
-.flex-box.login {
-  display: flex;
-  flex-direction: row;
-  font-size: 1.1rem;
-  align-items: center;
-  justify-content: center;
-}
-
-.flex-box.login label {
-  display: flex;
-  margin: 2rem 0rem 0.5rem 1rem;
-}
-
-.flex-box.login input[type="text"], input[type="password"] {
-  display: flex;
-  font-size: 1.1rem;
-  margin: 0.5rem 1rem 1rem 1rem;
-  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
-}
-
-.flex-box.login input[type="text"]:invalid:user-invalid, input[type="password"]:invalid:user-invalid {
+input[type="text"]:invalid:user-invalid, input[type="password"]:invalid:user-invalid {
   display: block;
   color: red;
   border: 2px solid red;
   caret-color: red;
 }
 
-.flex-box.login input[type="text"]:valid, input[type="password"]:valid {
+[type="text"]:valid, input[type="password"]:valid {
   display: block;
   color: black;
   caret-color: black;
 }
 
-.flex-box.login small {
-  display: flex;
-  margin: 0.5rem 0rem 1rem 1rem;
+small {
+  display: inline-block;
+  margin: 2rem auto 1rem auto;
 }
 
-.flex-box.login button {
-  display: flex;
+button {
   margin: 1rem 0rem 1.5rem 0rem;
   padding: 0.7rem 1rem 0.7rem 1rem;
+	width: 100%;
+	background-color: var(--light-submit-color);
+}
+
+.flex-box.login {
+	flex: unset;
+	padding: 2rem;
+	margin: 1rem;
+	align-items: center;;
 }

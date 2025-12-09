@@ -1,7 +1,26 @@
+:root {
+	--font: sans-serif;
+	--text-color: oklch(0 0 0);
+	--bg-color: oklch(0.98 0 0);
+	--fg-color: oklch(0.99 0 0);
+	--highlight-color: oklch(1 0 0);
+	--shadow-color: oklch(0.94 0 0);
+	--accent-color: oklch(0.5304 0.2074 22.32);
+	--dark-accent-color: oklch(0.4301 0.1663 21.86);
+	--submit-color: oklch(0.5526 0.106381 172.7396);
+	--light-submit-color: oklch(0.553 0.106381 172.7396 / 50%);
+	--warning-color: oklch(0.829 0.1695 87.07);
+	--error-color: red;
+	--button-border-color: black;
+	--border-width: 1px;
+	--border-radius: 1rem;
+}
+
 body {
-  font-family: sans-serif;
+  font-family: var(--font);
+	color: var(--text-color);
+	background-color: var(--bg-color);
   margin: 0;
-  overflow-x: hidden;
 }
 
 div {
@@ -16,7 +35,7 @@ h1, h2 {
 a {
 	cursor: pointer;
   font-weight: bold;
-  color: #C8102E;
+  color: var(--accent-color);
   text-decoration: underline;
 }
 
@@ -28,7 +47,6 @@ img {
 label {
   display: inline-block;
   text-align: left;
-  max-width: 40%;
   margin-bottom: 0.5rem;
   margin-top: 0.7rem;
 }
@@ -36,33 +54,33 @@ label {
 button, input[type="button"], input[type="submit"], input[type="reset"] {
   cursor: pointer;
   padding: 0.5rem;
-  border-radius: 0.25rem;
-  border: 1px solid #ccc;
-  font-size: 1.1rem;
+  border-radius: var(--border-radius);
+  border: var(--border-width) solid var(--button-border-color);
+	background-color: var(--bg-color);
+	color: var(--text-color);
 }
 
 input[type="file"] {
-  font-size: 1.1rem;
+	width: 50%;
+	max-width: 100%;
+	color: var(--text-color);
+	padding: 0.5rem;
+	border: var(--border-width) solid var(--button-border-color);
+	border-radius: var(--border-radius);
 }
 
 input[type="text"], input[type="password"], input[type="number"], select, textarea {
   background: white;
-  font-size: 1.1rem;
   padding: 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 0.25rem;
+  border: var(--border-width) solid var(--button-border-color);
+  border-radius: var(--border-radius);
 }
 
 input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus, textarea:focus {
-  font-size: 1.1rem;
   padding: 0.5rem;
-  border: 1px solid #007BFF;
+  border: var(--border-width) solid #007BFF;
   outline: none;
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
-}
-
-section {
-  overflow-x: auto;
 }
 
 table {
@@ -75,18 +93,16 @@ table {
 thead {
   top: 0;
   border: 1px solid black;
-  background-color: #C8102E;
+  background-color: var(--accent-color);
   color: white;
-  font-size: 1.1rem;
   font-weight: bold;
-  border-bottom: 1px solid #888B8D;
 }
 
 tr {
-  border-bottom: 1px solid #ddd;
+  border-bottom: var(--border-width) solid var(--bg-color);
 }
 tbody > tr:nth-child(even) {
-  background: #fafafa;
+  background: var(--shadow-color);
 }
 
 th {
@@ -105,12 +121,14 @@ td {
 }
 
 button.submit, input[type="button"].submit, input[type="submit"].submit {
-  background: #00B388;
-  border: 1px solid black;
+	color: white;
+  background: var(--submit-color);
+  border: var(--border-width) solid var(--button-border-color);
 }
 
 button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[type="submit"].cancel {
-  background: #c8102f86;
+	color: white;
+  background: var(--dark-accent-color);
   border: 1px solid black;
 }
 
@@ -127,7 +145,7 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
 .error-message {
   display: none;
   max-width: 70%;
-  color: red;
+  color: var(--error-color);
   font-weight: bold;
   text-align: center;
   margin-top: 1rem;
@@ -137,7 +155,7 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
 .warning-message {
   display: none;
   max-width: 70%;
-  color: #ffae00;
+  color: var(--warning-color);
   font-weight: bold;
   text-align: center;
   margin-top: 1rem;
@@ -145,67 +163,68 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
 }
 
 .flex-container {
+	width: 90dvw;
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   min-width: fit-content;
   justify-content: space-evenly;
+	align-items: stretch;
   align-content: space-between;
+	gap: 1rem;
+	margin: auto;
   overflow-x: auto;
   overflow-y: auto;
 }
 
-.flex-container.nav {
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem 1rem 2rem;
-}
-
 .flex-container.footer {
   width: 100%;
-  font-size: 1.1rem;
   flex-direction: row;
   align-items: center;
   justify-content: center;
 }
 
 .flex-box {
-  margin: 1rem;
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
   padding: 1rem;
-  border: 1px solid #ccc;
+	align-self: flex-start;
+	border: 1px solid var(--shadow-color);
   border-radius: 1rem;
-  background-color: #f9f9f9;
+  background-color: var(--bg-color);
+  flex-wrap: wrap;
+  min-width: fit-content;
+  justify-content: space-evenly;
+	align-items: stretch;
+  align-content: center;
+	gap: 1rem;
+	margin: auto;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+.flex-box.nav {
+	flex-direction: row;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 1rem;
+}
+
+.flex-box.nav .logout {
+  align-self: flex-end;
+	border: none;
+	border-radius: 0;
+	background: none;
+	padding: 0;
+	margin: 0;
+	justify-content: flex-end;
 }
 
 .flex-box div {
   width: 100%;
 }
 
-.flex-box.header {
-  font-size: 1.5rem;
-  font-weight: bold;
-}
-
-.flex-box.nav {
-  display: flex;
-  width: 100%;
-  align-items: center;
-}
-
-.flex-box.nav > div {
-  width: auto;
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.flex-box.nav .nav-left {
-  gap: 1rem;
-}
-.flex-box.nav .logout {
-  margin-left: auto;
-}
 
 .flex-box.footer {
   display: flex;
@@ -214,7 +233,6 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
 }
 
 .flex-box thead {
-  font-size: 1.1rem;
   font-weight: bold;
   border-bottom: 2px solid black;
   z-index: 1;
@@ -246,16 +264,16 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
 }
 
 .flex-box tbody tr:nth-child(even) {
-  background: #fafafa;
+  background: var(--shadow-color);
 }
 
 .flex-box tbody tr:hover {
-  background: #f1f1f1;
+  background: var(--bg-color);
 }
 
 .required-field::after {
   content: " *";
-  color: red;
+  color: var(--error-color);
 }
 
 .grid-container {
@@ -265,7 +283,7 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
   background-color: #f9f9f9;
   word-wrap: break-word;
   border-spacing: 0px;
-  border-radius: 0.25rem;
+  border-radius: var(--border-radius);
   border-collapse: collapse;
   row-gap: 0px;
   column-gap: 0px;

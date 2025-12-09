@@ -77,19 +77,12 @@
 }
 
 .flex-box.inventory {
-  width:40dvw;
   min-width: fit-content;
-  align-self: flex-start;
 }
 
 .flex-container.inventory-sort {
-  width: 90dvw;
-  margin: auto;
-  flex-direction: row;
   justify-content: flex-start;
-  align-items: center;
   padding: 1rem 0rem 1rem 0rem;
-  gap: 1rem;
 }
 
 .inventory-search-reset {
