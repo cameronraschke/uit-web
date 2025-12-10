@@ -1,0 +1,18 @@
+{
+	"openapi": "3.2.0",
+	"$self": "https://UIT_WEB_HTTPS_HOST:UIT_WEB_HTTPS_PORT/oas.json",
+	"info": {
+		"title": "UIT API",
+		"summary": "API for UIT Web Services",
+		"description": "",
+		"contact": {
+			"name": "UIT_WEBMASTER_NAME",
+			"email": "UIT_WEBMASTER_EMAIL"
+		},
+		"version": "3.0"
+	},
+	"servers": {
+		"url": "https://UIT_WEB_HTTPS_HOST:UIT_WEB_HTTPS_PORT/api",
+		"name": "UIT_SERVER_HOSTNAME"
+	}
+}
