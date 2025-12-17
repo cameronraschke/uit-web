@@ -19,7 +19,7 @@ import (
 
 // Per-client functions
 func GetServerTime(w http.ResponseWriter, req *http.Request) {
-	curTime := time.Now().Format("2006-01-02 15:04:05.000")
+	curTime := time.Now().Format(time.RFC3339)
 	middleware.WriteJson(w, http.StatusOK, ServerTime{Time: curTime})
 }
 

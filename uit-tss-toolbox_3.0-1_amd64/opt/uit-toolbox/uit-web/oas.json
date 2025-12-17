@@ -12,7 +12,72 @@
 		"version": "3.0"
 	},
 	"servers": {
-		"url": "https://UIT_WEB_HTTPS_HOST:UIT_WEB_HTTPS_PORT/api",
-		"name": "UIT_SERVER_HOSTNAME"
+		"url": "https://UIT_WEB_HTTPS_HOST:UIT_WEB_HTTPS_PORT",
+		"name": "prod",
+		"description": "UIT_SERVER_HOSTNAME"
+	},
+	"components": {
+		"schemas": {
+			"tagnumber": {
+				"type": "int",
+				"format": "int64",
+				"minimum": 100000,
+				"maximum": 999999
+			}
+		},
+		"securitySchemes": {
+			"apiAuth": {
+				"type": "apiKey",
+				"description": "User login on page /login",
+				"name": "uit_bearer_token",
+				"in": "cookie",
+				"scheme": "Bearer"
+			},
+			"clientAuth": {
+				"$ref": "#/components/securitySchemes/apiAuth",
+				"in": "header"
+			}
+		}
+	},
+	"paths": {
+		"/api/server_time": {
+			"description": "Returns time from server with time zone, formatted as RFC 3339",
+			"get": {
+				"responses": {
+					"200": {
+						"description": "Successfully returns time to client",
+						"content": {
+							"application/json": {
+								"type": "object",
+								"properties": {
+									"server_time": {
+										"type": "string",
+										"format": "date-time"
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/api/lookup": {
+			"description": "Returns both tag number and serial number. Only tag/serial is required to be in request.",
+			"get": {
+				"parameters":
+					[
+						{
+							"name": "tagnumber", 
+							"in": "query",
+							"style": "form",
+							"required": "false",
+							"allowEmptyValue": "true",
+							"schema": {
+								"$ref": "#/components/schema/tagnumber"
+							}
+						}
+					]
+			}
+		}
 	}
 }
