@@ -23,6 +23,11 @@
 				"format": "int64",
 				"minimum": 100000,
 				"maximum": 999999
+			},
+			"system_serial": {
+				"type": "string",
+				"minLength": 3,
+				"maxLength": 64
 			}
 		},
 		"securitySchemes": {
@@ -74,6 +79,16 @@
 							"allowEmptyValue": "true",
 							"schema": {
 								"$ref": "#/components/schema/tagnumber"
+							}
+						},
+						{
+							"name": "system_serial",
+							"in": "query",
+							"style": "form",
+							"required": "false",
+							"allowEmptyValue": "true",
+							"schema": {
+								"$ref": "#/components/schema/system_serial"
 							}
 						}
 					]
