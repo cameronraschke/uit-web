@@ -1,0 +1,17 @@
+{
+	"compilerOptions": {
+		"noImplicitAny": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noImplicitReturns": true,
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitThis": true,
+		"strictNullChecks": true,
+		"removeComments": true,
+		"noEmitOnError": true,
+		"outFile": "./core.js",
+		"target": "es2024",
+		"lib": ["es2024", "dom", "ESNext", "WebWorker"],
+	},
+	"include": ["./*.ts"],
+}
