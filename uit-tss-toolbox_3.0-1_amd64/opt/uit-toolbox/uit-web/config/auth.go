@@ -154,7 +154,12 @@ func DeleteAuthSession(sessionID string) {
 }
 
 func ClearExpiredAuthSessions() {
-	log := GetLogger()
+	l := GetLogger()
+	if l == nil {
+		fmt.Println("nil logger in ClearExpiredAuthSessions")
+		return
+	}
+	log := *l
 	appState := GetAppState()
 	if appState == nil {
 		return

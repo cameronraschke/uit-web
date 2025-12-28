@@ -51,14 +51,19 @@ type RemoteTable struct {
 
 func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := config.GetLogger()
-	requestIP, ok := middleware.GetRequestIPFromRequestContext(req)
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
+	if !ok || err != nil {
+		fmt.Println("Failed to get logger from context for WebAuthEndpoint: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	requestIP, ok := middleware.GetRequestIPFromContext(ctx)
 	if !ok {
 		fmt.Println("IP address not stored in context (WebAuthEndpoint): (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestPath, ok := middleware.GetRequestPathFromRequestContext(req)
+	requestPath, ok := middleware.GetRequestPathFromContext(ctx)
 	if !ok {
 		fmt.Println("Request URL not stored in context (WebAuthEndpoint): (" + requestIP.String() + " " + req.Method + " " + requestPath + ")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)

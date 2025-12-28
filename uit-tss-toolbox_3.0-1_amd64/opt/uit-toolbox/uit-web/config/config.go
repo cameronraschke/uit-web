@@ -143,19 +143,18 @@ type AppState struct {
 	DBConn             atomic.Pointer[sql.DB]
 	AuthMap            sync.Map
 	AuthMapEntryCount  atomic.Int64
-	Log                logger.Logger
+	Log                atomic.Pointer[logger.Logger]
 	WebServerLimiter   *RateLimiter
 	FileLimiter        *RateLimiter
 	APILimiter         *RateLimiter
 	AuthLimiter        *RateLimiter
 	BlockedIPs         *BlockedClients
-	AllowedFilesMu     sync.Mutex
 	AllowedWANIPs      sync.Map
 	AllowedLANIPs      sync.Map
 	AllowedIPs         sync.Map
 	SessionSecret      []byte
-	APIRequestTimeout  atomic.Value
-	FileRequestTimeout atomic.Value
+	APIRequestTimeout  atomic.Pointer[time.Duration]
+	FileRequestTimeout atomic.Pointer[time.Duration]
 	WebEndpoints       sync.Map
 	GroupPermissions   sync.Map
 	UserPermissions    sync.Map
@@ -202,9 +201,7 @@ type AuthSession struct {
 }
 
 var (
-	appStateInstance *AppState
-	appStateMutex    sync.RWMutex
-	defaultLogger    logger.Logger = logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_SERVER_LOG_LEVEL")))
+	appStateInstance atomic.Pointer[AppState]
 )
 
 func LoadConfig() (*AppConfig, error) {
@@ -402,7 +399,7 @@ func InitApp() (*AppState, error) {
 		DBConn:            atomic.Pointer[sql.DB]{},
 		AuthMap:           sync.Map{},
 		AuthMapEntryCount: atomic.Int64{},
-		Log:               logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_SERVER_LOG_LEVEL"))),
+		Log:               atomic.Pointer[logger.Logger]{},
 		WebServerLimiter:  &RateLimiter{ClientMap: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST},
 		FileLimiter:       &RateLimiter{ClientMap: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 4, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST / 4},
 		APILimiter:        &RateLimiter{ClientMap: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST},
@@ -413,6 +410,14 @@ func InitApp() (*AppState, error) {
 		AllowedIPs:        sync.Map{},
 	}
 
+	// Initialize logger
+	log := logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_SERVER_LOG_LEVEL")))
+	if log == nil {
+		return nil, errors.New("failed to create logger")
+	}
+	appState.Log.Swap(&log)
+
+	// Populate allowed IPs
 	for _, wanIP := range appConfig.UIT_SERVER_WAN_ALLOWED_IP {
 		appState.AllowedWANIPs.Store(wanIP, true)
 	}
@@ -532,8 +537,8 @@ func InitApp() (*AppState, error) {
 	}
 
 	// Set initial timeouts
-	appState.APIRequestTimeout.Store(appConfig.UIT_WEB_API_REQUEST_TIMEOUT)
-	appState.FileRequestTimeout.Store(appConfig.UIT_WEB_FILE_REQUEST_TIMEOUT)
+	appState.APIRequestTimeout.Store(&appConfig.UIT_WEB_API_REQUEST_TIMEOUT)
+	appState.FileRequestTimeout.Store(&appConfig.UIT_WEB_FILE_REQUEST_TIMEOUT)
 
 	// Declare endpoints
 
@@ -543,28 +548,43 @@ func InitApp() (*AppState, error) {
 
 // App state management
 func SetAppState(newState *AppState) {
-	appStateMutex.Lock()
-	defer appStateMutex.Unlock()
-	appStateInstance = newState
+	oldSnapshot := appStateInstance.Load()
+	if oldSnapshot == nil {
+		appStateInstance.Store(newState)
+		return
+	}
+
+	appStateInstance.Swap(newState)
 }
 
 func GetAppState() *AppState {
-	appStateMutex.Lock()
-	defer appStateMutex.Unlock()
-	return appStateInstance
+	appState := appStateInstance.Load()
+	if appState == nil {
+		return nil
+	}
+	return appState
 }
 
 // Logger access
-func GetLogger() logger.Logger {
-	appStateMutex.Lock()
-	defer appStateMutex.Unlock()
-
-	if appStateInstance == nil || appStateInstance.Log == nil {
-		fmt.Println("Logger not initialized, using default logger")
-		return defaultLogger
+func GetLogger() *logger.Logger {
+	appState := GetAppState()
+	if appState == nil {
+		fmt.Println("App state not initialized in GetLogger, using default logger")
+		return nil
 	}
 
-	return appStateInstance.Log
+	if appState.Log == (atomic.Pointer[logger.Logger]{}) {
+		fmt.Println("Logger not initialized in GetLogger, using default logger")
+		return nil
+	}
+
+	logger := appState.Log.Load()
+	if logger == nil {
+		fmt.Println("Logger is nil in GetLogger, using default logger")
+		return nil
+	}
+
+	return logger
 }
 
 // Database managment
@@ -766,7 +786,7 @@ func GetClientConfig() (*ClientConfig, error) {
 func GetTLSCertFiles() (certFile string, keyFile string, err error) {
 	appState := GetAppState()
 	if appState == nil {
-		return "", "", fmt.Errorf("%s", "cannot retrieve TLS cert files, app state is not initialized")
+		return "", "", fmt.Errorf("cannot retrieve TLS cert files, app state is not initialized")
 	}
 	return appState.AppConfig.UIT_WEB_TLS_CERT_FILE, appState.AppConfig.UIT_WEB_TLS_KEY_FILE, nil
 }
@@ -774,7 +794,7 @@ func GetTLSCertFiles() (certFile string, keyFile string, err error) {
 func GetMaxUploadSize() (int64, error) {
 	appState := GetAppState()
 	if appState == nil {
-		return 0, fmt.Errorf("%s", "cannot retrieve max upload size, app state is not initialized")
+		return 0, fmt.Errorf("cannot retrieve max upload size, app state is not initialized")
 	}
 	return appState.AppConfig.UIT_WEB_MAX_UPLOAD_SIZE_MB, nil
 }
@@ -782,21 +802,21 @@ func GetMaxUploadSize() (int64, error) {
 func GetRequestTimeout(timeoutType string) (time.Duration, error) {
 	appState := GetAppState()
 	if appState == nil {
-		return 0, fmt.Errorf("%s", "cannot get request timeout, app state is not initialized")
+		return 0, fmt.Errorf("cannot get request timeout, app state is not initialized")
 	}
 	switch strings.ToLower(timeoutType) {
 	case "api":
-		timeout, ok := appState.APIRequestTimeout.Load().(time.Duration)
-		if !ok {
-			return 0, fmt.Errorf("%s", "cannot get API request timeout, invalid type stored")
+		apiTimeout := appState.APIRequestTimeout.Load()
+		if apiTimeout == nil {
+			return 0, fmt.Errorf("cannot get API request timeout in GetRequestTimeout")
 		}
-		return timeout, nil
+		return *apiTimeout, nil
 	case "file":
-		timeout, ok := appState.FileRequestTimeout.Load().(time.Duration)
-		if !ok {
-			return 0, fmt.Errorf("%s", "cannot get file request timeout, invalid type stored")
+		fileTimeout := appState.FileRequestTimeout.Load()
+		if fileTimeout == nil {
+			return 0, fmt.Errorf("cannot get file request timeout in GetRequestTimeout")
 		}
-		return timeout, nil
+		return *fileTimeout, nil
 	default:
 		return 0, fmt.Errorf("invalid timeout type: %s", timeoutType)
 	}
@@ -805,17 +825,17 @@ func GetRequestTimeout(timeoutType string) (time.Duration, error) {
 func SetRequestTimeout(timeoutType string, timeout time.Duration) error {
 	appState := GetAppState()
 	if appState == nil {
-		return fmt.Errorf("%s", "cannot set request timeout, app state is not initialized")
+		return fmt.Errorf("cannot set request timeout, app state is not initialized")
 	}
 	if timeout <= 0 {
-		return fmt.Errorf("invalid timeout value: %v", timeout)
+		return fmt.Errorf("invalid timeout value in SetRequestTimeout: %.2f", timeout.Seconds())
 	}
-	switch strings.ToLower(timeoutType) {
+	switch strings.TrimSpace(strings.ToLower(timeoutType)) {
 	case "api":
-		appState.APIRequestTimeout.Store(timeout)
+		appState.APIRequestTimeout.Store(&timeout)
 		return nil
 	case "file":
-		appState.FileRequestTimeout.Store(timeout)
+		appState.FileRequestTimeout.Store(&timeout)
 		return nil
 	default:
 		return fmt.Errorf("invalid timeout type: %s", timeoutType)
@@ -825,7 +845,7 @@ func SetRequestTimeout(timeoutType string, timeout time.Duration) error {
 func GetAllowedLANIPs() ([]netip.Prefix, error) {
 	appState := GetAppState()
 	if appState == nil {
-		return nil, fmt.Errorf("%s", "cannot retrieve allowed LAN IPs, app state is not initialized")
+		return nil, fmt.Errorf("cannot retrieve allowed LAN IPs, app state is not initialized")
 	}
 	var allowedIPs []netip.Prefix
 	appState.AllowedLANIPs.Range(func(k, v any) bool {

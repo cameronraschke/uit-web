@@ -1,7 +1,6 @@
 package endpoints
 
 import (
-	"errors"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -33,31 +32,19 @@ type ServerTime struct {
 	Time string `json:"server_time"`
 }
 
-func ConvertRequestTagnumber(r *http.Request) (int64, bool) {
-	tag := r.URL.Query().Get("tagnumber")
-	tagnumber, err := strconv.ParseInt(tag, 10, 64)
+func ConvertTagnumber(tagStr string) (int64, error) {
+	tagStr = strings.TrimSpace(tagStr)
+	if tagStr == "" {
+		return 0, fmt.Errorf("tagnumber is empty")
+	}
+	tag, err := strconv.ParseInt(tagStr, 10, 64)
 	if err != nil {
-		return 0, false
+		return 0, fmt.Errorf("error parsing tag: %v", err)
 	}
-	if tagnumber < 1 || tagnumber > 999999 {
-		return 0, false
+	if tag < 1 || tag > 999999 {
+		return 0, fmt.Errorf("invalid tag: out of range")
 	}
-	return tagnumber, true
-}
-
-func ConvertTagnumber(tag string) (int64, error) {
-	tag = strings.TrimSpace(tag)
-	if tag == "" {
-		return 0, errors.New("tagnumber is empty")
-	}
-	tagnumber, err := strconv.ParseInt(tag, 10, 64)
-	if err != nil {
-		return 0, errors.New("invalid tagnumber: " + err.Error())
-	}
-	if tagnumber < 1 || tagnumber > 999999 {
-		return 0, errors.New("invalid tagnumber: out of range")
-	}
-	return tagnumber, nil
+	return tag, nil
 }
 
 func FileServerHandler(w http.ResponseWriter, req *http.Request) {
@@ -65,17 +52,16 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	log, loggerExists, err := middleware.GetLoggerFromContext(ctx)
 	if !loggerExists || err != nil {
 		fmt.Println("Failed to get logger from context for FileServerHandler: " + err.Error())
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestIP, requestIPExists := middleware.GetRequestIPFromRequestContext(req)
+	requestIP, requestIPExists := middleware.GetRequestIPFromContext(ctx)
 	if !requestIPExists {
 		log.Warning("No IP address stored in context for FileServerHandler")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-
-	resolvedPath, resolvedPathExists := middleware.GetRequestFileFromRequestContext(req)
+	resolvedPath, resolvedPathExists := middleware.GetRequestFileFromContext(ctx)
 	if !resolvedPathExists {
 		log.Warning("no requested file stored in context")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -89,7 +75,7 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	f, err := os.Open(resolvedPath)
 	if err != nil {
 		log.HTTPWarning(req, "File not found for FileServerHandler: "+err.Error())
-		http.Error(w, "File not found", http.StatusNotFound)
+		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 	defer f.Close()
@@ -156,7 +142,12 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 
 func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := config.GetLogger()
+	log, loggerExists, err := middleware.GetLoggerFromContext(ctx)
+	if !loggerExists || err != nil {
+		fmt.Println("Failed to get logger from context for WebServerHandler: " + err.Error())
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	requestIP, ok := middleware.GetRequestIPFromContext(ctx)
 	if !ok {
 		log.Warning("No IP address stored in context")

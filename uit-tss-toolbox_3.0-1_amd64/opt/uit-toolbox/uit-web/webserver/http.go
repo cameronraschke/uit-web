@@ -12,7 +12,11 @@ import (
 )
 
 func StartFileServer(ctx context.Context, serverHost string) error {
-	log := config.GetLogger()
+	l := config.GetLogger()
+	if l == nil {
+		return fmt.Errorf("global logger is nil in StartFileServer")
+	}
+	log := *l
 	httpBaseChain := middleware.NewChain(
 		middleware.StoreLoggerMiddleware,
 		middleware.PanicRecoveryMiddleware,

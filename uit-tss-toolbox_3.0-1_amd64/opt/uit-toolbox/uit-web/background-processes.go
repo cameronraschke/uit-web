@@ -12,7 +12,11 @@ import (
 )
 
 func backgroundProcesses(ctx context.Context, errChan chan error) {
-	log := config.GetLogger()
+	l := config.GetLogger()
+	if l == nil {
+		fmt.Println("Global logger is nil in backgroundProcesses")
+		return
+	log := *l
 	var wg sync.WaitGroup
 	// Start auth map cleanup goroutine
 	wg.Add(1)

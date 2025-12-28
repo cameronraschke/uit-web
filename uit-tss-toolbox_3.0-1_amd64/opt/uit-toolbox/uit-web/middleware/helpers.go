@@ -127,9 +127,6 @@ func GetNonceFromContext(ctx context.Context) (nonce string, ok bool) {
 	nonce, ok = ctx.Value(nonceKey).(string)
 	return nonce, ok
 }
-func GetNonceFromRequestContext(r *http.Request) (nonce string, ok bool) {
-	return GetNonceFromContext(r.Context())
-}
 
 func withWebEndpointConfig(ctx context.Context, endpoint *config.WebEndpointConfig) (context.Context, error) {
 	if ctx == nil {
@@ -144,9 +141,6 @@ func GetWebEndpointConfigFromContext(ctx context.Context) (endpoint config.WebEn
 	endpoint, ok = ctx.Value(requestEndpointKey).(config.WebEndpointConfig)
 	return endpoint, ok
 }
-func GetWebEndpointConfigFromRequestContext(req *http.Request) (endpoint config.WebEndpointConfig, ok bool) {
-	return GetWebEndpointConfigFromContext(req.Context())
-}
 
 func withClientIP(ctx context.Context, ip netip.Addr) (context.Context, error) {
 	// Use validated IP address here from checkValidIP
@@ -155,9 +149,6 @@ func withClientIP(ctx context.Context, ip netip.Addr) (context.Context, error) {
 func GetRequestIPFromContext(ctx context.Context) (ipAddr netip.Addr, ok bool) {
 	ipAddr, ok = ctx.Value(clientIPKey).(netip.Addr)
 	return ipAddr, ok
-}
-func GetRequestIPFromRequestContext(r *http.Request) (ipAddr netip.Addr, ok bool) {
-	return GetRequestIPFromContext(r.Context())
 }
 
 func withRequestPath(ctx context.Context, path string) (context.Context, error) {
@@ -169,9 +160,6 @@ func withRequestPath(ctx context.Context, path string) (context.Context, error) 
 func GetRequestPathFromContext(ctx context.Context) (path string, ok bool) {
 	path, ok = ctx.Value(pathRequestKey).(string)
 	return path, ok
-}
-func GetRequestPathFromRequestContext(r *http.Request) (path string, ok bool) {
-	return GetRequestPathFromContext(r.Context())
 }
 
 func withRequestQuery(ctx context.Context, query url.Values) (context.Context, error) {
@@ -191,9 +179,6 @@ func GetRequestQueryFromContext(ctx context.Context) (query url.Values, ok bool)
 	}
 	return queries, true
 }
-func GetRequestQueryFromRequestContext(req *http.Request) (query url.Values, ok bool) {
-	return GetRequestQueryFromContext(req.Context())
-}
 
 func withRequestFile(ctx context.Context, file string) (context.Context, error) {
 	// if strings.TrimSpace(file) == "" {
@@ -204,9 +189,6 @@ func withRequestFile(ctx context.Context, file string) (context.Context, error) 
 func GetRequestFileFromContext(ctx context.Context) (file string, ok bool) {
 	file, ok = ctx.Value(fileRequestKey).(string)
 	return file, ok
-}
-func GetRequestFileFromRequestContext(r *http.Request) (file string, ok bool) {
-	return GetRequestFileFromContext(r.Context())
 }
 
 func withRequestUUID(ctx context.Context, uuid string) (context.Context, error) {
@@ -219,9 +201,6 @@ func GetRequestUUIDFromContext(ctx context.Context) (uuid string, ok bool) {
 	uuid, ok = ctx.Value(requestUUIDKey).(string)
 	return uuid, ok
 }
-func GetRequestUUIDFromRequestContext(r *http.Request) (uuid string, ok bool) {
-	return GetRequestUUIDFromContext(r.Context())
-}
 
 func withLogger(ctx context.Context, logger logger.Logger) (context.Context, error) {
 	if logger == nil {
@@ -232,15 +211,13 @@ func withLogger(ctx context.Context, logger logger.Logger) (context.Context, err
 func GetLoggerFromContext(ctx context.Context) (logger.Logger, bool, error) {
 	log, ok := ctx.Value(loggerKey).(logger.Logger)
 	if !ok {
-		log = config.GetLogger()
-		if log == nil {
-			return nil, false, errors.New("logger not found in context and default logger is nil")
+		l := config.GetLogger()
+		if l == nil {
+			return nil, false, errors.New("logger not found in context and global logger is nil")
 		}
+		log = *l
 	}
 	return log, ok, nil
-}
-func GetLoggerFromRequestContext(r *http.Request) (logger.Logger, bool, error) {
-	return GetLoggerFromContext(r.Context())
 }
 
 func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue, uitCSRFValue string, timeout time.Duration) (*http.Cookie, *http.Cookie, *http.Cookie, *http.Cookie) {

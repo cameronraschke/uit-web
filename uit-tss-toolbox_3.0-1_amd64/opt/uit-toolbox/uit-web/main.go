@@ -40,7 +40,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	log := config.GetLogger()
+	l := config.GetLogger()
+	if l == nil {
+		bootLog.Error("Global logger is nil in main")
+		os.Exit(1)
+	}
+	log := *l
 
 	// Get DB credentials
 	dbName, dbHost, dbPort, dbUsername, dbPassword, err := config.GetDatabaseCredentials()

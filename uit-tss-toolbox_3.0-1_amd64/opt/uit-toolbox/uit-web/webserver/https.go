@@ -14,7 +14,11 @@ import (
 )
 
 func StartWebServer(ctx context.Context) error {
-	log := config.GetLogger()
+	l := config.GetLogger()
+	if l == nil {
+		return fmt.Errorf("global logger is nil in StartWebServer")
+	}
+	log := *l
 	// https handlers and middleware chains
 
 	httpsBaseChain := middleware.NewChain(

@@ -354,7 +354,7 @@ func GetNotes(w http.ResponseWriter, req *http.Request) {
 
 func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromRequestContext(req)
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
 	if err != nil || !ok {
 		fmt.Println("Cannot get logger for GetLocationFormData from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -393,13 +393,13 @@ func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 
 func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromRequestContext(req)
+	log, ok, err := middleware.GetLoggerFromContext(ctx)
 	if err != nil || !ok {
 		fmt.Println("Cannot get logger for GetClientImagesManifest from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestQueries, ok := middleware.GetRequestQueryFromRequestContext(req)
+	requestQueries, ok := middleware.GetRequestQueryFromContext(ctx)
 	if !ok {
 		log.HTTPWarning(req, "Cannot get requested queries for GetClientImagesManifest from context")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)

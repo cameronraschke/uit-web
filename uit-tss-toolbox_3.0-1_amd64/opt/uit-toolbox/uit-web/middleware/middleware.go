@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/netip"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -20,48 +19,49 @@ import (
 
 type Middleware func(http.Handler) http.Handler
 
-type Chain struct {
+type MiddlewareChain struct {
 	middlewares []Middleware
 }
 
-func NewChain(middlewares ...Middleware) Chain {
-	return Chain{
+func NewChain(middlewares ...Middleware) MiddlewareChain {
+	return MiddlewareChain{
 		middlewares: append([]Middleware{}, middlewares...),
 	}
 }
 
-// Append extends the chain with additional middlewares, returning a new Chain
-func (c Chain) Append(middlewares ...Middleware) Chain {
-	newMiddlewares := make([]Middleware, 0, len(c.middlewares)+len(middlewares))
-	newMiddlewares = append(newMiddlewares, c.middlewares...)
+// Append extends the chain with additional middlewares, returning a new MiddlewareChain
+func (chain MiddlewareChain) Append(middlewares ...Middleware) MiddlewareChain {
+	newMiddlewares := make([]Middleware, 0, len(chain.middlewares)+len(middlewares))
+	newMiddlewares = append(newMiddlewares, chain.middlewares...)
 	newMiddlewares = append(newMiddlewares, middlewares...)
 
-	return Chain{
+	return MiddlewareChain{
 		middlewares: newMiddlewares,
 	}
 }
 
 // Then applies the middleware chain to the final handler
-func (c Chain) Then(finalHandler http.Handler) http.Handler {
-	for i := len(c.middlewares) - 1; i >= 0; i-- {
-		finalHandler = c.middlewares[i](finalHandler)
+func (chain MiddlewareChain) Then(finalHandler http.Handler) http.Handler {
+	for i := len(chain.middlewares) - 1; i >= 0; i-- {
+		finalHandler = chain.middlewares[i](finalHandler)
 	}
 	return finalHandler
 }
 
 // ThenFunc applies the middleware chain to a handler function
-func (c Chain) ThenFunc(finalHandlerFunc http.HandlerFunc) http.Handler {
-	return c.Then(finalHandlerFunc)
+func (chain MiddlewareChain) ThenFunc(finalHandlerFunc http.HandlerFunc) http.Handler {
+	return chain.Then(finalHandlerFunc)
 }
 
 func StoreLoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := config.GetLogger()
-		if log == nil {
+		l := config.GetLogger()
+		if l == nil {
 			fmt.Println("Error getting logger in middleware: logger is nil")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
+		log := *l
 		ctx, err := withLogger(req.Context(), log)
 		if err != nil {
 			fmt.Println("Error storing logger in context: " + err.Error())
@@ -76,24 +76,20 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				log, ok, err := GetLoggerFromRequestContext(req)
+				log, ok, err := GetLoggerFromContext(req.Context())
 				if !ok || err != nil {
 					fmt.Println("Error getting logger from context in panic recovery middleware, attempting to use global logger")
-					log = config.GetLogger()
-					if log == nil {
+					l := config.GetLogger()
+					if l == nil {
 						fmt.Println("Error getting global logger in panic recovery middleware: logger is nil")
 						WriteJsonError(w, http.StatusInternalServerError)
 						return
 					}
-				}
-
-				requestIP, err := netip.ParseAddr(req.RemoteAddr)
-				if err != nil {
-					requestIP = netip.Addr{}
+					log = *l
 				}
 
 				log.Error(fmt.Sprintf("Panic recovered: %v\n%s", err, string(debug.Stack())))
-				log.HTTPError(req, "Request from: "+requestIP.String()+" "+req.Method+" "+req.URL.Path)
+				log.HTTPError(req, "Request panicked")
 
 				WriteJsonError(w, http.StatusInternalServerError)
 			}
@@ -104,7 +100,7 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 
 func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromRequestContext(req)
+		log, ok, err := GetLoggerFromContext(req.Context())
 		if !ok || err != nil {
 			fmt.Println("Error getting logger from context in LimitRequestSizeMiddleware: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
@@ -496,7 +492,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Chain context updates
+		// MiddlewareChain context updates
 		ctx := req.Context()
 		// Store clean path in context (to be used later on)
 		ctx, err = withRequestPath(ctx, cleanPath)
@@ -520,7 +516,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 
 func CheckHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromRequestContext(req)
+		log, ok, err := GetLoggerFromContext(req.Context())
 		if !ok || err != nil {
 			fmt.Println("Error getting logger from context in CheckHeadersMiddleware: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
