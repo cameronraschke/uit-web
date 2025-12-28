@@ -28,6 +28,7 @@ function jsonToBase64(jsonString: string) {
 		}
 
 		const uft8Bytes = new TextEncoder().encode(jsonString);
+		const base64JsonData = uft8Bytes.toBase64({ alphabet: "base64url" })
 		const binaryArray: Uint8Array = new Uint8Array(uft8Bytes.length);
 		binaryArray.set(uft8Bytes);
 		const binaryStr = Array.prototype.map.call(binaryArray, (byte: number) => String.fromCharCode(byte)).join("");

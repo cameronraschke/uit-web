@@ -3,8 +3,8 @@ package logger
 import (
 	"bufio"
 	"fmt"
-	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"strings"
 	"sync"
@@ -28,6 +28,8 @@ const (
 	Console loggerType = iota
 	File
 )
+
+const disallowedURLChars = "\x00\r\n"
 
 func (logLevel LogLevel) getLogLevel() string {
 	switch logLevel {
@@ -96,10 +98,19 @@ func (consoleLogger *ConsoleLogger) logHTTPErr(req *http.Request, logLevel LogLe
 	}
 
 	// Buffer values outside of lock
-	ipAddr, _, _ := net.SplitHostPort(req.RemoteAddr)
+	ipAddr, err := netip.ParseAddr(req.RemoteAddr)
+	if err != nil {
+		ipAddr = netip.Addr{}
+	}
 	requestMethod := req.Method
-	requestURI := req.URL.Path
-	requestInfo := fmt.Sprintf(" (%s %s %s)", ipAddr, requestMethod, requestURI)
+	requestURL := req.URL.Path
+	if req.URL.RawQuery != "" {
+		requestURL += "?" + req.URL.RawQuery
+	}
+	if strings.ContainsAny(requestURL, disallowedURLChars) {
+		requestURL = "INVALID URL"
+	}
+	requestInfo := fmt.Sprintf(" (%s %s %s)", ipAddr.String(), requestMethod, requestURL)
 	consoleLogger.log(logLevel, message+requestInfo)
 }
 

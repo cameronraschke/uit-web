@@ -16,7 +16,8 @@ import (
 func StartWebServer(ctx context.Context) error {
 	log := config.GetLogger()
 	// https handlers and middleware chains
-	httpsBaseChain := muxChain{
+
+	httpsBaseChain := middleware.NewChain(
 		middleware.StoreLoggerMiddleware,
 		middleware.PanicRecoveryMiddleware,
 		middleware.LimitRequestSizeMiddleware,
@@ -32,70 +33,65 @@ func StartWebServer(ctx context.Context) error {
 		middleware.CheckValidURLMiddleware,
 		middleware.CheckHeadersMiddleware,
 		middleware.SetHeadersMiddleware,
-	}
+	)
 
 	// No allowedFilesMiddleware here, as API calls do not serve files
-	httpsBaseAPIChain := muxChain{
+	httpsFullAPIChain := httpsBaseChain.Append(
 		middleware.CookieAuthMiddleware,
-	}
+	)
 
-	httpsBaseCookieAuthChain := muxChain{
+	httpsFullCookieAuthChain := httpsBaseChain.Append(
 		middleware.AllowedFilesMiddleware,
 		middleware.CookieAuthMiddleware,
-	}
+	)
 
-	httpsBaseLoginChain := muxChain{
+	httpsFullLoginChain := httpsBaseChain.Append(
 		middleware.AllowedFilesMiddleware,
-	}
+	)
 
-	httpsLogoutChain := muxChain{
+	httpsFullLogoutChain := httpsBaseChain.Append(
 		middleware.CookieAuthMiddleware,
-	}
+	)
 
-	httpsFullCookieAuthChain := append(httpsBaseChain, httpsBaseCookieAuthChain...)
-	httpsFullLoginChain := append(httpsBaseChain, httpsBaseLoginChain...)
-	httpsFullLogoutChain := append(httpsBaseChain, httpsLogoutChain...)
-	httpsFullAPIChain := append(httpsBaseChain, httpsBaseAPIChain...)
+	httpsRouter := http.NewServeMux()
 
-	httpsMux := http.NewServeMux()
+	httpsRouter.Handle("GET /api/server_time", httpsFullAPIChain.ThenFunc(endpoints.GetServerTime))
+	httpsRouter.Handle("GET /api/lookup", httpsFullAPIChain.ThenFunc(endpoints.GetClientLookup))
+	httpsRouter.Handle("GET /api/all_tags", httpsFullAPIChain.ThenFunc(endpoints.GetAllTags))
+	httpsRouter.Handle("GET /api/client/hardware/ids", httpsFullAPIChain.ThenFunc(endpoints.GetHardwareIdentifiers))
+	httpsRouter.Handle("GET /api/client/bios", httpsFullAPIChain.ThenFunc(endpoints.GetBiosData))
+	httpsRouter.Handle("GET /api/client/os", httpsFullAPIChain.ThenFunc(endpoints.GetOSData))
+	httpsRouter.Handle("GET /api/job_queue/overview", httpsFullAPIChain.ThenFunc(endpoints.GetJobQueueOverview))
+	httpsRouter.Handle("GET /api/job_queue/client/queued_job", httpsFullAPIChain.ThenFunc(endpoints.GetClientQueuedJobs))
+	httpsRouter.Handle("GET /api/job_queue/client/job_available", httpsFullAPIChain.ThenFunc(endpoints.GetClientAvailableJobs))
+	httpsRouter.Handle("GET /api/client/location_form_data", httpsFullAPIChain.ThenFunc(endpoints.GetLocationFormData))
+	httpsRouter.Handle("GET /api/notes", httpsFullAPIChain.ThenFunc(endpoints.GetNotes))
+	httpsRouter.Handle("GET /api/dashboard/inventory_summary", httpsFullAPIChain.ThenFunc(endpoints.GetDashboardInventorySummary))
+	httpsRouter.Handle("GET /api/images/manifest", httpsFullAPIChain.ThenFunc(endpoints.GetClientImagesManifest))
+	httpsRouter.Handle("GET /api/images", httpsFullAPIChain.ThenFunc(endpoints.GetImage))
+	httpsRouter.Handle("GET /api/inventory", httpsFullAPIChain.ThenFunc(endpoints.GetInventoryTableData))
+	httpsRouter.Handle("GET /api/models", httpsFullAPIChain.ThenFunc(endpoints.GetManufacturersAndModels))
 
-	httpsMux.Handle("GET /api/server_time", httpsFullAPIChain.thenFunc(endpoints.GetServerTime))
-	httpsMux.Handle("GET /api/lookup", httpsFullAPIChain.thenFunc(endpoints.GetClientLookup))
-	httpsMux.Handle("GET /api/all_tags", httpsFullAPIChain.thenFunc(endpoints.GetAllTags))
-	httpsMux.Handle("GET /api/client/hardware/ids", httpsFullAPIChain.thenFunc(endpoints.GetHardwareIdentifiers))
-	httpsMux.Handle("GET /api/client/bios", httpsFullAPIChain.thenFunc(endpoints.GetBiosData))
-	httpsMux.Handle("GET /api/client/os", httpsFullAPIChain.thenFunc(endpoints.GetOSData))
-	httpsMux.Handle("GET /api/job_queue/overview", httpsFullAPIChain.thenFunc(endpoints.GetJobQueueOverview))
-	httpsMux.Handle("GET /api/job_queue/client/queued_job", httpsFullAPIChain.thenFunc(endpoints.GetClientQueuedJobs))
-	httpsMux.Handle("GET /api/job_queue/client/job_available", httpsFullAPIChain.thenFunc(endpoints.GetClientAvailableJobs))
-	httpsMux.Handle("GET /api/client/location_form_data", httpsFullAPIChain.thenFunc(endpoints.GetLocationFormData))
-	httpsMux.Handle("GET /api/notes", httpsFullAPIChain.thenFunc(endpoints.GetNotes))
-	httpsMux.Handle("GET /api/dashboard/inventory_summary", httpsFullAPIChain.thenFunc(endpoints.GetDashboardInventorySummary))
-	httpsMux.Handle("GET /api/images/manifest", httpsFullAPIChain.thenFunc(endpoints.GetClientImagesManifest))
-	httpsMux.Handle("GET /api/images", httpsFullAPIChain.thenFunc(endpoints.GetImage))
-	httpsMux.Handle("GET /api/inventory", httpsFullAPIChain.thenFunc(endpoints.GetInventoryTableData))
-	httpsMux.Handle("GET /api/models", httpsFullAPIChain.thenFunc(endpoints.GetManufacturersAndModels))
+	httpsRouter.Handle("POST /api/notes", httpsFullAPIChain.ThenFunc(endpoints.InsertNewNote))
+	httpsRouter.Handle("POST /api/update_inventory", httpsFullAPIChain.ThenFunc(endpoints.UpdateInventory))
+	httpsRouter.Handle("POST /api/images/toggle_pin", httpsFullAPIChain.ThenFunc(endpoints.TogglePinImage))
 
-	httpsMux.Handle("POST /api/notes", httpsFullAPIChain.thenFunc(endpoints.InsertNewNote))
-	httpsMux.Handle("POST /api/update_inventory", httpsFullAPIChain.thenFunc(endpoints.UpdateInventory))
-	httpsMux.Handle("POST /api/images/toggle_pin", httpsFullAPIChain.thenFunc(endpoints.TogglePinImage))
+	httpsRouter.Handle("DELETE /api/images", httpsFullAPIChain.ThenFunc(endpoints.DeleteImage))
 
-	httpsMux.Handle("DELETE /api/images", httpsFullAPIChain.thenFunc(endpoints.DeleteImage))
+	httpsRouter.Handle("GET /client/api/configs/uit-client", httpsFullAPIChain.ThenFunc(endpoints.GetClientConfig))
+	httpsRouter.Handle("GET /client/pkg/uit-client", httpsFullAPIChain.ThenFunc(endpoints.WebServerHandler))
+	httpsRouter.Handle("GET /login", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
+	httpsRouter.Handle("POST /login", httpsFullLoginChain.ThenFunc(endpoints.WebAuthEndpoint))
+	httpsRouter.Handle("GET /css/login.css", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
+	httpsRouter.Handle("/js/login.js", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
+	httpsRouter.Handle("/css/desktop.css", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
+	httpsRouter.Handle("/favicon.png", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 
-	httpsMux.Handle("GET /client/api/configs/uit-client", httpsFullAPIChain.thenFunc(endpoints.GetClientConfig))
-	httpsMux.Handle("GET /client/pkg/uit-client", httpsFullAPIChain.thenFunc(endpoints.WebServerHandler))
-	httpsMux.Handle("GET /login", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
-	httpsMux.Handle("POST /login", httpsFullLoginChain.thenFunc(endpoints.WebAuthEndpoint))
-	httpsMux.Handle("GET /css/login.css", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
-	httpsMux.Handle("/js/login.js", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
-	httpsMux.Handle("/css/desktop.css", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
-	httpsMux.Handle("/favicon.png", httpsFullLoginChain.thenFunc(endpoints.WebServerHandler))
+	httpsRouter.Handle("GET /logout", httpsFullLogoutChain.ThenFunc(endpoints.LogoutHandler))
 
-	httpsMux.Handle("GET /logout", httpsFullLogoutChain.thenFunc(endpoints.LogoutHandler))
-
-	httpsMux.Handle("/js/", httpsFullCookieAuthChain.thenFunc(endpoints.WebServerHandler))
-	httpsMux.Handle("/css/", httpsFullCookieAuthChain.thenFunc(endpoints.WebServerHandler))
-	httpsMux.Handle("/", httpsFullCookieAuthChain.thenFunc(endpoints.WebServerHandler))
+	httpsRouter.Handle("/js/", httpsFullCookieAuthChain.ThenFunc(endpoints.WebServerHandler))
+	httpsRouter.Handle("/css/", httpsFullCookieAuthChain.ThenFunc(endpoints.WebServerHandler))
+	httpsRouter.Handle("/", httpsFullCookieAuthChain.ThenFunc(endpoints.WebServerHandler))
 
 	log.Info("Starting HTTPS web server...")
 
@@ -117,7 +113,7 @@ func StartWebServer(ctx context.Context) error {
 
 	httpsServer := http.Server{
 		Addr:           ":31411",
-		Handler:        httpsMux,
+		Handler:        httpsRouter,
 		TLSConfig:      tlsConfig,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,

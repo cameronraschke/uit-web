@@ -164,17 +164,17 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestURL, ok := middleware.GetRequestURLFromContext(ctx)
+	requestPath, ok := middleware.GetRequestPathFromContext(ctx)
 	if !ok {
-		log.HTTPWarning(req, "No request URL found in context for InsertNewNote")
+		log.HTTPWarning(req, "No request path found in context for InsertNewNote")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	requestMethod := req.Method
 
 	// Sanitize POST request
-	if requestMethod != http.MethodPost || !(strings.HasSuffix(requestURL, "/notes")) {
-		log.Warning("Invalid method or URL for note insertion: " + requestIP.String() + " ( " + requestURL + ")")
+	if requestMethod != http.MethodPost || !(strings.HasSuffix(requestPath, "/notes")) {
+		log.HTTPWarning(req, "Invalid method or URL for note insertion")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -252,31 +252,31 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestURL, ok := middleware.GetRequestURLFromContext(ctx)
+	requestPath, ok := middleware.GetRequestPathFromContext(ctx)
 	if !ok {
-		log.HTTPWarning(req, "No request URL found in context for UpdateInventory")
+		log.HTTPWarning(req, "No request URL path found in context for UpdateInventory")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	requestMethod := req.Method
 
 	// Check for POST method and correct URL
-	if requestMethod != http.MethodPost || !(strings.HasSuffix(requestURL, "/update_inventory")) {
-		log.Warning("Invalid method or URL for inventory update: " + requestIP.String() + " ( " + requestURL + ")")
+	if requestMethod != http.MethodPost || !(strings.HasSuffix(requestPath, "/update_inventory")) {
+		log.HTTPWarning(req, "Invalid method or URL for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	// Parse inventory data
 	if err := req.ParseMultipartForm(64 << 20); err != nil {
-		log.Warning("Cannot parse multipart form: " + err.Error() + " (" + requestIP.String() + ")")
+		log.HTTPWarning(req, "Cannot parse multipart form: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
 	}
 
 	jsonFile, _, err := req.FormFile("json")
 	if err != nil {
-		log.Warning("No JSON data provided in form: " + requestIP.String())
+		log.HTTPWarning(req, "No JSON data provided in form")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -284,7 +284,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 
 	var inventoryUpdate database.InventoryUpdateFormInput
 	if err := json.NewDecoder(jsonFile).Decode(&inventoryUpdate); err != nil {
-		log.Warning("Cannot decode inventory JSON: " + err.Error() + " (" + requestIP.String() + ")")
+		log.HTTPWarning(req, "Cannot decode inventory JSON: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -292,45 +292,45 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	// Validate and sanitize input data
 	// Tag number (required, 6 digits)
 	if inventoryUpdate.Tagnumber == nil || *inventoryUpdate.Tagnumber == 0 {
-		log.Warning("No tag number provided for inventory update: " + requestIP.String())
+		log.HTTPWarning(req, "No tag number provided for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	if !middleware.IsNumericAscii([]byte(strconv.FormatInt(*inventoryUpdate.Tagnumber, 10))) {
-		log.Warning("Non-digit characters in tag number field for inventory update: " + requestIP.String())
+		log.HTTPWarning(req, "Non-digit characters in tag number field for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	if utf8.RuneCountInString(strconv.FormatInt(*inventoryUpdate.Tagnumber, 10)) != 6 {
-		log.Warning("Tag number not 6 digits for inventory update: " + requestIP.String())
+		log.HTTPWarning(req, "Tag number not 6 digits for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	tagnumber, err := strconv.ParseInt(strconv.FormatInt(*inventoryUpdate.Tagnumber, 10), 10, 64)
 	if err != nil {
-		log.Warning("Cannot parse tag number for inventory update: " + requestIP.String())
+		log.HTTPWarning(req, "Cannot parse tag number for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	if tagnumber < 100000 || tagnumber > 999999 {
-		log.Warning("Invalid tag number provided for inventory update: " + requestIP.String())
+		log.HTTPWarning(req, "Invalid tag number provided for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	// System serial (required, min 4 chars, max 128 chars)
 	if inventoryUpdate.SystemSerial == nil || strings.TrimSpace(*inventoryUpdate.SystemSerial) == "" {
-		log.Warning("Invalid system serial provided for inventory update: " + requestIP.String())
+		log.HTTPWarning(req, "Invalid system serial provided for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	if utf8.RuneCountInString(*inventoryUpdate.SystemSerial) < 4 || utf8.RuneCountInString(*inventoryUpdate.SystemSerial) > 128 {
-		log.Warning("Invalid system serial length provided for inventory update: " + requestIP.String())
+		log.HTTPWarning(req, "Invalid system serial length provided for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.SystemSerial) {
-		log.Warning("Non-alphanumeric characters in system serial field for inventory update: " + requestIP.String())
+		log.HTTPWarning(req, "Non-alphanumeric characters in system serial field for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -338,12 +338,12 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 
 	// Location (required, min 1 char, max 128 chars)
 	if inventoryUpdate.Location == nil || strings.TrimSpace(*inventoryUpdate.Location) == "" {
-		log.Warning("No location provided for inventory update: " + requestIP.String())
+		log.HTTPWarning(req, "No location provided for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	if utf8.RuneCountInString(*inventoryUpdate.Location) < 1 || utf8.RuneCountInString(*inventoryUpdate.Location) > 128 {
-		log.Warning("Invalid location length for inventory update: " + requestIP.String())
+		log.HTTPWarning(req, "Invalid location length for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -356,40 +356,40 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 
 	// Broken (optional, bool)
 	if inventoryUpdate.Broken == nil {
-		log.Info("No broken bool value provided for inventory update: " + requestIP.String())
+		log.HTTPInfo(req, "No broken bool value provided for inventory update")
 	}
 
 	// Disk removed (optional, bool)
 	if inventoryUpdate.DiskRemoved == nil {
-		log.Info("No disk removed bool value provided for inventory update: " + requestIP.String())
+		log.HTTPInfo(req, "No disk removed bool value provided for inventory update")
 	}
 
 	// Department (optional, max 24 chars)
 	if inventoryUpdate.Department != nil && strings.TrimSpace(*inventoryUpdate.Department) != "" {
 		if utf8.RuneCountInString(*inventoryUpdate.Department) < 1 || utf8.RuneCountInString(*inventoryUpdate.Department) > 24 {
-			log.Warning("Invalid department length for inventory update: " + requestIP.String())
+			log.HTTPWarning(req, "Invalid department length for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if !middleware.IsPrintableASCII([]byte(*inventoryUpdate.Department)) {
-			log.Warning("Non-printable ASCII characters in department field for inventory update: " + requestIP.String())
+			log.HTTPWarning(req, "Non-printable ASCII characters in department field for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		*inventoryUpdate.Department = strings.TrimSpace(*inventoryUpdate.Department)
 	} else {
-		log.Info("No department provided for inventory update: " + requestIP.String())
+		log.HTTPInfo(req, "No department provided for inventory update")
 	}
 
 	// Domain (optional, min 1 char, max 24 chars)
 	if inventoryUpdate.Domain != nil && strings.TrimSpace(*inventoryUpdate.Domain) != "" {
 		if utf8.RuneCountInString(*inventoryUpdate.Domain) < 1 || utf8.RuneCountInString(*inventoryUpdate.Domain) > 24 {
-			log.Warning("Invalid domain length for inventory update: " + requestIP.String())
+			log.HTTPWarning(req, "Invalid domain length for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if !middleware.IsPrintableASCII([]byte(*inventoryUpdate.Domain)) {
-			log.Warning("Non-printable ASCII characters in domain field for inventory update: " + requestIP.String())
+			log.HTTPWarning(req, "Non-printable ASCII characters in domain field for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -401,35 +401,35 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	// Note (optional, max 512 chars)
 	if inventoryUpdate.Note != nil && strings.TrimSpace(*inventoryUpdate.Note) != "" {
 		if utf8.RuneCountInString(*inventoryUpdate.Note) < 1 || utf8.RuneCountInString(*inventoryUpdate.Note) > 512 {
-			log.Warning("Invalid note length for inventory update: " + requestIP.String())
+			log.HTTPWarning(req, "Invalid note length for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		for _, rune := range *inventoryUpdate.Note {
 			if !unicode.IsPrint(rune) && !unicode.IsSpace(rune) {
-				log.Warning("Non-printable characters in note field for inventory update: " + requestIP.String())
+				log.HTTPWarning(req, "Non-printable characters in note field for inventory update")
 				middleware.WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 		}
 		*inventoryUpdate.Note = strings.TrimSpace(*inventoryUpdate.Note)
 	} else {
-		log.Warning("No note provided for inventory update: " + requestIP.String())
+		log.HTTPInfo(req, "No note provided for inventory update")
 	}
 
 	// Status (mandatory, max 64 chars)
 	if inventoryUpdate.Status == nil || strings.TrimSpace(*inventoryUpdate.Status) == "" {
-		log.Warning("No status provided for inventory update: " + requestIP.String())
+		log.HTTPWarning(req, "No status provided for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	if utf8.RuneCountInString(*inventoryUpdate.Status) < 1 || utf8.RuneCountInString(*inventoryUpdate.Status) > 64 {
-		log.Warning("Invalid status length for inventory update: " + requestIP.String())
+		log.HTTPWarning(req, "Invalid status length for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	if !middleware.IsPrintableASCII([]byte(*inventoryUpdate.Status)) {
-		log.Warning("Non-printable ASCII characters in status field for inventory update: " + requestIP.String())
+		log.HTTPWarning(req, "Non-printable ASCII characters in status field for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -438,35 +438,35 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	// System manufacturer (optional, min 1 char, max 24 chars)
 	if inventoryUpdate.SystemManufacturer != nil && strings.TrimSpace(*inventoryUpdate.SystemManufacturer) != "" {
 		if utf8.RuneCountInString(*inventoryUpdate.SystemManufacturer) < 1 || utf8.RuneCountInString(*inventoryUpdate.SystemManufacturer) > 24 {
-			log.Warning("Invalid system manufacturer length for inventory update: " + requestIP.String())
+			log.HTTPWarning(req, "Invalid system manufacturer length for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if !middleware.IsASCIIStringPrintable(*inventoryUpdate.SystemManufacturer) {
-			log.Warning("Non-alphanumeric characters in system manufacturer field for inventory update: " + requestIP.String())
+			log.HTTPWarning(req, "Non-alphanumeric characters in system manufacturer field for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		*inventoryUpdate.SystemManufacturer = strings.TrimSpace(*inventoryUpdate.SystemManufacturer)
 	} else {
-		log.Info("No system manufacturer provided for inventory update: " + requestIP.String())
+		log.HTTPInfo(req, "No system manufacturer provided for inventory update")
 	}
 
 	// System model (optional, min 1 char, max 64 chars)
 	if inventoryUpdate.SystemModel != nil && strings.TrimSpace(*inventoryUpdate.SystemModel) != "" {
 		if utf8.RuneCountInString(*inventoryUpdate.SystemModel) < 1 || utf8.RuneCountInString(*inventoryUpdate.SystemModel) > 64 {
-			log.Warning("Invalid system model length for inventory update: " + requestIP.String())
+			log.HTTPWarning(req, "Invalid system model length for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if !middleware.IsASCIIStringPrintable(*inventoryUpdate.SystemModel) {
-			log.Warning("Non-alphanumeric characters in system model field for inventory update: " + requestIP.String())
+			log.HTTPWarning(req, "Non-alphanumeric characters in system model field for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		*inventoryUpdate.SystemModel = strings.TrimSpace(*inventoryUpdate.SystemModel)
 	} else {
-		log.Info("No system model provided for inventory update: " + requestIP.String())
+		log.HTTPInfo(req, "No system model provided for inventory update")
 	}
 
 	// acquired date
@@ -474,7 +474,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		acquiredDateUTC := inventoryUpdate.AcquiredDate.UTC()
 		inventoryUpdate.AcquiredDate = &acquiredDateUTC
 	} else {
-		log.Info("No acquired date provided for inventory update: " + requestIP.String())
+		log.HTTPInfo(req, "No acquired date provided for inventory update")
 	}
 
 	// Image (base64, optional, max 64MB, multiple file uploads supported)
@@ -499,19 +499,19 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		for _, char := range fileHeader.Filename {
 			if !(unicode.IsLetter(char) || unicode.IsDigit(char) ||
 				char == '.' || char == '-' || char == '_' || char == ' ' || char == '(' || char == ')') {
-				log.Warning("Invalid characters in uploaded file name for inventory update: " + requestIP.String())
+				log.HTTPWarning(req, "Invalid characters in uploaded file name for inventory update")
 				middleware.WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 		}
 		if fileHeader.Size > maxFileSize {
-			log.Warning("Uploaded file too large for inventory update: " + requestIP.String() + " (" + strconv.FormatInt(fileHeader.Size, 10) + " bytes)")
+			log.HTTPWarning(req, "Uploaded file too large for inventory update: "+requestIP.String()+" ("+strconv.FormatInt(fileHeader.Size, 10)+" bytes)")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		file, err := fileHeader.Open()
 		if err != nil {
-			log.Warning("Failed to open uploaded file for inventory update: " + err.Error() + " (" + requestIP.String() + ")")
+			log.HTTPWarning(req, "Failed to open uploaded file for inventory update: "+err.Error()+" ("+requestIP.String()+")")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -520,30 +520,30 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		lr := &io.LimitedReader{R: file, N: maxFileSize + 1}
 		fileData, err := io.ReadAll(lr)
 		if err != nil {
-			log.Warning("Failed to read uploaded file for inventory update: " + err.Error() + " (" + requestIP.String() + ")")
+			log.HTTPWarning(req, "Failed to read uploaded file for inventory update: "+err.Error()+" ("+requestIP.String()+")")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		fileSize := int64(len(fileData))
 		if fileSize > maxFileSize {
-			log.Warning("Uploaded file too large for inventory update: " + requestIP.String() + " (" + strconv.FormatInt(fileSize, 10) + " bytes)")
+			log.HTTPWarning(req, "Uploaded file too large for inventory update: "+requestIP.String()+" ("+strconv.FormatInt(fileSize, 10)+" bytes)")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if fileSize == 0 {
-			log.Warning("Empty file uploaded for inventory update: " + requestIP.String())
+			log.HTTPWarning(req, "Empty file uploaded for inventory update: "+requestIP.String())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if fileSize < 512 {
-			log.Warning("Uploaded file too small for inventory update: " + requestIP.String() + " (" + strconv.FormatInt(fileSize, 10) + " bytes)")
+			log.HTTPWarning(req, "Uploaded file too small for inventory update: "+requestIP.String()+" ("+strconv.FormatInt(fileSize, 10)+" bytes)")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		allowedRegex := regexp.MustCompile(`^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$`)
 		if !allowedRegex.MatchString(fileHeader.Filename) {
-			log.Warning("Invalid characters in uploaded file name for inventory update: " + requestIP.String())
+			log.HTTPWarning(req, "Invalid characters in uploaded file name for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -551,37 +551,37 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		lowerFileName := strings.ToLower(fileHeader.Filename)
 		for _, ext := range disallowedExtensions {
 			if strings.HasSuffix(lowerFileName, ext) {
-				log.Warning("Uploaded file has disallowed extension for inventory update: " + requestIP.String() + " (" + fileHeader.Filename + ")")
+				log.HTTPWarning(req, "Uploaded file has disallowed extension for inventory update: "+requestIP.String()+" ("+fileHeader.Filename+")")
 				middleware.WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 		}
 		mimeType := http.DetectContentType(fileData[:fileSize])
 		if !strings.HasPrefix(mimeType, "image/") {
-			log.Warning("Uploaded file is not an image for inventory update: " + requestIP.String() + " (Content-Type: " + mimeType + ")")
+			log.HTTPWarning(req, "Uploaded file is not an image for inventory update: "+requestIP.String()+" (Content-Type: "+mimeType+")")
 			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)
 			return
 		}
 		imageReader := bytes.NewReader(fileData)
 		_, err = imageReader.Seek(0, io.SeekStart)
 		if err != nil {
-			log.Error("Failed to seek to start of uploaded image for inventory update: " + err.Error() + " (" + requestIP.String() + ")")
+			log.HTTPError(req, "Failed to seek to start of uploaded image for inventory update: "+err.Error()+" ("+requestIP.String()+")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		decodedImage, imageFormat, err := image.Decode(imageReader)
 		if err != nil {
-			log.Error("Failed to decode uploaded image for thumbnail creation for inventory update: " + err.Error() + " (" + requestIP.String() + ")")
+			log.HTTPError(req, "Failed to decode uploaded image for thumbnail creation for inventory update: "+err.Error()+" ("+requestIP.String()+")")
 		}
 		_, err = imageReader.Seek(0, io.SeekStart)
 		if err != nil {
-			log.Error("Failed to seek to start of uploaded image for inventory update: " + err.Error() + " (" + requestIP.String() + ")")
+			log.HTTPError(req, "Failed to seek to start of uploaded image for inventory update: "+err.Error()+" ("+requestIP.String()+")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		decodedImageConfig, _, err := image.DecodeConfig(imageReader)
 		if err != nil {
-			log.Error("Failed to decode uploaded image config for inventory update: " + err.Error() + ": " + fileHeader.Filename + " (" + requestIP.String() + ")")
+			log.HTTPError(req, "Failed to decode uploaded image config for inventory update: "+err.Error()+": "+fileHeader.Filename+" ("+requestIP.String()+")")
 		}
 		resolutionX := decodedImageConfig.Width
 		resolutionY := decodedImageConfig.Height
@@ -593,14 +593,14 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		switch mimeType {
 		case "image/jpeg", "image/jpg":
 			if imageFormat != "jpeg" {
-				log.Warning("MIME type and image format mismatch for uploaded file for inventory update: " + requestIP.String() + " (MIME: " + mimeType + ", Format: " + imageFormat + ")")
+				log.HTTPWarning(req, "MIME type and image format mismatch for uploaded file for inventory update: "+requestIP.String()+" (MIME: "+mimeType+", Format: "+imageFormat+")")
 				middleware.WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 			fileName = baseFileName + ".jpeg"
 		case "image/png":
 			if imageFormat != "png" {
-				log.Warning("MIME type and image format mismatch for uploaded file for inventory update: " + requestIP.String() + " (MIME: " + mimeType + ", Format: " + imageFormat + ")")
+				log.HTTPWarning(req, "MIME type and image format mismatch for uploaded file for inventory update: "+requestIP.String()+" (MIME: "+mimeType+", Format: "+imageFormat+")")
 				middleware.WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
@@ -610,13 +610,13 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		case "video/quicktime":
 			fileName = baseFileName + ".mov"
 		default:
-			log.Warning("Unsupported image MIME type for inventory update: " + requestIP.String() + " (Content-Type: " + mimeType + ")")
+			log.HTTPWarning(req, "Unsupported image MIME type for inventory update: "+requestIP.String()+" (Content-Type: "+mimeType+")")
 			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)
 			return
 		}
 		fileHash := crypto.SHA256.New()
 		if _, err := fileHash.Write(fileData); err != nil {
-			log.Error("Failed to compute hash of uploaded file for inventory update: " + err.Error() + " (" + requestIP.String() + ")")
+			log.HTTPError(req, "Failed to compute hash of uploaded file for inventory update: "+err.Error()+" ("+requestIP.String()+")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -625,16 +625,16 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		imageDirectoryPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber))
 		err = os.MkdirAll(imageDirectoryPath, 0755)
 		if err != nil {
-			log.Error("Failed to create directories for uploaded file for inventory update: " + err.Error() + " (" + requestIP.String() + ")")
+			log.HTTPError(req, "Failed to create directories for uploaded file for inventory update: "+err.Error()+" ("+requestIP.String()+")")
 		}
 
 		if err := os.Chmod(imageDirectoryPath, 0755); err != nil {
-			log.Error("Failed to set directory permissions: " + err.Error() + " (" + requestIP.String() + ")")
+			log.HTTPError(req, "Failed to set directory permissions: "+err.Error()+" ("+requestIP.String()+")")
 		}
 
 		fullFilePath := filepath.Join(imageDirectoryPath, fileName)
 		if err := os.WriteFile(fullFilePath, fileData, 0644); err != nil {
-			log.Error("Failed to save uploaded file for inventory update: " + err.Error() + " (" + requestIP.String() + ")")
+			log.HTTPError(req, "Failed to save uploaded file for inventory update: "+err.Error()+" ("+requestIP.String()+")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -644,14 +644,14 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			fullThumbnailPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), "thumbnail-"+baseFileName+".jpeg")
 			thumbnailFile, err := os.Create(fullThumbnailPath)
 			if err != nil {
-				log.Error("Failed to create thumbnail file for inventory update: " + err.Error() + " (" + requestIP.String() + ")")
+				log.HTTPError(req, "Failed to create thumbnail file for inventory update: "+err.Error()+" ("+requestIP.String()+")")
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			defer thumbnailFile.Close()
 			err = jpeg.Encode(thumbnailFile, decodedImage, &jpeg.Options{Quality: 50})
 			if err != nil {
-				log.Error("Failed to encode thumbnail image for inventory update: " + err.Error() + " (" + requestIP.String() + ")")
+				log.HTTPError(req, "Failed to encode thumbnail image for inventory update: "+err.Error()+" ("+requestIP.String()+")")
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
@@ -664,11 +664,11 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		primaryImage := false
 		err = updateRepo.UpdateClientImages(ctx, tagnumber, fileUUID.String(), &fileName, fullFilePath, &fullThumbnailPath, &fileSizeMB, &fileHashBytes, &mimeType, nil, &resolutionX, &resolutionY, nil, &hidden, &primaryImage)
 		if err != nil {
-			log.Error("Failed to update inventory image data: " + err.Error() + " (" + requestIP.String() + ")")
+			log.HTTPError(req, "Failed to update inventory image data: "+err.Error()+" ("+requestIP.String()+")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		log.Info(fmt.Sprintf("Uploaded file details - Name: %s, Size: %.2f MB, MIME Type: %s", fileName, fileSizeMB, mimeType) + " (" + requestIP.String() + ")")
+		log.HTTPInfo(req, fmt.Sprintf("Uploaded file details - Name: %s, Size: %.2f MB, MIME Type: %s", fileName, fileSizeMB, mimeType)+" ("+requestIP.String()+")")
 		file.Close()
 	}
 	// Update db
@@ -677,13 +677,13 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	// tagnumber and broken bool are converted above
 	err = updateRepo.InsertInventory(ctx, &inventoryUpdate)
 	if err != nil {
-		log.Error("Failed to update inventory data: " + err.Error() + " (" + requestIP.String() + ")")
+		log.HTTPError(req, "Failed to update inventory data: "+err.Error()+" ("+requestIP.String()+")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	err = updateRepo.UpdateSystemData(ctx, tagnumber, inventoryUpdate.SystemManufacturer, inventoryUpdate.SystemModel)
 	if err != nil {
-		log.Error("Failed to update system data: " + err.Error() + " (" + requestIP.String() + ")")
+		log.HTTPError(req, "Failed to update system data: "+err.Error()+" ("+requestIP.String()+")")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -744,7 +744,7 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 
 	db := config.GetDatabaseConn()
 	if db == nil {
-		log.Warning("no database connection available")
+		log.HTTPWarning(req, "no database connection available")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -16,6 +17,42 @@ import (
 
 	config "uit-toolbox/config"
 )
+
+type Middleware func(http.Handler) http.Handler
+
+type Chain struct {
+	middlewares []Middleware
+}
+
+func NewChain(middlewares ...Middleware) Chain {
+	return Chain{
+		middlewares: append([]Middleware{}, middlewares...),
+	}
+}
+
+// Append extends the chain with additional middlewares, returning a new Chain
+func (c Chain) Append(middlewares ...Middleware) Chain {
+	newMiddlewares := make([]Middleware, 0, len(c.middlewares)+len(middlewares))
+	newMiddlewares = append(newMiddlewares, c.middlewares...)
+	newMiddlewares = append(newMiddlewares, middlewares...)
+
+	return Chain{
+		middlewares: newMiddlewares,
+	}
+}
+
+// Then applies the middleware chain to the final handler
+func (c Chain) Then(finalHandler http.Handler) http.Handler {
+	for i := len(c.middlewares) - 1; i >= 0; i-- {
+		finalHandler = c.middlewares[i](finalHandler)
+	}
+	return finalHandler
+}
+
+// ThenFunc applies the middleware chain to a handler function
+func (c Chain) ThenFunc(finalHandlerFunc http.HandlerFunc) http.Handler {
+	return c.Then(finalHandlerFunc)
+}
 
 func StoreLoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -49,10 +86,14 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 						return
 					}
 				}
-				requestIP, _, _ := net.SplitHostPort(req.RemoteAddr)
+
+				requestIP, err := netip.ParseAddr(req.RemoteAddr)
+				if err != nil {
+					requestIP = netip.Addr{}
+				}
 
 				log.Error(fmt.Sprintf("Panic recovered: %v\n%s", err, string(debug.Stack())))
-				log.HTTPError(req, "Request from: "+requestIP+" "+req.Method+" "+req.URL.Path)
+				log.HTTPError(req, "Request from: "+requestIP.String()+" "+req.Method+" "+req.URL.Path)
 
 				WriteJsonError(w, http.StatusInternalServerError)
 			}
@@ -69,13 +110,10 @@ func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		if req.Header.Get("Content-Length") == "" && (req.Method == http.MethodPost || req.Method == http.MethodPut) {
-			contentLengthHeader := req.Header.Get("Content-Length")
-			if strings.TrimSpace(contentLengthHeader) == "" {
-				log.HTTPWarning(req, "Request content length is missing")
-				WriteJsonError(w, http.StatusLengthRequired)
-				return
-			}
+		if strings.TrimSpace(req.Header.Get("Content-Length")) == "" && (req.Method == http.MethodPost || req.Method == http.MethodPut) {
+			log.HTTPWarning(req, "Request content length is missing")
+			WriteJsonError(w, http.StatusLengthRequired)
+			return
 		}
 		maxSize, err := config.GetMaxUploadSize()
 		if err != nil {
@@ -84,7 +122,6 @@ func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		if req.ContentLength > maxSize {
-			//req.RemoteAddr used here because the ip has not been assigned to the context yet
 			log.HTTPWarning(req, "Request content length exceeds limit: "+fmt.Sprintf("%.2fMB", float64(req.ContentLength)/1e6)+" > "+fmt.Sprintf("%.2fMB", float64(maxSize)/1e6))
 			WriteJsonError(w, http.StatusRequestEntityTooLarge)
 			return
@@ -96,32 +133,32 @@ func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 
 func StoreClientIPMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromRequestContext(req)
+		log, ok, err := GetLoggerFromContext(req.Context())
 		if !ok || err != nil {
 			fmt.Println("Error getting logger from context in StoreClientIPMiddleware: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		ip, port, err := net.SplitHostPort(req.RemoteAddr)
+		ipStr, port, err := net.SplitHostPort(req.RemoteAddr)
 		if err != nil {
-			log.HTTPWarning(req, "Could not parse IP address in StoreClientIPMiddleware: "+err.Error())
+			log.HTTPError(req, "Error parsing client IP from RemoteAddr: "+err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if strings.TrimSpace(port) == "" {
-			log.HTTPWarning(req, "Empty port in RemoteAddr in StoreClientIPMiddleware")
+			log.HTTPError(req, "Error parsing client IP from RemoteAddr: missing port")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
-		ipValid, _, _, err := checkValidIP(ip)
+		ip, ipValid, _, _, err := checkValidIP(ipStr)
 		if err != nil {
 			log.HTTPWarning(req, "Error validating IP address for use in context: "+err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if !ipValid {
-			log.HTTPWarning(req, "Cannot store invalid IP address in context: "+ip)
+			log.HTTPWarning(req, "Cannot store invalid IP address in context: "+ip.String())
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -139,13 +176,13 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 
 func CheckIPBlockedMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromRequestContext(req)
+		log, ok, err := GetLoggerFromContext(req.Context())
 		if !ok || err != nil {
 			fmt.Println("Error getting logger for CheckIPBlockedMiddleware from context: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		requestIP, ok := GetRequestIPFromRequestContext(req)
+		requestIP, ok := GetRequestIPFromContext(req.Context())
 		if !ok {
 			log.HTTPWarning(req, "No IP address stored in context")
 			WriteJsonError(w, http.StatusInternalServerError)
@@ -162,7 +199,7 @@ func CheckIPBlockedMiddleware(next http.Handler) http.Handler {
 
 func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromRequestContext(req)
+		log, ok, err := GetLoggerFromContext(req.Context())
 		if !ok || err != nil {
 			fmt.Println("Error getting logger for WebEndpointConfigMiddleware from context: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
@@ -186,21 +223,15 @@ func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 
 func TLSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromRequestContext(req)
+		log, ok, err := GetLoggerFromContext(req.Context())
 		if !ok || err != nil {
 			fmt.Println("Error getting logger from context in TLSMiddleware: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		requestIP, ok := GetRequestIPFromRequestContext(req)
+		endpointConfig, ok := GetWebEndpointConfigFromContext(req.Context())
 		if !ok {
-			log.Warning("No IP address stored in context")
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		endpointConfig, ok := GetWebEndpointConfigFromRequestContext(req)
-		if !ok {
-			log.Warning("Error getting endpoint config in TLS middleware (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
+			log.HTTPWarning(req, "Error getting endpoint config in TLS middleware")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -210,15 +241,13 @@ func TLSMiddleware(next http.Handler) http.Handler {
 		}
 
 		if req.TLS == nil || !req.TLS.HandshakeComplete {
-			log.Warning("TLS handshake failed for client " + requestIP.String())
-			// w.Header().Set("Location", "https://"+req.Host+req.RequestURI)
-			// WriteJsonError(w, http.StatusSeeOther)
+			log.HTTPWarning(req, "TLS handshake failed for client, missing or incomplete TLS connection state")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		if req.TLS.Version < tls.VersionTLS13 {
-			log.Warning("Rejected connection with weak TLS version from " + requestIP.String())
+			log.HTTPWarning(req, "Rejected connection with weak TLS version")
 			WriteJsonError(w, http.StatusUpgradeRequired)
 			return
 		}
@@ -234,7 +263,7 @@ func TLSMiddleware(next http.Handler) http.Handler {
 			tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256:   true,
 		}
 		if weakCiphers[req.TLS.CipherSuite] {
-			log.Warning("Rejected connection with weak cipher suite from " + requestIP.String())
+			log.HTTPWarning(req, "Rejected connection with weak cipher suite")
 			WriteJsonError(w, http.StatusUpgradeRequired)
 			return
 		}
@@ -245,28 +274,22 @@ func TLSMiddleware(next http.Handler) http.Handler {
 
 func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromRequestContext(req)
+		log, ok, err := GetLoggerFromContext(req.Context())
 		if !ok || err != nil {
 			fmt.Println("Error getting logger from context in CheckHttpVersionMiddleware: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		requestIP, ok := GetRequestIPFromRequestContext(req)
+		endpointConfig, ok := GetWebEndpointConfigFromContext(req.Context())
 		if !ok {
-			log.Warning("No IP address stored in context")
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		endpointConfig, ok := GetWebEndpointConfigFromRequestContext(req)
-		if !ok {
-			log.Warning("Error getting endpoint config in HTTP version middleware (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
+			log.HTTPWarning(req, "Error getting endpoint config in HTTP version middleware")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		endpointConfigMajorVersion, _, ok := http.ParseHTTPVersion(endpointConfig.HTTPVersion)
 		if !ok {
-			log.Warning("Invalid HTTP version in endpoint config: " + endpointConfig.HTTPVersion + " (" + requestIP.String() + "" + req.Method + " " + req.URL.Path + ")")
+			log.HTTPWarning(req, "Invalid HTTP version in endpoint config: "+endpointConfig.HTTPVersion)
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -288,31 +311,31 @@ func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
 func AllowIPRangeMiddleware(trafficSource string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			log, ok, err := GetLoggerFromRequestContext(req)
+			log, ok, err := GetLoggerFromContext(req.Context())
 			if !ok || err != nil {
 				fmt.Println("Error getting logger from context in AllowIPRangeMiddleware: " + err.Error())
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			if strings.TrimSpace(trafficSource) == "" {
-				log.Warning("No traffic source specified for AllowIPRangeMiddleware")
+				log.HTTPWarning(req, "No traffic source specified for AllowIPRangeMiddleware")
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
-			requestIP, ok := GetRequestIPFromRequestContext(req)
+			requestIP, ok := GetRequestIPFromContext(req.Context())
 			if !ok {
-				log.Warning("No IP address stored in context")
+				log.HTTPWarning(req, "No IP address stored in context for AllowIPRangeMiddleware")
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			allowed, err := config.IsIPAllowed(trafficSource, requestIP)
 			if err != nil {
-				log.Error("Error checking if IP is allowed: " + err.Error())
+				log.HTTPError(req, "Error checking if IP is allowed: "+err.Error())
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			if !allowed {
-				log.Warning("IP address not in allowed range: " + requestIP.String())
+				log.HTTPWarning(req, "IP address not in allowed range: "+requestIP.String())
 				WriteJsonError(w, http.StatusForbidden)
 				return
 			}
@@ -324,15 +347,15 @@ func AllowIPRangeMiddleware(trafficSource string) func(http.Handler) http.Handle
 func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			log, ok, err := GetLoggerFromRequestContext(req)
+			log, ok, err := GetLoggerFromContext(req.Context())
 			if !ok || err != nil {
 				fmt.Println("Error getting logger from context in RateLimitMiddleware: " + err.Error())
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
-			requestIP, ok := GetRequestIPFromRequestContext(req)
+			requestIP, ok := GetRequestIPFromContext(req.Context())
 			if !ok {
-				log.Warning("no IP address stored in context")
+				log.HTTPWarning(req, "No IP address stored in context for RateLimitMiddleware")
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
@@ -340,7 +363,7 @@ func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
 			// IsClientRateLimited assigns a rate limiter to the client IP if not already present
 			limited, retryAfter := config.IsClientRateLimited(rateType, requestIP)
 			if limited {
-				log.Debug("Client is rate limited: " + requestIP.String() + " (retry after " + retryAfter.String() + ")")
+				log.HTTPDebug(req, "Client is rate limited: "+requestIP.String()+" (retry after "+retryAfter.String()+")")
 				WriteJsonError(w, http.StatusTooManyRequests)
 				return
 			}
@@ -352,7 +375,7 @@ func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
 
 func APITimeoutMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromRequestContext(req)
+		log, ok, err := GetLoggerFromContext(req.Context())
 		if !ok || err != nil {
 			fmt.Println("Error getting logger from context in APITimeoutMiddleware: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
@@ -372,7 +395,7 @@ func APITimeoutMiddleware(next http.Handler) http.Handler {
 
 func FileServerTimeoutMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromRequestContext(req)
+		log, ok, err := GetLoggerFromContext(req.Context())
 		if !ok || err != nil {
 			fmt.Println("Error getting logger from context in FileServerTimeoutMiddleware: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
@@ -392,15 +415,9 @@ func FileServerTimeoutMiddleware(next http.Handler) http.Handler {
 
 func HTTPMethodMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromRequestContext(req)
+		log, ok, err := GetLoggerFromContext(req.Context())
 		if !ok || err != nil {
 			fmt.Println("Error getting logger from context in HTTPMethodMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		requestIP, ok := GetRequestIPFromRequestContext(req)
-		if !ok {
-			log.Warning("No IP address stored in context")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -414,20 +431,20 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 			http.MethodDelete:  true,
 		}
 		if !validMethods[req.Method] {
-			log.Warning("Invalid request method (" + requestIP.String() + "): " + req.Method)
+			log.HTTPWarning(req, "Invalid request method")
 			WriteJsonError(w, http.StatusMethodNotAllowed)
 			return
 		}
 
-		endpointConfig, ok := GetWebEndpointConfigFromRequestContext(req)
+		endpointConfig, ok := GetWebEndpointConfigFromContext(req.Context())
 		if !ok {
-			log.Warning("Error getting endpoint config in HTTP method middleware (" + requestIP.String() + " " + req.Method + " " + req.URL.Path + ")")
+			log.HTTPWarning(req, "Error getting endpoint config in HTTP method middleware")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		if !slices.Contains(endpointConfig.AllowedMethods, req.Method) {
-			log.Info("Method is not allowed for endpoint (" + req.URL.Path + "): " + req.Method + " from " + requestIP.String())
+			log.HTTPInfo(req, "Method is not allowed for endpoint")
 			WriteJsonError(w, http.StatusMethodNotAllowed)
 			return
 		}
@@ -438,63 +455,49 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 
 func CheckValidURLMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromRequestContext(req)
+		log, ok, err := GetLoggerFromContext(req.Context())
 		if !ok || err != nil {
 			fmt.Println("Error getting logger from context in CheckValidURLMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		requestIP, ok := GetRequestIPFromRequestContext(req)
-		if !ok {
-			log.Warning("No IP address stored in context")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		// URL length
 		if len(req.URL.RequestURI()) > 2048 {
-			log.Warning("Request URL length exceeds character limit: " + fmt.Sprintf("%d", len(req.URL.RequestURI())) + " (" + requestIP.String() + ": " + req.Method + " " + req.URL.RequestURI() + ")")
+			log.HTTPWarning(req, "Request URL length exceeds character limit: "+fmt.Sprintf("%d", len(req.URL.RequestURI()))+"/2048")
 			WriteJsonError(w, http.StatusRequestURITooLong)
 			return
 		}
 
 		// URL path
-		cleanPath, err := validateAndCleanPath(req.URL.Path)
+		cleanPath, err := validateAndCleanURLPath(req.URL.Path)
 		if err != nil {
-			log.Warning("Invalid path from " + requestIP.String() + ": " + err.Error())
+			log.HTTPWarning(req, "Invalid URL path: "+err.Error())
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
 		// Validate query parameters (even if empty)
 		if err := validateQueryParams(req.URL.Query()); err != nil {
-			log.Warning("Invalid query parameters from " + requestIP.String() + ": " + err.Error())
+			log.HTTPWarning(req, "Invalid URL query parameters: "+err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		// Check RawQuery for null bytes and CRLF. req.URL.Query() and url.Parse() may be empty even if RawQuery is not.
 		if strings.Contains(req.URL.RawQuery, "\x00") {
-			log.Warning("Null byte detected in raw query string from " + requestIP.String())
+			log.HTTPWarning(req, "Null byte detected in raw query string")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if strings.ContainsAny(req.URL.RawQuery, "\r\n") {
-			log.Warning("CRLF characters detected in raw query string from " + requestIP.String())
+			log.HTTPWarning(req, "CRLF characters detected in raw query string")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		// Chain context updates
 		ctx := req.Context()
-		// Store URL in context (raw path + raw query - try not to use unless necessary)
-		ctx, err = withRequestURL(ctx, req.URL.RequestURI())
-		if err != nil {
-			log.HTTPError(req, "Error storing URL in context: "+err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
 		// Store clean path in context (to be used later on)
 		ctx, err = withRequestPath(ctx, cleanPath)
 		if err != nil {
@@ -504,7 +507,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Store raw query in context, even if empty (to be used later on)
-		ctx, err = withRequestQuery(ctx, req.URL.RawQuery)
+		ctx, err = withRequestQuery(ctx, req.URL.Query())
 		if err != nil {
 			log.HTTPError(req, "Error storing query in context: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
@@ -525,29 +528,29 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		}
 
 		for headerKey, headerValues := range req.Header {
-			// Block CRLF and null bytes in header keys
-			if strings.ContainsAny(headerKey, "\x00\r\n") {
-				log.HTTPWarning(req, "CRLF or null byte in header key")
-				WriteJsonError(w, http.StatusBadRequest)
-				return
-			}
-			// Check header key length and critical characters
+			// Check header key length
 			if len(headerKey) > 255 {
-				log.HTTPWarning(req, "Header key too long: '"+headerKey+"' ("+fmt.Sprintf("%d", len(headerKey))+" bytes)")
+				log.HTTPWarning(req, "Header key too long: "+fmt.Sprintf("%d", len(headerKey))+"/255 bytes")
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 
+			// Block disallowed characters in header keys
+			if strings.ContainsAny(headerKey, disallowedHeaderChars) {
+				log.HTTPWarning(req, "Disallowed characters in header key")
+				WriteJsonError(w, http.StatusBadRequest)
+				return
+			}
+
+			// Header values
 			for _, headerValue := range headerValues {
-				// Block CRLF and null bytes in ALL header values
-				if strings.ContainsAny(headerValue, "\x00\r\n") {
-					log.HTTPWarning(req, "CRLF or null byte in header '"+headerKey+"'")
+				if strings.ContainsAny(headerValue, disallowedHeaderChars) {
+					log.HTTPWarning(req, "Disallowed characters in header value")
 					WriteJsonError(w, http.StatusBadRequest)
 					return
 				}
-				// Default max length for header values (specific requirements below)
 				if len(headerValue) > 8192 {
-					log.HTTPWarning(req, "Header value too long for '"+headerKey+"': "+fmt.Sprintf("%.2f", float64(len(headerValue))/1024)+" KB")
+					log.HTTPWarning(req, "Header value too long for '"+headerKey+"' "+fmt.Sprintf("%.2f", float64(len(headerValue))/1024)+" KB")
 					WriteJsonError(w, http.StatusBadRequest)
 					return
 				}
@@ -558,12 +561,12 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		// Host header (required)
 		host := req.Host
 		if strings.TrimSpace(host) == "" {
-			log.HTTPWarning(req, "Missing Host header")
+			log.HTTPWarning(req, "Request is missing 'Host' header")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if len(host) > 255 {
-			log.HTTPWarning(req, "Host header too long: "+fmt.Sprintf("%d bytes", len(host)))
+			log.HTTPWarning(req, "Host header is too long: "+fmt.Sprintf("%d bytes", len(host)))
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -575,58 +578,61 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		}
 
 		// User-Agent header (required)
-		userAgent := req.Header.Get("User-Agent")
+		userAgent := strings.TrimSpace(req.Header.Get("User-Agent"))
 		if userAgent == "" {
-			log.HTTPWarning(req, "Missing User-Agent header")
+			log.HTTPWarning(req, "Request is missing 'User-Agent' header")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if len(userAgent) > 512 {
-			log.HTTPWarning(req, "User-Agent too long: "+fmt.Sprintf("%d bytes", len(userAgent)))
+			log.HTTPWarning(req, "User-Agent header is too long: "+fmt.Sprintf("%d bytes", len(userAgent)))
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		// Content-Type (required for POST/PUT)
-		if req.Method == http.MethodPost || req.Method == http.MethodPut {
-			contentType := req.Header.Get("Content-Type")
-			if contentType == "" {
-				log.HTTPWarning(req, "Missing Content-Type header for "+req.Method)
-				WriteJsonError(w, http.StatusBadRequest)
-				return
-			}
-			if len(contentType) > 256 {
-				log.HTTPWarning(req, "Content-Type header is too long: "+fmt.Sprintf("%d bytes", len(contentType)))
-				WriteJsonError(w, http.StatusBadRequest)
-				return
-			}
-			if contentType != "application/x-www-form-urlencoded" && contentType != "application/json" && !strings.HasPrefix(contentType, "multipart/form-data") {
-				log.HTTPWarning(req, "Invalid Content-Type header: "+contentType)
-				WriteJsonError(w, http.StatusUnsupportedMediaType)
-				return
-			}
+		contentType := strings.TrimSpace(req.Header.Get("Content-Type"))
+		if contentType == "" {
+			log.HTTPWarning(req, "Request is missing 'Content-Type' header")
+			WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		if req.Method != http.MethodPost && req.Method != http.MethodPut {
+			log.HTTPWarning(req, "Content-Type header present for non-POST/PUT request")
+			WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		if len(contentType) > 256 {
+			log.HTTPWarning(req, "Content-Type header is too long: "+fmt.Sprintf("%d bytes", len(contentType)))
+			WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		if contentType != "application/x-www-form-urlencoded" && contentType != "application/json" && !strings.HasPrefix(contentType, "multipart/form-data") {
+			log.HTTPWarning(req, "Invalid Content-Type header: "+contentType)
+			WriteJsonError(w, http.StatusUnsupportedMediaType)
+			return
 		}
 
 		// Optional headers: Validate if present
 		// Cookie (optional, validate length if present)
-		cookieHeader := req.Header.Get("Cookie")
+		cookieHeader := strings.TrimSpace(req.Header.Get("Cookie"))
 		if len(cookieHeader) > 4096 {
-			log.HTTPWarning(req, "Cookie header too large: "+fmt.Sprintf("%.2f KB", float64(len(cookieHeader))/1024))
+			log.HTTPWarning(req, "Cookie header is too large: "+fmt.Sprintf("%.2f KB", float64(len(cookieHeader))/1024))
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		// Authorization (optional, validate format if present)
-		authorization := req.Header.Get("Authorization")
+		authorization := strings.TrimSpace(req.Header.Get("Authorization"))
 		if authorization != "" {
 			if len(authorization) > 8192 {
-				log.HTTPWarning(req, "Authorization header too long: "+fmt.Sprintf("%.2f KB", float64(len(authorization))/1024))
+				log.HTTPWarning(req, "Authorization header is too long: "+fmt.Sprintf("%.2f KB", float64(len(authorization))/1024))
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 			// Must start with Bearer or Basic
 			if !strings.HasPrefix(authorization, "Bearer ") && !strings.HasPrefix(authorization, "Basic ") {
-				log.HTTPWarning(req, "Invalid Authorization format (missing Bearer/Basic prefix)")
+				log.HTTPWarning(req, "Invalid Authorization format (missing Basic/Bearer prefix)")
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
@@ -634,7 +640,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 
 		// Connection header (disallowed, not allowed in HTTP/2)
 		if req.ProtoMajor == 2 && req.Header.Get("Connection") != "" {
-			log.HTTPWarning(req, "Connection header present in HTTP/2 request")
+			log.HTTPWarning(req, "Connection header disallowed in HTTP/2 request")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -642,34 +648,34 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		// Transfer-Encoding (optional, check for request smuggling)
 		transferEncoding := req.Header.Get("Transfer-Encoding")
 		if transferEncoding != "" && transferEncoding != "chunked" {
-			log.HTTPWarning(req, "Suspicious Transfer-Encoding: '"+transferEncoding+"'")
+			log.HTTPWarning(req, "Suspicious Transfer-Encoding header: '"+transferEncoding+"'")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		// Referer (optional, but validate length)
-		referer := req.Header.Get("Referer")
+		referer := strings.TrimSpace(req.Header.Get("Referer"))
 		if len(referer) > 2048 {
-			log.HTTPWarning(req, "Referer too long: "+fmt.Sprintf("%.2f KB", float64(len(referer))/1024))
+			log.HTTPWarning(req, "Referer header is too long: "+fmt.Sprintf("%.2f KB", float64(len(referer))/1024))
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		// Origin (if using CORS, validate length)
-		origin := req.Header.Get("Origin")
+		origin := strings.TrimSpace(req.Header.Get("Origin"))
 		if len(origin) > 2048 {
-			log.HTTPWarning(req, "Origin too long: "+fmt.Sprintf("%.2f KB", float64(len(origin))/1024))
+			log.HTTPWarning(req, "Origin header is too long: "+fmt.Sprintf("%.2f KB", float64(len(origin))/1024))
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		// Suspicious headers
-		if xForwardedFor := req.Header.Get("X-Forwarded-For"); xForwardedFor != "" {
+		if xForwardedFor := strings.TrimSpace(req.Header.Get("X-Forwarded-For")); xForwardedFor != "" {
 			log.HTTPWarning(req, "X-Forwarded-For header present (possible proxy bypass): "+xForwardedFor)
 			// Log and don't return
 		}
 
-		if xRealIP := req.Header.Get("X-Real-IP"); xRealIP != "" {
+		if xRealIP := strings.TrimSpace(req.Header.Get("X-Real-IP")); xRealIP != "" {
 			log.HTTPWarning(req, "X-Real-IP header present (possible IP spoofing): "+xRealIP)
 			// Log and don't return
 		}
@@ -687,18 +693,6 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		requestIP, ok := GetRequestIPFromContext(ctx)
-		if !ok {
-			log.Warning("No IP address stored in context")
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		requestURL, ok := GetRequestPathFromContext(ctx)
-		if !ok {
-			log.Warning("No URL stored in context")
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
 
 		// SERVER-SIDE CORS CHECKS
 		// Get web server IP for CORS
@@ -712,7 +706,7 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 		cors := http.NewCrossOriginProtection()
 		// cors.AddTrustedOrigin("https://" + httpsServerIP + ":1411")
 		if err := cors.Check(req); err != nil {
-			log.Warning("Request to " + requestURL + " blocked from " + requestIP.String())
+			log.HTTPWarning(req, "Request blocked because it violates CORS policy: "+err.Error())
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
@@ -741,7 +735,7 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload") // 2 years
 		w.Header().Set("Referrer-Policy", "no-referrer")
-		nonce, err := GenerateNonce(24)
+		nonce, err := generateNonce(24)
 		if err != nil {
 			log.Error("Cannot generate CSP nonce: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
@@ -801,7 +795,7 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 		fileRequested := filepath.Base(pathRequested)
 		endpointConfig, err := config.GetWebEndpointConfig(pathRequested)
 		if err != nil {
-			log.HTTPWarning(req, "Error getting endpoint config in AllowedFilesMiddleware: "+pathRequested+" "+err.Error())
+			log.HTTPWarning(req, "Error getting endpoint config in AllowedFilesMiddleware "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -939,9 +933,11 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			if sessionErr != nil && sessionErr != http.ErrNoCookie {
 				log.HTTPWarning(req, "Error retrieving UIT auth cookies: "+sessionErr.Error())
 			}
+
+			// IP authentication for LAN IPs
 			allowedIPs, err := config.GetAllowedLANIPs()
 			if err != nil {
-				log.Error("Error getting allowed LAN IPs: " + err.Error())
+				log.HTTPError(req, "Error getting allowed LAN IPs: "+err.Error())
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
@@ -952,7 +948,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 				}
 			}
 			log.HTTPInfo(req, "No auth cookies found in request: sessionID error: "+fmt.Sprintf("%v", sessionErr)+", basic cookie error: "+fmt.Sprintf("%v", basicErr)+", bearer cookie error: "+fmt.Sprintf("%v", bearerErr))
-			// WriteJsonError(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
+			// WriteJsonError(w, http.StatusUnauthorized)
 			http.Redirect(w, req, "/login", http.StatusSeeOther)
 			return
 		}
@@ -975,7 +971,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 
 			sessionExtended, err := config.ExtendAuthSession(uitSessionIDCookie.Value)
 			if err != nil {
-				log.Error("Error extending auth session: " + err.Error())
+				log.HTTPError(req, "Error extending auth session: "+err.Error())
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}

@@ -15,15 +15,15 @@ import (
 )
 
 // Auth for web users
-func GetAdminCredentials() (string, string, error) {
+func GetAdminCredentials() (*string, *string, error) {
 	appState := GetAppState()
 	if appState == nil {
-		return "", "", errors.New("app state is not initialized")
+		return nil, nil, errors.New("app state is not initialized")
 	}
 
 	adminUsername := "admin"
 	adminPasswd := strings.TrimSpace(appState.AppConfig.UIT_WEB_USER_DEFAULT_PASSWD)
-	return adminUsername, adminPasswd, nil
+	return &adminUsername, &adminPasswd, nil
 }
 
 // Auth session management

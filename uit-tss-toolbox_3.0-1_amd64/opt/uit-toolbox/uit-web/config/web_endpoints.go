@@ -26,17 +26,17 @@ type WebEndpointConfig struct {
 func GetWebEndpointConfig(endpointPath string) (*WebEndpointConfig, error) {
 	appState := GetAppState()
 	if appState == nil {
-		return nil, fmt.Errorf("cannot get web endpoint, app state is not initialized")
+		return nil, fmt.Errorf("app state is not initialized")
 	}
 	value, ok := appState.WebEndpoints.Load(endpointPath)
 	if !ok {
-		return nil, fmt.Errorf("endpoint not found: %s", endpointPath)
+		return nil, fmt.Errorf("endpoint not found in config: %s", endpointPath)
 	}
 	endpointData, ok := value.(*WebEndpointConfig)
 	if !ok {
-		return nil, fmt.Errorf("invalid endpoint data for: %s", endpointPath)
+		return nil, fmt.Errorf("invalid/missing endpoint data for: %s", endpointPath)
 	}
-	return endpointData, nil // return copy
+	return endpointData, nil // return a copy
 }
 
 func GetWebEndpointFilePath(webEndpoint *WebEndpointConfig) (string, error) {

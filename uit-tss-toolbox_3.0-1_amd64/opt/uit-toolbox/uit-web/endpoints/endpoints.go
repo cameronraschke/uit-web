@@ -163,15 +163,9 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestURL, ok := middleware.GetRequestURLFromContext(ctx)
-	if !ok {
-		log.Warning("No URL stored in context")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
 	requestedPath, ok := middleware.GetRequestPathFromContext(ctx)
 	if !ok {
-		log.Warning("no requested file stored in context")
+		log.Warning("No URL stored in context")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -189,25 +183,25 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Debug("File request from " + requestIP.String() + " for " + requestURL)
+	log.HTTPDebug(req, "File request from "+requestIP.String()+" for "+requestedPath)
 
 	// Get endpoint config
 	endpointData, err := config.GetWebEndpointConfig(requestedPath)
 	if err != nil {
-		log.Warning("Cannot get endpoint config for endpoint: " + requestURL + " (" + err.Error() + ")")
+		log.HTTPWarning(req, "Cannot get endpoint config for endpoint "+requestedPath+": "+err.Error()+"")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	filePath, err := config.GetWebEndpointFilePath(endpointData)
 	if err != nil {
-		log.Warning("Cannot get file path for endpoint: " + requestedPath + " (" + err.Error() + ")")
+		log.HTTPWarning(req, "Cannot get file path for endpoint "+requestedPath+": "+err.Error()+"")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	// Open the file
 	file, err := os.Open(filePath)
 	if err != nil {
-		log.Warning("Cannot open file: " + filePath + " (" + err.Error() + ")")
+		log.HTTPWarning(req, "Cannot open file: "+filePath+": "+err.Error()+"")
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
@@ -222,19 +216,19 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 
 	metadata, err := file.Stat()
 	if err != nil {
-		log.Error("Cannot stat file: " + filePath + " (" + err.Error() + ")")
+		log.HTTPWarning(req, "Cannot stat file: "+filePath+": "+err.Error()+"")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	maxFileSize, err := config.GetMaxUploadSize()
 	if err != nil {
-		log.Error("Cannot get max upload size from config: " + err.Error())
+		log.HTTPError(req, "Cannot get max upload size from config: "+err.Error()+"")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	if metadata.Size() > maxFileSize {
-		log.Warning("File too large: " + filePath + " (" + fmt.Sprintf("%d", metadata.Size()) + " bytes)")
+		log.HTTPWarning(req, "File too large: "+filePath+" ("+fmt.Sprintf("%d", metadata.Size())+" bytes)")
 		http.Error(w, "File too large", http.StatusRequestEntityTooLarge)
 		return
 	}
@@ -242,7 +236,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	// Set headers
 	contentType, err := config.GetWebEndpointContentType(endpointData)
 	if err != nil {
-		log.Warning("Cannot get content type for endpoint: " + requestedPath + " (" + err.Error() + ")")
+		log.HTTPWarning(req, "Cannot get content type for endpoint "+requestedPath+": "+err.Error()+"")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -253,14 +247,14 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 
 		parsedHTMLTemplate, err = template.ParseFiles(filePath)
 		if err != nil {
-			log.Warning("Cannot parse template file (" + filePath + "): " + err.Error())
+			log.HTTPWarning(req, "Cannot parse template file ("+filePath+"): "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		db := database.NewRepo(config.GetDatabaseConn())
 		if db == nil {
-			log.Warning("Cannot get database connection for template endpoint: " + requestedPath)
+			log.HTTPWarning(req, "Cannot get database connection for template endpoint: "+requestedPath)
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -281,7 +275,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			if slices.Contains(endpointData.Requires, "webmaster_contact") {
 				webmasterName, webmasterEmail, err := config.GetWebmasterContact()
 				if err != nil {
-					log.Error("Cannot get webmaster contact info: " + err.Error())
+					log.HTTPError(req, "Cannot get webmaster contact info: "+err.Error()+"")
 					middleware.WriteJsonError(w, http.StatusInternalServerError)
 					return
 				}
@@ -292,7 +286,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			if slices.Contains(endpointData.Requires, "departments") {
 				departments, err := db.GetDepartments(ctx)
 				if err != nil {
-					log.Error("Cannot get department list from database: " + err.Error())
+					log.HTTPError(req, "Cannot get department list from database: "+err.Error()+"")
 					middleware.WriteJsonError(w, http.StatusInternalServerError)
 					return
 				}
@@ -302,7 +296,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			if slices.Contains(endpointData.Requires, "domains") {
 				domains, err := db.GetDomains(ctx)
 				if err != nil {
-					log.Error("Cannot get domain list from database: " + err.Error())
+					log.HTTPError(req, "Cannot get domain list from database: "+err.Error()+"")
 					middleware.WriteJsonError(w, http.StatusInternalServerError)
 					return
 				}
@@ -312,7 +306,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			if slices.Contains(endpointData.Requires, "statuses") {
 				statuses, err := db.GetStatuses(ctx)
 				if err != nil {
-					log.Error("Cannot get status list from database: " + err.Error())
+					log.HTTPError(req, "Cannot get status list from database: "+err.Error()+"")
 					middleware.WriteJsonError(w, http.StatusInternalServerError)
 					return
 				}
@@ -322,7 +316,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			if slices.Contains(endpointData.Requires, "locations") {
 				locations, err := db.GetLocations(ctx)
 				if err != nil {
-					log.Error("Cannot get location list from database: " + err.Error())
+					log.HTTPError(req, "Cannot get location list from database: "+err.Error()+"")
 					middleware.WriteJsonError(w, http.StatusInternalServerError)
 					return
 				}
@@ -333,7 +327,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 				urlTag := req.URL.Query().Get("tagnumber")
 				tagnumber, err := ConvertTagnumber(urlTag)
 				if err != nil {
-					log.Warning("Invalid tagnumber in URL: " + urlTag + " (" + err.Error() + ")")
+					log.HTTPWarning(req, "Invalid tagnumber in URL: "+urlTag+" ("+err.Error()+")")
 					middleware.WriteJsonError(w, http.StatusBadRequest)
 					return
 				}
@@ -355,7 +349,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		// Execute the template
 		err = parsedHTMLTemplate.Execute(w, httpTemplateResponseData)
 		if err != nil {
-			log.Error("Error executing template for " + filePath + ": " + err.Error())
+			log.HTTPError(req, "Error executing template for "+filePath+": "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -377,7 +371,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	// Serve the file
 	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), file)
 
-	log.Debug("Served file: " + requestedPath + " to " + requestIP.String())
+	log.HTTPDebug(req, "Served file: "+requestedPath+" to "+requestIP.String())
 }
 
 func LogoutHandler(w http.ResponseWriter, req *http.Request) {
@@ -410,7 +404,7 @@ func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	sessionID := strings.TrimSpace(requestSessionIDCookie.Value)
 	config.DeleteAuthSession(sessionID)
-	log.Info("Deleted auth session for logout: " + sessionID + " (" + requestIP.String() + ")")
+	log.HTTPInfo(req, "Deleted auth session for logout: "+sessionID+" ("+requestIP.String()+")")
 	// Clear cookies
 	sessionIDCookie, basicCookie, bearerCookie, csrfCookie := middleware.GetAuthCookiesForResponse("", "", "", "", -time.Hour)
 	http.SetCookie(w, sessionIDCookie)

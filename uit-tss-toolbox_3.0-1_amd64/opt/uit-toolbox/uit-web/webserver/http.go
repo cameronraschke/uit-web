@@ -13,7 +13,7 @@ import (
 
 func StartFileServer(ctx context.Context, serverHost string) error {
 	log := config.GetLogger()
-	fileServerBaseChain := muxChain{
+	httpBaseChain := middleware.NewChain(
 		middleware.StoreLoggerMiddleware,
 		middleware.PanicRecoveryMiddleware,
 		middleware.LimitRequestSizeMiddleware,
@@ -29,19 +29,16 @@ func StartFileServer(ctx context.Context, serverHost string) error {
 		middleware.CheckValidURLMiddleware,
 		middleware.CheckHeadersMiddleware,
 		middleware.SetHeadersMiddleware,
-	}
+	)
 
-	fileServerMuxChain := muxChain{
+	fileServerChain := httpBaseChain.Append(
 		middleware.AllowedFilesMiddleware,
-	}
-
-	fileServerFullChain := append(fileServerBaseChain, fileServerMuxChain...)
+	)
 
 	httpMux := http.NewServeMux()
-	httpMux.Handle("/client/", fileServerFullChain.thenFunc(endpoints.FileServerHandler))
-	httpMux.Handle("/client", fileServerFullChain.thenFunc(endpoints.RejectRequest))
-	httpMux.Handle("/", fileServerBaseChain.thenFunc(endpoints.RejectRequest))
-
+	httpMux.Handle("/client/", fileServerChain.ThenFunc(endpoints.FileServerHandler))
+	httpMux.Handle("/client", fileServerChain.ThenFunc(endpoints.RejectRequest))
+	httpMux.Handle("/", httpBaseChain.ThenFunc(endpoints.RejectRequest))
 	log.Info("Starting HTTP file server...")
 
 	httpServer := &http.Server{

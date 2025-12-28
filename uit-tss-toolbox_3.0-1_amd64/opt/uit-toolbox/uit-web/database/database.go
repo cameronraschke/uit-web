@@ -77,19 +77,22 @@ func CreateAdminUser() error {
 	if err != nil {
 		return errors.New("failed to get admin credentials: " + err.Error())
 	}
+	if adminUsername == nil || adminPasswd == nil {
+		return errors.New("admin credentials are nil")
+	}
 
-	if strings.TrimSpace(adminUsername) == "" {
+	if strings.TrimSpace(*adminUsername) == "" {
 		return errors.New("admin username is empty")
 	}
 	usernameHash := crypto.SHA256.New()
-	usernameHash.Write([]byte(adminUsername))
+	usernameHash.Write([]byte(*adminUsername))
 	adminUsernameHash := hex.EncodeToString(usernameHash.Sum(nil))
 
-	if strings.TrimSpace(adminPasswd) == "" {
+	if strings.TrimSpace(*adminPasswd) == "" {
 		return errors.New("admin password is empty")
 	}
 	passwordHash := crypto.SHA256.New()
-	passwordHash.Write([]byte(adminPasswd))
+	passwordHash.Write([]byte(*adminPasswd))
 	adminPasswdHash := hex.EncodeToString(passwordHash.Sum(nil))
 
 	bcryptHashBytes, err := bcrypt.GenerateFromPassword([]byte(adminPasswdHash), bcrypt.DefaultCost)

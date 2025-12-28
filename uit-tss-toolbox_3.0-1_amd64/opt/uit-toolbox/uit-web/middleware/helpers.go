@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -45,8 +46,19 @@ type JsonError struct {
 }
 
 const (
-	disallowedQueryChars = "\x00\r\n<>`:"
-	disallowedPathChars  = " <>\"'`|\\*$%#?~:\x00\r\n"
+	disallowedQueryChars  = "\x00\r\n<>`:"
+	disallowedHeaderChars = "\x00\r\n"
+	// Block: space, brackets, quotes, pipe, backslash, star, dollar, percent, hash, question, tilde, colon, semicolon, braces, parenthesis, caret, ampersand, null, CRLF
+	disallowedPathChars = " <>\"'`|\\*$%#?~:;{}[]()^&\x00\r\n"
+	maxQueryKeyLen      = 128
+	maxQueryValueLen    = 512
+	maxQueryParams      = 64
+)
+
+var (
+	disallowedFileExtensions = []string{
+		".tmp", ".bak", ".swp",
+	}
 )
 
 var (
@@ -98,7 +110,7 @@ func WriteJsonErrorCustomMessage(w http.ResponseWriter, httpStatusCode int, cust
 	_ = responseController.Flush()
 }
 
-func GenerateNonce(n int) (string, error) {
+func generateNonce(n int) (string, error) {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
 		return "", err
@@ -120,8 +132,11 @@ func GetNonceFromRequestContext(r *http.Request) (nonce string, ok bool) {
 }
 
 func withWebEndpointConfig(ctx context.Context, endpoint *config.WebEndpointConfig) (context.Context, error) {
+	if ctx == nil {
+		return ctx, errors.New("nil context in withWebEndpointConfig")
+	}
 	if endpoint == nil {
-		return ctx, errors.New("nil endpoint config")
+		return ctx, errors.New("nil endpoint config in withWebEndpointConfig")
 	}
 	return context.WithValue(ctx, requestEndpointKey, *endpoint), nil
 }
@@ -133,18 +148,9 @@ func GetWebEndpointConfigFromRequestContext(req *http.Request) (endpoint config.
 	return GetWebEndpointConfigFromContext(req.Context())
 }
 
-func withClientIP(ctx context.Context, ipStr string) (context.Context, error) {
-	if strings.TrimSpace(ipStr) == "" {
-		return ctx, errors.New("empty IP address")
-	}
-	ipAddr, err := netip.ParseAddr(ipStr)
-	if err != nil {
-		return ctx, fmt.Errorf("failed to parse IP address: %w", err)
-	}
-	if !ipAddr.IsValid() {
-		return ctx, errors.New("invalid IP address: " + ipStr)
-	}
-	return context.WithValue(ctx, clientIPKey, ipAddr), nil
+func withClientIP(ctx context.Context, ip netip.Addr) (context.Context, error) {
+	// Use validated IP address here from checkValidIP
+	return context.WithValue(ctx, clientIPKey, ip), nil
 }
 func GetRequestIPFromContext(ctx context.Context) (ipAddr netip.Addr, ok bool) {
 	ipAddr, ok = ctx.Value(clientIPKey).(netip.Addr)
@@ -152,20 +158,6 @@ func GetRequestIPFromContext(ctx context.Context) (ipAddr netip.Addr, ok bool) {
 }
 func GetRequestIPFromRequestContext(r *http.Request) (ipAddr netip.Addr, ok bool) {
 	return GetRequestIPFromContext(r.Context())
-}
-
-func withRequestURL(ctx context.Context, url string) (context.Context, error) {
-	// if strings.TrimSpace(url) == "" {
-	// 	return ctx, errors.New("empty request URL")
-	// }
-	return context.WithValue(ctx, urlRequestKey, url), nil
-}
-func GetRequestURLFromContext(ctx context.Context) (url string, ok bool) {
-	url, ok = ctx.Value(urlRequestKey).(string)
-	return url, ok
-}
-func GetRequestURLFromRequestContext(r *http.Request) (url string, ok bool) {
-	return GetRequestURLFromContext(r.Context())
 }
 
 func withRequestPath(ctx context.Context, path string) (context.Context, error) {
@@ -182,13 +174,11 @@ func GetRequestPathFromRequestContext(r *http.Request) (path string, ok bool) {
 	return GetRequestPathFromContext(r.Context())
 }
 
-func withRequestQuery(ctx context.Context, query string) (context.Context, error) {
-	query = strings.TrimSpace(query)
-	urlValues, err := url.ParseQuery(query)
-	if err != nil {
-		return ctx, fmt.Errorf("failed to parse request query: %w", err)
+func withRequestQuery(ctx context.Context, query url.Values) (context.Context, error) {
+	if len(query) == 0 {
+		return ctx, nil
 	}
-	return context.WithValue(ctx, queryRequestKey, urlValues), nil
+	return context.WithValue(ctx, queryRequestKey, query), nil
 }
 func GetRequestQueryFromContext(ctx context.Context) (query url.Values, ok bool) {
 	val := ctx.Value(queryRequestKey)
@@ -297,43 +287,31 @@ func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue,
 	return sessionIDCookie, basicCookie, bearerCookie, csrfCookie
 }
 
-func checkValidIP(ip string) (isValid bool, isLoopback bool, isLocal bool, err error) {
-	maxStringSize := int64(128)
+func checkValidIP(ipStr string) (ipAddr netip.Addr, isValid bool, isLoopback bool, isLocal bool, err error) {
+	ipStr = strings.TrimSpace(ipStr)
 
-	if len(ip) > int(maxStringSize) {
-		return false, false, false, fmt.Errorf("IP address string length exceeded %d bytes", maxStringSize)
-	}
-	ipStr := strings.TrimSpace(ip)
 	if ipStr == "" {
-		return false, false, false, errors.New("IP address string is empty")
+		return netip.Addr{}, false, false, false, errors.New("empty IP address")
 	}
+
 	if !utf8.ValidString(ipStr) {
-		return false, false, false, errors.New("IP address string is not valid UTF-8")
+		return netip.Addr{}, false, false, false, errors.New("invalid IP address: " + ipStr)
 	}
 
-	parsedIP, err := netip.ParseAddr(ipStr)
+	ip, err := netip.ParseAddr(ipStr)
 	if err != nil {
-		return false, false, false, fmt.Errorf("failed to parse IP address string: %w", err)
+		return netip.Addr{}, false, false, false, fmt.Errorf("failed to parse IP address: %w", err)
 	}
 
-	// If unspecified, empty, or wrong byte size
-	if parsedIP.BitLen() != 32 && parsedIP.BitLen() != 128 {
-		return false, false, false, errors.New("parsed IP address is the incorrect length")
+	if ip.IsUnspecified() || !ip.IsValid() {
+		return netip.Addr{}, false, false, false, errors.New("parsed IP address is unspecified or invalid: " + ip.String())
 	}
 
-	if parsedIP.IsUnspecified() || !parsedIP.IsValid() {
-		return false, false, false, errors.New("parsed IP address is unspecified or invalid: " + parsedIP.String())
+	if ip.IsInterfaceLocalMulticast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() {
+		return netip.Addr{}, false, false, false, errors.New("parsed IP address is multicast: " + ip.String())
 	}
 
-	// if !parsedIP.Is4() || parsedIP.Is4In6() || parsedIP.Is6() {
-	// 	return false, false, false, errors.New("IP address is not IPv4: " + parsedIP.String())
-	// }
-
-	if parsedIP.IsInterfaceLocalMulticast() || parsedIP.IsLinkLocalMulticast() || parsedIP.IsMulticast() {
-		return false, false, false, errors.New("parsed IP address is multicast: " + parsedIP.String())
-	}
-
-	return true, parsedIP.IsLoopback(), parsedIP.IsPrivate(), nil
+	return ip, true, ip.IsLoopback(), ip.IsPrivate(), nil
 }
 
 func CheckAuthCredentials(ctx context.Context, username, password string) (bool, error) {
@@ -495,42 +473,36 @@ func ValidateAuthFormInputSHA256(username, password string) error {
 // }
 
 func validateQueryParams(query url.Values) error {
-	const maxKeyLen = 128
-	const maxValueLen = 512
-	const maxParams = 64
-
-	// If empty, return early
 	if len(query) == 0 {
 		return nil
 	}
 
-	if len(query) > maxParams {
-		return fmt.Errorf("too many query parameters in URL (%d > %d)", len(query), maxParams)
+	if len(query) > maxQueryParams {
+		return fmt.Errorf("too many query parameters in URL (%d > %d)", len(query), maxQueryParams)
 	}
 
 	for key, values := range query {
-		// key length
+		// query keys
 		if len(key) == 0 {
 			return fmt.Errorf("empty query key not allowed")
 		}
 
-		if len(key) > maxKeyLen {
+		if len(key) > maxQueryKeyLen {
 			return fmt.Errorf("query key too long: %d chars", len(key))
 		}
 
-		// query keys
 		if !allowedQueryKeyRegex.MatchString(key) {
-			return fmt.Errorf("invalid/dangerous characters in query key")
+			return fmt.Errorf("query key does not match allowed regex pattern")
 		}
 
+		// query values
 		for _, value := range values {
-			if len(value) > maxValueLen {
-				return fmt.Errorf("query value too long: %d chars", len(value))
+			if len(value) > maxQueryValueLen {
+				return fmt.Errorf("query value too long: %d > %d chars", len(value), maxQueryValueLen)
 			}
 
-			// query values
 			if strings.ContainsAny(value, disallowedQueryChars) {
-				return fmt.Errorf("invalid/dangerous characters in query value")
+				return fmt.Errorf("query value contains disallowed characters")
 			}
 		}
 	}
@@ -538,31 +510,39 @@ func validateQueryParams(query url.Values) error {
 	return nil
 }
 
-func validateAndCleanPath(rawPath string) (string, error) {
-	if strings.TrimSpace(rawPath) == "" {
+func validateAndCleanURLPath(rawPath string) (string, error) {
+	if len(rawPath) > 255 {
+		return "", fmt.Errorf("URL path too long: %d/%d chars", len(rawPath), 255)
+	}
+
+	rawPath = strings.TrimSpace(rawPath)
+
+	if rawPath == "" {
 		return "", fmt.Errorf("URL path is empty")
 	}
 
-	if len(rawPath) > 255 {
-		return "", fmt.Errorf("URL path too long: %d chars", len(rawPath))
+	// ASCII printable characters only (32-126)
+	// This also implicitly checks for valid UTF-8
+	if !IsASCIIStringPrintable(rawPath) {
+		return "", fmt.Errorf("URL path contains non-printable or non-ASCII characters")
 	}
 
-	if !strings.HasPrefix(rawPath, "/") {
+	if strings.ContainsAny(rawPath, disallowedPathChars) {
+		return "", fmt.Errorf("URL path contains disallowed characters")
+	}
+
+	if !path.IsAbs(rawPath) {
 		return "", fmt.Errorf("URL path must start with /")
 	}
 
 	cleanPath := path.Clean(rawPath)
 
-	if !strings.HasPrefix(cleanPath, "/") || cleanPath == ".." {
-		return "", fmt.Errorf("path traversal attempt")
-	}
-
 	if cleanPath == "." {
-		return "", fmt.Errorf("no path specified")
+		return "", fmt.Errorf("empty path after cleaning")
 	}
 
-	if strings.Contains(cleanPath, "\x00") {
-		return "", fmt.Errorf("null byte in path")
+	if slices.Contains(disallowedFileExtensions, path.Ext(cleanPath)) {
+		return "", fmt.Errorf("disallowed file extension in URL path")
 	}
 
 	// validate each path segment
@@ -581,35 +561,13 @@ func validateAndCleanPath(rawPath string) (string, error) {
 }
 
 func validatePathSegment(segment string) error {
-	// Reject double-encoding attacks (percent signs shouldn't remain after Go's decode)
-	if strings.Contains(segment, "%") {
-		return fmt.Errorf("percent-encoded characters detected (possible double-encoding attack)")
-	}
-
-	// Reject disallowed characters
-	if strings.ContainsAny(segment, disallowedPathChars) {
-		return fmt.Errorf("dangerous characters found in URL path")
-	}
-
-	// 3. Reject hidden files/directories (both prefix and suffix checks)
+	// Reject hidden files/directories (both prefix and suffix checks)
 	if strings.HasPrefix(segment, ".") {
 		return fmt.Errorf("hidden file/directory not allowed (starts with dot)")
 	}
 
 	if strings.HasSuffix(segment, ".") {
 		return fmt.Errorf("invalid filename (ends with dot)")
-	}
-
-	// Common file extensions to block
-	if strings.HasSuffix(segment, ".tmp") ||
-		strings.HasSuffix(segment, ".bak") ||
-		strings.HasSuffix(segment, ".swp") {
-		return fmt.Errorf("backup/temporary file extension not allowed in URL path")
-	}
-
-	// ASCII printable characters only (32-126)
-	if !IsASCIIStringPrintable(segment) {
-		return fmt.Errorf("non-printable or non-ASCII characters found in URL path")
 	}
 
 	return nil
