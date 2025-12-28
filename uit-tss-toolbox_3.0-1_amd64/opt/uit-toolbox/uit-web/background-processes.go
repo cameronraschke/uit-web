@@ -16,6 +16,7 @@ func backgroundProcesses(ctx context.Context, errChan chan error) {
 	if l == nil {
 		fmt.Println("Global logger is nil in backgroundProcesses")
 		return
+	}
 	log := *l
 	var wg sync.WaitGroup
 	// Start auth map cleanup goroutine
