@@ -16,13 +16,13 @@ func GetLimiter(limiterType string) *RateLimiter {
 
 	switch limiterType {
 	case "file":
-		return appState.FileLimiter
+		return appState.FileLimiter.Load()
 	case "web":
-		return appState.WebServerLimiter
+		return appState.WebServerLimiter.Load()
 	case "api":
-		return appState.APILimiter
+		return appState.APILimiter.Load()
 	case "auth":
-		return appState.AuthLimiter
+		return appState.AuthLimiter.Load()
 	default:
 		return nil
 	}
@@ -60,14 +60,14 @@ func IsClientRateLimited(limiterType string, ip netip.Addr) (limited bool, retry
 	}
 
 	// Check if IP is currently blocked
-	if clientMapValue, clientBlocked := appState.BlockedIPs.ClientMap.Load(ip); clientBlocked {
+	if clientMapValue, clientBlocked := appState.BlockedIPs.Load().ClientMap.Load(ip); clientBlocked {
 		if clientLimiter, ok := clientMapValue.(ClientLimiter); ok {
-			blockedUntil := clientLimiter.LastSeen.Add(appState.BlockedIPs.BanPeriod)
+			blockedUntil := clientLimiter.LastSeen.Add(appState.BlockedIPs.Load().BanPeriod)
 			if curTime := time.Now(); curTime.Before(blockedUntil) {
 				return true, blockedUntil.Sub(curTime)
 			}
 			// If ban has expired, remove from blocked list
-			appState.BlockedIPs.ClientMap.Delete(ip)
+			appState.BlockedIPs.Load().ClientMap.Delete(ip)
 		}
 	}
 
@@ -85,7 +85,7 @@ func IsClientRateLimited(limiterType string, ip netip.Addr) (limited bool, retry
 	// Wait until we can proceed, or block if too many requests
 	if reservationDelay > 0 || !reservation.OK() {
 		reservation.Cancel()
-		appState.BlockedIPs.Block(ip)
+		appState.BlockedIPs.Load().Block(ip)
 		return true, reservationDelay
 	}
 
@@ -101,25 +101,25 @@ func CleanupOldLimiterEntries() (int64, error) {
 
 	var count int
 	// Clean up WebServerLimiter
-	appState.WebServerLimiter.ClientMap.Range(func(key, value any) bool {
-		clientLimiter, ok := value.(*ClientLimiter)
+	appState.WebServerLimiter.Load().ClientMap.Range(func(key, value any) bool {
+		clientLimiter, ok := value.(ClientLimiter)
 		if !ok {
 			return true
 		}
 		if now.Sub(clientLimiter.LastSeen) > 3*time.Minute {
-			appState.WebServerLimiter.ClientMap.Delete(key)
+			appState.WebServerLimiter.Load().ClientMap.Delete(key)
 			count++
 		}
 		return true
 	})
 	// File server limiter
-	appState.FileLimiter.ClientMap.Range(func(key, value any) bool {
-		clientLimiter, ok := value.(*ClientLimiter)
+	appState.FileLimiter.Load().ClientMap.Range(func(key, value any) bool {
+		clientLimiter, ok := value.(ClientLimiter)
 		if !ok {
 			return true
 		}
 		if now.Sub(clientLimiter.LastSeen) > 3*time.Minute {
-			appState.FileLimiter.ClientMap.Delete(key)
+			appState.FileLimiter.Load().ClientMap.Delete(key)
 			count++
 		}
 		return true

@@ -146,9 +146,17 @@ func withClientIP(ctx context.Context, ip netip.Addr) (context.Context, error) {
 	// Use validated IP address here from checkValidIP
 	return context.WithValue(ctx, clientIPKey, ip), nil
 }
-func GetRequestIPFromContext(ctx context.Context) (ipAddr netip.Addr, ok bool) {
-	ipAddr, ok = ctx.Value(clientIPKey).(netip.Addr)
-	return ipAddr, ok
+func GetRequestIPFromContext(ctx context.Context) (ipAddr netip.Addr, err error) {
+	ip, ok := ctx.Value(clientIPKey).(*netip.Addr)
+	if !ok {
+		return netip.Addr{}, errors.New("IP address not found in context")
+	}
+
+	if ip == nil || *ip == (netip.Addr{}) || !ip.IsValid() {
+		return netip.Addr{}, errors.New("invalid/empty IP address stored in context")
+	}
+
+	return *ip, nil
 }
 
 func withRequestPath(ctx context.Context, path string) (context.Context, error) {
@@ -157,9 +165,17 @@ func withRequestPath(ctx context.Context, path string) (context.Context, error) 
 	}
 	return context.WithValue(ctx, pathRequestKey, path), nil
 }
-func GetRequestPathFromContext(ctx context.Context) (path string, ok bool) {
-	path, ok = ctx.Value(pathRequestKey).(string)
-	return path, ok
+func GetRequestPathFromContext(ctx context.Context) (path string, err error) {
+	p, ok := ctx.Value(pathRequestKey).(*string)
+	if !ok {
+		return "", fmt.Errorf("URL path not found in context")
+	}
+
+	if p == nil || strings.TrimSpace(*p) == "" {
+		return "", fmt.Errorf("invalid/empty URL path stored in context")
+	}
+
+	return *p, nil
 }
 
 func withRequestQuery(ctx context.Context, query url.Values) (context.Context, error) {
@@ -168,16 +184,17 @@ func withRequestQuery(ctx context.Context, query url.Values) (context.Context, e
 	}
 	return context.WithValue(ctx, queryRequestKey, query), nil
 }
-func GetRequestQueryFromContext(ctx context.Context) (query url.Values, ok bool) {
-	val := ctx.Value(queryRequestKey)
-	if val == nil {
-		return url.Values{}, false
-	}
-	queries, ok := val.(url.Values)
+func GetRequestQueryFromContext(ctx context.Context) (query *url.Values, err error) {
+	q, ok := ctx.Value(queryRequestKey).(*url.Values)
 	if !ok {
-		return url.Values{}, false
+		return nil, fmt.Errorf("invalid/empty URL query found in context")
 	}
-	return queries, true
+	if q == nil || len(*q) == 0 {
+		return nil, fmt.Errorf("empty/nil URL query found in context")
+	}
+	queries := *q
+
+	return &queries, nil
 }
 
 func withRequestFile(ctx context.Context, file string) (context.Context, error) {
@@ -206,18 +223,17 @@ func withLogger(ctx context.Context, logger logger.Logger) (context.Context, err
 	if logger == nil {
 		return ctx, errors.New("nil logger")
 	}
-	return context.WithValue(ctx, loggerKey, logger), nil
+	return context.WithValue(ctx, loggerKey, &logger), nil
 }
-func GetLoggerFromContext(ctx context.Context) (logger.Logger, bool, error) {
-	log, ok := ctx.Value(loggerKey).(logger.Logger)
+func GetLoggerFromContext(ctx context.Context) logger.Logger {
+	var log logger.Logger
+	logPtr, ok := ctx.Value(loggerKey).(*logger.Logger)
 	if !ok {
-		l := config.GetLogger()
-		if l == nil {
-			return nil, false, errors.New("logger not found in context and global logger is nil")
-		}
-		log = *l
+		log = config.GetLogger()
+	} else {
+		log = *logPtr
 	}
-	return log, ok, nil
+	return log
 }
 
 func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue, uitCSRFValue string, timeout time.Duration) (*http.Cookie, *http.Cookie, *http.Cookie, *http.Cookie) {

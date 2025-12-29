@@ -25,15 +25,10 @@ func GetServerTime(w http.ResponseWriter, req *http.Request) {
 
 func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
-		fmt.Println("Cannot get logger for GetClientLookup from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	urlQueries, ok := middleware.GetRequestQueryFromContext(ctx)
-	if !ok {
-		log.HTTPWarning(req, "No request query parameters found in context for GetClientLookup")
+	log := middleware.GetLoggerFromContext(ctx)
+	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving request query parameters from context for GetClientLookup: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -84,12 +79,7 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 
 func GetAllTags(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
-		fmt.Println("Cannot get logger for GetAllTags from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+	log := middleware.GetLoggerFromContext(ctx)
 
 	db := config.GetDatabaseConn()
 	if db == nil {
@@ -112,15 +102,11 @@ func GetAllTags(w http.ResponseWriter, req *http.Request) {
 
 func GetHardwareIdentifiers(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
-		fmt.Println("Cannot get logger for GetHardwareIdentifiers from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	urlQueries, ok := middleware.GetRequestQueryFromContext(ctx)
-	if !ok {
-		log.HTTPWarning(req, "No request query parameters found in context for GetHardwareIdentifiers")
+	log := middleware.GetLoggerFromContext(ctx)
+
+	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving query parameters from context for GetHardwareIdentifiers: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -151,15 +137,10 @@ func GetHardwareIdentifiers(w http.ResponseWriter, req *http.Request) {
 
 func GetBiosData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
-		fmt.Println("Cannot get logger for GetBiosData from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	urlQueries, ok := middleware.GetRequestQueryFromContext(ctx)
-	if !ok {
-		log.HTTPWarning(req, "No request query parameters found in context for GetBiosData")
+	log := middleware.GetLoggerFromContext(ctx)
+	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving query parameters from context for GetBiosData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -192,15 +173,10 @@ func GetBiosData(w http.ResponseWriter, req *http.Request) {
 
 func GetOSData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
-		fmt.Println("Cannot get logger for GetOSData from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	urlQueries, ok := middleware.GetRequestQueryFromContext(ctx)
-	if !ok {
-		log.HTTPWarning(req, "No request query parameters found in context for GetOSData")
+	log := middleware.GetLoggerFromContext(ctx)
+	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving query parameters from context for GetOSData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -233,15 +209,10 @@ func GetOSData(w http.ResponseWriter, req *http.Request) {
 
 func GetClientQueuedJobs(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
-		fmt.Println("Cannot get logger for GetClientQueuedJobs from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	urlQueries, ok := middleware.GetRequestQueryFromContext(ctx)
-	if !ok {
-		log.HTTPWarning(req, "No request query parameters found in context for GetClientQueuedJobs")
+	log := middleware.GetLoggerFromContext(ctx)
+	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving query parameters from context for GetClientQueuedJobs: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -274,15 +245,10 @@ func GetClientQueuedJobs(w http.ResponseWriter, req *http.Request) {
 
 func GetClientAvailableJobs(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
-		fmt.Println("Cannot get logger for GetClientAvailableJobs from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	urlQueries, ok := middleware.GetRequestQueryFromContext(ctx)
-	if !ok {
-		log.HTTPWarning(req, "No request query parameters found in context for GetClientAvailableJobs")
+	log := middleware.GetLoggerFromContext(ctx)
+	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving query parameters from context for GetClientAvailableJobs: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -315,15 +281,10 @@ func GetClientAvailableJobs(w http.ResponseWriter, req *http.Request) {
 
 func GetNotes(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
-		fmt.Println("Cannot get logger for GetNotes from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	urlQueries, ok := middleware.GetRequestQueryFromContext(ctx)
-	if !ok {
-		log.HTTPWarning(req, "No request query parameters found in context for GetNotes")
+	log := middleware.GetLoggerFromContext(ctx)
+	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving query parameters from context for GetNotes: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -354,15 +315,10 @@ func GetNotes(w http.ResponseWriter, req *http.Request) {
 
 func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if err != nil || !ok {
-		fmt.Println("Cannot get logger for GetLocationFormData from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	requestQueries, ok := middleware.GetRequestQueryFromContext(ctx)
-	if !ok {
-		log.HTTPWarning(req, "No request query parameters found in context for GetLocationFormData")
+	log := middleware.GetLoggerFromContext(ctx)
+	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving query parameters from context for GetLocationFormData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -393,15 +349,10 @@ func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 
 func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if err != nil || !ok {
-		fmt.Println("Cannot get logger for GetClientImagesManifest from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	requestQueries, ok := middleware.GetRequestQueryFromContext(ctx)
-	if !ok {
-		log.HTTPWarning(req, "Cannot get requested queries for GetClientImagesManifest from context")
+	log := middleware.GetLoggerFromContext(ctx)
+	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving query parameters from context for GetClientImagesManifest: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -551,15 +502,10 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 
 func GetImage(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if err != nil || !ok {
-		fmt.Println("Cannot get logger for GetImage from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	requestedQueries, ok := middleware.GetRequestQueryFromContext(ctx)
-	if !ok {
-		log.HTTPWarning(req, "Cannot get request queries for GetImage from context")
+	log := middleware.GetLoggerFromContext(ctx)
+	requestedQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving query parameters from context for GetImage: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -624,12 +570,7 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 // Overview section
 func GetJobQueueOverview(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
-		fmt.Println("Cannot get logger for GetJobQueueOverview from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+	log := middleware.GetLoggerFromContext(ctx)
 
 	db := config.GetDatabaseConn()
 	if db == nil {
@@ -653,12 +594,7 @@ func GetJobQueueOverview(w http.ResponseWriter, req *http.Request) {
 
 func GetDashboardInventorySummary(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
-		fmt.Println("Cannot get logger for GetDashboardInventorySummary from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+	log := middleware.GetLoggerFromContext(ctx)
 
 	db := config.GetDatabaseConn()
 	if db == nil {
@@ -681,15 +617,10 @@ func GetDashboardInventorySummary(w http.ResponseWriter, req *http.Request) {
 
 func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
-		fmt.Println("Cannot get logger for GetInventoryTableData from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	requestQueries, ok := middleware.GetRequestQueryFromContext(ctx)
-	if !ok {
-		log.HTTPWarning(req, "No request query parameters found in context for GetInventoryTableData")
+	log := middleware.GetLoggerFromContext(ctx)
+	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving query parameters from context for GetInventoryTableData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -783,12 +714,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 
 func GetClientConfig(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
-		fmt.Println("Cannot get logger for GetClientConfig from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+	log := middleware.GetLoggerFromContext(ctx)
 
 	clientConfig, err := config.GetClientConfig()
 	if err != nil {
@@ -830,12 +756,7 @@ func GetClientConfig(w http.ResponseWriter, req *http.Request) {
 
 func GetManufacturersAndModels(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
-		fmt.Println("Cannot get logger for GetManufacturersAndModels from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+	log := middleware.GetLoggerFromContext(ctx)
 
 	db := config.GetDatabaseConn()
 	if db == nil {

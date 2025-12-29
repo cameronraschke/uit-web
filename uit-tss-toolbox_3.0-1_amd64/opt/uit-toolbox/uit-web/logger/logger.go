@@ -156,7 +156,7 @@ func (consoleLogger *ConsoleLogger) HTTPError(req *http.Request, message string)
 }
 
 func CreateLogger(loggerType string, logLevel LogLevel) Logger {
-	switch strings.ToLower(loggerType) {
+	switch strings.TrimSpace(strings.ToLower(loggerType)) {
 	case "console":
 		logger := &ConsoleLogger{}
 		logger.SetLoggerLevel(logLevel)

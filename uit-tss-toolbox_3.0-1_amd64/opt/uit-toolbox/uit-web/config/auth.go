@@ -22,7 +22,7 @@ func GetAdminCredentials() (*string, *string, error) {
 	}
 
 	adminUsername := "admin"
-	adminPasswd := strings.TrimSpace(appState.AppConfig.UIT_WEB_USER_DEFAULT_PASSWD)
+	adminPasswd := strings.TrimSpace(appState.AppConfig.Load().UIT_WEB_USER_DEFAULT_PASSWD)
 	return &adminUsername, &adminPasswd, nil
 }
 
@@ -154,12 +154,7 @@ func DeleteAuthSession(sessionID string) {
 }
 
 func ClearExpiredAuthSessions() {
-	l := GetLogger()
-	if l == nil {
-		fmt.Println("nil logger in ClearExpiredAuthSessions")
-		return
-	}
-	log := *l
+	log := GetLogger()
 	appState := GetAppState()
 	if appState == nil {
 		return

@@ -13,15 +13,10 @@ import (
 
 func DeleteImage(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, ok, err := middleware.GetLoggerFromContext(ctx)
-	if !ok || err != nil {
-		fmt.Println("Failed to get logger from context for DeleteImage: " + err.Error())
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-	requestQueries, ok := middleware.GetRequestQueryFromContext(ctx)
-	if !ok {
-		log.HTTPWarning(req, "No request query parameters found in context for DeleteImage")
+	log := middleware.GetLoggerFromContext(ctx)
+	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving request query parameters from context for DeleteImage")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}

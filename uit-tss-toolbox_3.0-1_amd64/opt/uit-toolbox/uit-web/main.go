@@ -40,12 +40,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	l := config.GetLogger()
-	if l == nil {
+	log := config.GetLogger()
+	if log == nil {
 		bootLog.Error("Global logger is nil in main")
 		os.Exit(1)
 	}
-	log := *l
 
 	// Get DB credentials
 	dbName, dbHost, dbPort, dbUsername, dbPassword, err := config.GetDatabaseCredentials()
@@ -62,7 +61,10 @@ func main() {
 	}
 	defer dbConn.Close()
 
-	config.SetDatabaseConn(dbConn)
+	if err := config.SetDatabaseConn(dbConn); err != nil {
+		log.Error("Failed to set database connection: " + err.Error())
+		os.Exit(1)
+	}
 
 	// Create admin user
 	if err = database.CreateAdminUser(); err != nil {

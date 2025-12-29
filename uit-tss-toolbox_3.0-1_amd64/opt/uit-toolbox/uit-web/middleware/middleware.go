@@ -55,13 +55,7 @@ func (chain MiddlewareChain) ThenFunc(finalHandlerFunc http.HandlerFunc) http.Ha
 
 func StoreLoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		l := config.GetLogger()
-		if l == nil {
-			fmt.Println("Error getting logger in middleware: logger is nil")
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		log := *l
+		log := config.GetLogger()
 		ctx, err := withLogger(req.Context(), log)
 		if err != nil {
 			fmt.Println("Error storing logger in context: " + err.Error())
@@ -76,16 +70,15 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				log, ok, err := GetLoggerFromContext(req.Context())
-				if !ok || err != nil {
+				log := GetLoggerFromContext(req.Context())
+				if log == nil {
 					fmt.Println("Error getting logger from context in panic recovery middleware, attempting to use global logger")
-					l := config.GetLogger()
-					if l == nil {
+					log := config.GetLogger()
+					if log == nil {
 						fmt.Println("Error getting global logger in panic recovery middleware: logger is nil")
 						WriteJsonError(w, http.StatusInternalServerError)
 						return
 					}
-					log = *l
 				}
 
 				log.Error(fmt.Sprintf("Panic recovered: %v\n%s", err, string(debug.Stack())))
@@ -100,12 +93,7 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 
 func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromContext(req.Context())
-		if !ok || err != nil {
-			fmt.Println("Error getting logger from context in LimitRequestSizeMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log := GetLoggerFromContext(req.Context())
 		if strings.TrimSpace(req.Header.Get("Content-Length")) == "" && (req.Method == http.MethodPost || req.Method == http.MethodPut) {
 			log.HTTPWarning(req, "Request content length is missing")
 			WriteJsonError(w, http.StatusLengthRequired)
@@ -129,12 +117,7 @@ func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 
 func StoreClientIPMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromContext(req.Context())
-		if !ok || err != nil {
-			fmt.Println("Error getting logger from context in StoreClientIPMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log := GetLoggerFromContext(req.Context())
 		ipStr, port, err := net.SplitHostPort(req.RemoteAddr)
 		if err != nil {
 			log.HTTPError(req, "Error parsing client IP from RemoteAddr: "+err.Error())
@@ -172,15 +155,10 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 
 func CheckIPBlockedMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromContext(req.Context())
-		if !ok || err != nil {
-			fmt.Println("Error getting logger for CheckIPBlockedMiddleware from context: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		requestIP, ok := GetRequestIPFromContext(req.Context())
-		if !ok {
-			log.HTTPWarning(req, "No IP address stored in context")
+		log := GetLoggerFromContext(req.Context())
+		requestIP, err := GetRequestIPFromContext(req.Context())
+		if err != nil {
+			log.HTTPWarning(req, "Error retrieving IP address from context in CheckIPBlockedMiddleware: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -195,12 +173,7 @@ func CheckIPBlockedMiddleware(next http.Handler) http.Handler {
 
 func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromContext(req.Context())
-		if !ok || err != nil {
-			fmt.Println("Error getting logger for WebEndpointConfigMiddleware from context: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log := GetLoggerFromContext(req.Context())
 		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
 		if err != nil {
 			log.HTTPWarning(req, "Error getting endpoint config for WebEndpointConfigMiddleware: "+err.Error())
@@ -219,12 +192,7 @@ func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 
 func TLSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromContext(req.Context())
-		if !ok || err != nil {
-			fmt.Println("Error getting logger from context in TLSMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log := GetLoggerFromContext(req.Context())
 		endpointConfig, ok := GetWebEndpointConfigFromContext(req.Context())
 		if !ok {
 			log.HTTPWarning(req, "Error getting endpoint config in TLS middleware")
@@ -270,12 +238,7 @@ func TLSMiddleware(next http.Handler) http.Handler {
 
 func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromContext(req.Context())
-		if !ok || err != nil {
-			fmt.Println("Error getting logger from context in CheckHttpVersionMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log := GetLoggerFromContext(req.Context())
 		endpointConfig, ok := GetWebEndpointConfigFromContext(req.Context())
 		if !ok {
 			log.HTTPWarning(req, "Error getting endpoint config in HTTP version middleware")
@@ -307,20 +270,15 @@ func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
 func AllowIPRangeMiddleware(trafficSource string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			log, ok, err := GetLoggerFromContext(req.Context())
-			if !ok || err != nil {
-				fmt.Println("Error getting logger from context in AllowIPRangeMiddleware: " + err.Error())
-				WriteJsonError(w, http.StatusInternalServerError)
-				return
-			}
+			log := GetLoggerFromContext(req.Context())
 			if strings.TrimSpace(trafficSource) == "" {
 				log.HTTPWarning(req, "No traffic source specified for AllowIPRangeMiddleware")
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
-			requestIP, ok := GetRequestIPFromContext(req.Context())
-			if !ok {
-				log.HTTPWarning(req, "No IP address stored in context for AllowIPRangeMiddleware")
+			requestIP, err := GetRequestIPFromContext(req.Context())
+			if err != nil {
+				log.HTTPWarning(req, "Error retrieving IP address from context in AllowIPRangeMiddleware")
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
@@ -343,15 +301,10 @@ func AllowIPRangeMiddleware(trafficSource string) func(http.Handler) http.Handle
 func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			log, ok, err := GetLoggerFromContext(req.Context())
-			if !ok || err != nil {
-				fmt.Println("Error getting logger from context in RateLimitMiddleware: " + err.Error())
-				WriteJsonError(w, http.StatusInternalServerError)
-				return
-			}
-			requestIP, ok := GetRequestIPFromContext(req.Context())
-			if !ok {
-				log.HTTPWarning(req, "No IP address stored in context for RateLimitMiddleware")
+			log := GetLoggerFromContext(req.Context())
+			requestIP, err := GetRequestIPFromContext(req.Context())
+			if err != nil {
+				log.HTTPWarning(req, "Error retrieving IP address from context in RateLimitMiddleware")
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
@@ -359,7 +312,7 @@ func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
 			// IsClientRateLimited assigns a rate limiter to the client IP if not already present
 			limited, retryAfter := config.IsClientRateLimited(rateType, requestIP)
 			if limited {
-				log.HTTPDebug(req, "Client is rate limited: "+requestIP.String()+" (retry after "+retryAfter.String()+")")
+				log.HTTPDebug(req, "Client is rate limited: (retry after "+retryAfter.String()+")")
 				WriteJsonError(w, http.StatusTooManyRequests)
 				return
 			}
@@ -371,12 +324,7 @@ func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
 
 func APITimeoutMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromContext(req.Context())
-		if !ok || err != nil {
-			fmt.Println("Error getting logger from context in APITimeoutMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log := GetLoggerFromContext(req.Context())
 		apiTimeout, err := config.GetRequestTimeout("api")
 		if err != nil {
 			log.HTTPError(req, "Failed to get API timeout from config: "+err.Error())
@@ -391,12 +339,7 @@ func APITimeoutMiddleware(next http.Handler) http.Handler {
 
 func FileServerTimeoutMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromContext(req.Context())
-		if !ok || err != nil {
-			fmt.Println("Error getting logger from context in FileServerTimeoutMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log := GetLoggerFromContext(req.Context())
 		fileTimeout, err := config.GetRequestTimeout("file")
 		if err != nil {
 			log.HTTPError(req, "Failed to get file server timeout from config: "+err.Error())
@@ -411,12 +354,7 @@ func FileServerTimeoutMiddleware(next http.Handler) http.Handler {
 
 func HTTPMethodMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromContext(req.Context())
-		if !ok || err != nil {
-			fmt.Println("Error getting logger from context in HTTPMethodMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log := GetLoggerFromContext(req.Context())
 
 		// Check method
 		validMethods := map[string]bool{
@@ -451,10 +389,12 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 
 func CheckValidURLMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromContext(req.Context())
-		if !ok || err != nil {
-			fmt.Println("Error getting logger from context in CheckValidURLMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
+		log := GetLoggerFromContext(req.Context())
+
+		// URL length
+		if len(req.URL.RequestURI()) > 2048 {
+			log.HTTPWarning(req, "Request URL length exceeds character limit: "+fmt.Sprintf("%d", len(req.URL.RequestURI()))+"/2048")
+			WriteJsonError(w, http.StatusRequestURITooLong)
 			return
 		}
 
@@ -516,12 +456,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 
 func CheckHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log, ok, err := GetLoggerFromContext(req.Context())
-		if !ok || err != nil {
-			fmt.Println("Error getting logger from context in CheckHeadersMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log := GetLoggerFromContext(req.Context())
 
 		for headerKey, headerValues := range req.Header {
 			// Check header key length
@@ -683,12 +618,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 func SetHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-		log, ok, err := GetLoggerFromContext(ctx)
-		if !ok || err != nil {
-			fmt.Println("Error getting logger from context in SetHeadersMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log := GetLoggerFromContext(ctx)
 
 		// SERVER-SIDE CORS CHECKS
 		// Get web server IP for CORS
@@ -776,15 +706,10 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 func AllowedFilesMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-		log, ok, err := GetLoggerFromContext(ctx)
-		if !ok || err != nil {
-			fmt.Println("Error getting logger from context in AllowedFilesMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		pathRequested, ok := GetRequestPathFromContext(ctx)
-		if !ok {
-			log.HTTPError(req, "No URL path for AllowedFilesMiddleware stored in context")
+		log := GetLoggerFromContext(ctx)
+		pathRequested, err := GetRequestPathFromContext(ctx)
+		if err != nil {
+			log.HTTPError(req, "Error retrieving URL path from context in AllowedFilesMiddleware")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -901,21 +826,16 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 func CookieAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-		log, ok, err := GetLoggerFromContext(ctx)
-		if !ok || err != nil {
-			fmt.Println("Error getting logger from context in CookieAuthMiddleware: " + err.Error())
+		log := GetLoggerFromContext(ctx)
+		requestIP, err := GetRequestIPFromContext(ctx)
+		if err != nil {
+			log.HTTPWarning(req, "Error retrieving IP address from context: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		requestIP, ok := GetRequestIPFromContext(ctx)
-		if !ok {
-			log.Warning("No IP address stored in context")
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		requestPath, ok := GetRequestPathFromContext(ctx)
-		if !ok {
-			log.Warning("No URL stored in context")
+		requestPath, err := GetRequestPathFromContext(ctx)
+		if err != nil {
+			log.HTTPWarning(req, "Error retrieving URL from context: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}

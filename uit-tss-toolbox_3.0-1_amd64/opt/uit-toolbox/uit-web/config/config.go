@@ -102,18 +102,28 @@ type AppConfig struct {
 }
 
 type ClientLimiter struct {
+	IPAddr   netip.Addr
 	Limiter  *rate.Limiter
 	LastSeen time.Time
 }
 
 type RateLimiter struct {
-	ClientMap sync.Map
+	Type      string
+	ClientMap sync.Map // map[netip.Addr]ClientLimiter
 	Rate      float64
 	Burst     int
 }
 
+var (
+	webRateLimiter  atomic.Pointer[RateLimiter]
+	apiRateLimiter  atomic.Pointer[RateLimiter]
+	authRateLimiter atomic.Pointer[RateLimiter]
+	fileRateLimiter atomic.Pointer[RateLimiter]
+	blockedClients  atomic.Pointer[BlockedClients]
+)
+
 type BlockedClients struct {
-	ClientMap sync.Map
+	ClientMap sync.Map // map[netip.Addr]ClientLimiter
 	BanPeriod time.Duration
 }
 
@@ -131,6 +141,7 @@ type ClientConfig struct {
 	UIT_WEB_HTTPS_HOST   string `json:"UIT_WEB_HTTPS_HOST"`
 	UIT_WEB_HTTPS_PORT   string `json:"UIT_WEB_HTTPS_PORT"`
 	UIT_WEBMASTER_NAME   string `json:"UIT_WEBMASTER_NAME"`
+	UIT_WEBMASTER_EMAIL  string `json:"UIT_WEBMASTER_EMAIL"`
 }
 
 type FileList struct {
@@ -139,16 +150,16 @@ type FileList struct {
 }
 
 type AppState struct {
-	AppConfig          *AppConfig
+	AppConfig          atomic.Pointer[AppConfig]
 	DBConn             atomic.Pointer[sql.DB]
 	AuthMap            sync.Map
 	AuthMapEntryCount  atomic.Int64
 	Log                atomic.Pointer[logger.Logger]
-	WebServerLimiter   *RateLimiter
-	FileLimiter        *RateLimiter
-	APILimiter         *RateLimiter
-	AuthLimiter        *RateLimiter
-	BlockedIPs         *BlockedClients
+	WebServerLimiter   atomic.Pointer[RateLimiter]
+	FileLimiter        atomic.Pointer[RateLimiter]
+	APILimiter         atomic.Pointer[RateLimiter]
+	AuthLimiter        atomic.Pointer[RateLimiter]
+	BlockedIPs         atomic.Pointer[BlockedClients]
 	AllowedWANIPs      sync.Map
 	AllowedLANIPs      sync.Map
 	AllowedIPs         sync.Map
@@ -394,28 +405,60 @@ func InitApp() (*AppState, error) {
 		return nil, errors.New("failed to load app config: " + err.Error())
 	}
 
-	appState := &AppState{
-		AppConfig:         appConfig,
-		DBConn:            atomic.Pointer[sql.DB]{},
-		AuthMap:           sync.Map{},
-		AuthMapEntryCount: atomic.Int64{},
-		Log:               atomic.Pointer[logger.Logger]{},
-		WebServerLimiter:  &RateLimiter{ClientMap: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST},
-		FileLimiter:       &RateLimiter{ClientMap: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 4, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST / 4},
-		APILimiter:        &RateLimiter{ClientMap: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST},
-		AuthLimiter:       &RateLimiter{ClientMap: sync.Map{}, Rate: appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 10, Burst: appConfig.UIT_WEB_RATE_LIMIT_BURST / 10},
-		BlockedIPs:        &BlockedClients{ClientMap: sync.Map{}, BanPeriod: appConfig.UIT_WEB_RATE_LIMIT_BAN_DURATION},
-		AllowedWANIPs:     sync.Map{},
-		AllowedLANIPs:     sync.Map{},
-		AllowedIPs:        sync.Map{},
-	}
+	// Initialize rate limiters
+	webRateLimiter.Store(&RateLimiter{
+		Type:      "webserver",
+		ClientMap: sync.Map{},
+		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 4,
+		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST / 4,
+	})
+	apiRateLimiter.Store(&RateLimiter{
+		Type:      "api",
+		ClientMap: sync.Map{},
+		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 2,
+		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST / 2,
+	})
+	authRateLimiter.Store(&RateLimiter{
+		Type:      "auth",
+		ClientMap: sync.Map{},
+		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL,
+		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST,
+	})
+	fileRateLimiter.Store(&RateLimiter{
+		Type:      "file",
+		ClientMap: sync.Map{},
+		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 8,
+		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST / 8,
+	})
+	blockedClients.Store(&BlockedClients{
+		ClientMap: sync.Map{},
+		BanPeriod: appConfig.UIT_WEB_RATE_LIMIT_BAN_DURATION,
+	})
+
+	appState := &AppState{}
+
+	// Store app config in app state
+	appState.AppConfig.Store(appConfig)
+
+	// Set DB connection to nil initially
+	appState.DBConn.Store(nil)
+
+	// Set logger to nil initially
+	appState.Log.Store(nil)
+
+	// Store rate limiters in app state
+	appState.WebServerLimiter.Store(webRateLimiter.Load())
+	appState.FileLimiter.Store(fileRateLimiter.Load())
+	appState.APILimiter.Store(apiRateLimiter.Load())
+	appState.AuthLimiter.Store(authRateLimiter.Load())
+	appState.BlockedIPs.Store(blockedClients.Load())
 
 	// Initialize logger
 	log := logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_SERVER_LOG_LEVEL")))
 	if log == nil {
 		return nil, errors.New("failed to create logger")
 	}
-	appState.Log.Swap(&log)
+	appState.Log.Store(&log)
 
 	// Populate allowed IPs
 	for _, wanIP := range appConfig.UIT_SERVER_WAN_ALLOWED_IP {
@@ -542,19 +585,24 @@ func InitApp() (*AppState, error) {
 
 	// Declare endpoints
 
-	SetAppState(appState)
+	if err := SetAppState(appState); err != nil {
+		return nil, errors.New("Could not set app state: " + err.Error())
+	}
 	return appState, nil
 }
 
 // App state management
-func SetAppState(newState *AppState) {
-	oldSnapshot := appStateInstance.Load()
-	if oldSnapshot == nil {
-		appStateInstance.Store(newState)
-		return
+func SetAppState(newState *AppState) error {
+	var mu sync.Mutex
+	mu.Lock()
+	defer mu.Unlock()
+
+	if newState == nil {
+		return fmt.Errorf("cannot set app state to nil value")
 	}
 
-	appStateInstance.Swap(newState)
+	appStateInstance.Store(newState)
+	return nil
 }
 
 func GetAppState() *AppState {
@@ -566,25 +614,26 @@ func GetAppState() *AppState {
 }
 
 // Logger access
-func GetLogger() *logger.Logger {
+func GetLogger() logger.Logger {
 	appState := GetAppState()
 	if appState == nil {
 		fmt.Println("App state not initialized in GetLogger, using default logger")
-		return nil
+		return logger.CreateLogger("console", logger.ParseLogLevel("INFO"))
 	}
 
 	if appState.Log == (atomic.Pointer[logger.Logger]{}) {
 		fmt.Println("Logger not initialized in GetLogger, using default logger")
-		return nil
+		return logger.CreateLogger("console", logger.ParseLogLevel("INFO"))
 	}
 
-	logger := appState.Log.Load()
-	if logger == nil {
+	l := appState.Log.Load()
+	if l == nil {
 		fmt.Println("Logger is nil in GetLogger, using default logger")
-		return nil
+		return logger.CreateLogger("console", logger.ParseLogLevel("INFO"))
 	}
+	log := *l
 
-	return logger
+	return log
 }
 
 // Database managment
@@ -593,7 +642,7 @@ func GetDatabaseCredentials() (dbName string, dbHost string, dbPort string, dbUs
 	if appState == nil {
 		return "", "", "", "", "", errors.New("app state is not initialized")
 	}
-	return appState.AppConfig.UIT_WEB_DB_NAME, appState.AppConfig.UIT_WEB_DB_HOST.String(), strconv.FormatUint(uint64(appState.AppConfig.UIT_WEB_DB_PORT), 10), appState.AppConfig.UIT_WEB_DB_USERNAME, appState.AppConfig.UIT_WEB_DB_PASSWD, nil
+	return appState.AppConfig.Load().UIT_WEB_DB_NAME, appState.AppConfig.Load().UIT_WEB_DB_HOST.String(), strconv.FormatUint(uint64(appState.AppConfig.Load().UIT_WEB_DB_PORT), 10), appState.AppConfig.Load().UIT_WEB_DB_USERNAME, appState.AppConfig.Load().UIT_WEB_DB_PASSWD, nil
 }
 
 func GetWebServerUserDBCredentials() (dbName string, dbHost string, dbPort string, dbUsername string, dbPassword string, err error) {
@@ -601,7 +650,7 @@ func GetWebServerUserDBCredentials() (dbName string, dbHost string, dbPort strin
 	if appState == nil {
 		return "", "", "", "", "", errors.New("app state is not initialized")
 	}
-	return appState.AppConfig.UIT_WEB_DB_NAME, appState.AppConfig.UIT_WEB_DB_HOST.String(), strconv.FormatUint(uint64(appState.AppConfig.UIT_WEB_DB_PORT), 10), appState.AppConfig.UIT_WEB_DB_USERNAME, appState.AppConfig.UIT_WEB_DB_PASSWD, nil
+	return appState.AppConfig.Load().UIT_WEB_DB_NAME, appState.AppConfig.Load().UIT_WEB_DB_HOST.String(), strconv.FormatUint(uint64(appState.AppConfig.Load().UIT_WEB_DB_PORT), 10), appState.AppConfig.Load().UIT_WEB_DB_USERNAME, appState.AppConfig.Load().UIT_WEB_DB_PASSWD, nil
 }
 
 func GetDatabaseConn() *sql.DB {
@@ -612,19 +661,16 @@ func GetDatabaseConn() *sql.DB {
 	return appState.DBConn.Load()
 }
 
-func SetDatabaseConn(newDbConn *sql.DB) {
-	appState := GetAppState()
-	if appState != nil {
-		appState.DBConn.Store(newDbConn)
+func SetDatabaseConn(newDbConn *sql.DB) error {
+	if newDbConn == nil {
+		return errors.New("new database connection is nil in SetDatabaseConn")
 	}
-}
-
-func SwapDatabaseConn(newDbConn *sql.DB) (oldDbConn *sql.DB) {
 	appState := GetAppState()
 	if appState == nil {
-		return nil
+		return errors.New("app state is not initialized in SetDatabaseConn")
 	}
-	return appState.DBConn.Swap(newDbConn)
+	appState.DBConn.Store(newDbConn)
+	return nil
 }
 
 // IP address checks
@@ -679,23 +725,30 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 }
 
 func IsIPBlocked(ipAddress netip.Addr) bool {
+
 	appState := GetAppState()
 	if appState == nil {
-		return false
-	}
-	value, ok := appState.BlockedIPs.ClientMap.Load(ipAddress)
-	if !ok {
-		return false
-	}
-	blockedEntry, ok := value.(ClientLimiter)
-	if !ok {
-		return false
-	}
-	if time.Now().Before(blockedEntry.LastSeen.Add(appState.BlockedIPs.BanPeriod)) {
 		return true
 	}
-	appState.BlockedIPs.ClientMap.Delete(ipAddress)
-	return false
+
+	clMap := &appState.BlockedIPs.Load().ClientMap
+	_, ok := clMap.Load(ipAddress)
+	if !ok {
+		return false
+	}
+
+	var isBlocked bool = false
+	clMap.Range(func(k, v any) bool {
+		value := v.(ClientLimiter)
+		if time.Now().Before(value.LastSeen.Add(appState.BlockedIPs.Load().BanPeriod)) {
+			isBlocked = true
+			return true
+		} else if time.Now().After(value.LastSeen.Add(appState.BlockedIPs.Load().BanPeriod)) {
+			clMap.Delete(k)
+		}
+		return true
+	})
+	return isBlocked
 }
 
 func CleanupBlockedIPs() {
@@ -703,14 +756,12 @@ func CleanupBlockedIPs() {
 	if appState == nil {
 		return
 	}
-	now := time.Now()
-	appState.BlockedIPs.ClientMap.Range(func(key, value any) bool {
-		blockedEntry, ok := value.(ClientLimiter)
-		if !ok {
-			return true
-		}
-		if now.After(blockedEntry.LastSeen.Add(appState.BlockedIPs.BanPeriod)) {
-			appState.BlockedIPs.ClientMap.Delete(key)
+
+	blockedIPMap := &appState.BlockedIPs.Load().ClientMap
+	blockedIPMap.Range(func(k, v any) bool {
+		value := v.(ClientLimiter)
+		if time.Now().After(value.LastSeen.Add(appState.BlockedIPs.Load().BanPeriod)) {
+			blockedIPMap.Delete(k)
 		}
 		return true
 	})
@@ -722,7 +773,7 @@ func GetWebServerIPs() (string, string, error) {
 	if appState == nil {
 		return "", "", errors.New("app state is not initialized")
 	}
-	return appState.AppConfig.UIT_WEB_HTTP_HOST.String(), appState.AppConfig.UIT_WEB_HTTPS_HOST.String(), nil
+	return appState.AppConfig.Load().UIT_WEB_HTTP_HOST.String(), appState.AppConfig.Load().UIT_WEB_HTTPS_HOST.String(), nil
 }
 
 func GetServerIPAddressByInterface(ifName string) (string, error) {
@@ -752,12 +803,12 @@ func GetServerIPAddressByInterface(ifName string) (string, error) {
 	return "", fmt.Errorf("no valid IP address found for interface %s", ifName)
 }
 
-func GetWebmasterContact() (string, string, error) {
+func GetWebmasterContact() (webmasterName string, webmasterEmail string, err error) {
 	appState := GetAppState()
 	if appState == nil {
 		return "", "", errors.New("app state is not initialized")
 	}
-	return appState.AppConfig.UIT_WEBMASTER_NAME, appState.AppConfig.UIT_WEBMASTER_EMAIL, nil
+	return appState.AppConfig.Load().UIT_WEBMASTER_NAME, appState.AppConfig.Load().UIT_WEBMASTER_EMAIL, nil
 }
 
 func GetClientConfig() (*ClientConfig, error) {
@@ -766,19 +817,20 @@ func GetClientConfig() (*ClientConfig, error) {
 		return nil, errors.New("app state is not initialized")
 	}
 	clientConfig := &ClientConfig{
-		UIT_CLIENT_DB_USER:   appState.AppConfig.UIT_CLIENT_DB_USER,
-		UIT_CLIENT_DB_PASSWD: appState.AppConfig.UIT_CLIENT_DB_PASSWD,
-		UIT_CLIENT_DB_NAME:   appState.AppConfig.UIT_CLIENT_DB_NAME,
-		UIT_CLIENT_DB_HOST:   appState.AppConfig.UIT_CLIENT_DB_HOST.String(),
-		UIT_CLIENT_DB_PORT:   strconv.FormatUint(uint64(appState.AppConfig.UIT_CLIENT_DB_PORT), 10),
-		UIT_CLIENT_NTP_HOST:  appState.AppConfig.UIT_CLIENT_NTP_HOST.String(),
-		UIT_CLIENT_PING_HOST: appState.AppConfig.UIT_CLIENT_PING_HOST.String(),
-		UIT_SERVER_HOSTNAME:  appState.AppConfig.UIT_SERVER_HOSTNAME,
-		UIT_WEB_HTTP_HOST:    appState.AppConfig.UIT_WEB_HTTP_HOST.String(),
-		UIT_WEB_HTTP_PORT:    strconv.FormatUint(uint64(appState.AppConfig.UIT_WEB_HTTP_PORT), 10),
-		UIT_WEB_HTTPS_HOST:   appState.AppConfig.UIT_WEB_HTTPS_HOST.String(),
-		UIT_WEB_HTTPS_PORT:   strconv.FormatUint(uint64(appState.AppConfig.UIT_WEB_HTTPS_PORT), 10),
-		UIT_WEBMASTER_NAME:   appState.AppConfig.UIT_WEBMASTER_NAME,
+		UIT_CLIENT_DB_USER:   appState.AppConfig.Load().UIT_CLIENT_DB_USER,
+		UIT_CLIENT_DB_PASSWD: appState.AppConfig.Load().UIT_CLIENT_DB_PASSWD,
+		UIT_CLIENT_DB_NAME:   appState.AppConfig.Load().UIT_CLIENT_DB_NAME,
+		UIT_CLIENT_DB_HOST:   appState.AppConfig.Load().UIT_CLIENT_DB_HOST.String(),
+		UIT_CLIENT_DB_PORT:   strconv.FormatUint(uint64(appState.AppConfig.Load().UIT_CLIENT_DB_PORT), 10),
+		UIT_CLIENT_NTP_HOST:  appState.AppConfig.Load().UIT_CLIENT_NTP_HOST.String(),
+		UIT_CLIENT_PING_HOST: appState.AppConfig.Load().UIT_CLIENT_PING_HOST.String(),
+		UIT_SERVER_HOSTNAME:  appState.AppConfig.Load().UIT_SERVER_HOSTNAME,
+		UIT_WEB_HTTP_HOST:    appState.AppConfig.Load().UIT_WEB_HTTP_HOST.String(),
+		UIT_WEB_HTTP_PORT:    strconv.FormatUint(uint64(appState.AppConfig.Load().UIT_WEB_HTTP_PORT), 10),
+		UIT_WEB_HTTPS_HOST:   appState.AppConfig.Load().UIT_WEB_HTTPS_HOST.String(),
+		UIT_WEB_HTTPS_PORT:   strconv.FormatUint(uint64(appState.AppConfig.Load().UIT_WEB_HTTPS_PORT), 10),
+		UIT_WEBMASTER_NAME:   appState.AppConfig.Load().UIT_WEBMASTER_NAME,
+		UIT_WEBMASTER_EMAIL:  appState.AppConfig.Load().UIT_WEBMASTER_EMAIL,
 	}
 	return clientConfig, nil
 }
@@ -788,7 +840,7 @@ func GetTLSCertFiles() (certFile string, keyFile string, err error) {
 	if appState == nil {
 		return "", "", fmt.Errorf("cannot retrieve TLS cert files, app state is not initialized")
 	}
-	return appState.AppConfig.UIT_WEB_TLS_CERT_FILE, appState.AppConfig.UIT_WEB_TLS_KEY_FILE, nil
+	return appState.AppConfig.Load().UIT_WEB_TLS_CERT_FILE, appState.AppConfig.Load().UIT_WEB_TLS_KEY_FILE, nil
 }
 
 func GetMaxUploadSize() (int64, error) {
@@ -796,7 +848,7 @@ func GetMaxUploadSize() (int64, error) {
 	if appState == nil {
 		return 0, fmt.Errorf("cannot retrieve max upload size, app state is not initialized")
 	}
-	return appState.AppConfig.UIT_WEB_MAX_UPLOAD_SIZE_MB, nil
+	return appState.AppConfig.Load().UIT_WEB_MAX_UPLOAD_SIZE_MB, nil
 }
 
 func GetRequestTimeout(timeoutType string) (time.Duration, error) {

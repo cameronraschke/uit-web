@@ -49,21 +49,16 @@ func ConvertTagnumber(tagStr string) (int64, error) {
 
 func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, loggerExists, err := middleware.GetLoggerFromContext(ctx)
-	if !loggerExists || err != nil {
-		fmt.Println("Failed to get logger from context for FileServerHandler: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	requestIP, requestIPExists := middleware.GetRequestIPFromContext(ctx)
-	if !requestIPExists {
-		log.Warning("No IP address stored in context for FileServerHandler")
+	log := middleware.GetLoggerFromContext(ctx)
+	requestIP, err := middleware.GetRequestIPFromContext(ctx)
+	if err != nil {
+		log.Warning("Error retrieving IP address stored in context for FileServerHandler: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	resolvedPath, resolvedPathExists := middleware.GetRequestFileFromContext(ctx)
 	if !resolvedPathExists {
-		log.Warning("no requested file stored in context")
+		log.Warning("no requested file stored in context for FileServerHandler")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -142,21 +137,16 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 
 func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, loggerExists, err := middleware.GetLoggerFromContext(ctx)
-	if !loggerExists || err != nil {
-		fmt.Println("Failed to get logger from context for WebServerHandler: " + err.Error())
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-	requestIP, ok := middleware.GetRequestIPFromContext(ctx)
-	if !ok {
-		log.Warning("No IP address stored in context")
+	log := middleware.GetLoggerFromContext(ctx)
+	requestIP, err := middleware.GetRequestIPFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving IP address stored in context for WebServerHandler: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestedPath, ok := middleware.GetRequestPathFromContext(ctx)
-	if !ok {
-		log.Warning("No URL stored in context")
+	requestedPath, err := middleware.GetRequestPathFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving URL stored in context for WebServerHandler: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -367,15 +357,10 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 
 func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, loggerExists, err := middleware.GetLoggerFromContext(ctx)
-	if !loggerExists || err != nil {
-		fmt.Println("Failed to get logger from context for LogoutHandler: " + err.Error())
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-	requestIP, requestIPExists := middleware.GetRequestIPFromContext(ctx)
-	if !requestIPExists {
-		log.HTTPWarning(req, "No IP address stored in context for LogoutHandler")
+	log := middleware.GetLoggerFromContext(ctx)
+	requestIP, err := middleware.GetRequestIPFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving IP address stored in context for LogoutHandler: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -409,12 +394,7 @@ func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 
 func RejectRequest(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log, loggerExists, err := middleware.GetLoggerFromContext(ctx)
-	if !loggerExists || err != nil {
-		fmt.Println("Failed to get logger from context for RejectRequest: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+	log := middleware.GetLoggerFromContext(ctx)
 
 	log.HTTPWarning(req, "Access denied to forbidden endpoint")
 	middleware.WriteJsonError(w, http.StatusForbidden)
