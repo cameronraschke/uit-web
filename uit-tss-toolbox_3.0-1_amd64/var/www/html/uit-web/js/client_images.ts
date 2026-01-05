@@ -26,7 +26,8 @@ async function loadClientImages(clientTag: number | string) {
         data = textData.trim() ? JSON.parse(textData) : [];
       }
     } catch (parseError) {
-      throw new Error(`Failed to parse response JSON: ${parseError.message}`);
+      const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
+      throw new Error(`Failed to parse response JSON: ${errorMessage}`);
     }
 
 		if (data && typeof data === 'object' && !Array.isArray(data) && Object.prototype.hasOwnProperty.call(data, 'error')) {

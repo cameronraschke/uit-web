@@ -83,7 +83,7 @@ async function fetchNotes(signal?: AbortSignal) {
     noteTextArea.innerHTML = jsonParsed.note || '';
     return jsonParsed;
   } catch (err) {
-    if (err.name !== 'AbortError') console.error("fetchNotes error:", err);
+    if (err instanceof Error && err.name !== 'AbortError') console.error("fetchNotes error:", err);
     return null;
   }
 }
@@ -127,7 +127,7 @@ async function fetchInventoryOverview(signal: AbortSignal) {
     }
     inventoryTableBody.replaceChildren(fragment);
   } catch (err) {
-    if (err.name !== 'AbortError') console.error("fetchInventoryOverview error:", err);
+    if (err instanceof Error && err.name !== 'AbortError') console.error("fetchInventoryOverview error:", err);
   }
 }
 

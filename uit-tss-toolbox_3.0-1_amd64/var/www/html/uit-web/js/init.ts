@@ -2,8 +2,6 @@ interface Window {
   availableTags: string[];
 }
 
-
-
 function jsonToBase64(jsonString: string) {
 	try {
 		const jsonParsed: any = JSON.parse(jsonString);
@@ -16,7 +14,7 @@ function jsonToBase64(jsonString: string) {
 
 		const utf8Bytes = new TextEncoder().encode(jsonString);
 		const binaryStr = Array.from(utf8Bytes, (byte: number) => String.fromCharCode(byte)).join("");
-		const base64JsonData = btoa(binaryStr).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+		const base64JsonData: string = btoa(binaryStr).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 		// Decode json with base64ToJson and double-check that it's correct.
 		const decodedJson = base64ToJson(base64JsonData);
 		if (!base64JsonData || JSON.stringify(jsonParsed) !== decodedJson) {
@@ -106,7 +104,7 @@ async function fetchData(url: string, returnText = false, fetchOptions: RequestI
   }
 }
 
-function openTokenDB() {
+function openTokenDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open("uitTokens", 1);
     request.onupgradeneeded = (event: IDBVersionChangeEvent) => {

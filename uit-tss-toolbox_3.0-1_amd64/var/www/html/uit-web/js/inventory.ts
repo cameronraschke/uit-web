@@ -40,7 +40,8 @@ async function getTagOrSerial(tagnumber: number | null, serial: string | null): 
     };
     return returnObject;
   } catch(error) {
-    console.log("Error getting tag/serial: " + error.message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.log("Error getting tag/serial: " + errorMessage);
 		return null;
   }
 }
@@ -321,7 +322,8 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     await fetchFilteredInventoryData();
   } catch (error) {
     console.error("Error updating inventory:", error);
-		alert("Error updating inventory: " + error.message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+		alert("Error updating inventory: " + errorMessage);
   } finally {
     updatingInventory = false;
     inventoryUpdateFormSubmitButton.disabled = false;
@@ -336,7 +338,8 @@ async function getLocationFormData(tag: number): Promise<any | null> {
     }
     return response;
   } catch (error) {
-    console.log("Error fetching location form data: " + error.message);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.log("Error fetching location form data: " + errorMessage);
     return null;
   }
 }

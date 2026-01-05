@@ -6,7 +6,9 @@ function createTextCell(value: string, options: { datasetKey?: string; link?: st
   
   if (!value) {
     cell.textContent = 'N/A';
-    cell.dataset[options.datasetKey!] = '';
+    if (options.datasetKey) {
+      cell.dataset[options.datasetKey] = '';
+    }
     return cell;
   }
   
