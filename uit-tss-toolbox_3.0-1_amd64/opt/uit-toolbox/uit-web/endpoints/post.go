@@ -525,7 +525,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
-		disallowedExtensions := []string{".exe", ".bat", ".sh", ".js", ".html", ".zip", ".rar", ".7z", ".tar", ".gz", ".dll", ".sys", ".ps1", ".cmd"}
+		disallowedExtensions := []string{".exe", ".bat", ".sh", ".js", ".ts", ".html", ".zip", ".rar", ".7z", ".tar", ".gz", ".dll", ".sys", ".ps1", ".cmd"}
 		lowerFileName := strings.ToLower(fileHeader.Filename)
 		for _, ext := range disallowedExtensions {
 			if strings.HasSuffix(lowerFileName, ext) {

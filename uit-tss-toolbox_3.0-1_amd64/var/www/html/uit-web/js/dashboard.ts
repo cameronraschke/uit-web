@@ -1,4 +1,7 @@
-let dashboardPollController = null;
+let dashboardPollController = null as DashboardPollController | null;
+interface DashboardPollController {
+	stop: () => void;
+}
 let updatingNote = false;
 
 function startDashboardPolling(intervalMs = 3000) {
@@ -36,15 +39,15 @@ function startDashboardPolling(intervalMs = 3000) {
 document.addEventListener("DOMContentLoaded", () => {
   startDashboardPolling(3000);
   fetchNotes();
-  const textArea = document.getElementById('note-text');
-  const noteSubmitButton = document.getElementById('update-note-button');
+  const textArea = document.getElementById('note-text') as HTMLTextAreaElement;
+  const noteSubmitButton = document.getElementById('update-note-button') as HTMLButtonElement;
   noteSubmitButton.addEventListener('click', async () => {
     textArea.disabled = true;
     noteSubmitButton.disabled = true;
     if (updatingNote) return;
     updatingNote = true;
     try {
-      await postNote();
+      await postNote(new AbortController().signal);
     } finally {
       updatingNote = false;
       textArea.disabled = false;
@@ -53,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-async function fetchDashboardData(signal) {
+async function fetchDashboardData(signal: AbortSignal) {
   const tasks = [
     fetchInventoryOverview(signal), 
     fetchJobQueueOverview(signal)
@@ -64,7 +67,7 @@ async function fetchDashboardData(signal) {
   }
 }
 
-async function fetchNotes(signal) {
+async function fetchNotes(signal?: AbortSignal) {
   try {
     const response = await fetchData('/api/notes?note_type=general', true, { signal });
     if (!response || response.length === 0) throw new Error('No data received from /api/notes');
@@ -85,7 +88,7 @@ async function fetchNotes(signal) {
   }
 }
 
-async function fetchInventoryOverview(signal) {
+async function fetchInventoryOverview(signal: AbortSignal) {
   try {
     const response = await fetchData('/api/dashboard/inventory_summary', true, { signal });
     if (!response || response.length === 0) throw new Error('No data received from /api/dashboard/inventory_summary');
@@ -128,9 +131,9 @@ async function fetchInventoryOverview(signal) {
   }
 }
 
-async function fetchJobQueueOverview(_signal) { return null; }
+async function fetchJobQueueOverview(_signal: AbortSignal) { return null; }
 
-async function postNote() {
+async function postNote(signal?: AbortSignal) {
   const noteTextArea = document.getElementById('note-text');
   if (!noteTextArea) {
     alert('Note text area not found in DOM');
@@ -146,12 +149,13 @@ async function postNote() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(noteData),
-      credentials: 'same-origin'
+      credentials: 'same-origin',
+      ...(signal ? { signal } : {})
     });
     if (!response.ok) {
       throw new Error(`Failed to post note: ${response.statusText}`);
     }
-    await fetchNotes();
+    await fetchNotes(signal);
   } catch (err) {
     console.error("postNote error:", err);
   }

@@ -1,24 +1,11 @@
-const tokenDB: IDBOpenDBRequest = indexedDB.open("uitTokens", 1);
-tokenDB.onupgradeneeded = (event) => {
-  const db = (event.target as IDBOpenDBRequest).result;
-  console.log(`Upgrading to version ${db.version}`);
+interface Window {
+  availableTags: string[];
+}
 
-  const objectStore = db.createObjectStore("uitTokens", {
-    keyPath: "tokenType",
-  });
 
-  objectStore.createIndex("authStr", "authStr", { unique: true });
-  objectStore.createIndex("basicToken", "basicToken", { unique: true });
-  objectStore.createIndex("bearerToken", "bearerToken", { unique: true });
-};
-// const tokenWorker = new Worker('js/auth-webworker.js');
 
 function jsonToBase64(jsonString: string) {
 	try {
-		if (typeof jsonString !== 'string') {
-			throw new TypeError("Input is not a valid JSON string");
-		}
-
 		const jsonParsed: any = JSON.parse(jsonString);
 		if (!jsonParsed) {
 			throw new TypeError("Input is not a valid JSON string");
@@ -27,11 +14,8 @@ function jsonToBase64(jsonString: string) {
 			throw new Error(`Prototype pollution detected`);
 		}
 
-		const uft8Bytes = new TextEncoder().encode(jsonString);
-		const base64JsonData = uft8Bytes.toBase64({ alphabet: "base64url" })
-		const binaryArray: Uint8Array = new Uint8Array(uft8Bytes.length);
-		binaryArray.set(uft8Bytes);
-		const binaryStr = Array.prototype.map.call(binaryArray, (byte: number) => String.fromCharCode(byte)).join("");
+		const utf8Bytes = new TextEncoder().encode(jsonString);
+		const binaryStr = Array.from(utf8Bytes, (byte: number) => String.fromCharCode(byte)).join("");
 		const base64JsonData = btoa(binaryStr).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 		// Decode json with base64ToJson and double-check that it's correct.
 		const decodedJson = base64ToJson(base64JsonData);
@@ -45,16 +29,16 @@ function jsonToBase64(jsonString: string) {
 	}
 }
 
-function base64ToJson(base64String: string) {
+function base64ToJson(inputStr: string) {
     try {
-        if (typeof base64String !== 'string') {
+        if (typeof inputStr !== 'string') {
             throw new TypeError("Input is not a valid base64 string");
         }
-        if (base64String.trim() === "") {
+        if (inputStr.trim() === "") {
             throw new Error("Base64 string is empty");
         }
 
-        const standardBase64 = base64String.replace(/-/g, '+').replace(/_/g, '/');
+        const standardBase64 = inputStr.replace(/-/g, '+').replace(/_/g, '/');
         const pad = standardBase64.length % 4;
         const paddedBase64 = pad ? standardBase64 + "====".slice(0, 4 - pad) : standardBase64;
 
@@ -75,7 +59,7 @@ function base64ToJson(base64String: string) {
     }
 }
 
-async function fetchData(url: string, returnText = false, fetchOptions = {}) {
+async function fetchData(url: string, returnText = false, fetchOptions: RequestInit = {}): Promise<any> {
   try {
     if (!url || url.trim().length === 0) {
       throw new Error("No URL specified for fetchData");
@@ -93,7 +77,7 @@ async function fetchData(url: string, returnText = false, fetchOptions = {}) {
       method: 'GET',
       headers: headers,
       credentials: 'same-origin',
-      ...(fetchOptions.signal ? { signal: fetchOptions.signal } : {})
+			...fetchOptions
     });
 
     // No content (OPTIONS request)
@@ -122,6 +106,21 @@ async function fetchData(url: string, returnText = false, fetchOptions = {}) {
   }
 }
 
+function openTokenDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("uitTokens", 1);
+    request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+      const db = (event.target as IDBOpenDBRequest).result as IDBDatabase;
+      const objectStore = db.createObjectStore("uitTokens", { keyPath: "tokenType" });
+      objectStore.createIndex("authStr", "authStr", { unique: true });
+      objectStore.createIndex("basicToken", "basicToken", { unique: true });
+      objectStore.createIndex("bearerToken", "bearerToken", { unique: true });
+    };
+    request.onsuccess = event => resolve((event.target as IDBOpenDBRequest).result as IDBDatabase);
+    request.onerror = event => reject("Cannot open token DB: " + (event.target as IDBOpenDBRequest).error);
+  });
+}
+
 async function getKeyFromIndexDB(key: string) {
     if (!key || key.length === 0 || typeof key !== "string" || key.trim() === "") {
       throw new Error("Key is invalid: " + key);
@@ -130,17 +129,17 @@ async function getKeyFromIndexDB(key: string) {
     try {
         const dbConn: IDBDatabase = await new Promise((resolve, reject) => {
             const tokenDBConnection = indexedDB.open("uitTokens", 1);
-            tokenDBConnection.onsuccess = (event) => resolve(event.target.result);
-            tokenDBConnection.onerror = (event) => reject("Error opening IndexedDB: " + event.target.error);
+            tokenDBConnection.onsuccess = (event) => resolve((event.target as IDBOpenDBRequest).result as IDBDatabase);
+            tokenDBConnection.onerror = (event) => reject("Error opening IndexedDB: " + (event.target as IDBOpenDBRequest).error);
         });
 
-        const tokenTransaction = dbConn.transaction(["uitTokens"], "readwrite");
+        const tokenTransaction = dbConn.transaction(["uitTokens"], "readonly");
         const tokenObjectStore = tokenTransaction.objectStore("uitTokens");
 
-        const tokenObj = await new Promise((resolve, reject) => {
+        const tokenObj: any = await new Promise((resolve, reject) => {
             const tokenRequest = tokenObjectStore.get(key);
-            tokenRequest.onsuccess = event => resolve(event.target.result);
-            tokenRequest.onerror = event => reject("Error querying token from IndexedDB: " + event.target.error);
+            tokenRequest.onsuccess = event => resolve((event.target as IDBRequest).result);
+            tokenRequest.onerror = event => reject("Error querying token from IndexedDB: " + (event.target as IDBRequest).error as string);
         });
 
         if (!tokenObj || !tokenObj.value || typeof tokenObj.value !== "string" || tokenObj.value.trim() === "") {
@@ -153,7 +152,7 @@ async function getKeyFromIndexDB(key: string) {
 }
 
 async function generateSHA256Hash(input: string) {
-    if (!input || input.length === 0 || typeof input !== "string" || input.trim() === "") {
+    if (!input || input.length === 0 || input.trim() === "") {
       throw new Error("Hash input is invalid: " + input);
     }
 
@@ -162,7 +161,7 @@ async function generateSHA256Hash(input: string) {
     const hashBuffer = await crypto.subtle.digest("SHA-256", encodedInput);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashStr = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-    if (!hashStr || hashStr.length === 0 || typeof hashStr !== "string" || hashStr.trim() === "") {
+    if (!hashStr || hashStr.length === 0 || hashStr.trim() === "") {
       throw new Error("Hash generation failed: " + input);
     }
     return hashStr;
@@ -177,7 +176,7 @@ async function getAllTags(fetchOptions: RequestInit = {}) {
       return [];
     }
 
-    let tagArr = [];
+    let tagArr: string[] = [];
     if (!Array.isArray(data) && typeof data === "string") {
       try {
         tagArr = data
@@ -202,25 +201,6 @@ async function getAllTags(fetchOptions: RequestInit = {}) {
     console.error("Error fetching tags from /api/all_tags:", error);
     return [];
   }
-}
-
-function checkMobile() {
-  const mediaQuery = window.matchMedia("(width <= 768px)");
-  let isMobile = false;
-  let mobileScreen = false;
-  let touchScreen = false;
-  if (mediaQuery.matches) {
-    mobileScreen = true;
-  }
-
-  if (navigator.maxTouchPoints > 1 || 'ontouchstart' in window || 'ontouchstart' in document.documentElement) {
-    touchScreen = true;
-  }
-
-  if (touchScreen) {
-    isMobile = true;
-  }
-  return isMobile;
 }
 
 document.addEventListener("DOMContentLoaded", () => {

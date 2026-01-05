@@ -1,12 +1,12 @@
-const rowCountElement = document.getElementById('inventory-table-rowcount');
-const formAnchor = document.querySelector('#inventory-section');
+const rowCountElement = document.getElementById('inventory-table-rowcount') as HTMLElement;
+const formAnchor = document.querySelector('#inventory-section') as HTMLElement;
 
-function createTextCell(value, options = {}) {
+function createTextCell(value: string, options: { datasetKey?: string; link?: string; onClick?: (event: MouseEvent) => void; truncate?: number } = {}) {
   const cell = document.createElement('td');
   
   if (!value) {
     cell.textContent = 'N/A';
-    cell.dataset[options.datasetKey] = null;
+    cell.dataset[options.datasetKey!] = '';
     return cell;
   }
   
@@ -36,7 +36,7 @@ function createTextCell(value, options = {}) {
   return cell;
 }
 
-function createManufacturerModelCell(jsonRow) {
+function createManufacturerModelCell(jsonRow: any) {
   const cell = document.createElement('td');
   
   if (!jsonRow.system_manufacturer || !jsonRow.system_model) {
@@ -71,7 +71,7 @@ function createManufacturerModelCell(jsonRow) {
 }
 
 // Boolean broken status
-function createBooleanCell(isBroken) {
+function createBooleanCell(isBroken: boolean | null) {
   const cell = document.createElement('td');
   
   if (typeof isBroken === 'boolean') {
@@ -86,7 +86,7 @@ function createBooleanCell(isBroken) {
 }
 
 // Date formatting
-function createTimestampCell(dateValue) {
+function createTimestampCell(dateValue: string | null) {
   const cell = document.createElement('td');
   
   if (!dateValue) {
@@ -108,7 +108,7 @@ function createTimestampCell(dateValue) {
 }
 
 // Empty table state
-function renderEmptyTable(tableBody, message) {
+function renderEmptyTable(tableBody: HTMLElement, message: string) {
   rowCountElement.textContent = '0 entries';
   tableBody.innerHTML = '';
   
@@ -121,8 +121,8 @@ function renderEmptyTable(tableBody, message) {
 }
 
 
-async function renderInventoryTable(tableData = null) {
-  const tableBody = document.getElementById('inventory-table-body')
+async function renderInventoryTable(tableData: any[]) {
+  const tableBody = document.getElementById('inventory-table-body') as HTMLElement;
   try {
     if (!tableData) {
       throw new Error('No table data provided.');
@@ -132,7 +132,7 @@ async function renderInventoryTable(tableData = null) {
     }
    
 		const tableDataSorted = [...tableData].sort((a, b) => 
-      new Date(b.last_update || 0) - new Date(a.last_update || 0)
+      new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
     );
 
 		// Row count
@@ -152,7 +152,7 @@ async function renderInventoryTable(tableData = null) {
           event.preventDefault();
           if (event.ctrlKey || event.metaKey) return;
           
-          const tagLookupInput = document.getElementById('inventory-tag-lookup');
+          const tagLookupInput = document.getElementById('inventory-tag-lookup') as HTMLInputElement;
           tagLookupInput.value = jsonRow.tagnumber;
           
           try {

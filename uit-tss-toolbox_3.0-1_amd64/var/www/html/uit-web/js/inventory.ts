@@ -1,37 +1,36 @@
 let updatingInventory = false;
 
 // Inventory update form (and lookup)
-const lastUpdateTimeMessage = document.getElementById('last-update-time-message');
-const inventoryLookupWarningMessage = document.getElementById('existing-inventory-message');
-const inventoryLookupForm = document.getElementById('inventory-lookup-form');
-const inventoryLookupTagInput = document.getElementById('inventory-tag-lookup');
-const inventoryLookupSystemSerialInput = document.getElementById('inventory-serial-lookup');
-const inventoryLookupFormSubmitButton = document.getElementById('inventory-lookup-submit-button');
-const inventoryLookupFormResetButton = document.getElementById('inventory-lookup-reset-button');
-const clientMoreDetailsButton = document.getElementById('client-more-details');
-const inventoryUpdateForm = document.getElementById('inventory-update-form');
-const inventoryUpdateFormSection = document.getElementById('inventory-update-section');
-const inventoryUpdateLocationInput = document.getElementById('location');
-const inventoryUpdateFormSubmitButton = document.getElementById('inventory-update-submit-button');
-const inventoryUpdateFormCancelButton = document.getElementById('inventory-update-cancel-button');
-const allTagsDatalist = document.getElementById('inventory-tag-suggestions');
-const clientImagesLink = document.getElementById('client_images_link');
-
+const lastUpdateTimeMessage = document.getElementById('last-update-time-message') as HTMLElement;
+const inventoryLookupWarningMessage = document.getElementById('existing-inventory-message') as HTMLElement;
+const inventoryLookupForm = document.getElementById('inventory-lookup-form') as HTMLFormElement;
+const inventoryLookupTagInput = document.getElementById('inventory-tag-lookup') as HTMLInputElement;
+const inventoryLookupSystemSerialInput = document.getElementById('inventory-serial-lookup') as HTMLInputElement;
+const inventoryLookupFormSubmitButton = document.getElementById('inventory-lookup-submit-button') as HTMLButtonElement;
+const inventoryLookupFormResetButton = document.getElementById('inventory-lookup-reset-button') as HTMLButtonElement;
+const clientMoreDetailsButton = document.getElementById('client-more-details') as HTMLButtonElement;
+const inventoryUpdateForm = document.getElementById('inventory-update-form') as HTMLFormElement;
+const inventoryUpdateFormSection = document.getElementById('inventory-update-section') as HTMLElement;
+const inventoryUpdateLocationInput = document.getElementById('location') as HTMLInputElement;
+const inventoryUpdateFormSubmitButton = document.getElementById('inventory-update-submit-button') as HTMLButtonElement;
+const inventoryUpdateFormCancelButton = document.getElementById('inventory-update-cancel-button') as HTMLButtonElement;
+const allTagsDatalist = document.getElementById('inventory-tag-suggestions') as HTMLDataListElement;
+const clientImagesLink = document.getElementById('client_images_link') as HTMLAnchorElement;
 const statusesThatIndicateBroken = ["needs-repair"];
 const statusesThatIndicateCheckout = ["checked-out", "reserved-for-checkout"];
 
-async function getTagOrSerial(tagnumber, serial) {
+async function getTagOrSerial(tagnumber: number | null, serial: string | null): Promise<{ tagnumber: number | null; system_serial: string | null } | null> {
   const query = new URLSearchParams();
   if (tagnumber) {
-    query.append("tagnumber", tagnumber);
+    query.append("tagnumber", tagnumber.toString());
   } else if (serial) {
     query.append("system_serial", serial);
   } else {
     console.log("No tag or serial provided");
-    return;
+    return null;
   }
   try {
-    const response = await fetchData(`/api/lookup?${query.toString()}`);
+    const response: { tagnumber: number | null; system_serial: string | null } = await fetchData(`/api/lookup?${query.toString()}`);
     if (!response) {
       throw new Error("Cannot parse json from /api/lookup");
     }
@@ -42,14 +41,15 @@ async function getTagOrSerial(tagnumber, serial) {
     return returnObject;
   } catch(error) {
     console.log("Error getting tag/serial: " + error.message);
+		return null;
   }
 }
 
 async function submitInventoryLookup() {
 	await setFiltersFromURL();
-	const searchParams = new URLSearchParams(window.location.search);
-	const lookupTag = inventoryLookupTagInput.value || searchParams.get('tagnumber') || null;
-  const lookupSerial = inventoryLookupSystemSerialInput.value || searchParams.get('system_serial') || null;
+	const searchParams: URLSearchParams = new URLSearchParams(window.location.search);
+	const lookupTag: number | null = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : (searchParams.get('tagnumber') ? Number(searchParams.get('tagnumber')) : null);
+  const lookupSerial: string | null = inventoryLookupSystemSerialInput.value || searchParams.get('system_serial') || null;
 
   const lookupResult = await getTagOrSerial(lookupTag, lookupSerial);
   if (!lookupTag && !lookupSerial) {
@@ -67,18 +67,18 @@ async function submitInventoryLookup() {
     inventoryLookupWarningMessage.textContent = "Serial number must be between 4 and 20 characters long.";
     return;
   }
-  if (lookupTag && lookupTag.length != 6) {
+  if (lookupTag && lookupTag.toString().length != 6) {
     inventoryLookupWarningMessage.style.display = "block";
     inventoryLookupWarningMessage.textContent = "Tag number must be exactly 6 digits long.";
     return;
   }
 	
-	history.replaceState(null, '', window.location.pathname + `?update=true&tagnumber=${encodeURIComponent(lookupTag || '')}`);
-  await populateLocationForm(Number(lookupTag));
+	history.replaceState(null, '', window.location.pathname + `?update=true&tagnumber=${encodeURIComponent(lookupTag !== null ? lookupTag.toString() : '')}`);
+  await populateLocationForm(lookupTag !== null ? lookupTag : NaN);
 
   inventoryUpdateFormSection.style.display = "block";
   if (lookupResult) {
-    inventoryLookupTagInput.value = lookupResult.tagnumber || "";
+    inventoryLookupTagInput.value = lookupResult.tagnumber !== null ? lookupResult.tagnumber.toString() : "";
     inventoryLookupSystemSerialInput.value = lookupResult.system_serial || "";
     inventoryLookupTagInput.disabled = true;
     inventoryLookupSystemSerialInput.disabled = true;
@@ -112,13 +112,13 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
 	await updateCheckoutStatus();
 });
 
-const clientStatus = inventoryUpdateForm.querySelector("#status");
+const clientStatus = inventoryUpdateForm.querySelector("#status") as HTMLSelectElement;
 clientStatus.addEventListener("change", async () => {
 	await updateCheckoutStatus();
 });
 
 async function updateCheckoutStatus() {
-	const printCheckoutDiv = document.getElementById('print-checkout-link');
+	const printCheckoutDiv = document.getElementById('print-checkout-link') as HTMLElement;
 	if (statusesThatIndicateCheckout.includes(clientStatus.value)) {
 		const printCheckoutAnchor = document.createElement('a');
 		printCheckoutAnchor.setAttribute('href', `/checkout-form?tagnumber=${encodeURIComponent(inventoryLookupTagInput.value)}`);
@@ -158,7 +158,7 @@ inventoryLookupFormResetButton.addEventListener("click", (event) => {
   event.preventDefault();
 	history.replaceState(null, '', window.location.pathname);
   resetInventoryLookupAndUpdateForm();
-	updateURLParameters();
+	updateURLParameters(null, null);
 });
 
 clientMoreDetailsButton.addEventListener("click", (event) => {
@@ -170,7 +170,7 @@ clientMoreDetailsButton.addEventListener("click", (event) => {
 });
 
 function resetInventorySearchQuery() {
-	url = new URL(window.location);
+	const url = new URL(window.location.pathname, window.location.origin);
 	url.searchParams.delete('tagnumber');
 	url.searchParams.delete('system_serial');
 	url.searchParams.delete('update');
@@ -181,10 +181,10 @@ inventoryUpdateFormCancelButton.addEventListener("click", (event) => {
   event.preventDefault();
 	history.replaceState(null, '', window.location.pathname);
   resetInventoryLookupAndUpdateForm();
-	updateURLParameters();
+	updateURLParameters(null, null);
 });
 
-function renderTagOptions(tags) {
+function renderTagOptions(tags: string[]): void {
   if (!allTagsDatalist) {
     console.warn("No tag datalist found");
     return;
@@ -192,10 +192,9 @@ function renderTagOptions(tags) {
   
   allTagsDatalist.innerHTML = '';
   let maxTags = 20;
-  if (checkMobile()) {
-    maxTags = 0;
-    return;
-  }
+	if (tags.length < maxTags) {
+		maxTags = tags.length;
+	}
   (tags || []).slice(0, maxTags).forEach(tag => {
     const option = document.createElement('option');
     option.value = tag;
@@ -208,13 +207,13 @@ if (Array.isArray(window.availableTags)) {
   renderTagOptions(window.availableTags);
 }
 
-document.addEventListener('tags:loaded', (event) => {
+document.addEventListener('tags:loaded', (event: CustomEvent<{ tags: string[] }>) => {
   const tags = (event && event.detail && Array.isArray(event.detail.tags)) ? event.detail.tags : window.availableTags;
   renderTagOptions(tags || []);
 });
 
-inventoryLookupTagInput.addEventListener("keyup", (event) => {
-  const searchTerm = (event.target.value || '').trim().toLowerCase();
+inventoryLookupTagInput.addEventListener("keyup", (event: KeyboardEvent) => {
+  const searchTerm = ((event.target as HTMLInputElement).value || '').trim().toLowerCase();
   const allTags = Array.isArray(window.availableTags) ? window.availableTags : [];
   const filteredTags = searchTerm
     ? allTags.filter(tag => String(tag).trim().includes(searchTerm))
@@ -235,16 +234,16 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
 	await setFiltersFromURL();
 
   try {
-    const jsonObject = {};
-    const inventoryLookupTagInput = inventoryLookupForm.querySelector("#inventory-tag-lookup");
-    const inventoryLookupSystemSerialInput = inventoryLookupForm.querySelector("#inventory-serial-lookup");
+    const jsonObject: { [key: string]: any } = {};
+    const inventoryLookupTagInput = inventoryLookupForm.querySelector("#inventory-tag-lookup") as HTMLInputElement | null;
+    const inventoryLookupSystemSerialInput = inventoryLookupForm.querySelector("#inventory-serial-lookup") as HTMLInputElement | null;
     jsonObject.tagnumber = inventoryLookupTagInput && inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : null;
     jsonObject.system_serial = inventoryLookupSystemSerialInput && inventoryLookupSystemSerialInput.value ? String(inventoryLookupSystemSerialInput.value) : null;
     if (!inventoryLookupTagInput && !inventoryLookupSystemSerialInput) {
       throw new Error("No tag or serial input fields found in DOM");
     }
-    const getInputValue = (documentID) => {
-      const input = inventoryUpdateForm.querySelector(documentID);
+    const getInputValue = (documentID: string): string | null => {
+      const input = inventoryUpdateForm.querySelector(documentID) as HTMLInputElement | null;
       return input && input.value ? String(input.value) : null;
     };
     jsonObject["location"] = getInputValue("#location");
@@ -261,7 +260,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
       else jsonObject["is_broken"] = null;
     jsonObject["status"] = getInputValue("#status");
 		if (getInputValue("#acquired_date")) {
-			jsonObject["acquired_date"] = new Date(getInputValue("#acquired_date")).toISOString() || null;
+			jsonObject["acquired_date"] = new Date(getInputValue("#acquired_date") as string).toISOString() || null;
 		}
     jsonObject["note"] = getInputValue("#note");
 
@@ -271,28 +270,30 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
     const formData = new FormData();
     formData.append("json", new Blob([JSON.stringify(jsonObject)], { type: "application/json" }), "inventory.json");
 
-    const fileInput = inventoryUpdateForm.querySelector("#inventory-file-input");
+    const fileInput = inventoryUpdateForm.querySelector("#inventory-file-input") as HTMLInputElement | null;
     if (fileInput && fileInput.files && fileInput.files.length > 0) {
-      for (const file of fileInput.files) {
+			const fileList = Array.from(fileInput.files);
+      for (const file of fileList) {
         if (!file) continue;
+				let fileName: string = file.name || '';
         if (file.size > 64 * 1024 * 1024) {
-          throw new Error(`File ${file.name} exceeds the maximum allowed size of 64 MB`);
+          throw new Error(`File ${fileName} exceeds the maximum allowed size of 64 MB`);
         }
-        if (file.name.length > 100) {
-          throw new Error(`File name ${file.name} exceeds the maximum allowed length of 100 characters`);
+        if (fileName.length > 100) {
+          throw new Error(`File name ${fileName} exceeds the maximum allowed length of 100 characters`);
         }
         const allowedRegex = /^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$/;
-        if (!allowedRegex.test(file.name)) {
-          throw new Error(`File name ${file.name} contains invalid characters`);
+        if (!allowedRegex.test(fileName)) {
+          throw new Error(`File name ${fileName} contains invalid characters`);
         }
         const disallowedExtensions = [".exe", ".bat", ".sh", ".js", ".html", ".zip", ".rar", ".7z", ".tar", ".gz", ".dll", ".sys", ".ps1", ".cmd"];
-        if (disallowedExtensions.some(ext => file.name.endsWith(ext))) {
-          throw new Error(`File name ${file.name} has a forbidden extension`);
+        if (disallowedExtensions.some(ext => fileName.endsWith(ext))) {
+          throw new Error(`File name ${fileName} has a forbidden extension`);
         }
-        if (file.name.endsWith(".jfif")) {
-          file.name = file.name.replace(/\.jfif$/i, ".jpeg");
+        if (fileName.endsWith(".jfif")) {
+          fileName = fileName.replace(/\.jfif$/i, ".jpeg");
         }
-        formData.append("inventory-file-input", file, file.name);
+        formData.append("inventory-file-input", file, fileName);
       }
     }
 
@@ -313,10 +314,10 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
 		if (!returnedJson || !returnedJson.tagnumber) {
 			throw new Error("Invalid response from server after inventory update");
 		}
-		fileInput.value = "";
+		if (fileInput) fileInput.value = "";
 		inventoryLookupWarningMessage.style.display = "none";
 		lastUpdateTimeMessage.textContent = "";
-    await populateLocationForm(Number(returnedJson.tagnumber));
+    await populateLocationForm(returnedJson.tagnumber);
     await fetchFilteredInventoryData();
   } catch (error) {
     console.error("Error updating inventory:", error);
@@ -327,7 +328,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
   }
 });
 
-async function getLocationFormData(tag) {
+async function getLocationFormData(tag: number): Promise<any | null> {
   try {
     const response = await fetchData(`/api/client/location_form_data?tagnumber=${tag}`);
     if (!response) {
@@ -340,7 +341,7 @@ async function getLocationFormData(tag) {
   }
 }
 
-async function populateLocationForm(tag) {
+async function populateLocationForm(tag: number): Promise<void> {
   const locationFormData = await getLocationFormData(tag);
   if (locationFormData) {
 		if (locationFormData.last_update_time) {
@@ -354,18 +355,45 @@ async function populateLocationForm(tag) {
 			lastUpdateTimeMessage.textContent = 'Uknown timestamp of last update';
 		}
     inventoryUpdateLocationInput.value = locationFormData.location || '';
-		inventoryUpdateForm.querySelector("#building").value = locationFormData.building || '';
-		inventoryUpdateForm.querySelector("#room").value = locationFormData.room || '';
-    inventoryUpdateForm.querySelector("#system_manufacturer").value = locationFormData.system_manufacturer || '';
-    inventoryUpdateForm.querySelector("#system_model").value = locationFormData.system_model || '';
-    inventoryUpdateForm.querySelector("#department_name").value = locationFormData.department_name || '';
-		inventoryUpdateForm.querySelector("#property_custodian").value = locationFormData.property_custodian || '';
-    inventoryUpdateForm.querySelector("#ad_domain").value = locationFormData.ad_domain || '';
+
+		const building = inventoryUpdateForm.querySelector("#building") as HTMLInputElement;
+		const buildingVal: string = locationFormData.building || '';
+		building.value = buildingVal;
+
+		const room = inventoryUpdateForm.querySelector("#room") as HTMLInputElement;
+		const roomVal: string = locationFormData.room || '';
+		room.value = roomVal;
+
+    const systemManufacturer = inventoryUpdateForm.querySelector("#system_manufacturer") as HTMLInputElement;
+		const systemManufacturerVal: string = locationFormData.system_manufacturer || '';
+		systemManufacturer.value = systemManufacturerVal;
+
+    const systemModel = inventoryUpdateForm.querySelector("#system_model") as HTMLInputElement;
+		const systemModelVal: string = locationFormData.system_model || '';
+		systemModel.value = systemModelVal;
+
+    const departmentName = inventoryUpdateForm.querySelector("#department_name") as HTMLInputElement;
+		const departmentNameVal: string = locationFormData.department_name || '';
+		departmentName.value = departmentNameVal;
+
+		const propertyCustodian = inventoryUpdateForm.querySelector("#property_custodian") as HTMLInputElement;
+		const propertyCustodianVal: string = locationFormData.property_custodian || '';
+		propertyCustodian.value = propertyCustodianVal;
+
+    const adDomain = inventoryUpdateForm.querySelector("#ad_domain") as HTMLInputElement;
+		const adDomainVal: string = locationFormData.ad_domain || '';
+		adDomain.value = adDomainVal;
+
+		const isBroken = inventoryUpdateForm.querySelector("#is_broken") as HTMLInputElement;
 		const brokenValue = typeof locationFormData.is_broken === "boolean" 
 			? String(locationFormData.is_broken) 
 			: '';
-		inventoryUpdateForm.querySelector("#is_broken").value = brokenValue;
-    inventoryUpdateForm.querySelector("#status").value = locationFormData.status || '';
+		isBroken.value = brokenValue;
+
+		const statusSelect = inventoryUpdateForm.querySelector("#status") as HTMLSelectElement;
+    statusSelect.value = locationFormData.status || '';
+
+		const acquiredDateInput = inventoryUpdateForm.querySelector("#acquired_date") as HTMLInputElement;
 		const acquiredDateValue = locationFormData.acquired_date
 			? new Date(locationFormData.acquired_date)
 			: null;
@@ -374,17 +402,19 @@ async function populateLocationForm(tag) {
 			const month = String(acquiredDateValue.getMonth() + 1).padStart(2, '0');
 			const day = String(acquiredDateValue.getDate()).padStart(2, '0');
 			const acquiredDateFormatted = `${year}-${month}-${day}`;
-			inventoryUpdateForm.querySelector("#acquired_date").value = acquiredDateFormatted;
+			acquiredDateInput.value = acquiredDateFormatted;
 		} else {
-			inventoryUpdateForm.querySelector("#acquired_date").value = '';
+			acquiredDateInput.value = '';
 		}
 
-    inventoryUpdateForm.querySelector("#note").value = locationFormData.note || '';
+    const noteInput = inventoryUpdateForm.querySelector("#note") as HTMLInputElement;
+    const noteValue: string = locationFormData.note || '';
+    noteInput.value = noteValue;
   }
 	await updateCheckoutStatus();
 }
 
-const csvDownloadButton = document.getElementById('inventory-search-download-button');
+const csvDownloadButton = document.getElementById('inventory-search-download-button') as HTMLButtonElement;
 csvDownloadButton.addEventListener('click', async (event) => {
   event.preventDefault();
   csvDownloadButton.disabled = true;
@@ -392,7 +422,7 @@ csvDownloadButton.addEventListener('click', async (event) => {
   try {
     await fetchFilteredInventoryData(true);
   } finally {
-    initializeInventoryPage();
+    await initializeInventoryPage();
     csvDownloadButton.disabled = false;
     csvDownloadButton.textContent = 'Download Results';
   }
@@ -403,10 +433,12 @@ async function initializeInventoryPage() {
 	await setFiltersFromURL();
 	await initializeSearch();
 	await populateModelSelect(filterManufacturer.value || null);
-  await fetchFilteredInventoryData()
+  await fetchFilteredInventoryData();
 	const urlParams = new URLSearchParams(window.location.search);
-	if (urlParams.get('tagnumber') && urlParams.get('update') === 'true') {
-		inventoryLookupTagInput.value = urlParams.get('tagnumber');
+	const updateParam: string | null = urlParams.get('update');
+	const tagnumberParam: string | null = urlParams.get('tagnumber');
+	if (tagnumberParam && updateParam === 'true') {
+		inventoryLookupTagInput.value = tagnumberParam;
 		await submitInventoryLookup();
 	}
 }

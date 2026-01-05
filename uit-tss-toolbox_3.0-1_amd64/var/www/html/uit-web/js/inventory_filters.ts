@@ -1,30 +1,30 @@
-const filterLocation = document.getElementById('inventory-search-location');
-const filterLocationReset = document.getElementById('inventory-search-location-reset');
-const filterDepartment = document.getElementById('inventory-search-department');
-const filterDepartmentReset = document.getElementById('inventory-search-department-reset');
-const filterManufacturer = document.getElementById('inventory-search-manufacturer');
-const filterManufacturerReset = document.getElementById('inventory-search-manufacturer-reset');
-const filterModel = document.getElementById('inventory-search-model');
-const filterModelReset = document.getElementById('inventory-search-model-reset');
-const filterDomain = document.getElementById('inventory-search-domain');
-const filterDomainReset = document.getElementById('inventory-search-domain-reset');
-const filterStatus = document.getElementById('inventory-search-status');
-const filterStatusReset = document.getElementById('inventory-search-status-reset');
-const filterBroken = document.getElementById('inventory-search-broken');
-const filterBrokenReset = document.getElementById('inventory-search-broken-reset');
-const filterHasImages = document.getElementById('inventory-search-has_images');
-const filterHasImagesReset = document.getElementById('inventory-search-has_images-reset');
+const filterLocation = document.getElementById('inventory-search-location') as HTMLInputElement;
+const filterLocationReset = document.getElementById('inventory-search-location-reset') as HTMLElement;
+const filterDepartment = document.getElementById('inventory-search-department') as HTMLInputElement;
+const filterDepartmentReset = document.getElementById('inventory-search-department-reset') as HTMLElement;
+const filterManufacturer = document.getElementById('inventory-search-manufacturer') as HTMLInputElement;
+const filterManufacturerReset = document.getElementById('inventory-search-manufacturer-reset') as HTMLElement;
+const filterModel = document.getElementById('inventory-search-model') as HTMLInputElement;
+const filterModelReset = document.getElementById('inventory-search-model-reset') as HTMLElement;
+const filterDomain = document.getElementById('inventory-search-domain') as HTMLInputElement;
+const filterDomainReset = document.getElementById('inventory-search-domain-reset') as HTMLElement;
+const filterStatus = document.getElementById('inventory-search-status') as HTMLInputElement;
+const filterStatusReset = document.getElementById('inventory-search-status-reset') as HTMLElement;
+const filterBroken = document.getElementById('inventory-search-broken') as HTMLInputElement;
+const filterBrokenReset = document.getElementById('inventory-search-broken-reset') as HTMLElement;
+const filterHasImages = document.getElementById('inventory-search-has_images') as HTMLInputElement;
+const filterHasImagesReset = document.getElementById('inventory-search-has_images-reset') as HTMLElement;
 
-let allModelsData = [];
+let allModelsData: string[] = [];
 
 const currentURL = new URL(window.location.href);
 const queryParams = new URLSearchParams(currentURL.search);
 
-function updateURLParameters(urlParameter, value) {
+function updateURLParameters(urlParameter: string | null, value: string | null) {
 	const newURL = new URL(window.location.href);
-	if (value) {
+	if (urlParameter && value) {
 		newURL.searchParams.set(urlParameter, value);
-	} else {
+	} else if (urlParameter && !value) {
 		newURL.searchParams.delete(urlParameter);
 	}
 	if (newURL.searchParams.toString()) {
@@ -59,7 +59,7 @@ async function initializeSearch() {
 }
 
 // Reset search
-function createFilterResetHandler(filterElement, resetButton) {
+function createFilterResetHandler(filterElement: HTMLInputElement, resetButton: HTMLElement) {
 	if (!filterElement || !resetButton) return;
 	if (filterElement.value && filterElement.value.length > 0) {
 		resetButton.style.display = 'inline-block';
@@ -71,7 +71,7 @@ function createFilterResetHandler(filterElement, resetButton) {
 		updateURLParameters(paramName, filterElement.value);
 		if (filterElement === filterManufacturer) {
 			filterModel.disabled = !filterManufacturer.value;
-			await populateModelSelect(filterElement.value || null);
+			await populateModelSelect(filterManufacturer.value);
 			if (!filterManufacturer.value) {
         filterModel.value = '';
         filterModelReset.style.display = 'none';
@@ -93,7 +93,7 @@ function createFilterResetHandler(filterElement, resetButton) {
 			filterModel.disabled = true;
 			updateURLParameters('system_model', null);
 			await loadAllManufacturersAndModels();
-			const manufacturerSelect = document.getElementById('inventory-search-manufacturer');
+			const manufacturerSelect = document.getElementById('inventory-search-manufacturer') as HTMLSelectElement;
 			if (manufacturerSelect) manufacturerSelect.value = '';
 			await populateModelSelect(null);
 		}
@@ -105,7 +105,7 @@ function createFilterResetHandler(filterElement, resetButton) {
 	});
 }
 
-function getURLParamName(filterElement) {
+function getURLParamName(filterElement: HTMLInputElement): string {
 	if (filterElement === filterLocation) return 'location';
 	if (filterElement === filterDepartment) return 'department_name';
 	if (filterElement === filterManufacturer) return 'system_manufacturer';
@@ -117,7 +117,7 @@ function getURLParamName(filterElement) {
 	return '';
 }
 
-async function setFiltersFromURL() {
+async function setFiltersFromURL(): Promise<void> {
 	const currentParams = new URLSearchParams(window.location.search);
 	filterLocation.value = currentParams.get('location') || '';
 	filterDepartment.value = currentParams.get('department_name') || '';
@@ -127,9 +127,10 @@ async function setFiltersFromURL() {
 	filterStatus.value = currentParams.get('status') || '';
 	filterBroken.value = currentParams.get('is_broken') || '';
 	filterHasImages.value = currentParams.get('has_images') || '';
+	return;
 }
 
-async function fetchFilteredInventoryData(csvDownload = false) {
+async function fetchFilteredInventoryData(csvDownload = false): Promise<void> {
 	const currentParams = new URLSearchParams(window.location.search);
 
 	const update = currentParams.get('update');
@@ -191,24 +192,24 @@ async function fetchFilteredInventoryData(csvDownload = false) {
   }
 }
 
-const inventoryFilterForm = document.getElementById('inventory-search-form');
+const inventoryFilterForm = document.getElementById('inventory-search-form') as HTMLFormElement;
 inventoryFilterForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   fetchFilteredInventoryData();
 });
 
-const inventoryFilterResetButton = document.getElementById('inventory-search-form-reset-button');
+const inventoryFilterResetButton = document.getElementById('inventory-search-form-reset-button') as HTMLElement;
 inventoryFilterResetButton.addEventListener("click", async (event) => {
   event.preventDefault();
 	history.replaceState(null, '', window.location.pathname);
   inventoryFilterForm.reset();
-  document.querySelectorAll('.inventory-search-reset').forEach(elem => {
+  document.querySelectorAll('.inventory-search-reset').forEach((elem: HTMLElement) => {
     elem.style.display = 'none';
   });
 	currentURL.search = '';
 	await loadAllManufacturersAndModels();
 
-	const modelSelect = document.getElementById('inventory-search-model');
+	const modelSelect = document.getElementById('inventory-search-model') as HTMLSelectElement;
   modelSelect.innerHTML = '';
   const defaultOption = document.createElement('option');
   defaultOption.value = '';
@@ -221,14 +222,14 @@ inventoryFilterResetButton.addEventListener("click", async (event) => {
 });
 
 async function populateManufacturerSelect() {
-  const manufacturerSelect = document.getElementById('inventory-search-manufacturer');
+  const manufacturerSelect = document.getElementById('inventory-search-manufacturer') as HTMLSelectElement;
   if (!manufacturerSelect) return;
 
 	const savedValue = manufacturerSelect.value;
 
   // Get manufacturers
-  const manufacturersMap = new Map();
-  allModelsData.forEach(item => {
+  const manufacturersMap = new Map<string, string>();
+  allModelsData.forEach((item: any) => {
     if (item.system_manufacturer && !manufacturersMap.has(item.system_manufacturer)) {
       manufacturersMap.set(item.system_manufacturer, item.system_manufacturer_formatted || item.system_manufacturer);
     }
@@ -254,8 +255,8 @@ async function populateManufacturerSelect() {
   manufacturerSelect.value = (savedValue && manufacturersMap.has(savedValue)) ? savedValue : '';
 }
 
-async function populateModelSelect(selectedManufacturer = null) {
-  const modelSelect = document.getElementById('inventory-search-model');
+async function populateModelSelect(selectedManufacturer: string | null = null) {
+  const modelSelect = document.getElementById('inventory-search-model') as HTMLSelectElement;
   if (!modelSelect) return;
 
 	if (!selectedManufacturer) {
@@ -272,12 +273,12 @@ async function populateModelSelect(selectedManufacturer = null) {
 	const savedValue = modelSelect.value;
 
   // Filter models by manufacturer if one is selected
-  const filteredModels = allModelsData.filter(item => item.system_manufacturer === selectedManufacturer);
+  const filteredModels = allModelsData.filter((item: any) => item.system_manufacturer === selectedManufacturer);
 
 
   // Get models
-  const modelsMap = new Map();
-  filteredModels.forEach(item => {
+  const modelsMap = new Map<string, string>();
+  filteredModels.forEach((item: any) => {
     if (item.system_model && !modelsMap.has(item.system_model)) {
       modelsMap.set(item.system_model, item.system_model_formatted || item.system_model);
     }

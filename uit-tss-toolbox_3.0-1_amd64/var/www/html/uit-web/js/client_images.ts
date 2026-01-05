@@ -1,5 +1,5 @@
-async function loadClientImages(clientTag) {
-  const container = document.getElementById('image-container');
+async function loadClientImages(clientTag: number | string) {
+  const container = document.getElementById('image-container') as HTMLElement;
 	try {
 		container.innerHTML = '';
 		if (!clientTag) {
@@ -60,18 +60,20 @@ async function loadClientImages(clientTag) {
 
 			const imgLink = document.createElement('a');
       const imgURL = new URL(`/api/images`, window.location.origin);
-      imgURL.searchParams.set('tagnumber', clientTag);
+      imgURL.searchParams.set('tagnumber', clientTag.toString());
       imgURL.searchParams.set('uuid', imgJsonManifest.uuid);
       imgLink.href = imgURL.toString();
 			imgLink.target = '_blank';
 			imgLink.rel = 'noopener noreferrer';
 
-      let media = null;
+      let media = null as HTMLImageElement | HTMLVideoElement | null;
       if (imgJsonManifest.file_type && imgJsonManifest.file_type.startsWith('video/')) {
 			  media = document.createElement('video');
 			media.controls = true;
       } else if (imgJsonManifest.file_type && imgJsonManifest.file_type.startsWith('image/')) {
         media = document.createElement('img');
+      	media.loading = 'lazy';
+				media.alt = `Images for ${clientTag}`;
       } else {
         console.warn(`Unsupported media type: ${imgJsonManifest.file_type} for image UUID: ${imgJsonManifest.uuid}`);
         continue;
@@ -80,9 +82,7 @@ async function loadClientImages(clientTag) {
         console.warn(`Failed to create media element for image UUID: ${imgJsonManifest.uuid}`);
         continue;
       }
-      media.lazy = true;
       media.src = imgURL.toString();
-			media.alt = `Media for ${clientTag}`;
 			media.className = 'client-image';
 
       const captionDiv = document.createElement('div');
@@ -138,8 +138,7 @@ async function loadClientImages(clientTag) {
       }
 
       unpinIcon.addEventListener('click', async (event) => {
-        const button = event.currentTarget;
-        if (!(button instanceof HTMLElement)) return;
+        const button = event.currentTarget as HTMLInputElement;
         button.disabled = true;
         const uuidToUnpin = button.dataset.uuid;
         if (!uuidToUnpin) {
@@ -153,7 +152,7 @@ async function loadClientImages(clientTag) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: JSON.stringify({uuid: uuidToUnpin, tagnumber: Number(clientTag)})
+            body: JSON.stringify({uuid: uuidToUnpin, tagnumber: clientTag.toString()})
           });
           if (!unpinResponse.ok) {
             throw new Error (`Failed to unpin image: ${unpinResponse.status} ${unpinResponse.statusText}`);
@@ -175,11 +174,12 @@ async function loadClientImages(clientTag) {
           alert(`Error unpinning image: ${unpinError.message}`);
         } finally {
           if (entry) entry.style.opacity = '1';
+          if (button instanceof HTMLInputElement) button.disabled = false;
         }
       });
 
       deleteIcon.addEventListener('click', async (event) => {
-        const button = event.currentTarget;
+        const button = event.currentTarget as HTMLInputElement;
         if (!(button instanceof HTMLElement)) return;
         button.disabled = true;
         const uuidToDelete = button.dataset.uuid;
@@ -206,7 +206,7 @@ async function loadClientImages(clientTag) {
 
         try {
           const deleteURL = new URL(`/api/images`, window.location.origin);
-          deleteURL.searchParams.set('tagnumber', clientTag);
+          deleteURL.searchParams.set('tagnumber', clientTag.toString());
           deleteURL.searchParams.set('uuid', uuidToDelete);
           const deleteResponse = await fetch(deleteURL, {
             method: 'DELETE',
