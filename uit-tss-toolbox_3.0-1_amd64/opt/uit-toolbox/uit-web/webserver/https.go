@@ -84,7 +84,6 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("POST /login", httpsFullLoginChain.ThenFunc(endpoints.WebAuthEndpoint))
 	httpsRouter.Handle("GET /css/login.css", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("/js/login.js", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
-	httpsRouter.Handle("/js/core.js", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("/css/desktop.css", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("/favicon.png", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 
