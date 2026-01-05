@@ -9,9 +9,10 @@
 		"strictNullChecks": true,
 		"removeComments": true,
 		"noEmitOnError": true,
+		"skipLibCheck": true,
 		"outFile": "./core.js",
 		"target": "es2024",
-		"lib": ["es2024", "dom", "ESNext", "WebWorker"],
+		"lib": ["es2024", "dom", "ESNext"],
 	},
 	"include": ["./*.ts"],
 }
