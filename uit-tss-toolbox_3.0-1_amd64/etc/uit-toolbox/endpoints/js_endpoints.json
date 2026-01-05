@@ -12,6 +12,7 @@
   },
   "/js/init.js": {
     "file_path": "/var/www/html/uit-web/js/init.js",
+    "auth_required": false,
     "endpoint_type": "web_content",
     "content_type": "text/javascript; charset=utf-8"
   },
