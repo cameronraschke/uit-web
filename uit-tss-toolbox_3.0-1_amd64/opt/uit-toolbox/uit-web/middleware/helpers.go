@@ -157,13 +157,13 @@ func GetRequestIPFromContext(ctx context.Context) (ipAddr netip.Addr, err error)
 	return ip, nil
 }
 
-func withRequestPath(ctx context.Context, path string) (context.Context, error) {
-	if strings.TrimSpace(path) == "" {
+func withRequestPath(ctx context.Context, reqPath string) (context.Context, error) {
+	if strings.TrimSpace(reqPath) == "" {
 		return ctx, errors.New("empty request path")
 	}
-	return context.WithValue(ctx, pathRequestKey, path), nil
+	return context.WithValue(ctx, pathRequestKey, reqPath), nil
 }
-func GetRequestPathFromContext(ctx context.Context) (path string, err error) {
+func GetRequestPathFromContext(ctx context.Context) (reqPath string, err error) {
 	p, ok := ctx.Value(pathRequestKey).(string)
 	if !ok {
 		return "", fmt.Errorf("URL path not found in context")
