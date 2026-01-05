@@ -443,7 +443,8 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Store raw query in context, even if empty (to be used later on)
-		ctx, err = withRequestQuery(ctx, req.URL.Query())
+		queries := req.URL.Query()
+		ctx, err = withRequestQuery(ctx, &queries)
 		if err != nil {
 			log.HTTPError(req, "Error storing query in context: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
