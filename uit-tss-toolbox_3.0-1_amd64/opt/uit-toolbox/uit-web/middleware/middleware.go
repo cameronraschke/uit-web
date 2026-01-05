@@ -163,7 +163,7 @@ func CheckIPBlockedMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		if config.IsIPBlocked(requestIP) {
-			log.HTTPWarning(req, "Blocked IP attempted request")
+			log.HTTPWarning(req, "Blocked client IP address attempted connection")
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}

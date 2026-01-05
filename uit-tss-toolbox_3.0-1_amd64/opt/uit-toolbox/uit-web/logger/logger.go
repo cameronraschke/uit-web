@@ -3,8 +3,8 @@ package logger
 import (
 	"bufio"
 	"fmt"
+	"net"
 	"net/http"
-	"net/netip"
 	"os"
 	"strings"
 	"sync"
@@ -98,9 +98,9 @@ func (consoleLogger *ConsoleLogger) logHTTPErr(req *http.Request, logLevel LogLe
 	}
 
 	// Buffer values outside of lock
-	ipAddr, err := netip.ParseAddr(req.RemoteAddr)
+	ipAddr, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {
-		ipAddr = netip.Addr{}
+		ipAddr = ""
 	}
 	requestMethod := req.Method
 	requestURL := req.URL.Path
@@ -110,7 +110,7 @@ func (consoleLogger *ConsoleLogger) logHTTPErr(req *http.Request, logLevel LogLe
 	if strings.ContainsAny(requestURL, disallowedURLChars) {
 		requestURL = "INVALID URL"
 	}
-	requestInfo := fmt.Sprintf(" (%s %s %s)", ipAddr.String(), requestMethod, requestURL)
+	requestInfo := fmt.Sprintf(" (%s %s %s)", ipAddr, requestMethod, requestURL)
 	consoleLogger.log(logLevel, message+requestInfo)
 }
 

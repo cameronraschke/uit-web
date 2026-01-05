@@ -680,6 +680,9 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 		return false, fmt.Errorf("app state is not initialized")
 	}
 
+	if !ipAddr.IsValid() || IsIPBlocked(ipAddr) {
+		return false, nil
+	}
 	allowed = false
 	switch trafficType {
 	case "wan":
