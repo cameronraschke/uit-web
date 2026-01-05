@@ -87,7 +87,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	decodedBytes, err := base64.StdEncoding.DecodeString(base64String)
+	decodedBytes, err := base64.RawURLEncoding.DecodeString(base64String)
 	if err != nil {
 		log.HTTPWarning(req, "Invalid base64 encoding: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
