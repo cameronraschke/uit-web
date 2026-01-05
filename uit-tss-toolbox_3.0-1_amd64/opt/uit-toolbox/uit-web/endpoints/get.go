@@ -628,6 +628,10 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		log.HTTPWarning(req, "Request query parameters are nil in GetInventoryTableData") // continue if queries are nil
 	}
 
+	if requestQueries == nil {
+		requestQueries = &url.Values{}
+	}
+
 	getStr := func(key string) *string {
 		s := strings.TrimSpace(requestQueries.Get(key))
 		if s == "" {
