@@ -77,16 +77,12 @@ func IsClientRateLimited(limiterType string, ip netip.Addr) (limited bool, retry
 	}
 
 	limiter := rateLimiter.Get(ip)
-	curTime := time.Now()
-	// Reserve 1 token
-	reservation := limiter.ReserveN(curTime, 1)
-	reservationDelay := reservation.DelayFrom(curTime)
 
-	// Wait until we can proceed, or block if too many requests
-	if reservationDelay > 0 || !reservation.OK() {
-		reservation.Cancel()
+	// Use Allow() to check if the request can proceed immediately.
+	// If it returns false, the rate limit has been exceeded.
+	if !limiter.Allow() {
 		appState.BlockedIPs.Load().Block(ip)
-		return true, reservationDelay
+		return true, appState.BlockedIPs.Load().BanPeriod
 	}
 
 	return false, 0
