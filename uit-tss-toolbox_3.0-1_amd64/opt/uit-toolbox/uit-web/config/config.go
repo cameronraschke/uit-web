@@ -735,23 +735,22 @@ func IsIPBlocked(ipAddress netip.Addr) bool {
 	}
 
 	clMap := &appState.BlockedIPs.Load().ClientMap
-	_, ok := clMap.Load(ipAddress)
+	val, ok := clMap.Load(ipAddress)
 	if !ok {
 		return false
 	}
 
-	var isBlocked bool = false
-	clMap.Range(func(k, v any) bool {
-		value := v.(ClientLimiter)
-		if time.Now().Before(value.LastSeen.Add(appState.BlockedIPs.Load().BanPeriod)) {
-			isBlocked = true
-			return true
-		} else if time.Now().After(value.LastSeen.Add(appState.BlockedIPs.Load().BanPeriod)) {
-			clMap.Delete(k)
-		}
+	clientLimiter, ok := val.(ClientLimiter)
+	if !ok {
+		return false
+	}
+
+	if time.Now().Before(clientLimiter.LastSeen.Add(appState.BlockedIPs.Load().BanPeriod)) {
 		return true
-	})
-	return isBlocked
+	}
+
+	clMap.Delete(ipAddress)
+	return false
 }
 
 func CleanupBlockedIPs() {
