@@ -625,7 +625,6 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
-		log.HTTPWarning(req, "Request query parameters are nil in GetInventoryTableData") // continue if queries are nil
 	}
 
 	if requestQueries == nil {

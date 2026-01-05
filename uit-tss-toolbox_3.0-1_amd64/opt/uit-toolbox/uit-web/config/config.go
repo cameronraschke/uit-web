@@ -409,26 +409,26 @@ func InitApp() (*AppState, error) {
 	webRateLimiter.Store(&RateLimiter{
 		Type:      "webserver",
 		ClientMap: sync.Map{},
-		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 4,
-		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST / 4,
+		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL,
+		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST,
 	})
 	apiRateLimiter.Store(&RateLimiter{
 		Type:      "api",
 		ClientMap: sync.Map{},
-		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 2,
-		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST / 2,
+		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL,
+		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST,
 	})
 	authRateLimiter.Store(&RateLimiter{
 		Type:      "auth",
 		ClientMap: sync.Map{},
-		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL,
-		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST,
+		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 2,
+		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST / 2,
 	})
 	fileRateLimiter.Store(&RateLimiter{
 		Type:      "file",
 		ClientMap: sync.Map{},
-		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 8,
-		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST / 8,
+		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 4,
+		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST / 4,
 	})
 	blockedClients.Store(&BlockedClients{
 		ClientMap: sync.Map{},
