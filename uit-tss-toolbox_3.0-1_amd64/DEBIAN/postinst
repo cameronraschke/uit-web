@@ -196,6 +196,9 @@ find /opt/uit-toolbox/sql-backups -type f -exec chmod 660 {} \;
 if [[ ! -d /var/www/html/uit-web/transcode ]]; then
     mkdir /var/www/html/uit-web/transcode
 fi
+(cd /var/www/html/uit-web/js/
+tsc
+)
 chown uitweb:uit /var/www/html/uit-web -R
 find /var/www/html/uit-web -type d -exec chmod 750 {} \;
 chmod 770 /var/www/html/uit-web/js/
