@@ -621,8 +621,11 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
 		log.HTTPWarning(req, "Error retrieving query parameters from context for GetInventoryTableData: "+err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
+		if requestQueries != nil {
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		log.HTTPWarning(req, "Request query parameters are nil in GetInventoryTableData") // continue if queries are nil
 	}
 
 	getStr := func(key string) *string {
