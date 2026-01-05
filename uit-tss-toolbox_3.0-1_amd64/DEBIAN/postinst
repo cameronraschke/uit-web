@@ -198,6 +198,7 @@ if [[ ! -d /var/www/html/uit-web/transcode ]]; then
 fi
 chown uitweb:uit /var/www/html/uit-web -R
 find /var/www/html/uit-web -type d -exec chmod 750 {} \;
+chmod 770 /var/www/html/uit-web/js/
 find /var/www/html/uit-web -type f -exec chmod 660 {} \;
 
 (cd /opt/uit-toolbox/uit-web/
