@@ -197,7 +197,7 @@ if [[ ! -d /var/www/html/uit-web/transcode ]]; then
     mkdir /var/www/html/uit-web/transcode
 fi
 (cd /var/www/html/uit-web/js/
-tsc
+/root/.nvm/versions/node/v24.12.0/bin/tsc
 )
 chown uitweb:uit /var/www/html/uit-web -R
 find /var/www/html/uit-web -type d -exec chmod 750 {} \;
