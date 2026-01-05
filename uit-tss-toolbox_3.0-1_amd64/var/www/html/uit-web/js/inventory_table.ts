@@ -1,5 +1,9 @@
 const rowCountElement = document.getElementById('inventory-table-rowcount') as HTMLElement;
 const formAnchor = document.querySelector('#inventory-section') as HTMLElement;
+const inventoryTagSortInput = document.getElementById('inventory-sort-tagnumber') as HTMLInputElement;
+const inventorySerialSortInput = document.getElementById('inventory-sort-serial') as HTMLInputElement;
+const inventoryTimeSortInput = document.getElementById('inventory-sort-time') as HTMLInputElement;
+const inventorySortByInput = document.getElementById('inventory-sort-by') as HTMLSelectElement;
 
 function createTextCell(value: string, options: { datasetKey?: string; link?: string; onClick?: (event: MouseEvent) => void; truncate?: number } = {}) {
   const cell = document.createElement('td');
@@ -219,3 +223,46 @@ async function renderInventoryTable(tableData: any[]) {
     renderEmptyTable(tableBody, 'No results found.');
   }
 }
+
+function getInventorySortByParams() {
+	const sortBy = inventorySortByInput.value.trim();
+	const sortByArr = sortBy.split('-');
+	const sortKey = sortByArr[0];
+	const sortOrder = sortByArr[1];
+	if (sortKey.trim() === '' || sortOrder.trim() === '') {
+		return null;
+	}
+	const table = document.getElementById('inventory-table') as HTMLTableElement;
+	const tbody = table.querySelector("tbody") as HTMLTableSectionElement;
+	if (!table || !tbody) {
+		return null;
+	}
+	return { sortKey, sortOrder, table, tbody };
+}
+
+function sortInventoryTable(sortKey: string, sortOrder: string, tbody: HTMLTableSectionElement) {
+	const rowsArray = Array.from(tbody.rows);
+	rowsArray.sort((a, b) => {
+		const aValue = a.dataset[sortKey] || '';
+		const bValue = b.dataset[sortKey] || '';
+		if (sortKey === 'last_updated') {
+			const aDate = new Date(aValue).getTime();
+			const bDate = new Date(bValue).getTime();
+			return sortOrder === 'asc' ? aDate - bDate : bDate - aDate;
+		} else {
+			const comparison = aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' });
+			return sortOrder === 'asc' ? comparison : -comparison;
+		}
+	});
+	// Re-append sorted rows
+	for (const row of rowsArray) {
+		tbody.appendChild(row);
+	}
+}
+
+inventorySortByInput.addEventListener('change', async () => {
+	const sortParams = getInventorySortByParams();
+	if (sortParams) {
+		sortInventoryTable(sortParams.sortKey, sortParams.sortOrder, sortParams.tbody);
+	}
+});
