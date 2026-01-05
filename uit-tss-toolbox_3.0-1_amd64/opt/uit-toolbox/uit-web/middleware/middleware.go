@@ -524,25 +524,23 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 
 		// Content-Type (required for POST/PUT)
 		contentType := strings.TrimSpace(req.Header.Get("Content-Type"))
-		if contentType == "" {
-			log.HTTPWarning(req, "Request is missing 'Content-Type' header")
-			WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		if req.Method != http.MethodPost && req.Method != http.MethodPut {
-			log.HTTPWarning(req, "Content-Type header present for non-POST/PUT request")
-			WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
 		if len(contentType) > 256 {
 			log.HTTPWarning(req, "Content-Type header is too long: "+fmt.Sprintf("%d bytes", len(contentType)))
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
-		if contentType != "application/x-www-form-urlencoded" && contentType != "application/json" && !strings.HasPrefix(contentType, "multipart/form-data") {
-			log.HTTPWarning(req, "Invalid Content-Type header: "+contentType)
-			WriteJsonError(w, http.StatusUnsupportedMediaType)
-			return
+		if req.Method == http.MethodPost || req.Method == http.MethodPut {
+			if contentType == "" {
+				log.HTTPWarning(req, "Missing Content-Type header for POST/PUT request")
+				WriteJsonError(w, http.StatusBadRequest)
+				return
+			}
+
+			if contentType != "application/x-www-form-urlencoded" && contentType != "application/json" && !strings.HasPrefix(contentType, "multipart/form-data") {
+				log.HTTPWarning(req, "Invalid Content-Type header: "+contentType)
+				WriteJsonError(w, http.StatusUnsupportedMediaType)
+				return
+			}
 		}
 
 		// Optional headers: Validate if present
