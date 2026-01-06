@@ -65,8 +65,14 @@ func (repo *Repo) GetDepartments(ctx context.Context) (map[string]string, error)
 	return departmentMap, nil
 }
 
+type Domains struct {
+	DomainName          string `json:"domain_name"`
+	DomainNameFormatted string `json:"domain_name_formatted"`
+	DomainSortOrder     int64  `json:"domain_sort_order"`
+}
+
 func (repo *Repo) GetDomains(ctx context.Context) (map[string]string, error) {
-	rows, err := repo.DB.QueryContext(ctx, "SELECT domain_name, domain_name_formatted FROM static_ad_domains ORDER BY domain_name_formatted;")
+	rows, err := repo.DB.QueryContext(ctx, "SELECT domain_name, domain_name_formatted FROM static_ad_domains ORDER BY domain_sort_order DESC;")
 	if err != nil {
 		return nil, err
 	}

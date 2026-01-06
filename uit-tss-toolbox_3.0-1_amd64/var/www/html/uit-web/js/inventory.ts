@@ -439,6 +439,7 @@ async function initializeInventoryPage() {
 	await setFiltersFromURL();
 	await initializeSearch();
 	await populateModelSelect(filterManufacturer.value || null);
+	await populateDomainSelect();
   await fetchFilteredInventoryData();
 	const urlParams = new URLSearchParams(window.location.search);
 	const updateParam: string | null = urlParams.get('update');

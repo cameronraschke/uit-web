@@ -1,18 +1,18 @@
-const filterLocation = document.getElementById('inventory-search-location') as HTMLInputElement;
+const filterLocation = document.getElementById('inventory-search-location') as HTMLSelectElement;
 const filterLocationReset = document.getElementById('inventory-search-location-reset') as HTMLElement;
-const filterDepartment = document.getElementById('inventory-search-department') as HTMLInputElement;
+const filterDepartment = document.getElementById('inventory-search-department') as HTMLSelectElement;
 const filterDepartmentReset = document.getElementById('inventory-search-department-reset') as HTMLElement;
-const filterManufacturer = document.getElementById('inventory-search-manufacturer') as HTMLInputElement;
+const filterManufacturer = document.getElementById('inventory-search-manufacturer') as HTMLSelectElement;
 const filterManufacturerReset = document.getElementById('inventory-search-manufacturer-reset') as HTMLElement;
-const filterModel = document.getElementById('inventory-search-model') as HTMLInputElement;
+const filterModel = document.getElementById('inventory-search-model') as HTMLSelectElement;
 const filterModelReset = document.getElementById('inventory-search-model-reset') as HTMLElement;
-const filterDomain = document.getElementById('inventory-search-domain') as HTMLInputElement;
+const filterDomain = document.getElementById('inventory-search-domain') as HTMLSelectElement;
 const filterDomainReset = document.getElementById('inventory-search-domain-reset') as HTMLElement;
-const filterStatus = document.getElementById('inventory-search-status') as HTMLInputElement;
+const filterStatus = document.getElementById('inventory-search-status') as HTMLSelectElement;
 const filterStatusReset = document.getElementById('inventory-search-status-reset') as HTMLElement;
-const filterBroken = document.getElementById('inventory-search-broken') as HTMLInputElement;
+const filterBroken = document.getElementById('inventory-search-broken') as HTMLSelectElement;
 const filterBrokenReset = document.getElementById('inventory-search-broken-reset') as HTMLElement;
-const filterHasImages = document.getElementById('inventory-search-has_images') as HTMLInputElement;
+const filterHasImages = document.getElementById('inventory-search-has_images') as HTMLSelectElement;
 const filterHasImagesReset = document.getElementById('inventory-search-has_images-reset') as HTMLElement;
 
 let allModelsData: string[] = [];
@@ -59,7 +59,7 @@ async function initializeSearch() {
 }
 
 // Reset search
-function createFilterResetHandler(filterElement: HTMLInputElement, resetButton: HTMLElement) {
+function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton: HTMLElement) {
 	if (!filterElement || !resetButton) return;
 	if (filterElement.value && filterElement.value.length > 0) {
 		resetButton.style.display = 'inline-block';
@@ -105,7 +105,7 @@ function createFilterResetHandler(filterElement: HTMLInputElement, resetButton: 
 	});
 }
 
-function getURLParamName(filterElement: HTMLInputElement): string {
+function getURLParamName(filterElement: HTMLSelectElement): string {
 	if (filterElement === filterLocation) return 'location';
 	if (filterElement === filterDepartment) return 'department_name';
 	if (filterElement === filterManufacturer) return 'system_manufacturer';
@@ -318,4 +318,40 @@ async function loadAllManufacturersAndModels() {
   } catch (error) {
     console.error('Error fetching models:', error);
   }
+}
+
+type Domain = {
+	domain_name: string;
+	domain_name_formatted: string;
+	domain_sort_order: number;
+};
+async function populateDomainSelect() {
+	if (!filterDomain) return;
+	try {
+		const response = await fetchData('/api/domains');
+		if (!response) {
+			throw new Error('No data returned from /api/domains');
+		}
+		const domainsData: Domain[] = Array.isArray(response) ? response : [];
+		filterDomain.innerHTML = '';
+		const defaultOption = document.createElement('option');
+		defaultOption.value = '';
+		defaultOption.textContent = 'AD Domain';
+		defaultOption.selected = true;
+		defaultOption.addEventListener('click', (e) => {
+			e.preventDefault();
+			filterDomain.value = '';
+			defaultOption.disabled = true;
+		});
+		filterDomain.appendChild(defaultOption);
+		domainsData.sort((a, b) => a.domain_sort_order - b.domain_sort_order);
+		domainsData.forEach((domain) => {
+			const option = document.createElement('option');
+			option.value = domain.domain_name;
+			option.textContent = domain.domain_name_formatted || domain.domain_name;
+			filterDomain.appendChild(option);
+		});
+	} catch (error) {
+		console.error('Error fetching domains:', error);
+	}
 }

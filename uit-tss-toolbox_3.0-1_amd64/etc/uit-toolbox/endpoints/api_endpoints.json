@@ -27,5 +27,6 @@
   "/api/models": {},
 	"/api/client/health/battery": {
 		"allowed_methods": ["OPTIONS", "GET", "POST"]
-	}
+	},
+	"/api/domains": {}
 }

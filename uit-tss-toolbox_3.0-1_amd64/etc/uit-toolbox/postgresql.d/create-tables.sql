@@ -150,7 +150,7 @@ INSERT INTO static_battery_stats
     battery_charge_cycles
     )
 VALUES 
-    ('RE03045XL', 300),
+    ('RE03045XL', 300), -- RE03XL --
     ('DELL VN3N047', 300),
     ('DELL N2K6205', 300),
     ('DELL 1VX1H93', 300),

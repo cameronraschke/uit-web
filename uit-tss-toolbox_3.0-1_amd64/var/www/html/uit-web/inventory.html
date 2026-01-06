@@ -45,8 +45,8 @@
                   />
               <div>
                 <button type="submit" id="inventory-lookup-submit-button">Search for Client</button>
+								<button type="button" id="inventory-lookup-more-details">More Details</button>
                 <button type="reset" id="inventory-lookup-reset-button">Reset Search</button>
-                <button type="button" id="inventory-lookup-more-details">More Details</button>
               </div>
             </div>
           </form>
@@ -120,10 +120,6 @@
               <div><label for="ad_domain" class="required-field">AD Domain:</label></div>
               <div><select id="ad_domain" name="ad_domain">
                 <option value="" disabled selected>Select AD Domain</option>
-                <option value="">None</option>
-                {{- range $domain, $domainReadable := .Domains }}
-                <option value="{{ $domain }}">{{ $domainReadable }}</option>
-                {{- end }}
               </select></div>
             </div>
             <div class="vertical-spacer"></div>
