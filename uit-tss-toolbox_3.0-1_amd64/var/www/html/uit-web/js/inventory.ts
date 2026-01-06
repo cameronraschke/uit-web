@@ -16,6 +16,7 @@ const inventoryUpdateFormSubmitButton = document.getElementById('inventory-updat
 const inventoryUpdateFormCancelButton = document.getElementById('inventory-update-cancel-button') as HTMLButtonElement;
 const allTagsDatalist = document.getElementById('inventory-tag-suggestions') as HTMLDataListElement;
 const clientImagesLink = document.getElementById('client_images_link') as HTMLAnchorElement;
+const inventoryUpdateDomainSelect = document.getElementById('ad_domain') as HTMLSelectElement;
 const statusesThatIndicateBroken = ["needs-repair"];
 const statusesThatIndicateCheckout = ["checked-out", "reserved-for-checkout"];
 
@@ -362,6 +363,8 @@ async function populateLocationForm(tag: number): Promise<void> {
 		}
     inventoryUpdateLocationInput.value = locationFormData.location || '';
 
+		await populateDomainSelect(inventoryUpdateDomainSelect);
+
 		const building = inventoryUpdateForm.querySelector("#building") as HTMLInputElement;
 		const buildingVal: string = locationFormData.building || '';
 		building.value = buildingVal;
@@ -439,7 +442,7 @@ async function initializeInventoryPage() {
 	await setFiltersFromURL();
 	await initializeSearch();
 	await populateModelSelect(filterManufacturer.value || null);
-	await populateDomainSelect();
+	await populateDomainSelect(filterDomain);
   await fetchFilteredInventoryData();
 	const urlParams = new URLSearchParams(window.location.search);
 	const updateParam: string | null = urlParams.get('update');

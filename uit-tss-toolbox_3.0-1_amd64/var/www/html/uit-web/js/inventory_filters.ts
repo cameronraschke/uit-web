@@ -325,31 +325,31 @@ type Domain = {
 	domain_name_formatted: string;
 	domain_sort_order: number;
 };
-async function populateDomainSelect() {
-	if (!filterDomain) return;
+async function populateDomainSelect(elem: HTMLSelectElement) {
+	if (!elem) return;
 	try {
 		const response = await fetchData('/api/domains');
 		if (!response) {
 			throw new Error('No data returned from /api/domains');
 		}
 		const domainsData: Domain[] = Array.isArray(response) ? response : [];
-		filterDomain.innerHTML = '';
+		elem.innerHTML = '';
 		const defaultOption = document.createElement('option');
 		defaultOption.value = '';
 		defaultOption.textContent = 'AD Domain';
 		defaultOption.selected = true;
 		defaultOption.addEventListener('click', (e) => {
 			e.preventDefault();
-			filterDomain.value = '';
+			elem.value = '';
 			defaultOption.disabled = true;
 		});
-		filterDomain.appendChild(defaultOption);
+		elem.appendChild(defaultOption);
 		domainsData.sort((a, b) => a.domain_sort_order - b.domain_sort_order);
 		domainsData.forEach((domain) => {
 			const option = document.createElement('option');
 			option.value = domain.domain_name;
 			option.textContent = domain.domain_name_formatted || domain.domain_name;
-			filterDomain.appendChild(option);
+			elem.appendChild(option);
 		});
 	} catch (error) {
 		console.error('Error fetching domains:', error);
