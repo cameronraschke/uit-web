@@ -8,7 +8,7 @@ const inventoryLookupTagInput = document.getElementById('inventory-tag-lookup') 
 const inventoryLookupSystemSerialInput = document.getElementById('inventory-serial-lookup') as HTMLInputElement;
 const inventoryLookupFormSubmitButton = document.getElementById('inventory-lookup-submit-button') as HTMLButtonElement;
 const inventoryLookupFormResetButton = document.getElementById('inventory-lookup-reset-button') as HTMLButtonElement;
-const clientMoreDetailsButton = document.getElementById('client-more-details') as HTMLButtonElement;
+const inventoryLookupMoreDetailsButton = document.getElementById('inventory-lookup-more-details') as HTMLButtonElement;
 const inventoryUpdateForm = document.getElementById('inventory-update-form') as HTMLFormElement;
 const inventoryUpdateFormSection = document.getElementById('inventory-update-section') as HTMLElement;
 const inventoryUpdateLocationInput = document.getElementById('location') as HTMLInputElement;
@@ -99,7 +99,7 @@ async function submitInventoryLookup() {
   inventoryLookupFormSubmitButton.style.cursor = "not-allowed";
   inventoryLookupFormSubmitButton.style.border = "1px solid gray";
   inventoryLookupFormResetButton.style.display = "inline-block";
-  clientMoreDetailsButton.style.display = "inline-block";
+  inventoryLookupMoreDetailsButton.style.display = "inline-block";
   if (lookupTag) {
     clientImagesLink.href = `/client_images?tagnumber=${lookupTag || ''}`;
     clientImagesLink.target = "_blank";
@@ -149,7 +149,7 @@ function resetInventoryLookupAndUpdateForm() {
   inventoryLookupFormSubmitButton.style.border = "1px solid black";
   inventoryLookupFormSubmitButton.disabled = false;
   inventoryLookupFormResetButton.style.display = "none";
-  clientMoreDetailsButton.style.display = "none";
+  inventoryLookupMoreDetailsButton.style.display = "none";
   inventoryUpdateFormSection.style.display = "none";
   inventoryLookupWarningMessage.style.display = "none";
   inventoryLookupWarningMessage.textContent = "";
@@ -164,11 +164,12 @@ inventoryLookupFormResetButton.addEventListener("click", (event) => {
 	updateURLParameters(null, null);
 });
 
-clientMoreDetailsButton.addEventListener("click", (event) => {
+inventoryLookupMoreDetailsButton.addEventListener("click", (event) => {
   event.preventDefault();
   const tag = inventoryLookupTagInput.value;
   if (tag) {
-    window.location.href = `/client/${tag}`;
+    const url = `/client?tagnumber=${encodeURIComponent(tag)}`;
+		window.open(url, '_blank');
   }
 });
 
