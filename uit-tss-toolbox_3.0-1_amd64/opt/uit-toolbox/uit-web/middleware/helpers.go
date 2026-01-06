@@ -180,18 +180,15 @@ func withRequestQuery(ctx context.Context, query *url.Values) (context.Context, 
 	if query == nil {
 		return ctx, nil
 	}
-	if len(*query) == 0 {
-		return ctx, nil
-	}
 	return context.WithValue(ctx, queryRequestKey, query), nil
 }
 func GetRequestQueryFromContext(ctx context.Context) (query *url.Values, err error) {
 	q, ok := ctx.Value(queryRequestKey).(*url.Values)
 	if !ok {
-		return nil, fmt.Errorf("invalid/empty URL query found in context")
+		return nil, fmt.Errorf("invalid/empty URL query found in context: type assertion failed")
 	}
-	if q == nil || len(*q) == 0 {
-		return nil, fmt.Errorf("empty/nil URL query found in context")
+	if q == nil {
+		return nil, fmt.Errorf("nil URL query found in context")
 	}
 	queries := *q
 
