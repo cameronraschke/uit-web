@@ -79,5 +79,11 @@
 		"auth_required": false,
 		"endpoint_type": "web_content",
 		"content_type": "image/png"
+	},
+	"/client": {
+		"file_path": "/var/www/html/uit-web/client.html",
+		"requires": ["nonce", "client_tag"],
+		"endpoint_type": "web_content",
+    "content_type": "text/html; charset=utf-8"
 	}
 }

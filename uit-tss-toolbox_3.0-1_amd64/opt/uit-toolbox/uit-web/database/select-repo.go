@@ -606,3 +606,32 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *Inve
 	}
 	return results, nil
 }
+
+type ClientBatteryHealth struct {
+	Time                time.Time      `json:"time"`
+	Tagnumber           int64          `json:"tagnumber"`
+	JobstatsBattery     sql.NullString `json:"jobstatsHealthPcnt"`
+	ClientHealthBattery sql.NullString `json:"clientHealthPcnt"`
+	BatteryChargeCycles sql.NullInt64  `json:"chargeCycles"`
+}
+
+func (repo *Repo) GetClientBatteryHealth(ctx context.Context, tagnumber int64) (*ClientBatteryHealth, error) {
+	sqlQuery := `SELECT jobstats.time, jobstats.tagnumber, jobstats.battery_health, client_health.battery_health, 
+	jobstats.battery_charge_cycles
+	FROM jobstats 
+	LEFT JOIN client_health ON jobstats.tagnumber = client_health.tagnumber
+	WHERE jobstats.tagnumber = $1 AND jobstats.time IN (SELECT MAX(time) FROM jobstats WHERE tagnumber = $1);`
+
+	var batteryHealth ClientBatteryHealth
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, tagnumber)
+	if err := row.Scan(
+		&batteryHealth.Time,
+		&batteryHealth.Tagnumber,
+		&batteryHealth.JobstatsBattery,
+		&batteryHealth.ClientHealthBattery,
+		&batteryHealth.BatteryChargeCycles,
+	); err != nil {
+		return nil, err
+	}
+	return &batteryHealth, nil
+}

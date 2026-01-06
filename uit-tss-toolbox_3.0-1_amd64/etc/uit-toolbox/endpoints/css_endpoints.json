@@ -30,5 +30,10 @@
 		"file_path": "/var/www/html/uit-web/css/checkout-form.css",
 		"endpoint_type": "web_content",
 		"content_type": "text/css; charset=utf-8"
-	}
+	},
+	"/css/client.css": {
+    "file_path": "/var/www/html/uit-web/css/client.css",
+    "endpoint_type": "web_content",
+    "content_type": "text/css; charset=utf-8"
+  }
 }
