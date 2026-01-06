@@ -71,26 +71,26 @@ type Domains struct {
 	DomainSortOrder     int64  `json:"domain_sort_order"`
 }
 
-func (repo *Repo) GetDomains(ctx context.Context) (map[string]string, error) {
+func (repo *Repo) GetDomains(ctx context.Context) ([]Domains, error) {
 	rows, err := repo.DB.QueryContext(ctx, "SELECT domain_name, domain_name_formatted FROM static_ad_domains ORDER BY domain_sort_order DESC;")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var domainMap = make(map[string]string)
+	var domains []Domains
 	for rows.Next() {
-		var domain, domainFormatted string
-		if err := rows.Scan(&domain, &domainFormatted); err != nil {
+		var domain Domains
+		if err := rows.Scan(&domain.DomainName, &domain.DomainNameFormatted); err != nil {
 			return nil, err
 		}
-		domainMap[domain] = domainFormatted
+		domains = append(domains, domain)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return domainMap, nil
+	return domains, nil
 }
 
 func (repo *Repo) GetStatuses(ctx context.Context) (map[string]string, error) {

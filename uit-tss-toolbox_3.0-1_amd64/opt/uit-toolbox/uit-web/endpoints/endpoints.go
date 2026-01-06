@@ -274,16 +274,6 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 				httpTemplateResponseData.Departments = departments
 			}
 
-			if slices.Contains(endpointData.Requires, "domains") {
-				domains, err := db.GetDomains(ctx)
-				if err != nil {
-					log.HTTPError(req, "Cannot get domain list from database: "+err.Error()+"")
-					middleware.WriteJsonError(w, http.StatusInternalServerError)
-					return
-				}
-				httpTemplateResponseData.Domains = domains
-			}
-
 			if slices.Contains(endpointData.Requires, "statuses") {
 				statuses, err := db.GetStatuses(ctx)
 				if err != nil {
