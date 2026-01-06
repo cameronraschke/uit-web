@@ -182,6 +182,7 @@ php
 php-cli
 php-mysql
 php-pgsql
+php-curl
 httpfs2
 nfs-common
 smartmontools

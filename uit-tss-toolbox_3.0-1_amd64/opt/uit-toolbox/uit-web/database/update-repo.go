@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -67,5 +68,20 @@ func (repo *Repo) HideClientImageByUUID(ctx context.Context, tagnumber int64, uu
 func (repo *Repo) TogglePinImage(ctx context.Context, uuid string, tagnumber int64) (err error) {
 	sqlQuery := `UPDATE client_images SET primary_image = NOT COALESCE(primary_image, FALSE) WHERE uuid = $1 AND tagnumber = $2;`
 	_, err = repo.DB.ExecContext(ctx, sqlQuery, uuid, tagnumber)
+	return err
+}
+
+func (repo *Repo) SetClientBatteryHealth(ctx context.Context, tagnumber int64, uuid string, healthPcnt *int64) error {
+	if tagnumber == 0 {
+		return errors.New("tagnumber is zero in SetClientBatteryHealth")
+	}
+	if strings.TrimSpace(uuid) == "" {
+		return errors.New("UUID is empty in SetClientBatteryHealth")
+	}
+	if healthPcnt == nil {
+		return errors.New("health percentage is nil in SetClientBatteryHealth")
+	}
+	sql := `UPDATE jobstats SET battery_health = $1 WHERE tagnumber = $2 AND uuid = $3;`
+	_, err := repo.DB.ExecContext(ctx, sql, healthPcnt, tagnumber, uuid)
 	return err
 }
