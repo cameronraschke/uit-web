@@ -608,11 +608,11 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *Inve
 }
 
 type ClientBatteryHealth struct {
-	Time                time.Time      `json:"time"`
-	Tagnumber           int64          `json:"tagnumber"`
-	JobstatsBattery     sql.NullString `json:"jobstatsHealthPcnt"`
-	ClientHealthBattery sql.NullString `json:"clientHealthPcnt"`
-	BatteryChargeCycles sql.NullInt64  `json:"chargeCycles"`
+	Time                *time.Time `json:"time"`
+	Tagnumber           *int64     `json:"tagnumber"`
+	JobstatsBattery     *string    `json:"jobstatsHealthPcnt"`
+	ClientHealthBattery *string    `json:"clientHealthPcnt"`
+	BatteryChargeCycles *int64     `json:"chargeCycles"`
 }
 
 func (repo *Repo) GetClientBatteryHealth(ctx context.Context, tagnumber int64) (*ClientBatteryHealth, error) {

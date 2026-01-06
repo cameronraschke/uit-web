@@ -22,8 +22,9 @@ async function fetchBatteryHealthData(): Promise<BatteryHealth[]> {
 		if (!response.ok) {
 			throw new Error(`Error fetching battery health data: ${response.statusText}`);
 		}
-		const data: BatteryHealth[] = await response.json();
-		return data;
+		const data: BatteryHealth = await response.json();
+		// Wrap single object in array to match render function expectations
+		return data ? [data] : [];
 	} catch (error) {
 		console.error('Fetch battery health data failed:', error);
 		return [];
@@ -43,7 +44,7 @@ function renderBatteryHealth(data: BatteryHealth[]) {
 	const batteryTable = document.createElement('table');
 	const thead = document.createElement('thead');
 	const headerRow = document.createElement('tr');
-	const headers = ['Tag Number', 'Jobstats Health (%)', 'Client Health (%)', 'Charge Cycles', 'Last Updated'];
+	const headers = ['Last Updated', 'Tag Number', 'Jobstats Health (%)', 'Client Health (%)', 'Charge Cycles'];
 	for (const headerText of headers) {
 		const th = document.createElement('th');
 		th.textContent = headerText;
@@ -62,10 +63,10 @@ function renderBatteryHealth(data: BatteryHealth[]) {
 		tagCell.textContent = row.tagnumber !== null ? row.tagnumber.toString() : 'N/A';
 		tr.appendChild(tagCell);
 		const jobstatsHealthCell = document.createElement('td');
-		jobstatsHealthCell.textContent = row.jobstatsHealthPcnt !== null ? row.jobstatsHealthPcnt.toString() : 'N/A';
+		jobstatsHealthCell.textContent = row.jobstatsHealthPcnt !== null ? row.jobstatsHealthPcnt.toString() + '%' : 'N/A';
 		tr.appendChild(jobstatsHealthCell);
 		const clientHealthCell = document.createElement('td');
-		clientHealthCell.textContent = row.clientHealthPcnt !== null ? row.clientHealthPcnt.toString() : 'N/A';
+		clientHealthCell.textContent = row.clientHealthPcnt !== null ? row.clientHealthPcnt.toString() + '%' : 'N/A';
 		tr.appendChild(clientHealthCell);
 		const chargeCyclesCell = document.createElement('td');
 		chargeCyclesCell.textContent = row.chargeCycles !== null ? row.chargeCycles.toString() : 'N/A';
