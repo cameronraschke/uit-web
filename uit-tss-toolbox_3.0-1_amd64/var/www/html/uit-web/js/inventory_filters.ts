@@ -338,9 +338,7 @@ async function populateDomainSelect(elem: HTMLSelectElement) {
 		defaultOption.value = '';
 		defaultOption.textContent = 'AD Domain';
 		defaultOption.selected = true;
-		defaultOption.addEventListener('click', (e) => {
-			e.preventDefault();
-			elem.value = '';
+		elem.addEventListener('click', () => {
 			defaultOption.disabled = true;
 		});
 		elem.appendChild(defaultOption);
