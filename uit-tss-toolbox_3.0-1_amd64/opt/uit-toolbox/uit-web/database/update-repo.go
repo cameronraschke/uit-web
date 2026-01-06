@@ -71,17 +71,48 @@ func (repo *Repo) TogglePinImage(ctx context.Context, uuid string, tagnumber int
 	return err
 }
 
-func (repo *Repo) SetClientBatteryHealth(ctx context.Context, tagnumber int64, uuid string, healthPcnt *int64) error {
-	if tagnumber == 0 {
-		return errors.New("tagnumber is zero in SetClientBatteryHealth")
+func (repo *Repo) SetClientBatteryHealth(ctx context.Context, uuid string, healthPcnt *int64) (err error) {
+	if repo.DB == nil {
+		return errors.New("database connection is nil in SetClientBatteryHealth")
 	}
+
+	tx, err := repo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
 	if strings.TrimSpace(uuid) == "" {
-		return errors.New("UUID is empty in SetClientBatteryHealth")
+		err = errors.New("UUID is empty in SetClientBatteryHealth")
+		return err
 	}
 	if healthPcnt == nil {
-		return errors.New("health percentage is nil in SetClientBatteryHealth")
+		err = errors.New("health percentage is nil in SetClientBatteryHealth")
+		return err
 	}
-	sql := `UPDATE jobstats SET battery_health = $1 WHERE tagnumber = $2 AND uuid = $3;`
-	_, err := repo.DB.ExecContext(ctx, sql, healthPcnt, tagnumber, uuid)
-	return err
+	sql := `UPDATE jobstats SET battery_health = $1 WHERE uuid = $2;`
+	result, err := tx.ExecContext(ctx, sql, healthPcnt, uuid)
+	if err != nil {
+		return err
+	}
+	if result == nil {
+		err = errors.New("no result returned when updating battery health")
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows != 1 {
+		err = errors.New("unexpected number of rows affected when updating battery health")
+		return err
+	}
+
+	return nil
 }

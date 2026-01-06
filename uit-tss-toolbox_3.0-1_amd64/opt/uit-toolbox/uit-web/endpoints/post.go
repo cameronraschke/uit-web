@@ -745,18 +745,6 @@ func SetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	tagnumberStr := strings.TrimSpace(requestQueries.Get("tagnumber"))
-	if tagnumberStr == "" {
-		log.HTTPWarning(req, "No tag number provided for SetClientBatteryHealth")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	tagnumber, err := ConvertTagnumber(tagnumberStr)
-	if err != nil {
-		log.HTTPWarning(req, "Invalid tag number provided for SetClientBatteryHealth")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
 	uuid := strings.TrimSpace(requestQueries.Get("uuid"))
 	if uuid == "" {
 		log.HTTPWarning(req, "No UUID provided for SetClientBatteryHealth")
@@ -772,11 +760,11 @@ func SetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if body.BatteryHealth < 0 || body.BatteryHealth > 100 {
-		log.HTTPWarning(req, "Invalid battery health percentage provided for SetClientBatteryHealth")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
+	// if body.BatteryHealth < 0 || body.BatteryHealth > 100 {
+	// 	log.HTTPWarning(req, "Invalid battery health percentage provided for SetClientBatteryHealth")
+	// 	middleware.WriteJsonError(w, http.StatusBadRequest)
+	// 	return
+	// }
 	db := config.GetDatabaseConn()
 	if db == nil {
 		log.HTTPWarning(req, "no database connection available for SetClientBatteryHealth")
@@ -784,7 +772,7 @@ func SetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	repo := database.NewRepo(db)
-	err = repo.SetClientBatteryHealth(ctx, tagnumber, uuid, &body.BatteryHealth)
+	err = repo.SetClientBatteryHealth(ctx, uuid, &body.BatteryHealth)
 	if err != nil {
 		log.HTTPError(req, "Failed to set client battery health: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
