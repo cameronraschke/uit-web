@@ -72,6 +72,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/inventory", httpsFullAPIChain.ThenFunc(endpoints.GetInventoryTableData))
 	httpsRouter.Handle("GET /api/models", httpsFullAPIChain.ThenFunc(endpoints.GetManufacturersAndModels))
 	httpsRouter.Handle("GET /api/client/health/battery", httpsFullAPIChain.ThenFunc(endpoints.GetClientBatteryHealth))
+	httpsRouter.Handle("GET /api/domains", httpsFullAPIChain.ThenFunc(endpoints.GetDomains))
 
 	httpsRouter.Handle("POST /api/notes", httpsFullAPIChain.ThenFunc(endpoints.InsertNewNote))
 	httpsRouter.Handle("POST /api/update_inventory", httpsFullAPIChain.ThenFunc(endpoints.UpdateInventory))
