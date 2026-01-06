@@ -9,11 +9,14 @@ type BatteryHealth = {
 };
 
 async function fetchBatteryHealthData(): Promise<BatteryHealth[]> {
-	const url = '/api/client/health/battery';
+	let url = '';
+	const path = '/api/client/health/battery';
 	const params = new URLSearchParams(window.location.search);
-	if (params.has('tagnumber')) {
-		url.concat(`?tagnumber=${params.get('tagnumber')}`);
+	const tagnumber = params.get('tagnumber');
+	if (!tagnumber) {
+		throw new Error('tagnumber parameter is missing or empty in URL');
 	}
+	url = path + '?' + params.toString();
 	try {
 		const response = await fetch(url);
 		if (!response.ok) {
