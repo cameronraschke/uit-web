@@ -1,4 +1,4 @@
-async function loadClientImages(clientTag: number | string) {
+async function loadClientImages(clientTag: number) {
   const container = document.getElementById('image-container') as HTMLElement;
 	try {
 		container.innerHTML = '';
@@ -239,7 +239,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const clientTag = urlParams.get('tagnumber');
     if (clientTag && clientTag.length === 6) {
-      await loadClientImages(clientTag);
+      const clientTagNumber = parseInt(clientTag, 10);
+      await loadClientImages(clientTagNumber);
     } else {
       console.warn('No valid tagnumber parameter found in URL.');
     }
