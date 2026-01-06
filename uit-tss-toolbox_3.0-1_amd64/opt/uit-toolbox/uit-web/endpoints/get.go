@@ -782,3 +782,38 @@ func GetManufacturersAndModels(w http.ResponseWriter, req *http.Request) {
 	}
 	middleware.WriteJson(w, http.StatusOK, manufacturersAndModels)
 }
+
+func GetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx)
+	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving query parameters from context for GetClientBatteryHealth: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	tagnumber, err := ConvertTagnumber(urlQueries.Get("tagnumber"))
+	if err != nil {
+		log.HTTPWarning(req, "Invalid tagnumber provided in GetClientBatteryHealth: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.HTTPWarning(req, "No database connection available in GetClientBatteryHealth")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	repo := database.NewRepo(db)
+
+	batteryHealthData, err := repo.GetClientBatteryHealth(ctx, tagnumber)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.HTTPWarning(req, "Query error in GetClientBatteryHealth: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	middleware.WriteJson(w, http.StatusOK, batteryHealthData)
+}
