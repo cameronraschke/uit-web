@@ -1,16 +1,35 @@
+type ImageManifest = {
+	uuid: string;
+	tagnumber: number;
+	time: string;
+	note: string;
+	primary_image: boolean;
+	file_type: string;
+	url: string;
+};
+
 async function loadClientImages(clientTag: number) {
   const container = document.getElementById('image-container') as HTMLElement;
+	if (!container) {
+		console.error('Image container not found in DOM.');
+		return;
+	}
+
 	try {
 		container.innerHTML = '';
-		if (!clientTag) {
-			container.innerHTML = '<p>Please provide a valid client tag.</p>';
+		if (!validateTagInput(clientTag)) {
+			const invalidTagParagraph = document.createElement('p');
+			invalidTagParagraph.textContent = 'Please provide a valid client tag.';
+			container.appendChild(invalidTagParagraph);
 			return;
 		}
 
 		const response = await fetch(`/api/images/manifest?tagnumber=${encodeURIComponent(clientTag)}`)
 		if (!response.ok) {
 			if (response.status === 404) {
-				container.innerHTML = `<p>No images found for tag ${clientTag}.</p>`;
+				const NoManifestErrorParagraph = document.createElement('p');
+				NoManifestErrorParagraph.textContent = `No images found for tag ${clientTag}.`;
+				container.appendChild(NoManifestErrorParagraph);
 				return;
 			}
 			throw new Error (`Error fetching images: ${response.status} ${response.statusText}`);
@@ -20,13 +39,16 @@ async function loadClientImages(clientTag: number) {
     try {
       const contentType = response.headers.get('Content-Type') || '';
       if (contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const textData = await response.text();
-        data = textData.trim() ? JSON.parse(textData) : [];
-      }
-    } catch (parseError) {
-      const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
+        const jsonData = await response.json();
+				data = jsonData;
+			} else {
+				const invalidContentTypeParagraph = document.createElement('p');
+				invalidContentTypeParagraph.textContent = `Invalid response format when fetching images for tag ${clientTag}.`;
+				container.appendChild(invalidContentTypeParagraph);
+				return;
+			}
+    } catch (jsonError: Error | unknown) {
+      const errorMessage = jsonError instanceof Error ? jsonError.message : String(jsonError);
       throw new Error(`Failed to parse response JSON: ${errorMessage}`);
     }
 
@@ -35,7 +57,9 @@ async function loadClientImages(clientTag: number) {
     }
 		const items = Array.isArray(data) ? data : (data ? [data] : []);
     if (items.length === 0) {
-      container.innerHTML = `<p>No images found for tag ${clientTag}.</p>`;
+      const noImagesParagraph = document.createElement('p');
+      noImagesParagraph.textContent = `No images found for tag ${clientTag}.`;
+      container.appendChild(noImagesParagraph);
       return;
     }
     let imageIndex = 1;

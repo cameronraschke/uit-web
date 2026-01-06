@@ -1,3 +1,17 @@
+type InventoryRow = {
+	tagnumber: number | 0;
+	system_serial: string | "";
+	location_formatted: string | "";
+	system_manufacturer: string | "";
+	system_model: string | "";
+	department_formatted: string | "";
+	domain_formatted: string | "";
+	status: string | "";
+	is_broken: boolean | null;
+	note: string | "";
+	last_updated: string | "";
+};
+
 const rowCountElement = document.getElementById('inventory-table-rowcount') as HTMLElement;
 const formAnchor = document.querySelector('#inventory-section') as HTMLElement;
 const inventoryTagSortInput = document.getElementById('inventory-sort-tagnumber') as HTMLInputElement;
@@ -42,7 +56,7 @@ function createTextCell(value: string, options: { datasetKey?: string; link?: st
   return cell;
 }
 
-function createManufacturerModelCell(jsonRow: any) {
+function createManufacturerModelCell(jsonRow: InventoryRow) {
   const cell = document.createElement('td');
   
   if (!jsonRow.system_manufacturer || !jsonRow.system_model) {
@@ -127,7 +141,7 @@ function renderEmptyTable(tableBody: HTMLElement, message: string) {
 }
 
 
-async function renderInventoryTable(tableData: any[]) {
+async function renderInventoryTable(tableData: InventoryRow[] | null) {
   const tableBody = document.getElementById('inventory-table-body') as HTMLElement;
   try {
     if (!tableData) {
@@ -151,15 +165,15 @@ async function renderInventoryTable(tableData: any[]) {
       const tr = document.createElement('tr');
       
 			// Tag Number with link and click handler
-      const tagCell = createTextCell(jsonRow.tagnumber, {
+      const tagCell = createTextCell(jsonRow.tagnumber.toString(), {
         datasetKey: 'tagnumber',
-        link: `/inventory?update=true&tagnumber=${encodeURIComponent(jsonRow.tagnumber || '')}`,
+        link: `/inventory?update=true&tagnumber=${encodeURIComponent(jsonRow.tagnumber.toString() || '')}`,
         onClick: async (event) => {
           event.preventDefault();
           if (event.ctrlKey || event.metaKey) return;
           
           const tagLookupInput = document.getElementById('inventory-tag-lookup') as HTMLInputElement;
-          tagLookupInput.value = jsonRow.tagnumber;
+          tagLookupInput.value = jsonRow.tagnumber.toString();
           
           try {
             await Promise.all([submitInventoryLookup(), fetchFilteredInventoryData()]);

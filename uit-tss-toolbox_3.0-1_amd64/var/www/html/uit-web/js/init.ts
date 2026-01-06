@@ -2,6 +2,11 @@ interface Window {
   availableTags: string[];
 }
 
+function validateTagInput(tagInput: number): boolean {
+	const tagPattern = /^[0-9]{6}$/;
+	return tagPattern.test(tagInput.toString());
+}
+
 function jsonToBase64(jsonString: string) {
 	try {
 		const jsonParsed: any = JSON.parse(jsonString);
@@ -28,33 +33,33 @@ function jsonToBase64(jsonString: string) {
 }
 
 function base64ToJson(inputStr: string) {
-    try {
-        if (typeof inputStr !== 'string') {
-            throw new TypeError("Input is not a valid base64 string");
-        }
-        if (inputStr.trim() === "") {
-            throw new Error("Base64 string is empty");
-        }
+	try {
+		if (typeof inputStr !== 'string') {
+			throw new TypeError("Input is not a valid base64 string");
+		}
+		if (inputStr.trim() === "") {
+			throw new Error("Base64 string is empty");
+		}
 
-        const standardBase64 = inputStr.replace(/-/g, '+').replace(/_/g, '/');
-        const pad = standardBase64.length % 4;
-        const paddedBase64 = pad ? standardBase64 + "====".slice(0, 4 - pad) : standardBase64;
+		const standardBase64 = inputStr.replace(/-/g, '+').replace(/_/g, '/');
+		const pad = standardBase64.length % 4;
+		const paddedBase64 = pad ? standardBase64 + "====".slice(0, 4 - pad) : standardBase64;
 
-        const base64Bytes: string = atob(paddedBase64);
-        const byteArray = Uint8Array.from(base64Bytes, c => c.charCodeAt(0));
-        const jsonString = new TextDecoder().decode(byteArray);
-        const jsonParsed = JSON.parse(jsonString);
-        if (!jsonParsed) {
-            throw new TypeError("Input is not a valid JSON string");
-        }
-        if (jsonParsed && typeof jsonParsed === 'object' && Object.prototype.hasOwnProperty.call(jsonParsed, '__proto__')) {
-            throw new Error(`Prototype pollution detected`);
-        }
-        return JSON.stringify(jsonParsed);
-    } catch (error) {
-        console.log("Error decoding base64: " + error);
-				return null;
-    }
+		const base64Bytes: string = atob(paddedBase64);
+		const byteArray = Uint8Array.from(base64Bytes, c => c.charCodeAt(0));
+		const jsonString = new TextDecoder().decode(byteArray);
+		const jsonParsed = JSON.parse(jsonString);
+		if (!jsonParsed) {
+			throw new TypeError("Input is not a valid JSON string");
+		}
+		if (jsonParsed && typeof jsonParsed === 'object' && Object.prototype.hasOwnProperty.call(jsonParsed, '__proto__')) {
+			throw new Error(`Prototype pollution detected`);
+		}
+		return JSON.stringify(jsonParsed);
+	} catch (error) {
+		console.log("Error decoding base64: " + error);
+		return null;
+	}
 }
 
 async function fetchData(url: string, returnText = false, fetchOptions: RequestInit = {}): Promise<any> {

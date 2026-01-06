@@ -1,4 +1,4 @@
-let isLoggingOut = false;
+let isLoggingOut: boolean = false;
 
 const authChannel = new BroadcastChannel('auth');
 authChannel.onmessage = function(event) {
