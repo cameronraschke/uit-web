@@ -267,30 +267,26 @@ async function generateSHA256Hash(input: string) {
 async function getTagsFromServer(): Promise<TagCache | null> {
 	let tagObj: TagCache = { tags: [], timestamp: Date.now() };
 
-  const url = "/api/all_tags";
-  try {
-    const data: string = await fetchData(url, true);
-    if (!data) {
-      console.warn("No data returned from /api/all_tags");
-			return null;
-    }
-		const decodedData = base64ToJson(data);
-		if (!decodedData) {
-			console.warn("Decoded /api/all_tags data is null");
+	const url = "/api/all_tags";
+	try {
+		const data = await fetchData(url, false); // expect JSON array
+		if (!data) {
+			console.warn("No data returned from /api/all_tags");
 			return null;
 		}
 
-		const tagArr: number[] = JSON.parse(decodedData);
+		const tagArr: any = data;
 		if (!Array.isArray(tagArr) || tagArr.length === 0) {
 			console.warn("/api/all_tags response is not an array or is empty");
 			return null;
 		}
 		for (const tag of tagArr) {
-			if (typeof tag !== "number" || !validateTagInput(tag)) {
+			const tagNum = typeof tag === "number" ? tag : Number(tag);
+			if (!Number.isFinite(tagNum) || !validateTagInput(tagNum)) {
 				console.warn("Invalid tag in /api/all_tags response: " + tag);
 				return null;
 			}
-			tagObj.tags.push(tag);
+			tagObj.tags.push(tagNum);
 		}
 		tagObj.timestamp = Date.now();
 		return tagObj;

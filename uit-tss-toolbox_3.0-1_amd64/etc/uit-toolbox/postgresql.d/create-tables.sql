@@ -374,7 +374,7 @@ CREATE TABLE IF NOT EXISTS live_images (
 CREATE TABLE IF NOT EXISTS static_department_info (
   department_name VARCHAR(64) PRIMARY KEY,
   department_name_formatted VARCHAR(64) NOT NULL,
-	department_sort_order SMALLINT DEFAULT NULL,
+	department_sort_order  SMALLINT NOT NULL DEFAULT 0,
   department_owner VARCHAR(64) DEFAULT NULL
 );
 

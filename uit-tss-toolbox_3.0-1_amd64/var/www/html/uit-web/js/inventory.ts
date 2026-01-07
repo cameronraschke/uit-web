@@ -1,9 +1,9 @@
 let updatingInventory = false;
 
 type Department = {
-	DepartmentName: string;
-	DepartmentNameFormatted: string;
-	DepartmentSortOrder: number;
+	department_name: string;
+	department_name_formatted: string;
+	department_sort_order: number;
 };
 
 type ClientLookupResult = {
@@ -465,16 +465,20 @@ async function populateDepartmentSelect(departmentSelect: HTMLSelectElement): Pr
 		defaultOption.value = '';
 		defaultOption.disabled = true;
 		defaultOption.selected = true;
-		defaultOption.textContent = 'Select Department';
+		defaultOption.textContent = 'Department';
 		departmentSelect.addEventListener('click', () => {
 			defaultOption.disabled = true;
 		});
 		departmentSelect.appendChild(defaultOption);
 
+		departments.sort((a, b) => {
+			return a.department_sort_order - b.department_sort_order;
+		});
+
 		departments.forEach((dept) => {
 			const option = document.createElement('option');
-			option.value = dept.DepartmentName;
-			option.textContent = dept.DepartmentNameFormatted;
+			option.value = dept.department_name;
+			option.textContent = dept.department_name_formatted;
 			departmentSelect.appendChild(option);
 		});
 	} catch (error) {
