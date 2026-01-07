@@ -575,6 +575,29 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 }
 
 // Overview section
+func GetJobQueueTable(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx)
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.HTTPWarning(req, "No database connection available for GetJobQueueTable")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	repo := database.NewRepo(db)
+
+	jobQueueTable, err := repo.GetJobQueueTable(ctx)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.HTTPWarning(req, "Query error in GetJobQueueTable: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	middleware.WriteJson(w, http.StatusOK, jobQueueTable)
+}
+
 func GetJobQueueOverview(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)

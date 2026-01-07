@@ -1,35 +1,35 @@
 // Job Queue TypeScript File
 type JobQueueEntry = {
-	tagnumber: number
-	system_serial: string
-	os_installed: string
-	os_name: string
-	kernel_updated: boolean
-	bios_updated: boolean
-	bios_version: string
-	system_manufacturer: string
-	system_model: string
-	battery_charge: number
-	battery_status: string
-	cpu_temp: number
-	disk_temp: number
-	max_disk_temp: number
-	power_usage: number
-	network_usage: number
-	client_status: string
-	is_broken: boolean
-	job_queued: boolean
-	queue_position: number
-	job_active: boolean
-	job_name: string
-	job_status: string
-	job_clone_mode: string
-	job_erase_mode: string
-	last_job_time: Date
-	location: string
-	last_heard: Date
-	uptime: number
-	online: boolean
+	tagnumber: number | null
+	system_serial: string | null
+	os_installed: string | null
+	os_name: string | null
+	kernel_updated: boolean | null
+	bios_updated: boolean | null
+	bios_version: string | null
+	system_manufacturer: string | null
+	system_model: string | null
+	battery_charge: number | null
+	battery_status: string | null
+	cpu_temp: number | null
+	disk_temp: number | null
+	max_disk_temp: number | null
+	power_usage: number | null
+	network_usage: number | null
+	client_status: string | null
+	is_broken: boolean | null
+	job_queued: boolean | null
+	queue_position: number | null
+	job_active: boolean | null
+	job_name: string | null
+	job_status: string | null
+	job_clone_mode: string | null
+	job_erase_mode: string | null
+	last_job_time: Date | null
+	location: string | null
+	last_heard: Date | null
+	uptime: number | null
+	online: boolean | null
 };
 
 getJobQueueData();
@@ -56,9 +56,10 @@ function updateJobQueueTable(data: JobQueueEntry[]) {
 		const onlineTableFragment = document.createDocumentFragment();
 		const offlineTableFragment = document.createDocumentFragment();
 
-		data.forEach((entry) => {
+		for (const entry of data) {
 				const row = document.createElement('tr');
 				const tagCell = document.createElement('td');
+				if (entry.tagnumber === null) continue;
 				tagCell.textContent = entry.tagnumber.toString();
 				row.appendChild(tagCell);
 
@@ -67,7 +68,7 @@ function updateJobQueueTable(data: JobQueueEntry[]) {
 				} else {
 						offlineTableFragment.appendChild(row);
 				}
-		});
+		}
 		onlineTableBody.innerHTML = '';
 		onlineTableBody.appendChild(onlineTableFragment);
 		
