@@ -140,7 +140,6 @@ function renderEmptyTable(tableBody: HTMLElement, message: string) {
   tableBody.appendChild(jsonRow);
 }
 
-
 async function renderInventoryTable(tableData: InventoryRow[] | null) {
   const tableBody = document.getElementById('inventory-table-body') as HTMLElement;
   try {

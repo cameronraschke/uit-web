@@ -1,4 +1,5 @@
 {
+	"/api/heartbeat": {},
   "/api/server_time": {},
   "/api/lookup": {},
   "/api/all_tags": {},
@@ -28,5 +29,6 @@
 	"/api/client/health/battery": {
 		"allowed_methods": ["OPTIONS", "GET", "POST"]
 	},
-	"/api/domains": {}
+	"/api/domains": {},
+	"/api/departments": {}
 }

@@ -43,35 +43,29 @@ func (repo *Repo) GetAllTags(ctx context.Context) ([]int, error) {
 	return allTagsSlice, nil
 }
 
-func (repo *Repo) GetDepartments(ctx context.Context) (map[string]string, error) {
-	rows, err := repo.DB.QueryContext(ctx, "SELECT department_name, department_name_formatted FROM static_department_info ORDER BY department_name_formatted;")
+func (repo *Repo) GetDepartments(ctx context.Context) (*[]Departments, error) {
+	rows, err := repo.DB.QueryContext(ctx, "SELECT department_name, department_name_formatted, department_sort_order FROM static_department_info ORDER BY department_sort_order DESC;")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var departmentMap = make(map[string]string)
+	var departments []Departments
 	for rows.Next() {
-		var department, departmentFormatted string
-		if err := rows.Scan(&department, &departmentFormatted); err != nil {
+		var dept Departments
+		if err := rows.Scan(&dept.DepartmentName, &dept.DepartmentNameFormatted, &dept.DepartmentSortOrder); err != nil {
 			return nil, err
 		}
-		departmentMap[department] = departmentFormatted
+		departments = append(departments, dept)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return departmentMap, nil
+	return &departments, nil
 }
 
-type Domains struct {
-	DomainName          string `json:"domain_name"`
-	DomainNameFormatted string `json:"domain_name_formatted"`
-	DomainSortOrder     int64  `json:"domain_sort_order"`
-}
-
-func (repo *Repo) GetDomains(ctx context.Context) ([]Domains, error) {
+func (repo *Repo) GetDomains(ctx context.Context) (*[]Domains, error) {
 	rows, err := repo.DB.QueryContext(ctx, "SELECT domain_name, domain_name_formatted FROM static_ad_domains ORDER BY domain_sort_order DESC;")
 	if err != nil {
 		return nil, err
@@ -90,7 +84,7 @@ func (repo *Repo) GetDomains(ctx context.Context) ([]Domains, error) {
 		return nil, err
 	}
 
-	return domains, nil
+	return &domains, nil
 }
 
 func (repo *Repo) GetStatuses(ctx context.Context) (map[string]string, error) {

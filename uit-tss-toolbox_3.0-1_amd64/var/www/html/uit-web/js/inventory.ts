@@ -1,5 +1,16 @@
 let updatingInventory = false;
 
+type Department = {
+	DepartmentName: string;
+	DepartmentNameFormatted: string;
+	DepartmentSortOrder: number;
+};
+
+type ClientLookupResult = {
+	tagnumber: number | null;
+	system_serial: string | null;
+};
+
 // Inventory update form (and lookup)
 const lastUpdateTimeMessage = document.getElementById('last-update-time-message') as HTMLElement;
 const inventoryLookupWarningMessage = document.getElementById('existing-inventory-message') as HTMLElement;
@@ -12,15 +23,20 @@ const inventoryLookupMoreDetailsButton = document.getElementById('inventory-look
 const inventoryUpdateForm = document.getElementById('inventory-update-form') as HTMLFormElement;
 const inventoryUpdateFormSection = document.getElementById('inventory-update-section') as HTMLElement;
 const inventoryUpdateLocationInput = document.getElementById('location') as HTMLInputElement;
+const inventoryUpdateDepartmentSelect = document.getElementById('department_name') as HTMLSelectElement;
+const clientStatus = inventoryUpdateForm.querySelector("#status") as HTMLSelectElement;
 const inventoryUpdateFormSubmitButton = document.getElementById('inventory-update-submit-button') as HTMLButtonElement;
 const inventoryUpdateFormCancelButton = document.getElementById('inventory-update-cancel-button') as HTMLButtonElement;
 const allTagsDatalist = document.getElementById('inventory-tag-suggestions') as HTMLDataListElement;
 const clientImagesLink = document.getElementById('client_images_link') as HTMLAnchorElement;
 const inventoryUpdateDomainSelect = document.getElementById('ad_domain') as HTMLSelectElement;
+const inventorySearchDepartmentSelect = document.getElementById('inventory-search-department') as HTMLSelectElement;
+const inventorySearchDomainSelect = document.getElementById('inventory-search-domain') as HTMLSelectElement;
+const csvDownloadButton = document.getElementById('inventory-search-download-button') as HTMLButtonElement;
 const statusesThatIndicateBroken = ["needs-repair"];
 const statusesThatIndicateCheckout = ["checked-out", "reserved-for-checkout"];
 
-async function getTagOrSerial(tagnumber: number | null, serial: string | null): Promise<{ tagnumber: number | null; system_serial: string | null } | null> {
+async function lookupTagOrSerial(tagnumber: number | null, serial: string | null): Promise<{ tagnumber: number | null; system_serial: string | null } | null> {
   const query = new URLSearchParams();
   if (tagnumber) {
     query.append("tagnumber", tagnumber.toString());
@@ -31,15 +47,16 @@ async function getTagOrSerial(tagnumber: number | null, serial: string | null): 
     return null;
   }
   try {
-    const response: { tagnumber: number | null; system_serial: string | null } = await fetchData(`/api/lookup?${query.toString()}`);
-    if (!response) {
-      throw new Error("Cannot parse json from /api/lookup");
+    const response = await fetchData(`/api/lookup?${query.toString()}`);
+    if (!response.ok) {
+      throw new Error("HTTP error received from /api/lookup: " + response.status + " " + response.statusText);
     }
-    const returnObject = {
-      tagnumber: response.tagnumber, 
-      system_serial: response.system_serial
-    };
-    return returnObject;
+		const jsonResponse: ClientLookupResult = await response.json();
+		if (!jsonResponse) {
+			console.log("No data found for provided tag or serial");
+			return null;
+		}
+    return jsonResponse;
   } catch(error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.log("Error getting tag/serial: " + errorMessage);
@@ -53,7 +70,7 @@ async function submitInventoryLookup() {
 	const lookupTag: number | null = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : (searchParams.get('tagnumber') ? Number(searchParams.get('tagnumber')) : null);
   const lookupSerial: string | null = inventoryLookupSystemSerialInput.value || searchParams.get('system_serial') || null;
 
-  const lookupResult = await getTagOrSerial(lookupTag, lookupSerial);
+  const lookupResult = await lookupTagOrSerial(lookupTag, lookupSerial);
   if (!lookupTag && !lookupSerial) {
     inventoryLookupWarningMessage.style.display = "block";
     inventoryLookupWarningMessage.textContent = "Please provide a tag number or serial number to look up.";
@@ -116,7 +133,6 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
 	await updateCheckoutStatus();
 });
 
-const clientStatus = inventoryUpdateForm.querySelector("#status") as HTMLSelectElement;
 clientStatus.addEventListener("change", async () => {
 	await updateCheckoutStatus();
 });
@@ -361,9 +377,8 @@ async function populateLocationForm(tag: number): Promise<void> {
 		} else {
 			lastUpdateTimeMessage.textContent = 'Uknown timestamp of last update';
 		}
-    inventoryUpdateLocationInput.value = locationFormData.location || '';
 
-		await populateDomainSelect(inventoryUpdateDomainSelect);
+    inventoryUpdateLocationInput.value = locationFormData.location || '';
 
 		const building = inventoryUpdateForm.querySelector("#building") as HTMLInputElement;
 		const buildingVal: string = locationFormData.building || '';
@@ -381,17 +396,17 @@ async function populateLocationForm(tag: number): Promise<void> {
 		const systemModelVal: string = locationFormData.system_model || '';
 		systemModel.value = systemModelVal;
 
-    const departmentName = inventoryUpdateForm.querySelector("#department_name") as HTMLInputElement;
+		await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
 		const departmentNameVal: string = locationFormData.department_name || '';
-		departmentName.value = departmentNameVal;
+		inventoryUpdateDepartmentSelect.value = departmentNameVal;
 
 		const propertyCustodian = inventoryUpdateForm.querySelector("#property_custodian") as HTMLInputElement;
 		const propertyCustodianVal: string = locationFormData.property_custodian || '';
 		propertyCustodian.value = propertyCustodianVal;
 
-    const adDomain = inventoryUpdateForm.querySelector("#ad_domain") as HTMLInputElement;
+		await populateDomainSelect(inventoryUpdateDomainSelect);
 		const adDomainVal: string = locationFormData.ad_domain || '';
-		adDomain.value = adDomainVal;
+		inventoryUpdateDomainSelect.value = adDomainVal;
 
 		const isBroken = inventoryUpdateForm.querySelector("#is_broken") as HTMLInputElement;
 		const brokenValue = typeof locationFormData.is_broken === "boolean" 
@@ -423,7 +438,6 @@ async function populateLocationForm(tag: number): Promise<void> {
 	await updateCheckoutStatus();
 }
 
-const csvDownloadButton = document.getElementById('inventory-search-download-button') as HTMLButtonElement;
 csvDownloadButton.addEventListener('click', async (event) => {
   event.preventDefault();
   csvDownloadButton.disabled = true;
@@ -437,12 +451,45 @@ csvDownloadButton.addEventListener('click', async (event) => {
   }
 });
 
+async function populateDepartmentSelect(departmentSelect: HTMLSelectElement): Promise<void> {
+	if (!departmentSelect) return;
+
+	try {
+		const departments: Department[] = await fetchData('/api/departments');
+		if (!departments || !Array.isArray(departments)) {
+			throw new Error('Invalid departments data received from server');
+		}
+
+		departmentSelect.innerHTML = '';
+		const defaultOption = document.createElement('option');
+		defaultOption.value = '';
+		defaultOption.disabled = true;
+		defaultOption.selected = true;
+		defaultOption.textContent = 'Select Department';
+		departmentSelect.addEventListener('click', () => {
+			defaultOption.disabled = true;
+		});
+		departmentSelect.appendChild(defaultOption);
+
+		departments.forEach((dept) => {
+			const option = document.createElement('option');
+			option.value = dept.DepartmentName;
+			option.textContent = dept.DepartmentNameFormatted;
+			departmentSelect.appendChild(option);
+		});
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		console.error('Error populating department select:', errorMessage);
+	}
+}
+
 async function initializeInventoryPage() {
 	await loadAllManufacturersAndModels();
 	await setFiltersFromURL();
 	await initializeSearch();
 	await populateModelSelect(filterManufacturer.value || null);
-	await populateDomainSelect(filterDomain);
+	await populateDomainSelect(inventorySearchDomainSelect);
+	await populateDepartmentSelect(inventorySearchDepartmentSelect);
   await fetchFilteredInventoryData();
 	const urlParams = new URLSearchParams(window.location.search);
 	const updateParam: string | null = urlParams.get('update');

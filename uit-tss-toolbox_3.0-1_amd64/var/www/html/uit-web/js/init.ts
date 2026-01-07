@@ -2,6 +2,91 @@ interface Window {
   availableTags: string[];
 }
 
+type AuthStatusResponse = {
+	status: string | null;
+	time: string | null;
+};
+
+async function checkAuthStatus(): Promise<boolean> {
+	// server should auto redirect, but only on page refresh
+	// this function redirects w/o needing a refresh
+	if (window.location.pathname === '/login' || window.location.pathname === '/logout') {
+		return true;
+	}
+	if (!navigator.onLine) {
+		console.warn("Offline, skipping auth check");
+		return true;
+	}
+	try {
+		const url = "/api/check_auth";
+		const response: AuthStatusResponse = await fetchData(url, false);
+		if (response && response.status === "authenticated") {
+			return true;
+		} else {
+			return false;
+		}
+	} catch (error) {
+		console.error("Error while checking authentication status, redirecting:", error);
+		window.location.href = "/logout";
+		return false;
+	}
+}
+
+checkAuthStatus();
+
+document.body.addEventListener("click", async (event) => {
+	if (window.location.pathname === '/login' || window.location.pathname === '/logout') {
+		return;
+	}
+	const target = event.target as HTMLElement;
+	// if (target && target.matches(".requires-auth, .requires-auth *")) {
+	if (target) {
+		const isAuthenticated = await checkAuthStatus();
+		if (!isAuthenticated) {
+			event.preventDefault();
+			window.location.href = "/logout";
+		}
+	}
+});
+
+let authCheckTimeout: number;
+document.addEventListener("visibilitychange", async () => {
+	if (window.location.pathname === '/login' || window.location.pathname === '/logout') {
+		return;
+	}
+	// Clear any existing timeouts
+	clearTimeout(authCheckTimeout);
+
+	if (document.visibilityState === "visible") {
+		const checkAuthTimeout = 5000; // 5 seconds
+		
+		// Immediately check auth status
+		const isAuthenticated = await checkAuthStatus();
+		if (!isAuthenticated) {
+			window.location.href = "/logout";
+			return;
+		}
+
+		// Don't proceed to authCheckTimeout if tab is no longer visible, otherwise the timeout will still run
+		// Auth status will be checked again on next visibilitychange
+		if (document.visibilityState !== "visible") {
+			return;
+		}
+
+		// Delayed check
+		authCheckTimeout = window.setTimeout(async () => {
+			// Double check visibility before making the network call
+			if (document.visibilityState !== "visible") return;
+
+			const isStillAuthenticated = await checkAuthStatus();
+			if (!isStillAuthenticated) {
+				window.location.href = "/logout";
+			}
+		}, checkAuthTimeout);
+	}
+});
+	
+
 function validateTagInput(tagInput: number): boolean {
 	const tagPattern = /^[0-9]{6}$/;
 	return tagPattern.test(tagInput.toString());

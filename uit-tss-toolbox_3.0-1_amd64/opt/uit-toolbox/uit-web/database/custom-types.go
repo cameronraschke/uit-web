@@ -160,3 +160,15 @@ type ManufacturersAndModels struct {
 	SystemManufacturer          string `json:"system_manufacturer"`
 	SystemManufacturerFormatted string `json:"system_manufacturer_formatted"`
 }
+
+type Domains struct {
+	DomainName          string `json:"domain_name"`
+	DomainNameFormatted string `json:"domain_name_formatted"`
+	DomainSortOrder     int64  `json:"domain_sort_order"`
+}
+
+type Departments struct {
+	DepartmentName          string `json:"department_name"`
+	DepartmentNameFormatted string `json:"department_name_formatted"`
+	DepartmentSortOrder     int64  `json:"department_sort_order"`
+}

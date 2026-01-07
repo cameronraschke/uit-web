@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="stylesheet" href="/css/desktop.css" />
+    <link rel="stylesheet" href="/css/job-queue.css" />
+    <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/init.js"></script>
+    <title>Job Queue - ITSC Mgmt</title>
+  </head>
+  <body>
+    <div id="uit-header"></div>
+    <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/header.js"></script>
+    <div><h1>UIT - ITSC Inventory Management</h1></div>
+    <div id="main-content"><h2>Job Queue</h2></div>
+
+    <div id="online-container" class="flex-container">
+			<table id="online-clients-table">
+				<thead>
+					<tr>
+						<th>Tag</th>
+						<th>Image</th>
+						<th>Status</th>
+						<th>Started At</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody id="online-clients-tbody">
+					<!-- Job rows will be populated here by JS -->
+				</tbody>
+			</table>
+		</div>
+		
+		<div id="offline-container" class="flex-container">
+			<table id="offline-clients-table">
+				<thead>
+					<tr>
+						<th>Job ID</th>
+						<th>Client Tag</th>
+						<th>Status</th>
+						<th>Started At</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody id="offline-clients-tbody">
+					<!-- Job rows will be populated here by JS -->
+				</tbody>
+			</table>
+		</div>
+
+    <div id="uit-footer" class="flex-container footer"></div>
+    <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/footer.js"></script>
+    <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/job-queue.js"></script>
+  </body>
+</html>

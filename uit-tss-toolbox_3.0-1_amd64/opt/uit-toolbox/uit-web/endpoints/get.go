@@ -2,6 +2,7 @@ package endpoints
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"image"
 	"net/http"
@@ -838,4 +839,45 @@ func GetDomains(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	middleware.WriteJson(w, http.StatusOK, domains)
+}
+
+func GetDepartments(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx)
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.HTTPWarning(req, "No database connection available in GetDepartments")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	repo := database.NewRepo(db)
+
+	departments, err := repo.GetDepartments(ctx)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.HTTPWarning(req, "Query error in GetDepartments: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+	}
+	middleware.WriteJson(w, http.StatusOK, departments)
+}
+
+func CheckAuth(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx)
+
+	data := map[string]string{
+		"status": "authenticated",
+		"time":   time.Now().Format(time.RFC3339),
+	}
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		log.HTTPWarning(req, "Error marshaling heartbeat JSON data: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	middleware.WriteJson(w, http.StatusOK, jsonData)
 }

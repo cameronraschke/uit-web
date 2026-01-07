@@ -58,7 +58,7 @@
   },
   "/inventory": {
     "file_path": "/var/www/html/uit-web/inventory.html",
-		"requires": ["nonce", "departments", "statuses", "locations"],
+		"requires": ["nonce", "statuses", "locations"],
     "endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
   },
@@ -83,6 +83,12 @@
 	"/client": {
 		"file_path": "/var/www/html/uit-web/client.html",
 		"requires": ["nonce", "client_tag"],
+		"endpoint_type": "web_content",
+    "content_type": "text/html; charset=utf-8"
+	},
+	"/job-queue": {
+		"file_path": "/var/www/html/uit-web/job-queue.html",
+		"requires": ["nonce"],
 		"endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
 	}

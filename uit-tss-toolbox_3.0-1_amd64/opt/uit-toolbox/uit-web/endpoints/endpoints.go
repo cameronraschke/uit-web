@@ -264,16 +264,6 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 				httpTemplateResponseData.WebmasterEmail = webmasterEmail
 			}
 
-			if slices.Contains(endpointData.Requires, "departments") {
-				departments, err := db.GetDepartments(ctx)
-				if err != nil {
-					log.HTTPError(req, "Cannot get department list from database: "+err.Error()+"")
-					middleware.WriteJsonError(w, http.StatusInternalServerError)
-					return
-				}
-				httpTemplateResponseData.Departments = departments
-			}
-
 			if slices.Contains(endpointData.Requires, "statuses") {
 				statuses, err := db.GetStatuses(ctx)
 				if err != nil {

@@ -1,3 +1,4 @@
+const inventoryFilterForm = document.getElementById('inventory-search-form') as HTMLFormElement;
 const filterLocation = document.getElementById('inventory-search-location') as HTMLSelectElement;
 const filterLocationReset = document.getElementById('inventory-search-location-reset') as HTMLElement;
 const filterDepartment = document.getElementById('inventory-search-department') as HTMLSelectElement;
@@ -192,7 +193,6 @@ async function fetchFilteredInventoryData(csvDownload = false): Promise<void> {
   }
 }
 
-const inventoryFilterForm = document.getElementById('inventory-search-form') as HTMLFormElement;
 inventoryFilterForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   fetchFilteredInventoryData();
