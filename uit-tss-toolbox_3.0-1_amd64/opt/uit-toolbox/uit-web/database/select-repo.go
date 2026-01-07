@@ -635,3 +635,106 @@ func (repo *Repo) GetClientBatteryHealth(ctx context.Context, tagnumber int64) (
 	}
 	return &batteryHealth, nil
 }
+
+type JobQueueTableRow struct {
+	Tagnumber          *int64         `json:"tagnumber"`
+	SystemSerial       *string        `json:"system_serial"`
+	OSInstalled        *string        `json:"os_installed"`
+	OSName             *string        `json:"os_name"`
+	KernelUpdated      *bool          `json:"kernel_updated"`
+	BIOSUpdated        *bool          `json:"bios_updated"`
+	BIOSVersion        *string        `json:"bios_version"`
+	SystemManufacturer *string        `json:"system_manufacturer"`
+	SystemModel        *string        `json:"system_model"`
+	BatteryCharge      *int64         `json:"battery_charge"`
+	BatteryStatus      *string        `json:"battery_status"`
+	CPUTemp            *float64       `json:"cpu_temp"`
+	DiskTemp           *float64       `json:"disk_temp"`
+	MaxDiskTemp        *float64       `json:"max_disk_temp"`
+	PowerUsage         *float64       `json:"power_usage"`
+	NetworkUsage       *float64       `json:"network_usage"`
+	ClientStatus       *string        `json:"client_status"`
+	IsBroken           *bool          `json:"is_broken"`
+	JobQueued          *bool          `json:"job_queued"`
+	QueuePosition      *int64         `json:"queue_position"`
+	JobActive          *bool          `json:"job_active"`
+	JobName            *string        `json:"job_name"`
+	JobStatus          *string        `json:"job_status"`
+	JobCloneMode       *string        `json:"job_clone_mode"`
+	JobEraseMode       *string        `json:"job_erase_mode"`
+	LastJobTime        *time.Time     `json:"last_job_time"`
+	Location           *string        `json:"location"`
+	LastHeard          *time.Time     `json:"last_heard"`
+	Uptime             *time.Duration `json:"uptime"`
+	Online             *bool          `json:"online"`
+}
+
+func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, error) {
+	sqlQuery := `SELECT locations.tagnumber, locations.system_serial, client_health.os_installed, client_health.os_name, job_queue.kernel_updated,
+	client_health.bios_updated, client_health.bios_version,
+	system_data.system_manufacturer, system_data.system_model,
+	job_queue.battery_charge, job_queue.battery_status,
+	job_queue.cpu_temp, job_queue.disk_temp, job_queue.max_disk_temp, job_queue.watts_now AS "power_usage", job_queue.network_speed AS "network_usage",
+	locations.client_status, (CASE WHEN locations.client_status IS NULL THEN NULL WHEN locations.client_status = 'needs-repair' THEN TRUE ELSE FALSE END) AS is_broken,
+	(CASE WHEN job_queue.job_queued IS NOT NULL THEN TRUE ELSE FALSE END) AS "job_queued", t1.queue_position, job_queue.job_active, job_queue.job_queued AS "job_name", job_queue.status, job_queue.clone_mode, job_queue.erase_mode,
+	t2.last_job_time AT TIME ZONE 'America/Chicago' AS "last_job_time", locations.location, job_queue.present AT TIME ZONE 'America/Chicago' AS "last_heard",
+	(jobstats.boot_time || ' seconds')::interval AS uptime, (CASE WHEN (NOW() - job_queue.present < INTERVAL '30 SECOND') THEN TRUE ELSE FALSE END) AS online
+	FROM locations
+	LEFT JOIN jobstats ON locations.tagnumber = jobstats.tagnumber AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
+	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
+	LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status
+	LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
+	LEFT JOIN job_queue ON locations.tagnumber = job_queue.tagnumber
+	LEFT JOIN (SELECT tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY present DESC) AS queue_position FROM job_queue) AS t1 
+		ON job_queue.tagnumber = t1.tagnumber
+	LEFT JOIN LATERAL (SELECT tagnumber, MAX(time) AS "last_job_time" FROM jobstats WHERE jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber) GROUP BY tagnumber) AS t2
+		ON job_queue.tagnumber = t2.tagnumber
+	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
+	ORDER BY job_queue.present_bool = true, t2.last_job_time DESC NULLS LAST, t1.queue_position DESC NULLS LAST;`
+	var jobQueueRows []JobQueueTableRow
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var row JobQueueTableRow
+		if err := rows.Scan(
+			&row.Tagnumber,
+			&row.SystemSerial,
+			&row.OSInstalled,
+			&row.OSName,
+			&row.KernelUpdated,
+			&row.BIOSUpdated,
+			&row.BIOSVersion,
+			&row.SystemManufacturer,
+			&row.SystemModel,
+			&row.BatteryCharge,
+			&row.BatteryStatus,
+			&row.CPUTemp,
+			&row.DiskTemp,
+			&row.MaxDiskTemp,
+			&row.PowerUsage,
+			&row.NetworkUsage,
+			&row.ClientStatus,
+			&row.IsBroken,
+			&row.JobQueued,
+			&row.QueuePosition,
+			&row.JobActive,
+			&row.JobName,
+			&row.JobStatus,
+			&row.JobCloneMode,
+			&row.JobEraseMode,
+			&row.LastJobTime,
+			&row.Location,
+			&row.LastHeard,
+			&row.Uptime,
+			&row.Online,
+		); err != nil {
+			return nil, err
+		}
+		jobQueueRows = append(jobQueueRows, row)
+	}
+	return jobQueueRows, nil
+}
