@@ -98,7 +98,13 @@ func GetAllTags(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
-	middleware.WriteJson(w, http.StatusOK, allTags)
+	allTagsJson, err := json.Marshal(allTags)
+	if err != nil {
+		log.HTTPWarning(req, "Error marshaling all tags to JSON in GetAllTags: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, allTagsJson)
 }
 
 func GetHardwareIdentifiers(w http.ResponseWriter, req *http.Request) {

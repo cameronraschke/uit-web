@@ -13,7 +13,7 @@ type Repo struct {
 
 func NewRepo(db *sql.DB) *Repo { return &Repo{DB: db} }
 
-func (repo *Repo) GetAllTags(ctx context.Context) ([]int, error) {
+func (repo *Repo) GetAllTags(ctx context.Context) ([]int64, error) {
 	sqlCode := `SELECT tagnumber FROM (SELECT tagnumber, time, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS
 		row_nums FROM locations WHERE tagnumber IS NOT NULL) t1 WHERE t1.row_nums = 1 ORDER BY t1.time DESC;`
 
@@ -35,7 +35,7 @@ func (repo *Repo) GetAllTags(ctx context.Context) ([]int, error) {
 		return nil, err
 	}
 
-	allTagsSlice := make([]int, len(allTags))
+	allTagsSlice := make([]int64, len(allTags))
 	for i := range allTags {
 		allTagsSlice[i] = allTags[i].Tagnumber
 	}

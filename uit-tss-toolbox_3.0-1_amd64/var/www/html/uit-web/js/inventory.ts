@@ -205,7 +205,7 @@ inventoryUpdateFormCancelButton.addEventListener("click", (event) => {
 	updateURLParameters(null, null);
 });
 
-function renderTagOptions(tags: string[]): void {
+function renderTagOptions(tags: number[]): void {
   if (!allTagsDatalist) {
     console.warn("No tag datalist found");
     return;
@@ -218,28 +218,28 @@ function renderTagOptions(tags: string[]): void {
 	}
   (tags || []).slice(0, maxTags).forEach(tag => {
     const option = document.createElement('option');
-    option.value = tag;
+    option.value = tag.toString();
     allTagsDatalist.appendChild(option);
   });
 }
 
-if (Array.isArray(window.availableTags)) {
-  console.log("Available tags found:", window.availableTags);
-  renderTagOptions(window.availableTags);
+if (Array.isArray(window.allTags)) {
+  console.log("Available tags found:", window.allTags);
+  renderTagOptions(window.allTags);
 }
 
-document.addEventListener('tags:loaded', (event: CustomEvent<{ tags: string[] }>) => {
-  const tags = (event && event.detail && Array.isArray(event.detail.tags)) ? event.detail.tags : window.availableTags;
+document.addEventListener('tags:loaded', (event: CustomEvent<{ tags: number[] }>) => {
+  const tags = (event && event.detail && Array.isArray(event.detail.tags)) ? event.detail.tags : window.allTags;
   renderTagOptions(tags || []);
 });
 
 inventoryLookupTagInput.addEventListener("keyup", (event: KeyboardEvent) => {
   const searchTerm = ((event.target as HTMLInputElement).value || '').trim().toLowerCase();
-  const allTags = Array.isArray(window.availableTags) ? window.availableTags : [];
+  const allTags = Array.isArray(window.allTags) ? window.allTags : [];
   const filteredTags = searchTerm
-    ? allTags.filter(tag => String(tag).trim().includes(searchTerm))
+    ? allTags.filter(tag => tag.toString().trim().includes(searchTerm))
     : allTags;
-  if (filteredTags.includes(searchTerm)) {
+  if (filteredTags.includes(Number(searchTerm))) {
     allTagsDatalist.innerHTML = '';
   } else {
     renderTagOptions(filteredTags);

@@ -64,7 +64,7 @@ type DashboardInventorySummary struct {
 }
 
 type AllTags struct {
-	Tagnumber int `json:"tagnumber"`
+	Tagnumber int64 `json:"tagnumber"`
 }
 
 type InventoryFormAutofill struct {

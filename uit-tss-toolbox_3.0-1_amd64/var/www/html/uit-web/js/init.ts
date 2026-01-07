@@ -1,6 +1,11 @@
 interface Window {
-  availableTags: string[];
+  allTags: number[];
 }
+
+type TagCache = {
+	tags: number[];
+	timestamp: number;
+};
 
 type AuthStatusResponse = {
 	status: string | null;
@@ -32,22 +37,20 @@ async function checkAuthStatus(): Promise<boolean> {
 	}
 }
 
-checkAuthStatus();
-
-document.body.addEventListener("click", async (event) => {
-	if (window.location.pathname === '/login' || window.location.pathname === '/logout') {
-		return;
-	}
-	const target = event.target as HTMLElement;
-	// if (target && target.matches(".requires-auth, .requires-auth *")) {
-	if (target) {
-		const isAuthenticated = await checkAuthStatus();
-		if (!isAuthenticated) {
-			event.preventDefault();
-			window.location.href = "/logout";
-		}
-	}
-});
+// document.body.addEventListener("click", async (event) => {
+// 	if (window.location.pathname === '/login' || window.location.pathname === '/logout') {
+// 		return;
+// 	}
+// 	const target = event.target as HTMLElement;
+// 	// if (target && target.matches(".requires-auth, .requires-auth *")) {
+// 	if (target) {
+// 		const isAuthenticated = await checkAuthStatus();
+// 		if (!isAuthenticated) {
+// 			event.preventDefault();
+// 			window.location.href = "/logout";
+// 		}
+// 	}
+// });
 
 let authCheckTimeout: number;
 document.addEventListener("visibilitychange", async () => {
@@ -255,52 +258,105 @@ async function generateSHA256Hash(input: string) {
     return hashStr;
 }
 
-async function getAllTags(fetchOptions: RequestInit = {}) {
+async function getTagsFromServer(): Promise<TagCache | null> {
+	let tagObj: TagCache = { tags: [], timestamp: Date.now() };
+
   const url = "/api/all_tags";
   try {
-    const data = await fetchData(url, true, fetchOptions);
+    const data = await fetchData(url, true);
     if (!data) {
       console.warn("No data returned from /api/all_tags");
-      return [];
+			return null;
     }
 
-    let tagArr: string[] = [];
-    if (!Array.isArray(data) && typeof data === "string") {
-      try {
-        tagArr = data
-          .replace(/\[/, "")
-          .replace(/\]/, "")
-          .split(",")
-          .map(tag => tag.trim())
-          .filter(Boolean);
-      } catch (error) {
-        console.warn("/api/all_tags cannot be parsed as JSON: " + error);
-        return [];
-      }
-    }
-
-    if (!Array.isArray(tagArr)) {
-      console.warn("/api/all_tags did not return an array");
-      return [];
-    }
-    tagArr = tagArr.map(tag => (typeof tag === "number" ? String(tag) : String(tag || "").trim())).filter(tag => tag.length === 6);
-    return tagArr;
-  } catch (error) {
-    console.error("Error fetching tags from /api/all_tags:", error);
-    return [];
-  }
+		const tagArr: number[] = JSON.parse(data);
+		if (!Array.isArray(tagArr) || tagArr.length === 0) {
+			console.warn("/api/all_tags response is not an array or is empty");
+			return null;
+		}
+		for (const tag of tagArr) {
+			if (typeof tag !== "number" || !validateTagInput(tag)) {
+				console.warn("Invalid tag in /api/all_tags response: " + tag);
+				return null;
+			}
+			tagObj.tags.push(tag);
+		}
+		tagObj.timestamp = Date.now();
+		return tagObj;
+	} catch (error) {
+		console.error("Error fetching tags from server:", error);
+		return null;
+	}
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  getAllTags()
-    .then(tags => {
-      window.availableTags = Array.isArray(tags) ? tags : [];
-      document.dispatchEvent(new CustomEvent("tags:loaded", { detail: { tags: window.availableTags } }));
-    })
-    .catch(error => {
-      console.warn("Error initializing available tags:", error);
-      window.availableTags = [];
-    });
+function getCachedTags(): TagCache | null {
+	const cached = sessionStorage.getItem("uit_all_tags");
+	if (!cached) return null;
+
+	try {
+		const cacheEntry: TagCache = JSON.parse(cached);
+		// 5 min cache expiry
+		if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.tags)) {
+			console.log("Loaded tags from cache");
+			return cacheEntry;
+		}
+	} catch (e) {
+		sessionStorage.removeItem("uit_all_tags");
+	}
+	return null;
+}
+
+async function getAllTags():  Promise<TagCache | null> {
+	const cachedTags = getCachedTags();
+	if (cachedTags) return cachedTags;
+
+	try {
+		const refreshedTags = await getTagsFromServer();
+		if (refreshedTags) {
+			sessionStorage.setItem("uit_all_tags", JSON.stringify({
+				tags: refreshedTags.tags,
+				timestamp: refreshedTags.timestamp
+			}));
+			return refreshedTags;
+		}
+	} catch (e) {
+		console.warn("Error parsing /api/all_tags response:", e);
+		return null;
+	}
+	return null;
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+	if (!navigator.onLine) {
+		console.warn("Offline, redirecting to logout");
+		window.location.href = "/logout";
+		return;
+	}
+
+	// Check auth status
+	try {
+		const firstCheck = await checkAuthStatus();
+		if (firstCheck === false) {
+			window.location.href = "/logout";
+		}
+	} catch (error) {
+		console.error("Error during initial auth check:", error);
+		window.location.href = "/logout";
+	}
+
+	// Load all tags
+	try {
+		const allTags = await getAllTags();
+		if (allTags && Array.isArray(allTags.tags)) {
+			window.allTags = allTags.tags;
+		} else {
+			window.allTags = [];
+		}
+		document.dispatchEvent(new CustomEvent("tags:loaded", { detail: { tags: window.allTags } }));
+	} catch (error) {
+		console.warn("Error initializing available tags:", error);
+		window.allTags = [];
+	}
 });
 
 async function waitForNextPaint(frames = 1) {
