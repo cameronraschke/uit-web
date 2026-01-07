@@ -61,7 +61,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/client/hardware/ids", httpsFullAPIChain.ThenFunc(endpoints.GetHardwareIdentifiers))
 	httpsRouter.Handle("GET /api/client/bios", httpsFullAPIChain.ThenFunc(endpoints.GetBiosData))
 	httpsRouter.Handle("GET /api/client/os", httpsFullAPIChain.ThenFunc(endpoints.GetOSData))
-	httpsRouter.Handle("GET /api/job_queue/overview", httpsFullAPIChain.ThenFunc(endpoints.GetJobQueueOverview))
+	httpsRouter.Handle("GET /api/job_queue/overview", httpsFullAPIChain.ThenFunc(endpoints.GetJobQueueTable))
 	httpsRouter.Handle("GET /api/job_queue/client/queued_job", httpsFullAPIChain.ThenFunc(endpoints.GetClientQueuedJobs))
 	httpsRouter.Handle("GET /api/job_queue/client/job_available", httpsFullAPIChain.ThenFunc(endpoints.GetClientAvailableJobs))
 	httpsRouter.Handle("GET /api/client/location_form_data", httpsFullAPIChain.ThenFunc(endpoints.GetLocationFormData))

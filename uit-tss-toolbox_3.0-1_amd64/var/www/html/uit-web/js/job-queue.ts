@@ -40,9 +40,14 @@ setInterval(() => {
 
 async function getJobQueueData() {
 		try {
-				const response = fetchData('/api/job_queue/overview', true);
-				const data: JobQueueEntry[] = await response;
-				updateJobQueueTable(data);
+				const data = await fetchData('/api/job_queue/overview', false);
+				console.log('Job queue data:', data);
+				console.log('Type:', typeof data, 'Is array:', Array.isArray(data));
+				if (Array.isArray(data)) {
+						updateJobQueueTable(data);
+				} else {
+						console.error('Expected array but got:', data);
+				}
 		} catch (error) {
 				console.error('Error fetching job queue data:', error);
 		}
