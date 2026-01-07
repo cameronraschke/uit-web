@@ -307,6 +307,9 @@ function getCachedTags(): TagCache | null {
 }
 
 async function getAllTags():  Promise<TagCache | null> {
+	if (window.location.pathname === '/login' || window.location.pathname === '/logout') {
+		return null;
+	}
 	const cachedTags = getCachedTags();
 	if (cachedTags) return cachedTags;
 
