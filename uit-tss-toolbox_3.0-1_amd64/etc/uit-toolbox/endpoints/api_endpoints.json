@@ -1,5 +1,5 @@
 {
-	"/api/heartbeat": {},
+	"/api/check_auth": {},
   "/api/server_time": {},
   "/api/lookup": {},
   "/api/all_tags": {},
