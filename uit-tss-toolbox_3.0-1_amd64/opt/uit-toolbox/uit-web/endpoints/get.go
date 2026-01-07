@@ -92,6 +92,9 @@ func GetAllTags(w http.ResponseWriter, req *http.Request) {
 
 	allTags, err := repo.GetAllTags(ctx)
 	if err != nil {
+		if ctx.Err() != nil {
+			return
+		}
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetAllTags: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)

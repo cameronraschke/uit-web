@@ -121,7 +121,6 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	if err != nil || !authenticated {
 		log.HTTPInfo(req, "Authentication failed for "+requestIP.String()+": "+err.Error())
 		middleware.WriteJsonError(w, http.StatusUnauthorized)
-		http.Redirect(w, req, "/login?error=1", http.StatusSeeOther)
 		return
 	}
 
@@ -146,8 +145,6 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	w.Write([]byte(`{"token":"` + sessionID + `"}`))
-
-	http.Redirect(w, req, "/dashboard", http.StatusSeeOther)
 }
 
 func InsertNewNote(w http.ResponseWriter, req *http.Request) {

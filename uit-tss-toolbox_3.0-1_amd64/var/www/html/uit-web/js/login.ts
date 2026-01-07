@@ -126,6 +126,8 @@ loginForm.addEventListener("submit", async (event) => {
             throw new Error('No data returned from login API');
         }
 
+        await setKeyFromIndexDB("bearerToken", data.token);
+
         window.location.href = "/dashboard";
     } catch (error) {
         console.error('There was a problem with the fetch operation:', error);

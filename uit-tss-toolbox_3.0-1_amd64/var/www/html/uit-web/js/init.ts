@@ -263,13 +263,18 @@ async function getTagsFromServer(): Promise<TagCache | null> {
 
   const url = "/api/all_tags";
   try {
-    const data = await fetchData(url, true);
+    const data: string = await fetchData(url, true);
     if (!data) {
       console.warn("No data returned from /api/all_tags");
 			return null;
     }
+		const decodedData = base64ToJson(data);
+		if (!decodedData) {
+			console.warn("Decoded /api/all_tags data is null");
+			return null;
+		}
 
-		const tagArr: number[] = JSON.parse(data);
+		const tagArr: number[] = JSON.parse(decodedData);
 		if (!Array.isArray(tagArr) || tagArr.length === 0) {
 			console.warn("/api/all_tags response is not an array or is empty");
 			return null;
