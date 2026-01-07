@@ -1,8 +1,10 @@
 package endpoints
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	"net/http"
@@ -92,7 +94,9 @@ func GetAllTags(w http.ResponseWriter, req *http.Request) {
 
 	allTags, err := repo.GetAllTags(ctx)
 	if err != nil {
-		if ctx.Err() != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			log.HTTPInfo(req, "GetAllTags canceled/timeout")
+			middleware.WriteJsonError(w, http.StatusRequestTimeout)
 			return
 		}
 		if err != sql.ErrNoRows {
