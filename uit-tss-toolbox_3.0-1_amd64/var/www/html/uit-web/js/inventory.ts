@@ -47,12 +47,12 @@ async function lookupTagOrSerial(tagnumber: number | null, serial: string | null
     return null;
   }
   try {
-    const response = await fetchData(`/api/lookup?${query.toString()}`);
-    if (!response.ok) {
-      throw new Error("HTTP error received from /api/lookup: " + response.status + " " + response.statusText);
+    const data = await fetchData(`/api/lookup?${query.toString()}`);
+    if (!data) {
+      throw new Error("No data returned from /api/lookup");
     }
-		const jsonResponse: ClientLookupResult = await response.json();
-		if (!jsonResponse) {
+		const jsonResponse: ClientLookupResult = data as ClientLookupResult;
+		if (!jsonResponse || (jsonResponse.tagnumber === null && !jsonResponse.system_serial)) {
 			console.log("No data found for provided tag or serial");
 			return null;
 		}
@@ -391,10 +391,16 @@ async function populateLocationForm(tag: number): Promise<void> {
     const systemManufacturer = inventoryUpdateForm.querySelector("#system_manufacturer") as HTMLInputElement;
 		const systemManufacturerVal: string = locationFormData.system_manufacturer || '';
 		systemManufacturer.value = systemManufacturerVal;
+		if (systemManufacturerVal) {
+			systemManufacturer.disabled = true;
+		}
 
     const systemModel = inventoryUpdateForm.querySelector("#system_model") as HTMLInputElement;
 		const systemModelVal: string = locationFormData.system_model || '';
 		systemModel.value = systemModelVal;
+		if (systemModelVal) {
+			systemModel.disabled = true;
+		}
 
 		await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
 		const departmentNameVal: string = locationFormData.department_name || '';
