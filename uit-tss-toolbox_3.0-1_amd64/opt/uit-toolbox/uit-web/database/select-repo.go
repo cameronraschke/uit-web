@@ -678,7 +678,7 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 	locations.client_status, (CASE WHEN locations.client_status IS NULL THEN NULL WHEN locations.client_status = 'needs-repair' THEN TRUE ELSE FALSE END) AS is_broken,
 	(CASE WHEN job_queue.job_queued IS NOT NULL THEN TRUE ELSE FALSE END) AS "job_queued", t1.queue_position, job_queue.job_active, job_queue.job_queued AS "job_name", job_queue.status, job_queue.clone_mode, job_queue.erase_mode,
 	t2.last_job_time AT TIME ZONE 'America/Chicago' AS "last_job_time", locations.location, job_queue.present AT TIME ZONE 'America/Chicago' AS "last_heard",
-	(jobstats.boot_time || ' seconds')::interval AS uptime, (CASE WHEN (NOW() - job_queue.present < INTERVAL '30 SECOND') THEN TRUE ELSE FALSE END) AS online
+	job_queue.uptime, (CASE WHEN (NOW() - job_queue.present < INTERVAL '30 SECOND') THEN TRUE ELSE FALSE END) AS online
 	FROM locations
 	LEFT JOIN jobstats ON locations.tagnumber = jobstats.tagnumber AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
 	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
