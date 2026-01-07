@@ -32,51 +32,66 @@ type JobQueueEntry = {
 	online: boolean | null
 };
 
+let jobQueueInterval: number;
 getJobQueueData();
-
-setInterval(() => {
-		getJobQueueData();
+jobQueueInterval = setInterval(() => {
+	getJobQueueData();
 }, 10000);
 
+document.addEventListener('visibilitychange', () => {
+	clearInterval(jobQueueInterval);
+	if (document.visibilityState === 'visible') {
+		getJobQueueData();
+		jobQueueInterval = setInterval(() => {
+			getJobQueueData();
+		}, 10000);
+	}
+});
+
+
 async function getJobQueueData() {
-		try {
-				const data = await fetchData('/api/job_queue/overview', false);
-				console.log('Job queue data:', data);
-				console.log('Type:', typeof data, 'Is array:', Array.isArray(data));
-				if (Array.isArray(data)) {
-						updateJobQueueTable(data);
-				} else {
-						console.error('Expected array but got:', data);
-				}
-		} catch (error) {
-				console.error('Error fetching job queue data:', error);
+	try {
+		const data = await fetchData('/api/job_queue/overview', false);
+		if (Array.isArray(data)) {
+			updateJobQueueTable(data);
+		} else {
+			console.error('Expected array but got:', data);
 		}
+	} catch (error) {
+		console.error('Error fetching job queue data:', error);
+	}
 }
 
 function updateJobQueueTable(data: JobQueueEntry[]) {
-		const onlineTableBody = document.querySelector('#online-clients-table tbody');
-		const offlineTableBody = document.querySelector('#offline-clients-table tbody');
-		if (!onlineTableBody || !offlineTableBody) return;
+	const onlineTableBody = document.querySelector('#online-clients-table tbody');
+	const offlineTableBody = document.querySelector('#offline-clients-table tbody');
+	if (!onlineTableBody || !offlineTableBody) return;
 
-		const onlineTableFragment = document.createDocumentFragment();
-		const offlineTableFragment = document.createDocumentFragment();
+	const onlineTableFragment = document.createDocumentFragment();
+	const offlineTableFragment = document.createDocumentFragment();
 
-		for (const entry of data) {
-				const row = document.createElement('tr');
-				const tagCell = document.createElement('td');
-				if (entry.tagnumber === null) continue;
-				tagCell.textContent = entry.tagnumber.toString();
-				row.appendChild(tagCell);
+	for (const entry of data) {
+		const row = document.createElement('tr');
+		const tagCell = document.createElement('td');
+		const tag = entry.tagnumber !== null ? entry.tagnumber.toString() : 'N/A';
+		const tagLink = document.createElement('a');
+		const tagURL = new URL(window.location.origin + '/client');
+		tagURL.searchParams.append('tagnumber', tag);
+		tagLink.textContent = tag;
+		tagLink.href = tagURL.toString();
+		tagLink.target = '_blank';
+		tagCell.appendChild(tagLink);
+		row.appendChild(tagCell);
 
-				if (entry.online) {
-						onlineTableFragment.appendChild(row);
-				} else {
-						offlineTableFragment.appendChild(row);
-				}
+		if (entry.online) {
+			onlineTableFragment.appendChild(row);
+		} else {
+			offlineTableFragment.appendChild(row);
 		}
-		onlineTableBody.innerHTML = '';
-		onlineTableBody.appendChild(onlineTableFragment);
-		
-		offlineTableBody.innerHTML = '';
-		offlineTableBody.appendChild(offlineTableFragment);
+	}
+	onlineTableBody.innerHTML = '';
+	onlineTableBody.appendChild(onlineTableFragment);
+	
+	offlineTableBody.innerHTML = '';
+	offlineTableBody.appendChild(offlineTableFragment);
 }

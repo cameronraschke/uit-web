@@ -52,16 +52,25 @@ async function checkAuthStatus(): Promise<boolean> {
 // 	}
 // });
 
+const checkAuthTimeout = 5000; // 5 seconds
 let authCheckTimeout: number;
+authCheckTimeout = setInterval(async () => {
+	if (document.visibilityState !== "visible") return;
+
+	const isAuthenticated = await checkAuthStatus();
+	if (!isAuthenticated) {
+		window.location.href = "/logout";
+	}
+}, checkAuthTimeout);
+
 document.addEventListener("visibilitychange", async () => {
 	if (window.location.pathname === '/login' || window.location.pathname === '/logout') {
 		return;
 	}
 	// Clear any existing timeouts
-	clearTimeout(authCheckTimeout);
+	clearInterval(authCheckTimeout);
 
 	if (document.visibilityState === "visible") {
-		const checkAuthTimeout = 5000; // 5 seconds
 		
 		// Immediately check auth status
 		const isAuthenticated = await checkAuthStatus();
@@ -77,8 +86,7 @@ document.addEventListener("visibilitychange", async () => {
 		}
 
 		// Delayed check
-		authCheckTimeout = window.setTimeout(async () => {
-			// Double check visibility before making the network call
+		authCheckTimeout = setInterval(async () => {
 			if (document.visibilityState !== "visible") return;
 
 			const isStillAuthenticated = await checkAuthStatus();
