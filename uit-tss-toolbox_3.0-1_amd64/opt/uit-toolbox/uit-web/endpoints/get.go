@@ -879,18 +879,16 @@ func GetDepartments(w http.ResponseWriter, req *http.Request) {
 func CheckAuth(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
+	if ctx.Err() != nil {
+		log.HTTPInfo(req, "CheckAuth canceled/timeout")
+		middleware.WriteJsonError(w, http.StatusRequestTimeout)
+		return
+	}
 
 	data := map[string]string{
 		"status": "authenticated",
 		"time":   time.Now().Format(time.RFC3339),
 	}
 
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		log.HTTPWarning(req, "Error marshaling heartbeat JSON data: "+err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	middleware.WriteJson(w, http.StatusOK, jsonData)
+	middleware.WriteJson(w, http.StatusOK, data)
 }

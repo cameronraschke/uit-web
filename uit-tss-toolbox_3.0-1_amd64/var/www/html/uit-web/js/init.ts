@@ -156,11 +156,18 @@ async function fetchData(url: string, returnText = false, fetchOptions: RequestI
       throw new Error("No URL specified for fetchData");
     }
 
-    // Get bearerToken from IndexedDB
-    const bearerToken = await getKeyFromIndexDB("bearerToken");
-    const headers = new Headers();
-    headers.append('Content-Type', 'application/x-www-form-urlencoded');
-    headers.append('Authorization', 'Bearer ' + bearerToken);
+		const headers = new Headers();
+		headers.append('Content-Type', 'application/x-www-form-urlencoded');
+
+		// Try to add bearer token, but do not fail the request if not found.
+		try {
+			const bearerToken = await getKeyFromIndexDB("bearerToken");
+			if (bearerToken) {
+				headers.append('Authorization', 'Bearer ' + bearerToken);
+			}
+		} catch (tokenErr) {
+			console.warn("Bearer token not available; proceeding with cookies only", tokenErr);
+		}
     
 
     const response = await fetch(url, {
