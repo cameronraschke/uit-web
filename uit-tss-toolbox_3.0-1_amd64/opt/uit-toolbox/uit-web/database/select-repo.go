@@ -257,11 +257,11 @@ func (repo *Repo) GetOsData(ctx context.Context, tag int64) (*OsData, error) {
 }
 
 func (repo *Repo) GetActiveJobs(ctx context.Context, tag int64) (*ActiveJobs, error) {
-	sqlQuery := `SELECT remote.tagnumber, remote.job_queued, remote.job_active, t1.queue_position
-	FROM remote
-	LEFT JOIN (SELECT tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY present DESC) AS queue_position FROM remote) AS t1 
-		ON remote.tagnumber = t1.tagnumber
-	WHERE remote.tagnumber = $1;`
+	sqlQuery := `SELECT job_queue.tagnumber, job_queue.job_queued, job_queue.job_active, t1.queue_position
+	FROM job_queue
+	LEFT JOIN (SELECT tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY present DESC) AS queue_position FROM job_queue) AS t1 
+		ON job_queue.tagnumber = t1.tagnumber
+	WHERE job_queue.tagnumber = $1;`
 
 	var activeJobs ActiveJobs
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
@@ -278,13 +278,13 @@ func (repo *Repo) GetActiveJobs(ctx context.Context, tag int64) (*ActiveJobs, er
 
 func (repo *Repo) GetAvailableJobs(ctx context.Context, tag int64) (*AvailableJobs, error) {
 	sqlQuery := `SELECT 
-	remote.tagnumber,
+	job_queue.tagnumber,
 	(CASE 
-		WHEN (remote.job_queued IS NULL) THEN TRUE
+		WHEN (job_queue.job_queued IS NULL) THEN TRUE
 		ELSE FALSE
 	END) AS job_available
-	FROM remote
-	WHERE remote.tagnumber = $1`
+	FROM job_queue
+	WHERE job_queue.tagnumber = $1`
 
 	var availableJobs AvailableJobs
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
@@ -300,9 +300,9 @@ func (repo *Repo) GetAvailableJobs(ctx context.Context, tag int64) (*AvailableJo
 func (repo *Repo) GetJobQueueOverview(ctx context.Context) (*JobQueueOverview, error) {
 	sqlQuery := `SELECT t1.total_queued_jobs, t2.total_active_jobs, t3.total_active_blocking_jobs
 	FROM 
-	(SELECT COUNT(*) AS total_queued_jobs FROM remote WHERE job_queued IS NOT NULL AND (NOW() - present < INTERVAL '30 SECOND')) AS t1,
-	(SELECT COUNT(*) AS total_active_jobs FROM remote WHERE job_active IS NOT NULL AND job_active = TRUE AND (NOW() - present < INTERVAL '30 SECOND')) AS t2,
-	(SELECT COUNT(*) AS total_active_blocking_jobs FROM remote WHERE job_active IS NOT NULL AND job_active = TRUE AND job_queued IS NOT NULL AND job_queued IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')) AS t3;`
+	(SELECT COUNT(*) AS total_queued_jobs FROM job_queue WHERE job_queued IS NOT NULL AND (NOW() - present < INTERVAL '30 SECOND')) AS t1,
+	(SELECT COUNT(*) AS total_active_jobs FROM job_queue WHERE job_active IS NOT NULL AND job_active = TRUE AND (NOW() - present < INTERVAL '30 SECOND')) AS t2,
+	(SELECT COUNT(*) AS total_active_blocking_jobs FROM job_queue WHERE job_active IS NOT NULL AND job_active = TRUE AND job_queued IS NOT NULL AND job_queued IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')) AS t3;`
 
 	var jobQueueOverview JobQueueOverview
 	row := repo.DB.QueryRowContext(ctx, sqlQuery)

@@ -1,4 +1,4 @@
--- Tables with tagnmbers: clientstats, jobstats, locations, client_health, remote, system_data, bitlocker, checkout
+-- Tables with tagnmbers: clientstats, jobstats, locations, client_health, job_queue, system_data, bitlocker, checkout
 DROP TABLE IF EXISTS serverstats;
 CREATE TABLE serverstats (
     date DATE UNIQUE NOT NULL,
@@ -226,7 +226,7 @@ CREATE TABLE IF NOT EXISTS client_health (
     time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL DEFAULT NULL
 );
 
-CREATE TABLE IF NOT EXISTS remote (
+CREATE TABLE IF NOT EXISTS job_queue (
     tagnumber INTEGER UNIQUE NOT NULL,
     job_queued VARCHAR(24) DEFAULT NULL,
     job_queued_position SMALLINT DEFAULT NULL,

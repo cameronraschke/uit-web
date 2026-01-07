@@ -347,6 +347,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
   } finally {
     updatingInventory = false;
     inventoryUpdateFormSubmitButton.disabled = false;
+		showInventoryUpdateChanges();
   }
 });
 
@@ -364,8 +365,22 @@ async function getLocationFormData(tag: number): Promise<any | null> {
   }
 }
 
+function showInventoryUpdateChanges(): void {
+	inventoryUpdateForm.querySelectorAll("input, select, textarea, file").forEach((element: HTMLElement) => {
+		element.style.border = "revert-layer";
+		element.style.boxShadow = "revert-layer";
+		element.addEventListener("change", () => {
+			updatingInventory = false;
+			element.style.boxShadow = "0 0 2px orange";
+			element.style.border = "2px solid orange";
+		});
+	});
+}
+showInventoryUpdateChanges();
+
 async function populateLocationForm(tag: number): Promise<void> {
   const locationFormData = await getLocationFormData(tag);
+	showInventoryUpdateChanges();
   if (locationFormData) {
 		if (locationFormData.last_update_time) {
 			const lastUpdate = new Date(locationFormData.last_update_time);
@@ -392,6 +407,7 @@ async function populateLocationForm(tag: number): Promise<void> {
 		const systemManufacturerVal: string = locationFormData.system_manufacturer || '';
 		systemManufacturer.value = systemManufacturerVal;
 		if (systemManufacturerVal) {
+			systemManufacturer.style.backgroundColor = "gainsboro";
 			systemManufacturer.disabled = true;
 		}
 
@@ -399,6 +415,7 @@ async function populateLocationForm(tag: number): Promise<void> {
 		const systemModelVal: string = locationFormData.system_model || '';
 		systemModel.value = systemModelVal;
 		if (systemModelVal) {
+			systemModel.style.backgroundColor = "gainsboro";
 			systemModel.disabled = true;
 		}
 
