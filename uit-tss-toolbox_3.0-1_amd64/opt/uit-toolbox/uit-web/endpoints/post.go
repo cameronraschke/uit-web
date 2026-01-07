@@ -144,7 +144,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	w.Write([]byte(`{"token":"` + sessionID + `"}`))
+	w.Write([]byte(`{"token":"` + bearerToken + `"}`))
 }
 
 func InsertNewNote(w http.ResponseWriter, req *http.Request) {

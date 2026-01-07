@@ -160,7 +160,6 @@ async function fetchData(url: string, returnText = false, fetchOptions: RequestI
     const bearerToken = await getKeyFromIndexDB("bearerToken");
     const headers = new Headers();
     headers.append('Content-Type', 'application/x-www-form-urlencoded');
-    headers.append('credentials', 'same-origin');
     headers.append('Authorization', 'Bearer ' + bearerToken);
     
 
