@@ -99,8 +99,13 @@ document.addEventListener("visibilitychange", async () => {
 	
 
 function validateTagInput(tagInput: number): boolean {
-	const tagPattern = /^[0-9]{6}$/;
-	return tagPattern.test(tagInput.toString());
+	let validRange = false;
+	let validRegex = false;
+	const regexPattern = /^[0-9]{6}$/;
+
+	if (tagInput > 1 && tagInput < 999999) validRange = true;
+	if (regexPattern.test(tagInput.toString())) validRegex = true;
+	return validRange && validRegex;
 }
 
 function jsonToBase64(jsonString: string) {

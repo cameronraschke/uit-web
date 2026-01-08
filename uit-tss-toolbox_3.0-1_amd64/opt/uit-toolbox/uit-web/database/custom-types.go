@@ -108,14 +108,17 @@ type InventoryUpdateFormInput struct {
 type ImageManifest struct {
 	Time              *time.Time `json:"time"`
 	Tagnumber         *int64     `json:"tagnumber"`
-	Name              *string    `json:"name"`
 	UUID              *string    `json:"uuid"`
-	Filepath          *string    `json:"filepath"`
-	ThumbnailFilepath *string    `json:"thumbnail_filepath"`
+	SHA256Hash        *string    `json:"sha256_hash"`
+	FileName          *string    `json:"filename"`
+	FilePath          *string    `json:"filepath"`
+	ThumbnailFilePath *string    `json:"thumbnail_filepath"`
+	FileSize          *int64     `json:"file_size"`
+	MimeType          *string    `json:"mime_type"`
+	ExifTimestamp     *time.Time `json:"exif_timestamp"`
+	ResolutionX       *int       `json:"resolution_x"`
+	ResolutionY       *int       `json:"resolution_y"`
 	URL               *string    `json:"url"`
-	Width             *int       `json:"width"`
-	Height            *int       `json:"height"`
-	Size              *int64     `json:"size"`
 	Hidden            *bool      `json:"hidden"`
 	PrimaryImage      *bool      `json:"primary_image"`
 	Note              *string    `json:"note"`
@@ -171,4 +174,45 @@ type Departments struct {
 	DepartmentName          string `json:"department_name"`
 	DepartmentNameFormatted string `json:"department_name_formatted"`
 	DepartmentSortOrder     int64  `json:"department_sort_order"`
+}
+
+type JobQueueTableRow struct {
+	Tagnumber          *int64         `json:"tagnumber"`
+	SystemSerial       *string        `json:"system_serial"`
+	OSInstalled        *string        `json:"os_installed"`
+	OSName             *string        `json:"os_name"`
+	KernelUpdated      *bool          `json:"kernel_updated"`
+	BIOSUpdated        *bool          `json:"bios_updated"`
+	BIOSVersion        *string        `json:"bios_version"`
+	SystemManufacturer *string        `json:"system_manufacturer"`
+	SystemModel        *string        `json:"system_model"`
+	BatteryCharge      *int64         `json:"battery_charge"`
+	BatteryStatus      *string        `json:"battery_status"`
+	CPUTemp            *float64       `json:"cpu_temp"`
+	DiskTemp           *float64       `json:"disk_temp"`
+	MaxDiskTemp        *float64       `json:"max_disk_temp"`
+	PowerUsage         *float64       `json:"power_usage"`
+	NetworkUsage       *float64       `json:"network_usage"`
+	ClientStatus       *string        `json:"client_status"`
+	IsBroken           *bool          `json:"is_broken"`
+	JobQueued          *bool          `json:"job_queued"`
+	QueuePosition      *int64         `json:"queue_position"`
+	JobActive          *bool          `json:"job_active"`
+	JobName            *string        `json:"job_name"`
+	JobStatus          *string        `json:"job_status"`
+	JobCloneMode       *string        `json:"job_clone_mode"`
+	JobEraseMode       *string        `json:"job_erase_mode"`
+	LastJobTime        *time.Time     `json:"last_job_time"`
+	Location           *string        `json:"location"`
+	LastHeard          *time.Time     `json:"last_heard"`
+	Uptime             *time.Duration `json:"uptime"`
+	Online             *bool          `json:"online"`
+}
+
+type ClientBatteryHealth struct {
+	Time                *time.Time `json:"time"`
+	Tagnumber           *int64     `json:"tagnumber"`
+	JobstatsBattery     *string    `json:"jobstatsHealthPcnt"`
+	ClientHealthBattery *string    `json:"clientHealthPcnt"`
+	BatteryChargeCycles *int64     `json:"chargeCycles"`
 }

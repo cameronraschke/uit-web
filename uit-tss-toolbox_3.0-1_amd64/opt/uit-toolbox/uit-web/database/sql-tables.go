@@ -58,21 +58,3 @@ type LoginsTable struct {
 	IsAdmin    *bool   `json:"is_admin"`
 	Enabled    *bool   `json:"enabled"`
 }
-
-type ClientImagesTable struct {
-	UUID              *string    `json:"uuid"`
-	Time              *time.Time `json:"time"`
-	Tagnumber         *int       `json:"tagnumber"`
-	Filename          *string    `json:"filename"`
-	FilePath          *string    `json:"file_path"`
-	ThumbnailFilePath *string    `json:"thumbnail_filepath"`
-	Filesize          *float64   `json:"filesize"`
-	SHA256Hash        *[]byte    `json:"sha256_hash"`
-	MimeType          *string    `json:"mime_type"`
-	ExifTimestamp     *time.Time `json:"exif_timestamp"`
-	ResolutionX       *int       `json:"resolution_x"`
-	ResolutionY       *int       `json:"resolution_y"`
-	Note              *string    `json:"note"`
-	Hidden            *bool      `json:"hidden"`
-	PrimaryImage      *bool      `json:"primary_image"`
-}

@@ -19,6 +19,17 @@ import (
 	middleware "uit-toolbox/middleware"
 )
 
+var acceptedImageExtensionsAndMimeTypes = map[string]string{
+	".jpg":  "jpeg",
+	".jpeg": "jpeg",
+	".png":  "png",
+}
+
+var acceptedVideoExtensionsAndMimeTypes = map[string]string{
+	".mp4": "mp4",
+	".mov": "mov",
+}
+
 // Per-client functions
 func GetServerTime(w http.ResponseWriter, req *http.Request) {
 	curTime := time.Now().Format(time.RFC3339)
@@ -377,132 +388,115 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	repo := database.NewRepo(db)
-	imageUUIDs, err := repo.GetClientImageUUIDs(ctx, tagnumber)
+
+	imageManifests, err := repo.GetClientImageManifestByTag(ctx, tagnumber)
 	if err != nil && err != sql.ErrNoRows {
 		log.HTTPWarning(req, "Query error in GetClientImagesManifest: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
+	if len(imageManifests) == 0 {
+		log.HTTPWarning(req, "No image manifest data for client: "+fmt.Sprintf("%d", tagnumber))
+		middleware.WriteJsonError(w, http.StatusNotFound)
+		return
+	}
 
-	var imageManifests []database.ImageManifest
-	for _, imageUUID := range imageUUIDs {
-		var imageData database.ImageManifest
-		time, tag, filepath, _, hidden, primaryImage, note, err := repo.GetClientImageManifestByUUID(ctx, imageUUID)
-		if err != nil {
-			if err == sql.ErrNoRows {
-				log.HTTPInfo(req, "Image not found in database: "+imageUUID+" "+err.Error())
-			} else {
-				log.HTTPWarning(req, "Query error in GetClientImagesManifest: "+imageUUID+" "+err.Error())
-				middleware.WriteJsonError(w, http.StatusInternalServerError)
-				return
-			}
-		}
-
-		if hidden != nil && *hidden {
+	for _, imageManifest := range imageManifests {
+		if imageManifest.UUID == nil || strings.TrimSpace(*imageManifest.UUID) == "" {
+			log.HTTPWarning(req, "Image manifest UUID is nil or empty in GetClientImagesManifest")
 			continue
 		}
 
-		if filepath == nil || strings.TrimSpace(*filepath) == "" {
-			log.HTTPInfo(req, "Filepath provided to GetClientImagesManifest is nil")
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
+		if imageManifest.Tagnumber == nil || *imageManifest.Tagnumber < 1 || *imageManifest.Tagnumber > 999999 {
+			log.HTTPWarning(req, "Image manifest has no or invalid tag in database in GetClientImagesManifest")
+			continue
 		}
 
-		img, err := os.Open(*filepath)
-		if err != nil {
-			log.HTTPWarning(req, "Cannot open image file in GetClientImagesManifest: "+*filepath+" "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
+		if imageManifest.Hidden != nil && *imageManifest.Hidden {
+			continue
 		}
-		defer img.Close()
 
-		imageStat, err := img.Stat()
-		if err != nil {
-			log.HTTPWarning(req, "Cannot stat image in GetClientImagesManifest: "+*filepath+" "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
+		if imageManifest.FilePath == nil || strings.TrimSpace(*imageManifest.FilePath) == "" {
+			log.HTTPInfo(req, "File path provided to GetClientImagesManifest is nil")
+			continue
 		}
+
+		filepath := strings.ToLower(strings.TrimSpace(*imageManifest.FilePath))
+
+		file, err := os.Open(filepath)
+		if err != nil {
+			log.HTTPWarning(req, "Cannot open image file in GetClientImagesManifest: "+filepath+" "+err.Error())
+			_ = file.Close()
+			continue
+		}
+		defer file.Close()
+
+		imageStat, err := file.Stat()
+		if err != nil {
+			log.HTTPWarning(req, "Cannot stat image in GetClientImagesManifest: "+filepath+" "+err.Error())
+			_ = file.Close()
+			continue
+		}
+
+		fileSize := imageStat.Size()
+		if fileSize < 1 {
+			log.HTTPWarning(req, "Image file has invalid size in GetClientImagesManifest: "+filepath)
+			_ = file.Close()
+			continue
+		}
+		imageManifest.FileSize = &fileSize
+
 		fileExtension := strings.ToLower(path.Ext(imageStat.Name()))
 
-		filePathLower := strings.ToLower(*filepath)
-		if strings.HasSuffix(filePathLower, ".jpg") ||
-			strings.HasSuffix(filePathLower, ".jpeg") ||
-			strings.HasSuffix(filePathLower, ".png") {
+		// If an image
+		if _, ok := acceptedImageExtensionsAndMimeTypes[fileExtension]; ok {
+			imageReader := http.MaxBytesReader(w, file, 64<<20) // 64 MB max
 
-			imageReader := http.MaxBytesReader(w, img, 64<<20)
 			imageConfig, imageType, err := image.DecodeConfig(imageReader)
 			if err != nil {
-				_ = img.Close()
-				log.HTTPWarning(req, "Cannot decode image in GetClientImagesManifest: "+*filepath+" "+err.Error())
-				middleware.WriteJsonError(w, http.StatusInternalServerError)
-				return
+				log.HTTPWarning(req, "Cannot decode image in GetClientImagesManifest: "+filepath+" "+err.Error())
+				_ = file.Close()
+				continue
 			}
-			if imageType != "jpeg" && imageType != "png" {
-				_ = img.Close()
-				log.HTTPWarning(req, "Image has invalid type in GetClientImagesManifest: "+*filepath+" -> "+imageType)
-				middleware.WriteJsonError(w, http.StatusInternalServerError)
-				return
-			}
-			if (imageType == "jpeg" && fileExtension != ".jpg" && fileExtension != ".jpeg") ||
-				(imageType == "png" && fileExtension != ".png") {
-				_ = img.Close()
-				log.HTTPWarning(req, "Image file extension does not match image type in GetClientImagesManifest: "+imageStat.Name()+" != "+imageType)
-				middleware.WriteJsonError(w, http.StatusInternalServerError)
-				return
-			}
-			imageData.Width = &imageConfig.Width
-			imageData.Height = &imageConfig.Height
-			if imageData.Width == nil || imageData.Height == nil || *imageData.Width <= 0 || *imageData.Height <= 0 {
-				log.HTTPWarning(req, "Image has invalid dimensions in GetClientImagesManifest: "+*filepath)
-				middleware.WriteJsonError(w, http.StatusInternalServerError)
-				return
-			}
-			fileType := "image/" + imageType
-			imageData.FileType = &fileType
-		} else if strings.HasSuffix(filePathLower, ".mp4") {
-			fileType := "video/mp4"
-			imageData.FileType = &fileType
-		} else if strings.HasSuffix(filePathLower, ".mov") {
-			fileType := "video/quicktime"
-			imageData.FileType = &fileType
-		}
 
-		_ = img.Close()
+			if acceptedImageExtensionsAndMimeTypes[fileExtension] != imageType {
+				log.HTTPWarning(req, "Image has invalid file extension/type in GetClientImagesManifest: "+filepath+" -> Image type: "+imageType+", File extension: "+fileExtension)
+				_ = file.Close()
+				continue
+			}
 
-		var tagStr string
-		if tag != nil && *tag >= 1 {
-			tagStr = fmt.Sprintf("%d", *tag)
+			if imageConfig.Width == 0 || imageConfig.Height == 0 {
+				log.HTTPWarning(req, "Image has invalid dimensions in GetClientImagesManifest: "+filepath)
+				_ = file.Close()
+				continue
+			}
+			imageManifest.ResolutionX = &imageConfig.Width
+			imageManifest.ResolutionY = &imageConfig.Height
+
+			fileType := "image/" + acceptedImageExtensionsAndMimeTypes[fileExtension]
+			imageManifest.FileType = &fileType
+		} else if _, ok := acceptedVideoExtensionsAndMimeTypes[fileExtension]; ok {
+			videoType := acceptedVideoExtensionsAndMimeTypes[fileExtension]
+			fileType := "video/" + videoType
+			imageManifest.FileType = &fileType
 		} else {
-			log.HTTPWarning(req, "Image has no or invalid tag in database in GetClientImagesManifest: "+imageUUID)
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
+			log.HTTPWarning(req, "File has unsupported extension in GetClientImagesManifest: "+filepath)
+			_ = file.Close()
+			continue
 		}
-		imageData.Tagnumber = tag
-		imageData.Time = time
-		imageData.Hidden = hidden
-		imageData.PrimaryImage = primaryImage
 
-		imgFileName := imageStat.Name()
-		imageData.Name = &imgFileName
+		_ = file.Close()
 
-		clientImgUUIDPath := imageUUID + fileExtension
-		imageData.UUID = &clientImgUUIDPath
-
-		imageData.Note = note
-
-		imgSize := imageStat.Size()
-		imageData.Size = &imgSize
-
-		urlStr, err := url.JoinPath("/api/images/", tagStr, clientImgUUIDPath)
+		urlStr, err := url.JoinPath("/api/images/", fmt.Sprintf("%d", *imageManifest.Tagnumber), *imageManifest.UUID)
 		if err != nil {
 			log.HTTPWarning(req, "Error joining URL paths in GetClientImagesManifest: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
+			continue
 		}
-		imageData.URL = &urlStr
+		imageManifest.URL = &urlStr
 
-		imageManifests = append(imageManifests, imageData)
+		imageManifests = append(imageManifests, imageManifest)
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	middleware.WriteJson(w, http.StatusOK, imageManifests)
 }
@@ -516,6 +510,9 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
+
+	// local filepath example: inventory-images/{tag}/{date --iso}-{uuid}.{file extension}
+	// incoming request url: /api/images/{tag}/{uuid}.{file extension}
 	requestedImageUUID := strings.TrimSpace(requestedQueries.Get("uuid"))
 	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".jpeg")
 	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".png")
@@ -536,10 +533,10 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 	repo := database.NewRepo(db)
 
 	log.HTTPDebug(req, "Serving image request for: "+requestedImageUUID)
-	_, _, imagePath, _, hidden, _, _, err := repo.GetClientImageManifestByUUID(ctx, requestedImageUUID)
+	imageManifest, err := repo.GetClientImageFilePathFromUUID(ctx, requestedImageUUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.HTTPInfo(req, "Image not found: "+requestedImageUUID+" "+err.Error())
+			log.HTTPInfo(req, "Image not found from UUID lookup: "+requestedImageUUID+" "+err.Error())
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
@@ -548,17 +545,25 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if strings.TrimSpace(*imagePath) == "" {
-		log.HTTPInfo(req, "Image path from database is empty for: "+requestedImageUUID)
+	if imageManifest == nil {
+		log.HTTPInfo(req, "No image manifest data found for UUID: "+requestedImageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
-	if *hidden {
+
+	if imageManifest.Hidden != nil && *imageManifest.Hidden {
 		log.HTTPWarning(req, "Attempt to access hidden image: "+requestedImageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
-	imageFile, err := os.Open(*imagePath)
+
+	if imageManifest.FilePath == nil || strings.TrimSpace(*imageManifest.FilePath) == "" {
+		log.HTTPWarning(req, "File path for image is nil or empty: "+requestedImageUUID)
+		middleware.WriteJsonError(w, http.StatusNotFound)
+		return
+	}
+
+	imageFile, err := os.Open(*imageManifest.FilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			log.HTTPWarning(req, "Image not found on disk: "+requestedImageUUID+" "+err.Error())

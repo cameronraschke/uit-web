@@ -1,74 +1,70 @@
 type ImageManifest = {
-	uuid: string;
-	tagnumber: number;
-	time: string;
-	note: string;
-	primary_image: boolean;
-	file_type: string;
-	url: string;
+	time: Date
+	tagnumber: number
+	uuid: string
+	sha256_hash: string
+	filename: string
+	filepath: string
+	thumbnail_filepath: string
+	file_size: number
+	mime_type: string
+	exif_timestamp: Date
+	resolution_x: number
+	resolution_y: number
+	url: string
+	hidden: boolean
+	primary_image: boolean
+	note: string
+	file_type: string
 };
 
+
+const container = document.getElementById('image-container') as HTMLElement;
+
 async function loadClientImages(clientTag: number) {
-  const container = document.getElementById('image-container') as HTMLElement;
 	if (!container) {
 		console.error('Image container not found in DOM.');
 		return;
 	}
 
-	try {
-		container.innerHTML = '';
-		if (!validateTagInput(clientTag)) {
-			const invalidTagParagraph = document.createElement('p');
-			invalidTagParagraph.textContent = 'Please provide a valid client tag.';
-			container.appendChild(invalidTagParagraph);
-			return;
-		}
+	container.innerHTML = '';
+	if (!validateTagInput(clientTag)) {
+		const invalidTagParagraph = document.createElement('p');
+		invalidTagParagraph.textContent = 'Invalid client tag provided.';
+		container.appendChild(invalidTagParagraph);
+		return;
+	}
 
+	try {
 		const response = await fetch(`/api/images/manifest?tagnumber=${encodeURIComponent(clientTag)}`)
 		if (!response.ok) {
 			if (response.status === 404) {
-				const NoManifestErrorParagraph = document.createElement('p');
-				NoManifestErrorParagraph.textContent = `No images found for tag ${clientTag}.`;
-				container.appendChild(NoManifestErrorParagraph);
+				const noManifestErrorParagraph = document.createElement('p');
+				noManifestErrorParagraph.textContent = `No images found for tag ${clientTag}.`;
+				container.appendChild(noManifestErrorParagraph);
 				return;
 			}
 			throw new Error (`Error fetching images: ${response.status} ${response.statusText}`);
 		}
 
-    let data = null;
-    try {
-      const contentType = response.headers.get('Content-Type') || '';
-      if (contentType.includes('application/json')) {
-        const jsonData = await response.json();
-				data = jsonData;
-			} else {
-				const invalidContentTypeParagraph = document.createElement('p');
-				invalidContentTypeParagraph.textContent = `Invalid response format when fetching images for tag ${clientTag}.`;
-				container.appendChild(invalidContentTypeParagraph);
-				return;
-			}
-    } catch (jsonError: Error | unknown) {
-      const errorMessage = jsonError instanceof Error ? jsonError.message : String(jsonError);
-      throw new Error(`Failed to parse response JSON: ${errorMessage}`);
-    }
+		const jsonData = await response.json();
+		const imageManifest: ImageManifest[] = jsonData;
 
-		if (data && typeof data === 'object' && !Array.isArray(data) && Object.prototype.hasOwnProperty.call(data, 'error')) {
-      throw new Error(String(data.error || 'Unknown server error'));
-    }
-		const items = Array.isArray(data) ? data : (data ? [data] : []);
-    if (items.length === 0) {
+		const manifestArr = Array.isArray(imageManifest) ? imageManifest : (imageManifest ? [imageManifest] : []);
+    if (manifestArr.length === 0) {
       const noImagesParagraph = document.createElement('p');
       noImagesParagraph.textContent = `No images found for tag ${clientTag}.`;
       container.appendChild(noImagesParagraph);
       return;
     }
+
     let imageIndex = 1;
-    for (const imgJsonManifest of items) {
+    for (const img of manifestArr) {
       const div = document.createElement('div');
       div.className = 'image-entry';
-      div.setAttribute('id', `${imgJsonManifest.uuid}`);
-      if (imgJsonManifest.primary_image) {
-        div.setAttribute('data-primary-image', 'true');
+      div.setAttribute('id', `${img.uuid}`);
+      if (img.primary_image) {
+        div.setAttribute('imageManifest-primary-image', 'true');
         div.style.border = '2px solid black';
         div.style.backgroundColor = 'lightgray';
         const pinnedMessage = document.createElement('p');
@@ -76,9 +72,9 @@ async function loadClientImages(clientTag: number) {
         pinnedMessage.style.fontWeight = 'bold';
         div.appendChild(pinnedMessage);
       } else {
-        div.setAttribute('data-primary-image', 'false');
+        div.setAttribute('imageManifest-primary-image', 'false');
       }
-      const primaryImageDiv = document.querySelector(`[data-primary-image="true"]`);
+      const primaryImageDiv = document.querySelector(`[imageManifest-primary-image="true"]`);
 
 			const imgDiv = document.createElement('div');
 			imgDiv.className = 'image-box';
@@ -86,25 +82,25 @@ async function loadClientImages(clientTag: number) {
 			const imgLink = document.createElement('a');
       const imgURL = new URL(`/api/images`, window.location.origin);
       imgURL.searchParams.set('tagnumber', clientTag.toString());
-      imgURL.searchParams.set('uuid', imgJsonManifest.uuid);
+      imgURL.searchParams.set('uuid', img.uuid);
       imgLink.href = imgURL.toString();
 			imgLink.target = '_blank';
 			imgLink.rel = 'noopener noreferrer';
 
       let media = null as HTMLImageElement | HTMLVideoElement | null;
-      if (imgJsonManifest.file_type && imgJsonManifest.file_type.startsWith('video/')) {
+      if (img.file_type && img.file_type.startsWith('video/')) {
 			  media = document.createElement('video');
 			media.controls = true;
-      } else if (imgJsonManifest.file_type && imgJsonManifest.file_type.startsWith('image/')) {
+      } else if (img.file_type && img.file_type.startsWith('image/')) {
         media = document.createElement('img');
       	media.loading = 'lazy';
 				media.alt = `Images for ${clientTag}`;
       } else {
-        console.warn(`Unsupported media type: ${imgJsonManifest.file_type} for image UUID: ${imgJsonManifest.uuid}`);
+        console.warn(`Unsupported media type: ${img.file_type} for image UUID: ${img.uuid}`);
         continue;
       }
       if (!media) {
-        console.warn(`Failed to create media element for image UUID: ${imgJsonManifest.uuid}`);
+        console.warn(`Failed to create media element for image UUID: ${img.uuid}`);
         continue;
       }
       media.src = imgURL.toString();
@@ -114,7 +110,7 @@ async function loadClientImages(clientTag: number) {
       captionDiv.className = 'image-caption';
 
 			const timeStampCaption = document.createElement('p');
-			const timeStamp = new Date(imgJsonManifest.time);
+			const timeStamp = new Date(img.time);
       if (isNaN(timeStamp.getTime())) {
         timeStampCaption.textContent = 'Uploaded on: Unknown date';
       } else {
@@ -122,21 +118,20 @@ async function loadClientImages(clientTag: number) {
       }
 
 			const noteCaption = document.createElement('p');
-			noteCaption.textContent = imgJsonManifest.note || "No description";
+			noteCaption.textContent = img.note || "No description";
 			if (noteCaption.textContent === "No description") {
 				noteCaption.style.fontStyle = "italic";
 			}
 
-
       const deleteIcon = document.createElement('span');
-      deleteIcon.dataset.uuid = imgJsonManifest.uuid;
-      deleteIcon.dataset.imageCount = imageIndex + "/" + items.length;
+      deleteIcon.dataset.uuid = img.uuid;
+      deleteIcon.dataset.imageCount = imageIndex + "/" + manifestArr.length;
       deleteIcon.className = 'delete-icon';
       deleteIcon.innerHTML = '&times;';
       deleteIcon.title = 'Delete Image';
 
       const unpinIcon = document.createElement('span');
-      unpinIcon.dataset.uuid = imgJsonManifest.uuid;
+      unpinIcon.dataset.uuid = img.uuid;
       unpinIcon.className = 'unpin-icon';
       unpinIcon.innerHTML = '&#128204;';
       unpinIcon.style.fontSize = '1rem';
@@ -144,7 +139,7 @@ async function loadClientImages(clientTag: number) {
 
       const imageCount = document.createElement('span');
       imageCount.className = 'image-count';
-      imageCount.textContent = imageIndex++ + "/" + items.length || '';
+      imageCount.textContent = imageIndex++ + "/" + manifestArr.length || '';
 
 			imgLink.appendChild(media);
 			imgDiv.appendChild(imgLink);
@@ -162,46 +157,46 @@ async function loadClientImages(clientTag: number) {
         container.insertBefore(primaryImageDiv, container.firstChild);
       }
 
-      unpinIcon.addEventListener('click', async (event) => {
-        const button = event.currentTarget as HTMLInputElement;
-        button.disabled = true;
-        const uuidToUnpin = button.dataset.uuid;
-        if (!uuidToUnpin) {
-          alert('Error: No UUID found for this image.');
-          return;
-        }
-        const entry = document.getElementById(uuidToUnpin);
-        try {
-          const unpinURL = new URL(`/api/images/toggle_pin`, window.location.origin);
-          const unpinResponse = await fetch(unpinURL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({uuid: uuidToUnpin, tagnumber: clientTag.toString()})
-          });
-          if (!unpinResponse.ok) {
-            throw new Error (`Failed to unpin image: ${unpinResponse.status} ${unpinResponse.statusText}`);
-          }
-          if (entry) {
-            entry.style.transition = entry.style.transition || 'opacity 150ms ease';
-            entry.style.opacity = '0.5';
-            await waitForNextPaint(2);
-            entry.removeAttribute('data-primary-image');
-            entry.style.border = 'none';
-            entry.style.backgroundColor = 'transparent';
-            const pinnedMsg = entry.querySelector('p');
-            if (pinnedMsg) {
-              pinnedMsg.textContent = "Pinned";
-              pinnedMsg.style.fontStyle = "italic";
-            }
-          }
-        } catch (unpinError) {
-          alert(`Error unpinning image: ${unpinError.message}`);
-        } finally {
-          if (entry) entry.style.opacity = '1';
-          if (button instanceof HTMLInputElement) button.disabled = false;
-        }
-      });
+			unpinIcon.addEventListener('click', async (event) => {
+				const button = event.currentTarget as HTMLInputElement;
+				button.disabled = true;
+				const uuidToUnpin = button.dataset.uuid;
+				if (!uuidToUnpin) {
+				alert('Error: No UUID found for this image.');
+				return;
+				}
+				const imageEntry = document.getElementById(uuidToUnpin);
+				try {
+					const unpinURL = new URL(`/api/images/toggle_pin`, window.location.origin);
+					const unpinResponse = await fetch(unpinURL, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						credentials: 'same-origin',
+						body: JSON.stringify({uuid: uuidToUnpin, tagnumber: clientTag.toString()})
+					});
+					if (!unpinResponse.ok) {
+						throw new Error (`Failed to unpin image: ${unpinResponse.status} ${unpinResponse.statusText}`);
+					}
+					if (imageEntry) {
+						imageEntry.style.transition = imageEntry.style.transition || 'opacity 150ms ease';
+						imageEntry.style.opacity = '0.5';
+						await waitForNextPaint(2);
+						imageEntry.removeAttribute('imageManifest-primary-image');
+						imageEntry.style.border = 'none';
+						imageEntry.style.backgroundColor = 'transparent';
+						const pinnedMsg = imageEntry.querySelector('p');
+						if (pinnedMsg) {
+							pinnedMsg.textContent = "Pinned";
+							pinnedMsg.style.fontStyle = "italic";
+						}
+					}
+				} catch (unpinError) {
+					alert(`Error unpinning image: ${unpinError.message}`);
+					} finally {
+					if (imageEntry) imageEntry.style.opacity = '1';
+					if (button instanceof HTMLInputElement) button.disabled = false;
+				}
+			});
 
       deleteIcon.addEventListener('click', async (event) => {
         const button = event.currentTarget as HTMLInputElement;
@@ -254,18 +249,21 @@ async function loadClientImages(clientTag: number) {
       console.warn('Image fetch aborted');
       return;
     }
-		container.innerHTML = `<p>Error fetching images: ${err.message}</p>`;
+		container.innerHTML = '';
+		const errorParagraph = document.createElement('p');
+		errorParagraph.textContent = `Error fetching images: ${err.message}`;
+		container.appendChild(errorParagraph);
     console.warn(`Error fetching images for tag ${clientTag}: ${err.message}`);
 	}
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const clientTag = urlParams.get('tagnumber');
-    if (clientTag && clientTag.length === 6) {
-      const clientTagNumber = parseInt(clientTag, 10);
-      await loadClientImages(clientTagNumber);
-    } else {
-      console.warn('No valid tagnumber parameter found in URL.');
-    }
+	const urlParams = new URLSearchParams(window.location.search);
+	const clientTag = urlParams.get('tagnumber');
+	  if (!clientTag) {
+	    console.warn('No tagnumber parameter found in URL.');
+	    return;
+	  }
+		const clientTagNumber = parseInt(clientTag, 10); // more strict validation happens in loadClientImages
+		await loadClientImages(clientTagNumber);
 });

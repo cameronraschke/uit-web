@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"time"
+	"fmt"
 )
 
 type Repo struct {
@@ -14,10 +14,10 @@ type Repo struct {
 func NewRepo(db *sql.DB) *Repo { return &Repo{DB: db} }
 
 func (repo *Repo) GetAllTags(ctx context.Context) ([]int64, error) {
-	sqlCode := `SELECT tagnumber FROM (SELECT tagnumber, time, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS
+	const sqlQuery = `SELECT tagnumber FROM (SELECT tagnumber, time, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS
 		row_nums FROM locations WHERE tagnumber IS NOT NULL) t1 WHERE t1.row_nums = 1 ORDER BY t1.time DESC;`
 
-	rows, err := repo.DB.QueryContext(ctx, sqlCode)
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,8 @@ func (repo *Repo) GetAllTags(ctx context.Context) ([]int64, error) {
 }
 
 func (repo *Repo) GetDepartments(ctx context.Context) (*[]Departments, error) {
-	rows, err := repo.DB.QueryContext(ctx, "SELECT department_name, department_name_formatted, department_sort_order FROM static_department_info ORDER BY department_sort_order DESC;")
+	const sqlQuery = `SELECT department_name, department_name_formatted, department_sort_order FROM static_department_info ORDER BY department_sort_order DESC;`
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +67,8 @@ func (repo *Repo) GetDepartments(ctx context.Context) (*[]Departments, error) {
 }
 
 func (repo *Repo) GetDomains(ctx context.Context) (*[]Domains, error) {
-	rows, err := repo.DB.QueryContext(ctx, "SELECT domain_name, domain_name_formatted FROM static_ad_domains ORDER BY domain_sort_order DESC;")
+	const sqlQuery = `SELECT domain_name, domain_name_formatted FROM static_ad_domains ORDER BY domain_sort_order DESC;`
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +90,8 @@ func (repo *Repo) GetDomains(ctx context.Context) (*[]Domains, error) {
 }
 
 func (repo *Repo) GetStatuses(ctx context.Context) (map[string]string, error) {
-	rows, err := repo.DB.QueryContext(ctx, "SELECT status, status_formatted FROM static_client_statuses ORDER BY sort_order;")
+	const sqlQuery = `SELECT status, status_formatted FROM static_client_statuses ORDER BY sort_order;`
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -110,8 +113,8 @@ func (repo *Repo) GetStatuses(ctx context.Context) (map[string]string, error) {
 }
 
 func (repo *Repo) GetLocations(ctx context.Context) (map[string]string, error) {
-	sqlCode := `SELECT location, locationFormatting(location) AS location_formatted FROM locations WHERE time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber) AND location IS NOT NULL GROUP BY location ORDER BY location ASC;`
-	rows, err := repo.DB.QueryContext(ctx, sqlCode)
+	const sqlQuery = `SELECT location, locationFormatting(location) AS location_formatted FROM locations WHERE time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber) AND location IS NOT NULL GROUP BY location ORDER BY location ASC;`
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +137,7 @@ func (repo *Repo) GetLocations(ctx context.Context) (map[string]string, error) {
 }
 
 func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]ManufacturersAndModels, error) {
-	sqlCode := `SELECT system_model, 
+	const sqlQuery = `SELECT system_model, 
 		(CASE WHEN LENGTH(system_model) > 17 THEN CONCAT(LEFT(system_model, 8), '...', RIGHT(system_model, 9)) ELSE system_model END) AS system_model_formatted,
 		system_manufacturer, 
 		(CASE WHEN LENGTH(system_manufacturer) > 10 THEN CONCAT(LEFT(system_manufacturer, 10), '...') ELSE system_manufacturer END) AS system_manufacturer_formatted
@@ -145,7 +148,7 @@ func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]Manufacturer
 		ORDER BY system_manufacturer ASC, system_model ASC;`
 
 	var manufacturersAndModels []ManufacturersAndModels
-	rows, err := repo.DB.QueryContext(ctx, sqlCode)
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +170,8 @@ func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]Manufacturer
 
 func (repo *Repo) ClientLookupByTag(ctx context.Context, tag int64) (*ClientLookup, error) {
 	var clientLookup ClientLookup
-	row := repo.DB.QueryRowContext(ctx, "SELECT tagnumber, system_serial FROM locations WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1;", tag)
+	const sqlQuery = `SELECT tagnumber, system_serial FROM locations WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1;`
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
 	if err := row.Scan(&clientLookup.Tagnumber, &clientLookup.SystemSerial); err != nil {
 		return nil, err
 	}
@@ -176,7 +180,8 @@ func (repo *Repo) ClientLookupByTag(ctx context.Context, tag int64) (*ClientLook
 
 func (repo *Repo) ClientLookupBySerial(ctx context.Context, serial string) (*ClientLookup, error) {
 	var clientLookup ClientLookup
-	row := repo.DB.QueryRowContext(ctx, "SELECT tagnumber, system_serial FROM locations WHERE system_serial = $1 ORDER BY time DESC LIMIT 1;", serial)
+	const sqlQuery = `SELECT tagnumber, system_serial FROM locations WHERE system_serial = $1 ORDER BY time DESC LIMIT 1;`
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, serial)
 	if err := row.Scan(&clientLookup.Tagnumber, &clientLookup.SystemSerial); err != nil {
 		return nil, err
 	}
@@ -184,7 +189,7 @@ func (repo *Repo) ClientLookupBySerial(ctx context.Context, serial string) (*Cli
 }
 
 func (repo *Repo) GetHardwareIdentifiers(ctx context.Context, tag int64) (*HardwareData, error) {
-	sqlQuery := `SELECT locations.tagnumber, locations.system_serial, jobstats.etheraddress, system_data.wifi_mac,
+	const sqlQuery = `SELECT locations.tagnumber, locations.system_serial, jobstats.etheraddress, system_data.wifi_mac,
 	system_data.system_model, system_data.system_uuid, system_data.system_sku, system_data.chassis_type, 
 	system_data.motherboard_manufacturer, system_data.motherboard_serial, system_data.system_manufacturer
 	FROM locations
@@ -214,7 +219,7 @@ func (repo *Repo) GetHardwareIdentifiers(ctx context.Context, tag int64) (*Hardw
 }
 
 func (repo *Repo) GetBiosData(ctx context.Context, tag int64) (*BiosData, error) {
-	sqlQuery := `SELECT client_health.tagnumber, client_health.bios_version, client_health.bios_updated, 
+	const sqlQuery = `SELECT client_health.tagnumber, client_health.bios_version, client_health.bios_updated, 
 	client_health.tpm_version 
 	FROM client_health WHERE client_health.tagnumber = $1;`
 
@@ -233,7 +238,7 @@ func (repo *Repo) GetBiosData(ctx context.Context, tag int64) (*BiosData, error)
 }
 
 func (repo *Repo) GetOsData(ctx context.Context, tag int64) (*OsData, error) {
-	sqlQuery := `SELECT locations.tagnumber, client_health.os_installed, client_health.os_name,
+	const sqlQuery = `SELECT locations.tagnumber, client_health.os_installed, client_health.os_name,
 	client_health.last_imaged_time AT TIME ZONE 'America/Chicago', client_health.tpm_version, jobstats.boot_time
 	FROM locations
 	LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
@@ -257,7 +262,7 @@ func (repo *Repo) GetOsData(ctx context.Context, tag int64) (*OsData, error) {
 }
 
 func (repo *Repo) GetActiveJobs(ctx context.Context, tag int64) (*ActiveJobs, error) {
-	sqlQuery := `SELECT job_queue.tagnumber, job_queue.job_queued, job_queue.job_active, t1.queue_position
+	const sqlQuery = `SELECT job_queue.tagnumber, job_queue.job_queued, job_queue.job_active, t1.queue_position
 	FROM job_queue
 	LEFT JOIN (SELECT tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY present DESC) AS queue_position FROM job_queue) AS t1 
 		ON job_queue.tagnumber = t1.tagnumber
@@ -277,7 +282,7 @@ func (repo *Repo) GetActiveJobs(ctx context.Context, tag int64) (*ActiveJobs, er
 }
 
 func (repo *Repo) GetAvailableJobs(ctx context.Context, tag int64) (*AvailableJobs, error) {
-	sqlQuery := `SELECT 
+	const sqlQuery = `SELECT 
 	job_queue.tagnumber,
 	(CASE 
 		WHEN (job_queue.job_queued IS NULL) THEN TRUE
@@ -298,7 +303,7 @@ func (repo *Repo) GetAvailableJobs(ctx context.Context, tag int64) (*AvailableJo
 }
 
 func (repo *Repo) GetJobQueueOverview(ctx context.Context) (*JobQueueOverview, error) {
-	sqlQuery := `SELECT t1.total_queued_jobs, t2.total_active_jobs, t3.total_active_blocking_jobs
+	const sqlQuery = `SELECT t1.total_queued_jobs, t2.total_active_jobs, t3.total_active_blocking_jobs
 	FROM 
 	(SELECT COUNT(*) AS total_queued_jobs FROM job_queue WHERE job_queued IS NOT NULL AND (NOW() - present < INTERVAL '30 SECOND')) AS t1,
 	(SELECT COUNT(*) AS total_active_jobs FROM job_queue WHERE job_active IS NOT NULL AND job_active = TRUE AND (NOW() - present < INTERVAL '30 SECOND')) AS t2,
@@ -317,7 +322,7 @@ func (repo *Repo) GetJobQueueOverview(ctx context.Context) (*JobQueueOverview, e
 }
 
 func (repo *Repo) GetNotes(ctx context.Context, noteType string) (*NotesTable, error) {
-	sqlQuery := `SELECT time AT TIME ZONE 'America/Chicago', note_type, note FROM notes WHERE note_type = $1 ORDER BY time DESC LIMIT 1;`
+	const sqlQuery = `SELECT time AT TIME ZONE 'America/Chicago', note_type, note FROM notes WHERE note_type = $1 ORDER BY time DESC LIMIT 1;`
 
 	var notesTable NotesTable
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, noteType)
@@ -332,7 +337,7 @@ func (repo *Repo) GetNotes(ctx context.Context, noteType string) (*NotesTable, e
 }
 
 func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]DashboardInventorySummary, error) {
-	sqlQuery := `WITH latest_locations AS (
+	const sqlQuery = `WITH latest_locations AS (
 		SELECT DISTINCT ON (locations.tagnumber) locations.tagnumber, locations.department_name
 		FROM locations
 		ORDER BY locations.tagnumber, locations.time DESC
@@ -391,7 +396,7 @@ func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]Dashboard
 }
 
 func (repo *Repo) GetLocationFormData(ctx context.Context, tag int64) (*InventoryFormAutofill, error) {
-	sqlQuery := `SELECT locations.time, locations.tagnumber, locations.system_serial, locations.location, locations.building, locations.room, system_data.system_manufacturer, system_data.system_model,
+	const sqlQuery = `SELECT locations.time, locations.tagnumber, locations.system_serial, locations.location, locations.building, locations.room, system_data.system_manufacturer, system_data.system_model,
 	locations.department_name, locations.property_custodian, locations.ad_domain, locations.is_broken, locations.client_status, locations.disk_removed, locations.note, locations.acquired_date
 	FROM locations
 	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
@@ -426,107 +431,63 @@ func (repo *Repo) GetLocationFormData(ctx context.Context, tag int64) (*Inventor
 	return inventoryUpdateForm, nil
 }
 
-func (repo *Repo) GetClientImagePaths(ctx context.Context, tag int64) ([]string, error) {
-	sqlQuery := `SELECT filepath FROM client_images WHERE tagnumber = $1 ORDER BY time DESC;`
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery, tag)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var filepaths []string
-	for rows.Next() {
-		var filepath string
-		if err := rows.Scan(&filepath); err != nil {
-			return nil, err
-		}
-		filepaths = append(filepaths, filepath)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return filepaths, nil
-}
-
-func (repo *Repo) GetClientImageUUIDs(ctx context.Context, tag int64) ([]string, error) {
-	sqlQuery := `SELECT uuid FROM client_images WHERE tagnumber = $1 ORDER BY time DESC;`
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery, tag)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var uuids []string
-	for rows.Next() {
-		var uuid string
-		if err := rows.Scan(&uuid); err != nil {
-			return nil, err
-		}
-		uuids = append(uuids, uuid)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return uuids, nil
-}
-
-func (repo *Repo) GetClientImageByUUID(ctx context.Context, uuid string) (*ClientImagesTable, error) {
-	sqlQuery := `SELECT uuid, time, tagnumber, filename, filepath, thumbnail_filepath, filesize, mime_type, exif_timestamp, resolution_x, resolution_y, note, hidden, primary_image
+func (repo *Repo) GetClientImageFilePathFromUUID(ctx context.Context, uuid string) (*ImageManifest, error) {
+	const sqlQuery = `SELECT tagnumber, filename, filepath, thumbnail_filepath, hidden
 	FROM client_images WHERE uuid = $1;`
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, uuid)
-	clientImage := &ClientImagesTable{}
+	var imageManifest ImageManifest
 	if err := row.Scan(
-		&clientImage.UUID,
-		&clientImage.Time,
-		&clientImage.Tagnumber,
-		&clientImage.Filename,
-		&clientImage.FilePath,
-		&clientImage.ThumbnailFilePath,
-		&clientImage.Filesize,
-		&clientImage.MimeType,
-		&clientImage.ExifTimestamp,
-		&clientImage.ResolutionX,
-		&clientImage.ResolutionY,
-		&clientImage.Note,
-		&clientImage.Hidden,
-		&clientImage.PrimaryImage,
+		&imageManifest.Tagnumber,
+		&imageManifest.FileName,
+		&imageManifest.FilePath,
+		&imageManifest.ThumbnailFilePath,
+		&imageManifest.Hidden,
 	); err != nil {
 		return nil, err
 	}
-	return clientImage, nil
+	return &imageManifest, nil
 }
 
-func (repo *Repo) GetClientImageManifestByUUID(ctx context.Context, uuid string) (*time.Time, *int64, *string, *string, *bool, *bool, *string, error) {
-	sqlQuery := `SELECT time, tagnumber, filepath, thumbnail_filepath, hidden, primary_image, note FROM client_images WHERE uuid = $1;`
-
-	var (
-		time              sql.NullTime
-		tagnumber         sql.NullInt64
-		filepath          sql.NullString
-		thumbnailFilepath sql.NullString
-		hidden            sql.NullBool
-		primaryImage      sql.NullBool
-		note              sql.NullString
-	)
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, uuid)
-	if err := row.Scan(
-		&time,
-		&tagnumber,
-		&filepath,
-		&thumbnailFilepath,
-		&hidden,
-		&primaryImage,
-		&note,
-	); err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
+func (repo *Repo) GetClientImageManifestByTag(ctx context.Context, tagnumber int64) ([]ImageManifest, error) {
+	if tagnumber < 1 || tagnumber > 999999 {
+		return nil, fmt.Errorf("tagnumber is out of valid range: %d", tagnumber)
 	}
-	return ptrTime(time), ptrInt64(tagnumber), ptrString(filepath), ptrString(thumbnailFilepath), ptrBool(hidden), ptrBool(primaryImage), ptrString(note), nil
+
+	const sqlQuery = `SELECT time, tagnumber, uuid, filename, filepath, thumbnail_filepath, hidden, primary_image, note FROM client_images WHERE tagnumber = $1;`
+
+	imageManifests := make([]ImageManifest, 0, 10)
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery, tagnumber)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var imageManifest ImageManifest
+		if err := rows.Scan(
+			&imageManifest.Time,
+			&imageManifest.Tagnumber,
+			&imageManifest.UUID,
+			&imageManifest.FileName,
+			&imageManifest.FilePath,
+			&imageManifest.ThumbnailFilePath,
+			&imageManifest.Hidden,
+			&imageManifest.PrimaryImage,
+			&imageManifest.Note,
+		); err != nil {
+			return nil, err
+		}
+		imageManifests = append(imageManifests, imageManifest)
+	}
+	return imageManifests, nil
 }
 
 func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *InventoryFilterOptions) ([]*InventoryTableData, error) {
-	sqlCode := `SELECT locations.tagnumber, locations.system_serial, locations.location, 
+	if filterOptions == nil {
+		return nil, fmt.Errorf("filterOptions cannot be nil")
+	}
+
+	const sqlQuery = `SELECT locations.tagnumber, locations.system_serial, locations.location, 
 		locationFormatting(locations.location) AS location_formatted,
 		system_data.system_manufacturer, system_data.system_model, locations.department_name, static_department_info.department_name_formatted,
 		locations.ad_domain, static_ad_domains.domain_name_formatted, client_health.os_installed, client_health.os_name, static_client_statuses.status_formatted,
@@ -555,7 +516,7 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *Inve
 			)
 		ORDER BY locations.time DESC;`
 
-	rows, err := repo.DB.QueryContext(ctx, sqlCode,
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery,
 		toNullInt64(filterOptions.Tagnumber),
 		toNullString(filterOptions.SystemSerial),
 		toNullString(filterOptions.Location),
@@ -607,20 +568,17 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *Inve
 	return results, nil
 }
 
-type ClientBatteryHealth struct {
-	Time                *time.Time `json:"time"`
-	Tagnumber           *int64     `json:"tagnumber"`
-	JobstatsBattery     *string    `json:"jobstatsHealthPcnt"`
-	ClientHealthBattery *string    `json:"clientHealthPcnt"`
-	BatteryChargeCycles *int64     `json:"chargeCycles"`
-}
-
 func (repo *Repo) GetClientBatteryHealth(ctx context.Context, tagnumber int64) (*ClientBatteryHealth, error) {
-	sqlQuery := `SELECT jobstats.time, jobstats.tagnumber, jobstats.battery_health, client_health.battery_health, 
+	if tagnumber < 1 || tagnumber > 999999 {
+		return nil, fmt.Errorf("tagnumber is out of valid range: %d", tagnumber)
+	}
+
+	const sqlQuery = `SELECT jobstats.time, jobstats.tagnumber, jobstats.battery_health, client_health.battery_health, 
 	jobstats.battery_charge_cycles
 	FROM jobstats 
 	LEFT JOIN client_health ON jobstats.tagnumber = client_health.tagnumber
-	WHERE jobstats.tagnumber = $1 AND jobstats.time IN (SELECT MAX(time) FROM jobstats WHERE tagnumber = $1);`
+	WHERE jobstats.tagnumber = $1 
+	ORDER BY jobstats.time DESC LIMIT 1;`
 
 	var batteryHealth ClientBatteryHealth
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, tagnumber)
@@ -633,44 +591,12 @@ func (repo *Repo) GetClientBatteryHealth(ctx context.Context, tagnumber int64) (
 	); err != nil {
 		return nil, err
 	}
+
 	return &batteryHealth, nil
 }
 
-type JobQueueTableRow struct {
-	Tagnumber          *int64         `json:"tagnumber"`
-	SystemSerial       *string        `json:"system_serial"`
-	OSInstalled        *string        `json:"os_installed"`
-	OSName             *string        `json:"os_name"`
-	KernelUpdated      *bool          `json:"kernel_updated"`
-	BIOSUpdated        *bool          `json:"bios_updated"`
-	BIOSVersion        *string        `json:"bios_version"`
-	SystemManufacturer *string        `json:"system_manufacturer"`
-	SystemModel        *string        `json:"system_model"`
-	BatteryCharge      *int64         `json:"battery_charge"`
-	BatteryStatus      *string        `json:"battery_status"`
-	CPUTemp            *float64       `json:"cpu_temp"`
-	DiskTemp           *float64       `json:"disk_temp"`
-	MaxDiskTemp        *float64       `json:"max_disk_temp"`
-	PowerUsage         *float64       `json:"power_usage"`
-	NetworkUsage       *float64       `json:"network_usage"`
-	ClientStatus       *string        `json:"client_status"`
-	IsBroken           *bool          `json:"is_broken"`
-	JobQueued          *bool          `json:"job_queued"`
-	QueuePosition      *int64         `json:"queue_position"`
-	JobActive          *bool          `json:"job_active"`
-	JobName            *string        `json:"job_name"`
-	JobStatus          *string        `json:"job_status"`
-	JobCloneMode       *string        `json:"job_clone_mode"`
-	JobEraseMode       *string        `json:"job_erase_mode"`
-	LastJobTime        *time.Time     `json:"last_job_time"`
-	Location           *string        `json:"location"`
-	LastHeard          *time.Time     `json:"last_heard"`
-	Uptime             *time.Duration `json:"uptime"`
-	Online             *bool          `json:"online"`
-}
-
 func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, error) {
-	sqlQuery := `SELECT locations.tagnumber, locations.system_serial, client_health.os_installed, client_health.os_name, job_queue.kernel_updated,
+	const sqlQuery = `SELECT locations.tagnumber, locations.system_serial, client_health.os_installed, client_health.os_name, job_queue.kernel_updated,
 	client_health.bios_updated, client_health.bios_version,
 	system_data.system_manufacturer, system_data.system_model,
 	job_queue.battery_charge, job_queue.battery_status,
@@ -691,7 +617,9 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 		ON job_queue.tagnumber = t2.tagnumber
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 	ORDER BY job_queue.present_bool = true, t2.last_job_time DESC NULLS LAST, t1.queue_position DESC NULLS LAST;`
-	var jobQueueRows []JobQueueTableRow
+
+	jobQueueRows := make([]JobQueueTableRow, 0, 560) // 560 is the # of clients
+
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, err
@@ -736,5 +664,10 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 		}
 		jobQueueRows = append(jobQueueRows, row)
 	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return jobQueueRows, nil
 }
