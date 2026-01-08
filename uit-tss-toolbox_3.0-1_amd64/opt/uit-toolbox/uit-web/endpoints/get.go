@@ -459,6 +459,12 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 				continue
 			}
 
+			if imageType == "" {
+				log.HTTPWarning(req, "Image has no valid type in GetClientImagesManifest: "+filepath+" -> Image type: "+imageType)
+				_ = file.Close()
+				continue
+			}
+
 			if acceptedImageExtensionsAndMimeTypes[fileExtension] != imageType {
 				log.HTTPWarning(req, "Image has invalid file extension/type in GetClientImagesManifest: "+filepath+" -> Image type: "+imageType+", File extension: "+fileExtension)
 				_ = file.Close()
@@ -473,12 +479,14 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 			imageManifest.ResolutionX = &imageConfig.Width
 			imageManifest.ResolutionY = &imageConfig.Height
 
-			fileType := "image/" + acceptedImageExtensionsAndMimeTypes[fileExtension]
-			imageManifest.FileType = &fileType
+			mimeType := "image/" + acceptedImageExtensionsAndMimeTypes[fileExtension]
+			imageManifest.FileType = &imageType
+			imageManifest.MimeType = &mimeType
 		} else if _, ok := acceptedVideoExtensionsAndMimeTypes[fileExtension]; ok {
 			videoType := acceptedVideoExtensionsAndMimeTypes[fileExtension]
-			fileType := "video/" + videoType
-			imageManifest.FileType = &fileType
+			mimeType := "video/" + videoType
+			imageManifest.FileType = &videoType
+			imageManifest.MimeType = &mimeType
 		} else {
 			log.HTTPWarning(req, "File has unsupported extension in GetClientImagesManifest: "+filepath)
 			_ = file.Close()
@@ -493,6 +501,8 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 			continue
 		}
 		imageManifest.URL = &urlStr
+
+		imageManifest.FilePath = nil // Hide actual file path from client
 
 		imageManifests = append(imageManifests, imageManifest)
 	}

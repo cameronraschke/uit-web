@@ -88,15 +88,15 @@ async function loadClientImages(clientTag: number) {
 			imgLink.rel = 'noopener noreferrer';
 
       let media = null as HTMLImageElement | HTMLVideoElement | null;
-      if (img.file_type && img.file_type.startsWith('video/')) {
+      if (img.mime_type && img.mime_type.startsWith('video/')) {
 			  media = document.createElement('video');
 			media.controls = true;
-      } else if (img.file_type && img.file_type.startsWith('image/')) {
+      } else if (img.mime_type && img.mime_type.startsWith('image/')) {
         media = document.createElement('img');
       	media.loading = 'lazy';
 				media.alt = `Images for ${clientTag}`;
       } else {
-        console.warn(`Unsupported media type: ${img.file_type} for image UUID: ${img.uuid}`);
+        console.warn(`Unsupported media type: ${img.mime_type} for image UUID: ${img.uuid}`);
         continue;
       }
       if (!media) {
