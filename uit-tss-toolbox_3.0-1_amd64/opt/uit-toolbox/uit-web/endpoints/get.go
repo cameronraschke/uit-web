@@ -23,6 +23,7 @@ var acceptedImageExtensionsAndMimeTypes = map[string]string{
 	".jpg":  "jpeg",
 	".jpeg": "jpeg",
 	".png":  "png",
+	".jfif": "jpeg",
 }
 
 var acceptedVideoExtensionsAndMimeTypes = map[string]string{
@@ -401,6 +402,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	var filteredImageManifests []database.ImageManifest
 	for _, imageManifest := range imageManifests {
 		if imageManifest.UUID == nil || strings.TrimSpace(*imageManifest.UUID) == "" {
 			log.HTTPWarning(req, "Image manifest UUID is nil or empty in GetClientImagesManifest")
@@ -459,7 +461,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 				continue
 			}
 
-			if imageType == "" {
+			if imageType == "" || !strings.Contains(imageType, acceptedImageExtensionsAndMimeTypes[fileExtension]) {
 				log.HTTPWarning(req, "Image has no valid type in GetClientImagesManifest: "+filepath+" -> Image type: "+imageType)
 				_ = file.Close()
 				continue
@@ -504,11 +506,11 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 
 		imageManifest.FilePath = nil // Hide actual file path from client
 
-		imageManifests = append(imageManifests, imageManifest)
+		filteredImageManifests = append(filteredImageManifests, imageManifest)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	middleware.WriteJson(w, http.StatusOK, imageManifests)
+	middleware.WriteJson(w, http.StatusOK, filteredImageManifests)
 }
 
 func GetImage(w http.ResponseWriter, req *http.Request) {
