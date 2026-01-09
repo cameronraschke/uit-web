@@ -43,7 +43,7 @@ func (repo *Repo) GetAllTags(ctx context.Context) ([]int64, error) {
 	return allTagsSlice, nil
 }
 
-func (repo *Repo) GetDepartments(ctx context.Context) (*[]Departments, error) {
+func (repo *Repo) GetDepartments(ctx context.Context) (*[]Department, error) {
 	const sqlQuery = `SELECT department_name, department_name_formatted, department_sort_order FROM static_department_info ORDER BY department_sort_order DESC;`
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
@@ -51,9 +51,9 @@ func (repo *Repo) GetDepartments(ctx context.Context) (*[]Departments, error) {
 	}
 	defer rows.Close()
 
-	var departments []Departments
+	var departments []Department
 	for rows.Next() {
-		var dept Departments
+		var dept Department
 		if err := rows.Scan(&dept.DepartmentName, &dept.DepartmentNameFormatted, &dept.DepartmentSortOrder); err != nil {
 			return nil, err
 		}
@@ -66,7 +66,7 @@ func (repo *Repo) GetDepartments(ctx context.Context) (*[]Departments, error) {
 	return &departments, nil
 }
 
-func (repo *Repo) GetDomains(ctx context.Context) (*[]Domains, error) {
+func (repo *Repo) GetDomains(ctx context.Context) (*[]Domain, error) {
 	const sqlQuery = `SELECT domain_name, domain_name_formatted FROM static_ad_domains ORDER BY domain_sort_order DESC;`
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
@@ -74,9 +74,9 @@ func (repo *Repo) GetDomains(ctx context.Context) (*[]Domains, error) {
 	}
 	defer rows.Close()
 
-	var domains []Domains
+	var domains []Domain
 	for rows.Next() {
-		var domain Domains
+		var domain Domain
 		if err := rows.Scan(&domain.DomainName, &domain.DomainNameFormatted); err != nil {
 			return nil, err
 		}

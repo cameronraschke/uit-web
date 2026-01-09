@@ -12,6 +12,13 @@ import (
 	"github.com/google/uuid"
 )
 
+type Client interface {
+	GetAuth() *ClientAuth
+	GetData() *ClientData
+	SetAuth(auth *ClientAuth)
+	SetData(data *ClientData)
+}
+
 type ClientAuth struct {
 	AuthToken string `json:"auth_token,omitempty"`
 }
@@ -296,7 +303,6 @@ type TPMHardwareData struct {
 }
 
 // --- JobMode enum and JSON marshalling ---
-
 type JobMode int
 
 const (
