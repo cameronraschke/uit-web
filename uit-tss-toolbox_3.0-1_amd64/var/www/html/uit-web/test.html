@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+	<link rel="icon" type="image/png" href="/favicon.png" />
+	<link rel="stylesheet" href="../css/desktop.css" />
+	<link rel="stylesheet" href="../css/test.css" />
+	<title>Test Page - ITSC Mgmt</title>
+	<style>
+		.container {
+			display: flex;
+			justify-content: center;
+			width: 93dvw;
+			padding: 0.5rem;
+			margin-top: 3dvh;
+			margin-left: 3dvw; 
+			margin-right: 3dvw;
+			border: 1px solid black;
+			border-radius: 1rem;
+		}
+		.grid-container {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+			grid-template-rows: auto;
+			gap: 1rem;
+			width: 100%;
+			text-align: left;
+			word-wrap: break-word;
+		}
+		@media (max-width: 880px) {
+			.grid-container {
+				grid-template-columns: 1fr;
+			}
+			.image-container {
+				display: block;
+				width: 300px;
+			}
+			#live-view {
+				display: block;
+			}
+		}
+		.image-container {
+			position:relative; 
+			width:300px; 
+			aspect-ratio: calc(16 / 9);
+			background-color: oklch(0.7665 0 176.29 / 40%);
+			transition: 
+				width 0.1s ease,
+				background-color 0.3s ease
+				;
+		}
+		.image-container:hover {
+			background-color: oklch(0.7665 0 176.29 / 60%);
+		}
+		@media (max-width: 1930px) and (min-width: 1801px) {
+			.image-container {
+				width: 280px;
+			}
+		}
+		@media (max-width: 1800px) and (min-width: 1671px) {
+			.image-container {
+				width: 260px;
+			}
+		}
+		@media (max-width: 1670px) and (min-width: 1541px) {
+			.image-container {
+				width: 240px;
+			}
+		}
+		@media (max-width: 1540px) and (min-width: 1411px) {
+			.image-container {
+				width: 220px;
+			}
+		}
+		@media (max-width: 1410px) and (min-width: 1281px) {
+			.image-container {
+				width: 200px;
+			}
+		}
+		@media (max-width: 1280px) and (min-width: 1151px) {
+			.image-container {
+				width: 180px;
+			}
+		}
+		@media (max-width: 1150px) and (min-width: 1061px) {
+			.image-container {
+				width: 160px;
+			}
+		}
+		@media (max-width: 1060px) and (min-width: 881px) {
+			.image-container {
+				display: none;
+			}
+			#live-view {
+				display: none;
+			}
+		}
+	</style>
+	<body>
+		<div class="container">
+			<div class="grid-container">
+				<div class="grid-item">
+					<p><b>Tag</b></p>
+					<p><i>Serial Number</i></p>
+					<p><i>Manufacturer/Model</i></p>
+					<p><i>Location (location status) <a href="">[edit icon]</a></i></p>
+					<p><i>Status Icons</i></p>
+				</div>
+				<div id="live-view" class="grid-item"><p>
+					<b>Live View</b></p>
+					<!-- 16:9 aspect ratio -->
+					<div class="image-container">
+						<h2 style="position:absolute; top: 50%; left: 50%; transform: translate(-50%, -100%); color: white; text-align: center;">Client Offline</h2>
+					</div>
+				</div>
+				<div class="grid-item">
+					<p><b>Job Queue</b></p>
+					<p><i>Job Status</i></p>
+					<select>
+						<option selected disabled>Queue Job</option>
+						<option>#1 in Queue</option>
+						<option>Job 1</option>
+						<option>Job 2</option>
+						<option>Job 3</option>
+					</select>
+					<p><i>Last Job Time (job fail warnings, [in progress])</i></p>
+					<p><i>Uptime (duration) since (timestamp)</i></p>
+				</div>
+				<div class="grid-item">
+					<p><b>Software Info</b></p>
+					<p><i>OS Installed (version, up to date)</i></p>
+					<p><i>AD Domain Joined (domain name)</i></p>
+					<p><i>BIOS Updated (version)</i></p>
+					<p><i></i></p>
+				</div>
+				<div class="grid-item">
+					<p><b>Hardware Info</b></p>
+					<p><i>CPU <span>(30%/50*C)</span> <span>(warnings)</span></i></p>
+					<p><i>RAM <span>(40%/4GB)</span> <span>(warnings)</span></i></p>
+					<p><i>Disk <span>(5%/40*C)</span> <span>(warnings)</span></i></p>
+					<p><i>Network <span>(100mbps/1000mbps)</span> <span>(warnings)</span></i></p>
+					<p><i>Battery <span>(80%/Charging)</span> <span>(warnings)</span></i></p>
+					<p><a href=""><i>View Client Health</i></a></p>
+				</div>
+				<div class="grid-item">
+					<p><b>Other Info</b></p>
+					<p><i>Most Recent Note (timestamp) - Note content...</i></p>
+					<p><i>Upload Client Images</i></p>
+					<p><i>View Client Images</i></p>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
