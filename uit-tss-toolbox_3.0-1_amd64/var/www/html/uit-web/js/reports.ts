@@ -2,6 +2,7 @@
 
 type ClientReport = {
 	tagnumber: number;
+	battery_health_pcnt: number;
 	battery_health_std_dev: number;
 	battery_health_timestamp: Date;
 }
@@ -28,8 +29,12 @@ async function populateBatteryStandardDeviationReport() {
 			tr.appendChild(tdTagNumber);
 
 			const tdBatteryHealth = document.createElement('td');
-			tdBatteryHealth.textContent = report.battery_health_std_dev?.toString() || 'N/A';
+			tdBatteryHealth.textContent = report.battery_health_pcnt?.toString() + '%' || 'N/A';
 			tr.appendChild(tdBatteryHealth);
+
+			const tdBatteryStdDev = document.createElement('td');
+			tdBatteryStdDev.textContent = report.battery_health_std_dev?.toFixed(2) || 'N/A';
+			tr.appendChild(tdBatteryStdDev);
 
 			const tdTimestamp = document.createElement('td');
 			tdTimestamp.textContent = report.battery_health_timestamp ? new Date(report.battery_health_timestamp).toLocaleString() : 'N/A';

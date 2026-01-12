@@ -199,11 +199,12 @@
 					</form>
 				</div>
 			</div>
+		</div>
 
 			<div class="flex-box inventory">
-				<div class="inventory-lookup-label"><h3>Advanced Search</h3></div>
-				<div class="grid-container inventory inventory-search-form">	
-					<form id="inventory-search-form">
+				<form id="inventory-search-form">
+					<div class="inventory-lookup-label"><h3>Advanced Search</h3></div>
+					<div class="grid-container inventory inventory-search-form">	
 						<span>
 							<select id="inventory-search-location" name="location" form="inventory-search-form">
 							<option value="" disabled selected>Location</option>
@@ -266,10 +267,10 @@
 						</span>
 						<button type="submit" class="submit" id="inventory-search-download-button">Download Results</button>
 						<button id="inventory-search-form-reset-button" type="reset" class="cancel">Reset Search</button>
-					</form>
-				<div class="vertical-spacer"></div>
+						<div class="vertical-spacer"></div>
+					</div>
+				</form>
 			</div>
-		</div>
 
 		<section>
 			<div id="inventory-sort-container" class="flex-container inventory-sort">

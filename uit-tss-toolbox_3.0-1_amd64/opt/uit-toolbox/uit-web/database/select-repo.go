@@ -673,13 +673,15 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 }
 
 func (repo *Repo) GetBatteryStandardDeviation(ctx context.Context) ([]ClientReport, error) {
-	const sqlQuery = `SELECT time, tagnumber, STDDEV_POP(jobstats.battery_health)
-		FROM locations
-		LEFT JOIN jobstats ON locations.tagnumber = jobstats.tagnumber AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
-		WHERE 
-			locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber) 
-			AND locations.department_name NOT IN ('property')
-			AND jobstats.battery_health IS NOT NULL;`
+	const sqlQuery = `SELECT jobstats.time AS "battery_health_timestamp", jobstats.tagnumber, jobstats.battery_health AS "battery_health_pcnt", 
+		ROUND(jobstats.battery_health - AVG(jobstats.battery_health) OVER (), 2) AS "battery_health_stddev"
+	FROM locations
+	LEFT JOIN jobstats ON locations.tagnumber = jobstats.tagnumber AND locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
+	WHERE locations.department_name NOT IN ('property')
+		AND jobstats.battery_health IS NOT NULL
+		AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
+	GROUP BY jobstats.tagnumber, jobstats.time, jobstats.battery_health
+	ORDER BY jobstats.time DESC;`
 	var clientReports []ClientReport
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
@@ -692,6 +694,7 @@ func (repo *Repo) GetBatteryStandardDeviation(ctx context.Context) ([]ClientRepo
 		if err := rows.Scan(
 			&clientReport.BatteryHealthTimestamp,
 			&clientReport.Tagnumber,
+			&clientReport.BatteryHealthPcnt,
 			&clientReport.BatteryHealthStdDev,
 		); err != nil {
 			return nil, err
