@@ -5,20 +5,31 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
 		<link rel="icon" type="image/png" href="/favicon.png" />
 		<link rel="stylesheet" href="/css/desktop.css" />
-		<link rel="stylesheet" href="/css/client_images.css" />
+		<link rel="stylesheet" href="/css/reports.css" />
 		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/init.js"></script>
-		<title>Images - ITSC Mgmt</title>
+		<title>Reports - ITSC Mgmt</title>
 	</head>
 	<body>
 		<div id="uit-header"></div>
 		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/header.js"></script>
 		<div><h1>UIT - ITSC Inventory Management</h1></div>
-		<div id="main-content"><h2>Client Images For {{ .ClientTag }}</h2></div>
+		<div id="main-content"><h2>Client Reports</h2></div>
 
-		<div id="image-container" class="flex-container"></div>
+		<table id="battery-health-report-table">
+			<thead>
+				<tr>
+				<th>Tag</th>
+				<th>Battery Health (%)</th>
+				<th>Last Updated</th>
+				</tr>
+			</thead>
+			<tbody id="battery-health-report-tbody">
+				<!-- Report rows will be populated here by JS -->
+			</tbody>
+		</table>
 
 		<div id="uit-footer" class="flex-container footer"></div>
 		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/footer.js"></script>
-		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/client_images.js"></script>
+		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/reports.js"></script>
 	</body>
 </html>

@@ -925,3 +925,25 @@ func CheckAuth(w http.ResponseWriter, req *http.Request) {
 
 	middleware.WriteJson(w, http.StatusOK, data)
 }
+
+func GetBatteryStandardDeviation(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx)
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.HTTPWarning(req, "No database connection available in GetBatteryStandardDeviation")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	repo := database.NewRepo(db)
+
+	batteryStdDevData, err := repo.GetBatteryStandardDeviation(ctx)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.HTTPWarning(req, "Query error in GetBatteryStandardDeviation: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+	}
+	middleware.WriteJson(w, http.StatusOK, batteryStdDevData)
+}

@@ -30,5 +30,6 @@
 		"allowed_methods": ["OPTIONS", "GET", "POST"]
 	},
 	"/api/domains": {},
-	"/api/departments": {}
+	"/api/departments": {},
+	"/api/reports/battery/standard_deviation": {}
 }

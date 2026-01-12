@@ -1,284 +1,331 @@
 <!DOCTYPE html>
 <html lang="en-US">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="stylesheet" href="/css/desktop.css" />
-    <link rel="stylesheet" href="/css/inventory.css" />
-    <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/init.js"></script>
-    <title>Inventory - ITSC Mgmt</title>
-  </head>
-  <body>
-    <div id="uit-header"></div>
-    <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/header.js"></script>
-    <div><h1>UIT - ITSC Inventory Management</h1></div>
-    <div id="main-content"><h2>Update and View Inventory</h2></div>
-    <div id="inventory-section" class="flex-container inventory">
-      <div class="flex-box inventory">
-        <div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
-          <form id="inventory-lookup-form">
-            <div class="inventory-lookup-label"><h3>Update Client Information</h3></div>
-            <div class="grid-container inventory inventory-lookup-form">
-            <div class="inventory-lookup-label"><p>Tag Number/Serial Number Lookup:</p></div>
-            <div><p>Search Tag Number:</p></div>
-            <div><p>Search Serial Number:</p></div>
-              <input type="number" id="inventory-tag-lookup" list="inventory-tag-suggestions"
-                placeholder="Enter Tag Number"
-                minlength="6"
-                maxlength="6"
-                autocomplete="off"
-                autocorrect="off"
-                autocapitalize="off"
-                pattern="[0-9]{6}"
-                autofocus
-                />
-                <datalist id="inventory-tag-suggestions"></datalist>
-                <input type="text" id="inventory-serial-lookup"
-                  placeholder="Enter Serial Number"
-                  minlength="4"
-                  maxlength="64"
-                  autocomplete="off"
-                  autocorrect="off"
-                  autocapitalize="off"
-                  pattern="[A-Za-z0-9\-_]{1,64}"
-                  />
-              <div>
-                <button type="submit" id="inventory-lookup-submit-button">Search for Client</button>
-								<button type="button" id="inventory-lookup-more-details">More Details</button>
-                <button type="reset" id="inventory-lookup-reset-button">Reset Search</button>
-              </div>
-            </div>
-          </form>
-        <div class="vertical-spacer"></div>
-        <div id="inventory-update-section">
-          <div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+		<link rel="icon" type="image/png" href="/favicon.png" />
+		<link rel="stylesheet" href="/css/desktop.css" />
+		<link rel="stylesheet" href="/css/inventory.css" />
+		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/init.js"></script>
+		<title>Inventory - ITSC Mgmt</title>
+	</head>
+	<body>
+		<div id="uit-header"></div>
+		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/header.js"></script>
+		<div><h1>UIT - ITSC Inventory Management</h1></div>
+		<div id="main-content"><h2>Update and View Inventory</h2></div>
+
+		<div id="inventory-section" class="flex-container inventory">
+			<div class="flex-box inventory">
+				<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
+				<form id="inventory-lookup-form">
+					<div class="inventory-lookup-label"><h3>Update Client Information</h3></div>
+					<div class="grid-container inventory inventory-lookup-form">
+						<div class="inventory-lookup-label"><p>Tag Number/Serial Number Lookup:</p></div>
+						<div><p>Search Tag Number:</p></div>
+						<div><p>Search Serial Number:</p></div>
+						<input type="number" id="inventory-tag-lookup" list="inventory-tag-suggestions"
+							placeholder="Enter Tag Number"
+							minlength="6"
+							maxlength="6"
+							autocomplete="off"
+							autocorrect="off"
+							autocapitalize="off"
+							pattern="[0-9]{6}"
+							autofocus
+						/>
+						<datalist id="inventory-tag-suggestions"></datalist>
+						<input type="text" id="inventory-serial-lookup"
+							placeholder="Enter Serial Number"
+							minlength="4"
+							maxlength="64"
+							autocomplete="off"
+							autocorrect="off"
+							autocapitalize="off"
+							pattern="[A-Za-z0-9\-_]{1,64}"
+						/>
+						<div>
+							<button type="submit" id="inventory-lookup-submit-button">Search for Client</button>
+							<button type="button" id="inventory-lookup-more-details">More Details</button>
+							<button type="reset" id="inventory-lookup-reset-button">Reset Search</button>
+						</div>
+					</div>
+				</form>
+
+				<div class="vertical-spacer"></div>
+
+				<div id="inventory-update-section">
+					<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
 					<div class="message"><p id="last-update-time-message" class="warning-message"></p></div>
-          <form id="inventory-update-form" enctype="multipart/form-data" method="POST" action="/api/update_inventory">
-            <input type="hidden" id="csrf-token" value="" />
-            <div class="grid-container inventory inventory-update-form">
-              <div class="inventory-lookup-label"><p class="bold">Location, Manufacturer, and Model:</p></div>
-              <div><p class="required-field">Location/Building/Room:</p></div>
-              <div><p class="required-field">Manufacturer/Model:</p></div>
-              <div><input type="text" id="location" name="location"
-                placeholder="Location" 
-                maxlength="128"
-                autocomplete="off"
-                autocorrect="off"
-                autocapitalize="on" /></div>
-              <div>
-                <input type="text" id="system_manufacturer" name="system_manufacturer"
-                  placeholder="Manufacturer" 
-                  maxlength="128" 
-                  autocomplete="off"
-                  autocorrect="off"
-                  autocapitalize="on" />
-              </div>
-              <div>
-								<input type="text" id="building" name="building"
-                  placeholder="Building" 
-                  maxlength="64" 
-                  autocomplete="off"
-                  autocorrect="off"
-                  autocapitalize="on" />
+					<form id="inventory-update-form" enctype="multipart/form-data" method="POST" action="/api/update_inventory">
+						<input type="hidden" id="csrf-token" value="" />
+						<div class="grid-container inventory inventory-update-form">
+							<div class="inventory-lookup-label"><p class="bold">Location, Manufacturer, and Model:</p></div>
+							<div><p class="required-field">Location/Building/Room:</p></div>
+							<div><p class="required-field">Manufacturer/Model:</p></div>
+							<div>
+								<input type="text" id="location" name="location"
+									placeholder="Location" 
+									maxlength="128"
+									autocomplete="off"
+									autocorrect="off"
+									autocapitalize="on" 
+								/>
 							</div>
-              <div>
-                <input type="text" id="system_model" name="system_model"
-                  placeholder="Model" 
-                  maxlength="128" 
-                  autocomplete="off"
-                  autocorrect="off"
-                  autocapitalize="on" />
-              </div>
+							<div>
+								<input type="text" id="system_manufacturer" name="system_manufacturer"
+									placeholder="Manufacturer" 
+									maxlength="128" 
+									autocomplete="off"
+									autocorrect="off"
+									autocapitalize="on" 
+								/>
+							</div>
+							<div>
+								<input type="text" id="building" name="building"
+									placeholder="Building" 
+									maxlength="64" 
+									autocomplete="off"
+									autocorrect="off"
+									autocapitalize="on" 
+								/>
+							</div>
+							<div>
+								<input type="text" id="system_model" name="system_model"
+									placeholder="Model" 
+									maxlength="128" 
+									autocomplete="off"
+									autocorrect="off"
+									autocapitalize="on" 
+								/>
+							</div>
 							<div>
 								<input type="text" id="room" name="room"
-                  placeholder="Room" 
-                  maxlength="64" 
-                  autocomplete="off"
-                  autocorrect="off"
-                  autocapitalize="on" />
+									placeholder="Room" 
+									maxlength="64" 
+									autocomplete="off"
+									autocorrect="off"
+									autocapitalize="on" 
+								/>
 							</div>
-            </div>
-            <div class="vertical-spacer"></div>
-            <div class="grid-container inventory inventory-update-form">
-              <div class="inventory-lookup-label"><p class="bold">Department and AD Domain:</p></div>
-              <div><label for="department_name" class="required-field">Department:</label></div>
-              <div><select id="department_name" name="department_name">
-                <option value="" disabled selected>Select Department</option>
-              </select></div>
+						</div>
+
+						<div class="vertical-spacer"></div>
+
+						<div class="grid-container inventory inventory-update-form">
+							<div class="inventory-lookup-label"><p class="bold">Department and AD Domain:</p></div>
+							<div><label for="department_name" class="required-field">Department:</label></div>
+							<div>
+								<select id="department_name" name="department_name">
+									<option value="" disabled selected>Select Department</option>
+								</select>
+							</div>
 							<div><label for="property_custodian">Property Custodian:</label></div>
-							<div><input type="text" id="property_custodian" name="property_custodian"
+							<div>
+								<input type="text" id="property_custodian" name="property_custodian"
 									placeholder="Property Custodian" 
 									maxlength="64" 
 									autocomplete="off"
 									autocorrect="off"
-									autocapitalize="words" /></div>
-              <div><label for="ad_domain" class="required-field">AD Domain:</label></div>
-              <div><select id="ad_domain" name="ad_domain">
-              </select></div>
-            </div>
-            <div class="vertical-spacer"></div>
-            <div class="grid-container inventory inventory-update-form">
-              <div class="inventory-lookup-label"><p class="bold">Health and Status:</p></div>
-              <label for="is_broken" class="required-field">Is it Broken?</label>
-              <select id="is_broken" name="is_broken">
-                <option value="" disabled selected>Is it Broken?</option>
-                <option value="true">Yes, it is broken</option>
-                <option value="false">No, it isn't broken</option>
-              </select>
-              <label for="status" class="required-field">Status:</label>
-              <div>
+									autocapitalize="words" 
+								/>
+							</div>
+							<div><label for="ad_domain" class="required-field">AD Domain:</label></div>
+							<div>
+								<select id="ad_domain" name="ad_domain">
+								</select>
+							</div>
+						</div>
+
+						<div class="vertical-spacer"></div>
+
+						<div class="grid-container inventory inventory-update-form">
+							<div class="inventory-lookup-label"><p class="bold">Health and Status:</p></div>
+							<label for="is_broken" class="required-field">Is it Broken?</label>
+							<div>
+								<select id="is_broken" name="is_broken">
+									<option value="" disabled selected>Is it Broken?</option>
+									<option value="true">Yes, it is broken</option>
+									<option value="false">No, it isn't broken</option>
+								</select>
+							</div>
+							<label for="status" class="required-field">Status:</label>
+							<div>
 								<select id="status" name="status">
 									<option value="" disabled selected>Select Status</option>
 									{{ range $status, $statusReadable := .Statuses }}
-										<option value="{{ $status }}">{{ $statusReadable }}</option>
+									<option value="{{ $status }}">{{ $statusReadable }}</option>
 									{{ end }}
 								</select>
 								<div id="print-checkout-link"></div>
 							</div>
 							<label for="acquired_date">Date Acquired:</label>
-							<input type="date" id="acquired_date" name="acquired_date" />
-            </div>
-            <div class="vertical-spacer"></div>
-            <div>
-              <textarea id="note" name="note" placeholder="Enter notes..." maxlength="1024" rows="6" cols="50"></textarea>
-            </div>
-            <div class="vertical-spacer"></div>
-            <div><a id="client_images_link" href="">View Client Images</a></div>
-            <div class="vertical-spacer"></div>
-            <div><label for="inventory-file-input">Upload Inventory Image(s):</label></div>
-            <div><input type="file" id="inventory-file-input" name="inventory-file-input" accept="image/jpeg,image/jpg,image/png,video/mp4" multiple /></div>
-            <div class="vertical-spacer"></div>
-            <div>
-              <input type="submit" id="inventory-update-submit-button" class="submit" value="Submit Inventory Update" />
-              <input type="reset" id="inventory-update-cancel-button" class="cancel" value="Cancel" />
-            </div>
-            <div class="message"><p id="inventory-error" class="error-message"></p></div>
-          </form>
-        </div>
-      </div>
+							<div><input type="date" id="acquired_date" name="acquired_date" /></div>
 
-      <div class="flex-box inventory">
-        <form id="inventory-search-form">
-          <div class="inventory-lookup-label"><h3>Advanced Search</h3></div>
-          <div class="grid-container inventory inventory-search-form">
-            <span>
-              <select id="inventory-search-location" name="location" form="inventory-search-form">
-                <option value="" disabled selected>Location</option>
-                {{ range $location, $locationReadable := .Locations }}
-                  <option value="{{ $location }}">{{ $locationReadable }}</option>
-                {{ end }}
-              </select>
-              <a id="inventory-search-location-reset" class="inventory-search-reset" href="">x</a>
-            </span>
-            <span>
-              <select id="inventory-search-department" name="department_name" form="inventory-search-form">
-                <option value="" disabled selected>Department</option>
-              </select>
-              <a id="inventory-search-department-reset" class="inventory-search-reset" href="">x</a>
-            </span>
-            <span>
-              <select id="inventory-search-manufacturer" name="manufacturer" form="inventory-search-form">
-                <option value="" disabled selected>Manufacturer</option>
-              </select>
-              <a id="inventory-search-manufacturer-reset" class="inventory-search-reset" href="">x</a>
-            </span>
-            <span>
-              <select id="inventory-search-model" name="model" form="inventory-search-form">
-                <option value="" disabled selected>Model</option>
-              </select>
-              <a id="inventory-search-model-reset" class="inventory-search-reset" href="">x</a></span>
-            <span>
-              <select id="inventory-search-domain" name="ad_domain" form="inventory-search-form">
-                <option value="" disabled selected>AD Domain</option>
-                {{ range $domain, $domainReadable := .Domains }}
-                  <option value="{{ $domain }}">{{ $domainReadable }}</option>
-                {{ end }}
-              </select>
-              <a id="inventory-search-domain-reset" class="inventory-search-reset" href="">x</a></span>
-            <span>
-              <select id="inventory-search-status" name="status" form="inventory-search-form">
-                <option value="" disabled selected>Status</option>
-                {{ range $status, $statusReadable := .Statuses }}
-                  <option value="{{ $status }}">{{ $statusReadable }}</option>
-                {{ end }}
-              </select>
-              <a id="inventory-search-status-reset" class="inventory-search-reset" href="">x</a></span>
-            <span>
-              <select id="inventory-search-broken" name="is_broken" form="inventory-search-form">
-                <option value="" disabled selected>Broken?</option>
-                <option value="true">Yes - Is broken</option>
-                <option value="false">No - Is functional</option>
-              </select>
-              <a id="inventory-search-broken-reset" class="inventory-search-reset" href="">x</a></span>
-            <span>
-              <select id="inventory-search-has_images" name="has_images" form="inventory-search-form">
-                <option value="" disabled selected>Has Images?</option>
-                <option value="true">Yes - Has images</option>
-                <option value="false">No - Missing images</option>
-              </select>
-              <a id="inventory-search-has_images-reset" class="inventory-search-reset" href="">x</a>
-            </span>
-            <button type="submit" class="submit" id="inventory-search-download-button">Download Results</button>
-            <button id="inventory-search-form-reset-button" type="reset" class="cancel">Reset Search</button>
-          </form>
-          <div class="vertical-spacer"></div>
-        </div>
-      </div>
-    </div>
+							<div class="vertical-spacer"></div>
 
-    <section>
-      <div id="inventory-sort-container" class="flex-container inventory-sort">
-        <input id="inventory-sort-tagnumber" type="text" placeholder="Search tags...">
-        <input id="inventory-sort-serial" type="text" placeholder="Search serial...">
-        <select id="inventory-sort-time">
-          <option value="time-desc" selected>Sort by Last Entry (Newest First)</option>
-          <option value="time-asc">Sort by Last Entry (Oldest First)</option>
-        </select>
-        <select id="inventory-sort-by">
-          <option value="tagnumber-asc" selected>Sort by Tag # (Asc)</option>
-          <option value="tagnumber-desc">Sort by Tag # (Desc)</option>
-          <option value="location-asc">Sort by Location (A-Z)</option>
-          <option value="location-desc">Sort by Location (Z-A)</option>
-          <option value="manufacturer-asc">Sort by Manufacturer (A-Z)</option>
-          <option value="manufacturer-desc">Sort by Manufacturer (Z-A)</option>
-          <option value="model-asc">Sort by Model (A-Z)</option>
-          <option value="model-desc">Sort by Model (Z-A)</option>
-          <option value="department-asc">Sort by Department (A-Z)</option>
-          <option value="department-desc">Sort by Department (Z-A)</option>
-          <option value="domain-asc">Sort by AD Domain (A-Z)</option>
-          <option value="domain-desc">Sort by AD Domain (Z-A)</option>
-          <option value="status-asc">Sort by Status (A-Z)</option>
-          <option value="status-desc">Sort by Status (Z-A)</option>
-        </select>
-        <p id="inventory-table-rowcount">0 entries</p>
-      </div>
-      <table id="inventory-table">
-        <thead>
-          <tr>
-            <th>Tag</th>
-            <th>Serial</th>
-            <th>Location</th>
-            <th>Manufacturer/Model</th>
-            <th>Department</th>
-            <th>AD Domain</th>
-            <th>Status</th>
-            <th>Broken?</th>
-            <th>Notes</th>
-            <th>Last Entry</th>
-          </tr>
-        </thead>
-        <tbody id="inventory-table-body">
-          <tr><td colspan="10">Loading inventory...</td></tr>
-        </tbody>
-      </table>
+							<label for="note">Notes:</label>
+							<div>
+								<textarea id="note" name="note" placeholder="Enter notes..." maxlength="1024" rows="6" cols="50"></textarea>
+							</div>
 
-    </section>
+							<div class="vertical-spacer"></div>
 
-    <div id="uit-footer" class="flex-container footer"></div>
-    <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/footer.js"></script>
-    <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/inventory_table.js"></script>
-    <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/inventory_filters.js"></script>
-    <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/inventory.js"></script>
-  </body>
+							<div><a id="client_images_link" href="">View Client Images</a></div>
+							<div class="vertical-spacer"></div>
+							<label for="inventory-file-input">Upload Inventory Image(s):</label>
+							<div>
+								<input type="file" id="inventory-file-input" name="inventory-file-input" 
+									accept="image/jpeg,image/jpg,image/png,video/mp4" 
+									multiple 
+								/>
+							</div>
+
+							<div class="vertical-spacer"></div>
+
+							<div>
+								<input id="inventory-update-submit-button" name="inventory-update-submit-button" 
+									type="submit"
+									class="submit" 
+									value="Submit Inventory Update" 
+								/>
+								<input id="inventory-update-cancel-button" name="inventory-update-cancel-button" 
+									type="reset"
+									class="cancel" 
+									value="Cancel" 
+								/>
+							</div>
+							<div class="message"><p id="inventory-error" class="error-message"></p></div>
+					</form>
+				</div>
+			</div>
+
+			<div class="flex-box inventory">
+				<div class="inventory-lookup-label"><h3>Advanced Search</h3></div>
+				<div class="grid-container inventory inventory-search-form">	
+					<form id="inventory-search-form">
+						<span>
+							<select id="inventory-search-location" name="location" form="inventory-search-form">
+							<option value="" disabled selected>Location</option>
+								{{ range $location, $locationReadable := .Locations }}
+									<option value="{{ $location }}">{{ $locationReadable }}</option>
+								{{ end }}
+							</select>
+							<a id="inventory-search-location-reset" class="inventory-search-reset" href="">x</a>
+						</span>
+						<span>
+							<select id="inventory-search-department" name="department_name" form="inventory-search-form">
+							<option value="" disabled selected>Department</option>
+							</select>
+							<a id="inventory-search-department-reset" class="inventory-search-reset" href="">x</a>
+						</span>
+						<span>
+							<select id="inventory-search-manufacturer" name="manufacturer" form="inventory-search-form">
+							<option value="" disabled selected>Manufacturer</option>
+							</select>
+							<a id="inventory-search-manufacturer-reset" class="inventory-search-reset" href="">x</a>
+						</span>
+						<span>
+							<select id="inventory-search-model" name="model" form="inventory-search-form">
+							<option value="" disabled selected>Model</option>
+							</select>
+							<a id="inventory-search-model-reset" class="inventory-search-reset" href="">x</a></span>
+						<span>
+							<select id="inventory-search-domain" name="ad_domain" form="inventory-search-form">
+							<option value="" disabled selected>AD Domain</option>
+								{{ range $domain, $domainReadable := .Domains }}
+									<option value="{{ $domain }}">{{ $domainReadable }}</option>
+								{{ end }}
+							</select>
+							<a id="inventory-search-domain-reset" class="inventory-search-reset" href="">x</a>
+						</span>
+						<span>
+							<select id="inventory-search-status" name="status" form="inventory-search-form">
+							<option value="" disabled selected>Status</option>
+								{{ range $status, $statusReadable := .Statuses }}
+									<option value="{{ $status }}">{{ $statusReadable }}</option>
+								{{ end }}
+							</select>
+							<a id="inventory-search-status-reset" class="inventory-search-reset" href="">x</a>
+						</span>
+						<span>
+							<select id="inventory-search-broken" name="is_broken" form="inventory-search-form">
+							<option value="" disabled selected>Broken?</option>
+							<option value="true">Yes - Is broken</option>
+							<option value="false">No - Is functional</option>
+							</select>
+							<a id="inventory-search-broken-reset" class="inventory-search-reset" href="">x</a>
+						</span>
+						<span>
+							<select id="inventory-search-has_images" name="has_images" form="inventory-search-form">
+								<option value="" disabled selected>Has Images?</option>
+								<option value="true">Yes - Has images</option>
+								<option value="false">No - Missing images</option>
+							</select>
+							<a id="inventory-search-has_images-reset" class="inventory-search-reset" href="">x</a>
+						</span>
+						<button type="submit" class="submit" id="inventory-search-download-button">Download Results</button>
+						<button id="inventory-search-form-reset-button" type="reset" class="cancel">Reset Search</button>
+					</form>
+				<div class="vertical-spacer"></div>
+			</div>
+		</div>
+
+		<section>
+			<div id="inventory-sort-container" class="flex-container inventory-sort">
+				<input id="inventory-sort-tagnumber" name="inventory-sort-tagnumber"
+					type="text" 
+					placeholder="Search tags..."
+				/>
+				<input id="inventory-sort-serial" name="inventory-sort-serial" 
+					type="text" 
+					placeholder="Search serial..."
+				/>
+				<select id="inventory-sort-by">
+					<option value="time-desc" selected>Sort by Time (Desc)</option>
+					<option value="time-asc">Sort by Time (Asc)</option>
+					<option value="tagnumber-asc">Sort by Tag # (Asc)</option>
+					<option value="tagnumber-desc">Sort by Tag # (Desc)</option>
+					<option value="location-asc">Sort by Location (A-Z)</option>
+					<option value="location-desc">Sort by Location (Z-A)</option>
+					<option value="manufacturer-asc">Sort by Manufacturer (A-Z)</option>
+					<option value="manufacturer-desc">Sort by Manufacturer (Z-A)</option>
+					<option value="model-asc">Sort by Model (A-Z)</option>
+					<option value="model-desc">Sort by Model (Z-A)</option>
+					<option value="department-asc">Sort by Department (A-Z)</option>
+					<option value="department-desc">Sort by Department (Z-A)</option>
+					<option value="domain-asc">Sort by AD Domain (A-Z)</option>
+					<option value="domain-desc">Sort by AD Domain (Z-A)</option>
+					<option value="status-asc">Sort by Status (A-Z)</option>
+					<option value="status-desc">Sort by Status (Z-A)</option>
+				</select>
+				<p id="inventory-table-rowcount">0 entries</p>
+			</div>
+			<table id="inventory-table">
+				<thead>
+					<tr>
+						<th>Tag</th>
+						<th>Serial</th>
+						<th>Location</th>
+						<th>Manufacturer/Model</th>
+						<th>Department</th>
+						<th>AD Domain</th>
+						<th>Status</th>
+						<th>Broken?</th>
+						<th>Notes</th>
+						<th>Last Entry</th>
+					</tr>
+				</thead>
+				<tbody id="inventory-table-body">
+					<tr><td colspan="10">Loading inventory...</td></tr>
+				</tbody>
+			</table>
+		</section>
+
+		<div id="uit-footer" class="flex-container footer"></div>
+		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/footer.js"></script>
+		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/inventory_table.js"></script>
+		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/inventory_filters.js"></script>
+		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/inventory.js"></script>
+	</body>
 </html>

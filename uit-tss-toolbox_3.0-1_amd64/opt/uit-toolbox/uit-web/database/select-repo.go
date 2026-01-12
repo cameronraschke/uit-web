@@ -671,3 +671,36 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 
 	return jobQueueRows, nil
 }
+
+func (repo *Repo) GetBatteryStandardDeviation(ctx context.Context) ([]ClientReport, error) {
+	const sqlQuery = `SELECT time, tagnumber, STDDEV_POP(jobstats.battery_health)
+		FROM locations
+		LEFT JOIN jobstats ON locations.tagnumber = jobstats.tagnumber AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
+		WHERE 
+			locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber) 
+			AND locations.department_name NOT IN ('property')
+			AND jobstats.battery_health IS NOT NULL;`
+	var clientReports []ClientReport
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var clientReport ClientReport
+		if err := rows.Scan(
+			&clientReport.BatteryHealthTimestamp,
+			&clientReport.Tagnumber,
+			&clientReport.BatteryHealthStdDev,
+		); err != nil {
+			return nil, err
+		}
+		clientReports = append(clientReports, clientReport)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return clientReports, nil
+}

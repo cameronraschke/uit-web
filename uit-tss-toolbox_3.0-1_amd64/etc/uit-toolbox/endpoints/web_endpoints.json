@@ -91,5 +91,11 @@
 		"requires": ["nonce"],
 		"endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
+	},
+	"/reports": {
+		"file_path": "/var/www/html/uit-web/reports.html",
+		"requires": ["nonce"],
+		"endpoint_type": "web_content",
+    "content_type": "text/html; charset=utf-8"
 	}
 }
