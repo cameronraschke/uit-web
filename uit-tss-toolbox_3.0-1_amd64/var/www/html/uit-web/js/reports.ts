@@ -3,7 +3,7 @@
 type ClientReport = {
 	tagnumber: number;
 	battery_health_pcnt: number;
-	battery_health_std_dev: number;
+	battery_health_stddev: number;
 	battery_health_timestamp: Date;
 }
 
@@ -16,7 +16,7 @@ async function populateBatteryStandardDeviationReport() {
 		const data = await fetchData(`/api/reports/battery/standard_deviation`, false);
 		if (!data) { return; }
 		data.sort((a: ClientReport, b: ClientReport) => {
-			return (b.battery_health_std_dev || 0) - (a.battery_health_std_dev || 0);
+			return (b.battery_health_stddev || 0) - (a.battery_health_stddev || 0);
 		});
 
 		for (const report of data) {
@@ -29,11 +29,11 @@ async function populateBatteryStandardDeviationReport() {
 			tr.appendChild(tdTagNumber);
 
 			const tdBatteryHealth = document.createElement('td');
-			tdBatteryHealth.textContent = report.battery_health_pcnt?.toString() + '%' || 'N/A';
+			tdBatteryHealth.textContent = report.battery_health_pcnt !== undefined ? report.battery_health_pcnt.toFixed(2) + '%' : 'N/A';
 			tr.appendChild(tdBatteryHealth);
 
 			const tdBatteryStdDev = document.createElement('td');
-			tdBatteryStdDev.textContent = report.battery_health_std_dev?.toFixed(2) || 'N/A';
+			tdBatteryStdDev.textContent = report.battery_health_stddev !== undefined ? report.battery_health_stddev.toFixed(2) : 'N/A';
 			tr.appendChild(tdBatteryStdDev);
 
 			const tdTimestamp = document.createElement('td');

@@ -219,7 +219,7 @@ type ClientBatteryHealth struct {
 
 type ClientReport struct {
 	Tagnumber              *int64     `json:"tagnumber"`
-	BatteryHealthPcnt      *string    `json:"battery_health_pcnt"`
+	BatteryHealthPcnt      *float64   `json:"battery_health_pcnt"`
 	BatteryHealthStdDev    *float64   `json:"battery_health_stddev"`
 	BatteryHealthTimestamp *time.Time `json:"battery_health_timestamp"`
 }
