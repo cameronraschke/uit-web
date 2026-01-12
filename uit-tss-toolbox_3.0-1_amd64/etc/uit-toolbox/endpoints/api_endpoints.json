@@ -31,5 +31,5 @@
 	},
 	"/api/domains": {},
 	"/api/departments": {},
-	"/api/reports/battery/standard_deviation": {}
+	"/api/reports/battery/stats": {}
 }

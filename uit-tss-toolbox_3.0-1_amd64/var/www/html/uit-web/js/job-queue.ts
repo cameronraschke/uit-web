@@ -1,35 +1,55 @@
 // Job Queue TypeScript File
-type JobQueueEntry = {
-	tagnumber: number | null
-	system_serial: string | null
-	os_installed: string | null
-	os_name: string | null
-	kernel_updated: boolean | null
-	bios_updated: boolean | null
-	bios_version: string | null
-	system_manufacturer: string | null
-	system_model: string | null
-	battery_charge: number | null
-	battery_status: string | null
-	cpu_temp: number | null
-	disk_temp: number | null
-	max_disk_temp: number | null
-	power_usage: number | null
-	network_usage: number | null
-	client_status: string | null
-	is_broken: boolean | null
-	job_queued: boolean | null
-	queue_position: number | null
-	job_active: boolean | null
-	job_name: string | null
-	job_status: string | null
-	job_clone_mode: string | null
-	job_erase_mode: string | null
-	last_job_time: Date | null
-	location: string | null
-	last_heard: Date | null
-	uptime: number | null
-	online: boolean | null
+type JobQueueTableRow = {
+	tagnumber: number | null;
+	system_serial: string | null;
+	system_manufacturer: string | null;
+	system_model: string | null;
+	location: string | null;
+	department_name: string | null;
+	client_status: string | null;
+	is_broken: boolean | null;
+	disk_removed: boolean | null;
+	temp_warning: boolean | null;
+	battery_health_warning: boolean | null;
+	checkout_bool: boolean | null;
+	kernel_updated: boolean | null;
+	last_heard: Date | null;
+	uptime: number | null;
+	online: boolean | null;
+	job_active: boolean | null;
+	job_queued: boolean | null;
+	queue_position: number | null;
+	job_name: string | null;
+	job_clone_mode: string | null;
+	job_erase_mode: string | null;
+	job_status: string | null;
+	last_job_time: Date | null;
+	os_installed: string | null;
+	os_name: string | null;
+	os_updated: boolean | null;
+	domain_joined: boolean | null;
+	domain_name: string | null;
+	bios_updated: boolean | null;
+	bios_version: string | null;
+	cpu_usage: number | null;
+	cpu_temp: number | null;
+	cpu_temp_warning: boolean | null;
+	ram_usage: number | null;
+	ram_capacity: number | null;
+	disk_usage: number | null;
+	disk_temp: number | null;
+	disk_type: string | null;
+	disk_size: number | null;
+	max_disk_temp: number | null;
+	disk_temp_warning: boolean | null;
+	network_link_status: string | null;
+	network_link_speed: number | null;
+	network_usage: number | null;
+	battery_charge: number | null;
+	battery_status: string | null;
+	battery_health: number | null;
+	plugged_in: boolean | null;
+	power_usage: number | null;
 };
 
 let jobQueueInterval: number;
@@ -62,7 +82,7 @@ async function getJobQueueData() {
 	}
 }
 
-function updateJobQueueTable(data: JobQueueEntry[]) {
+function updateJobQueueTable(data: JobQueueTableRow[]) {
 	const onlineTableBody = document.querySelector('#online-clients-table tbody');
 	const offlineTableBody = document.querySelector('#offline-clients-table tbody');
 	if (!onlineTableBody || !offlineTableBody) return;

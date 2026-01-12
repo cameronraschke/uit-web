@@ -13,7 +13,7 @@ async function populateBatteryStandardDeviationReport() {
 	if (!batteryHealthTbody) { return; }
 
 	try {
-		const data = await fetchData(`/api/reports/battery/standard_deviation`, false);
+		const data = await fetchData(`/api/reports/battery/stats`, false);
 		if (!data) { return; }
 		data.sort((a: ClientReport, b: ClientReport) => {
 			return (b.battery_health_stddev || 0) - (a.battery_health_stddev || 0);
@@ -23,13 +23,13 @@ async function populateBatteryStandardDeviationReport() {
 			const tr = document.createElement('tr');
 			const tdTagNumber = document.createElement('td');
 			const tagLink = document.createElement('a');
-			tagLink.href = `/client/${report.tagnumber}`;
+			tagLink.href = `/client?${report.tagnumber}`;
 			tagLink.textContent = report.tagnumber?.toString() || 'N/A';
 			tdTagNumber.appendChild(tagLink);
 			tr.appendChild(tdTagNumber);
 
 			const tdBatteryHealth = document.createElement('td');
-			tdBatteryHealth.textContent = report.battery_health_pcnt !== undefined ? report.battery_health_pcnt.toFixed(2) + '%' : 'N/A';
+			tdBatteryHealth.textContent = report.battery_health_pcnt !== undefined ? report.battery_health_pcnt.toFixed(0) + '%' : 'N/A';
 			tr.appendChild(tdBatteryHealth);
 
 			const tdBatteryStdDev = document.createElement('td');

@@ -596,27 +596,113 @@ func (repo *Repo) GetClientBatteryHealth(ctx context.Context, tagnumber int64) (
 }
 
 func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, error) {
-	const sqlQuery = `SELECT locations.tagnumber, locations.system_serial, client_health.os_installed, client_health.os_name, job_queue.kernel_updated,
-	client_health.bios_updated, client_health.bios_version,
-	system_data.system_manufacturer, system_data.system_model,
-	job_queue.battery_charge, job_queue.battery_status,
-	job_queue.cpu_temp, job_queue.disk_temp, job_queue.max_disk_temp, job_queue.watts_now AS "power_usage", job_queue.network_speed AS "network_usage",
-	locations.client_status, (CASE WHEN locations.client_status IS NULL THEN NULL WHEN locations.client_status = 'needs-repair' THEN TRUE ELSE FALSE END) AS is_broken,
-	(CASE WHEN job_queue.job_queued IS NOT NULL THEN TRUE ELSE FALSE END) AS "job_queued", t1.queue_position, job_queue.job_active, job_queue.job_queued AS "job_name", job_queue.status, job_queue.clone_mode, job_queue.erase_mode,
-	t2.last_job_time AT TIME ZONE 'America/Chicago' AS "last_job_time", locations.location, job_queue.present AT TIME ZONE 'America/Chicago' AS "last_heard",
-	job_queue.uptime, (CASE WHEN (NOW() - job_queue.present < INTERVAL '30 SECOND') THEN TRUE ELSE FALSE END) AS online
+	const sqlQuery = `WITH latest_locations AS (
+		SELECT DISTINCT ON (locations.tagnumber) locations.time, locations.tagnumber, locations.system_serial, locations.location,
+			locationFormatting(locations.location) AS location_formatted, locations.department_name, locations.ad_domain,
+			locations.client_status, locations.is_broken,
+			locations.disk_removed
+		FROM locations
+		ORDER BY locations.tagnumber, locations.time DESC),
+	latest_jobstats AS (
+		SELECT DISTINCT ON (jobstats.tagnumber) jobstats.time, jobstats.tagnumber, 
+			jobstats.disk_type, jobstats.disk_size AS "disk_capacity",
+			jobstats.battery_health, jobstats.bios_version, jobstats.ram_capacity, jobstats.disk_model, jobstats.disk_temp
+		FROM jobstats
+		ORDER BY jobstats.tagnumber, jobstats.time DESC),
+	latest_job AS (
+		SELECT DISTINCT ON (jobstats.tagnumber) jobstats.time, jobstats.tagnumber,
+			jobstats.erase_completed, jobstats.erase_mode, jobstats.erase_time, 
+			jobstats.clone_completed, jobstats.clone_image, jobstats.clone_master, jobstats.clone_time, 
+			jobstats.job_failed
+		FROM jobstats
+		WHERE jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE
+		ORDER BY jobstats.tagnumber, jobstats.time DESC)
+	SELECT
+		latest_locations.tagnumber,
+		latest_locations.system_serial,
+		system_data.system_manufacturer,
+		system_data.system_model,
+		latest_locations.location_formatted AS "location",
+		latest_locations.department_name,
+		latest_locations.client_status,
+		latest_locations.is_broken,
+		latest_locations.disk_removed,
+		FALSE AS "temp_warning",
+		FALSE AS "battery_warning",
+		(CASE WHEN latest_locations.client_status = 'checked_out' THEN TRUE ELSE FALSE END) AS checkout_bool,
+		TRUE AS "kernel_updated",
+		job_queue.present AS "last_heard",
+		job_queue.uptime,
+		(CASE WHEN (CURRENT_TIMESTAMP - job_queue.present) < INTERVAL '30 SECONDS' THEN TRUE ELSE FALSE END) AS "online",
+		job_queue.job_active,
+		(CASE WHEN job_queue.job_queued IS NOT NULL THEN TRUE ELSE FALSE END) AS "job_queued",
+		job_queue.job_queued_position AS "queue_position",
+		job_queue.job_queued AS "job_name",
+		(CASE
+			WHEN job_queue.job_active = TRUE AND job_queue.job_queued IS NOT NULL THEN job_queue.clone_mode
+			ELSE 'N/A'
+		END) AS "job_clone_mode",
+		(CASE
+			WHEN job_queue.job_active = TRUE AND job_queue.job_queued IS NOT NULL THEN job_queue.erase_mode
+			ELSE 'N/A'
+		END) AS "job_erase_mode",
+		(CASE 
+			WHEN job_queue.job_active = TRUE THEN 'In Progress' || job_queue.status
+			WHEN job_queue.job_queued IS NOT NULL AND job_queue.job_active = FALSE THEN 'Queued' || job_queue.status
+			ELSE 'Idle'
+		END) AS "job_status",
+		(CASE
+			WHEN latest_job.erase_completed = TRUE THEN latest_job.time AT TIME ZONE 'America/Chicago'
+			WHEN latest_job.clone_completed = TRUE THEN latest_job.time AT TIME ZONE 'America/Chicago'
+			ELSE NULL
+		END) AS "last_job_time",
+		(CASE 
+			WHEN latest_job.clone_completed = TRUE THEN TRUE
+			ELSE FALSE
+		END) AS "os_installed",
+		static_image_names.image_name_readable AS "os_name",
+		NULL AS "os_updated",
+		(CASE 
+			WHEN latest_locations.ad_domain IS NOT NULL OR NOT latest_locations.ad_domain = 'none' THEN TRUE
+			ELSE FALSE
+		END) AS "domain_joined",
+		static_ad_domains.domain_name,
+		(CASE 
+			WHEN latest_jobstats.bios_version = static_bios_stats.bios_version THEN TRUE
+			ELSE FALSE
+		END) AS "bios_updated",
+		static_bios_stats.bios_version,
+		'0' AS "cpu_usage",
+		'0' AS "cpu_temp",
+		FALSE AS "cpu_temp_warning",
+		'0' AS ram_usage,
+		latest_jobstats.ram_capacity,
+		'0' AS "disk_usage",
+		latest_jobstats.disk_temp,
+		static_disk_stats.disk_type,
+		latest_jobstats.disk_capacity AS "disk_size",
+		'80' AS "max_disk_temp",
+		FALSE AS "disk_temp_warning",
+		'UP' AS "network_link_status",
+		job_queue.network_speed AS "network_link_speed",
+		'0' AS "network_usage",
+		job_queue.battery_charge,
+		job_queue.battery_status,
+		latest_jobstats.battery_health,
+		NULL AS "plugged_in",
+		job_queue.watts_now AS "power_usage"
 	FROM locations
-	LEFT JOIN jobstats ON locations.tagnumber = jobstats.tagnumber AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
-	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
-	LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status
-	LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
 	LEFT JOIN job_queue ON locations.tagnumber = job_queue.tagnumber
-	LEFT JOIN (SELECT tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY present DESC) AS queue_position FROM job_queue) AS t1 
-		ON job_queue.tagnumber = t1.tagnumber
-	LEFT JOIN LATERAL (SELECT tagnumber, MAX(time) AS "last_job_time" FROM jobstats WHERE jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber) GROUP BY tagnumber) AS t2
-		ON job_queue.tagnumber = t2.tagnumber
+	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
+	LEFT JOIN latest_locations ON locations.tagnumber = latest_locations.tagnumber
+	LEFT JOIN latest_jobstats ON locations.tagnumber = latest_jobstats.tagnumber
+	LEFT JOIN latest_job ON locations.tagnumber = latest_job.tagnumber
+	LEFT JOIN static_image_names ON latest_job.clone_image = static_image_names.image_name
+	LEFT JOIN static_bios_stats ON system_data.system_model = static_bios_stats.system_model
+	LEFT JOIN static_disk_stats ON latest_jobstats.disk_model = static_disk_stats.disk_model
+	LEFT JOIN static_ad_domains ON latest_locations.ad_domain = static_ad_domains.domain_name
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-	ORDER BY job_queue.present_bool = true, t2.last_job_time DESC NULLS LAST, t1.queue_position DESC NULLS LAST;`
+	ORDER BY locations.tagnumber;`
 
 	jobQueueRows := make([]JobQueueTableRow, 0, 560) // 560 is the # of clients
 
@@ -631,34 +717,54 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 		if err := rows.Scan(
 			&row.Tagnumber,
 			&row.SystemSerial,
-			&row.OSInstalled,
-			&row.OSName,
-			&row.KernelUpdated,
-			&row.BIOSUpdated,
-			&row.BIOSVersion,
 			&row.SystemManufacturer,
 			&row.SystemModel,
-			&row.BatteryCharge,
-			&row.BatteryStatus,
-			&row.CPUTemp,
-			&row.DiskTemp,
-			&row.MaxDiskTemp,
-			&row.PowerUsage,
-			&row.NetworkUsage,
+			&row.Location,
+			&row.Department,
 			&row.ClientStatus,
 			&row.IsBroken,
-			&row.JobQueued,
-			&row.QueuePosition,
-			&row.JobActive,
-			&row.JobName,
-			&row.JobStatus,
-			&row.JobCloneMode,
-			&row.JobEraseMode,
-			&row.LastJobTime,
-			&row.Location,
+			&row.DiskRemoved,
+			&row.TempWarning,
+			&row.BatteryHealthWarning,
+			&row.CheckoutBool,
+			&row.KernelUpdated,
 			&row.LastHeard,
 			&row.Uptime,
 			&row.Online,
+			&row.JobActive,
+			&row.JobQueued,
+			&row.QueuePosition,
+			&row.JobName,
+			&row.JobCloneMode,
+			&row.JobEraseMode,
+			&row.JobStatus,
+			&row.LastJobTime,
+			&row.OSInstalled,
+			&row.OSName,
+			&row.OSUpdated,
+			&row.DomainJoined,
+			&row.DomainName,
+			&row.BIOSUpdated,
+			&row.BIOSVersion,
+			&row.CPUUsage,
+			&row.CPUTemp,
+			&row.CPUTempWarning,
+			&row.RAMUsage,
+			&row.RAMCapacity,
+			&row.DiskUsage,
+			&row.DiskTemp,
+			&row.DiskType,
+			&row.DiskSize,
+			&row.MaxDiskTemp,
+			&row.DiskTempWarning,
+			&row.NetworkLinkStatus,
+			&row.NetworkLinkSpeed,
+			&row.NetworkUsage,
+			&row.BatteryCharge,
+			&row.BatteryStatus,
+			&row.BatteryHealth,
+			&row.PluggedIn,
+			&row.PowerUsage,
 		); err != nil {
 			return nil, err
 		}
