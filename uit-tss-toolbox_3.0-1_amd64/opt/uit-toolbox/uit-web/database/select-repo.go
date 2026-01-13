@@ -170,7 +170,7 @@ func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]Manufacturer
 
 func (repo *Repo) ClientLookupByTag(ctx context.Context, tag int64) (*ClientLookup, error) {
 	var clientLookup ClientLookup
-	const sqlQuery = `SELECT tagnumber, system_serial FROM locations WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1;`
+	const sqlQuery = `SELECT tagnumber, system_serial FROM locations WHERE tagnumber = $1 ORDER BY time DESC NULLS LAST LIMIT 1;`
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
 	if err := row.Scan(&clientLookup.Tagnumber, &clientLookup.SystemSerial); err != nil {
 		return nil, err
@@ -180,7 +180,7 @@ func (repo *Repo) ClientLookupByTag(ctx context.Context, tag int64) (*ClientLook
 
 func (repo *Repo) ClientLookupBySerial(ctx context.Context, serial string) (*ClientLookup, error) {
 	var clientLookup ClientLookup
-	const sqlQuery = `SELECT tagnumber, system_serial FROM locations WHERE system_serial = $1 ORDER BY time DESC LIMIT 1;`
+	const sqlQuery = `SELECT tagnumber, system_serial FROM locations WHERE system_serial = $1 ORDER BY time DESC NULLS LAST LIMIT 1;`
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, serial)
 	if err := row.Scan(&clientLookup.Tagnumber, &clientLookup.SystemSerial); err != nil {
 		return nil, err
@@ -322,7 +322,7 @@ func (repo *Repo) GetJobQueueOverview(ctx context.Context) (*JobQueueOverview, e
 }
 
 func (repo *Repo) GetNotes(ctx context.Context, noteType string) (*NotesTable, error) {
-	const sqlQuery = `SELECT time AT TIME ZONE 'America/Chicago', note_type, note FROM notes WHERE note_type = $1 ORDER BY time DESC LIMIT 1;`
+	const sqlQuery = `SELECT time AT TIME ZONE 'America/Chicago', note_type, note FROM notes WHERE note_type = $1 ORDER BY time DESC NULLS LAST LIMIT 1;`
 
 	var notesTable NotesTable
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, noteType)
@@ -402,7 +402,7 @@ func (repo *Repo) GetLocationFormData(ctx context.Context, tag int64) (*Inventor
 	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 	AND locations.tagnumber = $1
-	ORDER BY locations.time DESC
+	ORDER BY locations.time DESC NULLS LAST
 	LIMIT 1;`
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
 
@@ -578,7 +578,7 @@ func (repo *Repo) GetClientBatteryHealth(ctx context.Context, tagnumber int64) (
 	FROM jobstats 
 	LEFT JOIN client_health ON jobstats.tagnumber = client_health.tagnumber
 	WHERE jobstats.tagnumber = $1 
-	ORDER BY jobstats.time DESC LIMIT 1;`
+	ORDER BY jobstats.time DESC NULLS LAST LIMIT 1;`
 
 	var batteryHealth ClientBatteryHealth
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, tagnumber)
@@ -616,7 +616,7 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 			jobstats.job_failed
 		FROM jobstats
 		WHERE jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE
-		ORDER BY jobstats.tagnumber, jobstats.time DESC)
+		ORDER BY jobstats.tagnumber, jobstats.time DESC NULLS LAST)
 	SELECT
 		latest_locations.tagnumber,
 		latest_locations.system_serial,
