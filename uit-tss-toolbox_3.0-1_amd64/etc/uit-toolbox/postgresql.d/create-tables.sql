@@ -380,28 +380,28 @@ CREATE TABLE IF NOT EXISTS static_department_info (
 
 DROP TABLE IF EXISTS static_job_names;
 CREATE TABLE IF NOT EXISTS static_job_names (
-  job VARCHAR(24) PRIMARY KEY,
-  job_readable VARCHAR(24) DEFAULT NULL,
-  job_rank SMALLINT DEFAULT NULL,
-  job_visible BOOLEAN DEFAULT NULL
+  job_name VARCHAR(24) PRIMARY KEY,
+  job_name_readable VARCHAR(24) DEFAULT NULL,
+  job_sort_order SMALLINT DEFAULT NULL,
+  job_hidden BOOLEAN DEFAULT FALSE
 );
 
 INSERT INTO 
-    static_job_names (job, job_readable, job_rank, job_visible)
+    static_job_names (job_name, job_name_readable, job_sort_order, job_hidden)
 VALUES 
-    ('update', 'Update', 20, TRUE),
-    ('findmy', 'Play Sound', 30, TRUE),
-    ('hpEraseAndClone', 'Erase and Clone', 40, FALSE),
-    ('generic-erase+clone', 'Erase and Clone (manual)', 41, FALSE),
-    ('hpCloneOnly', 'Clone Only', 50, TRUE),
-    ('generic-clone', 'Clone Only (manual)', 51, FALSE),
-    ('nvmeErase', 'Erase Only', 60, TRUE),
-    ('generic-erase', 'Erase Only (manual)', 61, FALSE),
-    ('nvmeVerify', 'Verify Erase', 70, FALSE),
-    ('data collection', 'Data Collection', 80, FALSE),
-    ('shutdown', 'Shutdown', 90, FALSE),
-    ('clean-shutdown', 'Shutdown', 91, TRUE),
-    ('cancel', 'Cancel/Clear Job(s)', 95, TRUE)
+    ('update', 'Update', 20, FALSE),
+    ('findmy', 'Play Sound', 30, FALSE),
+    ('hpEraseAndClone', 'Erase and Clone', 40, TRUE),
+    ('generic-erase+clone', 'Erase and Clone (manual)', 41, TRUE),
+    ('hpCloneOnly', 'Clone Only', 50, FALSE),
+    ('generic-clone', 'Clone Only (manual)', 51, TRUE),
+    ('nvmeErase', 'Erase Only', 60, FALSE),
+    ('generic-erase', 'Erase Only (manual)', 61, TRUE),
+    ('nvmeVerify', 'Verify Erase', 70, TRUE),
+    ('data collection', 'Data Collection', 80, TRUE),
+    ('shutdown', 'Shutdown', 90, TRUE),
+    ('clean-shutdown', 'Shutdown', 91, FALSE),
+    ('cancel', 'Cancel/Clear Job(s)', 95, FALSE)
     ;
 
 
