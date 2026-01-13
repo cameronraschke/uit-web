@@ -59,9 +59,9 @@ type AllJobs = {
 	job_hidden: boolean;
 };
 
-const updateOnlineJobQueueForm = document.getElementById('update-online-job-queue-form') as HTMLFormElement | null;
-const updateOnlineJobQueueSelect = document.getElementById('update-online-job-queue-select') as HTMLSelectElement | null;
-const updateOnlineJobQueueButton = document.getElementById('update-online-job-queue-button') as HTMLButtonElement | null;
+const updateOnlineJobQueueForm = document.getElementById('update-all-online-jobs-form') as HTMLFormElement | null;
+const updateOnlineJobQueueSelect = document.getElementById('update-all-online-jobs-select') as HTMLSelectElement | null;
+const updateOnlineJobQueueButton = document.getElementById('update-all-online-jobs-submit') as HTMLButtonElement | null;
 
 let jobQueueInterval: number;
 
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function getAllJobs(): Promise<AllJobs[]> {
 	try {
-		const data: AllJobs[] = await fetchData('/api/job_queue/all_jobs', true);
+		const data: AllJobs[] = await fetchData('/api/job_queue/all_jobs', false);
 		if (Array.isArray(data)) {
 			return data;
 		} else {
@@ -103,6 +103,10 @@ async function getAllJobs(): Promise<AllJobs[]> {
 		
 
 if (updateOnlineJobQueueForm && updateOnlineJobQueueSelect && updateOnlineJobQueueButton) {
+	updateOnlineJobQueueSelect.addEventListener('change', () => {
+		updateOnlineJobQueueButton.disabled = updateOnlineJobQueueSelect.value === '';
+	});
+
 	updateOnlineJobQueueForm.addEventListener('submit', async (event) => {
 		event.preventDefault();
 		updateOnlineJobQueueSelect.disabled = true;
