@@ -17,7 +17,7 @@
 
 		
 		<form id="update-all-online-jobs-form">
-			<input type="hidden" name="csrf_token" value="{{ .CsrfToken }}">
+			<input type="hidden" name="csrf_token" value="{{ .JSNonce }}" />
 			<div id="job-queue-controls" class="flex-container">
 				<label for="update-all-online-jobs-select">Filter Jobs:</label>
 				<select id="update-all-online-jobs-select">
