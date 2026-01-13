@@ -116,3 +116,31 @@ func (repo *Repo) SetClientBatteryHealth(ctx context.Context, uuid string, healt
 
 	return nil
 }
+
+func (repo *Repo) SetAllJobs(ctx context.Context, allJobs AllJobs) (err error) {
+	if repo.DB == nil {
+		return errors.New("database connection is nil in SetAllJobs")
+	}
+	var job = allJobs.JobName
+
+	sqlCode := `UPDATE job_queue SET job_queued = $1 WHERE NOW() - present < INTERVAL '30 SECONDS';`
+
+	tx, err := repo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+	// Don't check rows affected - could be no clients online
+	_, err = tx.ExecContext(ctx, sqlCode, job)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

@@ -383,11 +383,11 @@ CREATE TABLE IF NOT EXISTS static_job_names (
   job VARCHAR(24) PRIMARY KEY,
   job_readable VARCHAR(24) DEFAULT NULL,
   job_rank SMALLINT DEFAULT NULL,
-  job_html_bool BOOLEAN DEFAULT NULL
+  job_visible BOOLEAN DEFAULT NULL
 );
 
 INSERT INTO 
-    static_job_names (job, job_readable, job_rank, job_html_bool)
+    static_job_names (job, job_readable, job_rank, job_visible)
 VALUES 
     ('update', 'Update', 20, TRUE),
     ('findmy', 'Play Sound', 30, TRUE),

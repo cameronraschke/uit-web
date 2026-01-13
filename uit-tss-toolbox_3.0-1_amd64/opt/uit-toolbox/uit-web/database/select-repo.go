@@ -813,3 +813,36 @@ func (repo *Repo) GetBatteryStandardDeviation(ctx context.Context) ([]ClientRepo
 
 	return clientReports, nil
 }
+
+func (repo *Repo) GetAllJobs(ctx context.Context) ([]AllJobs, error) {
+	const sqlQuery = `SELECT static_job_names.job_name, 
+		static_job_names.job_name_readable, 
+		static_job_names.job_sort_order, 
+		static_job_names.job_hidden
+	FROM static_job_names
+	ORDER BY static_job_names.job_sort_order ASC;`
+
+	var allJobs []AllJobs
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var job AllJobs
+		if err := rows.Scan(
+			&job.JobName,
+			&job.JobNameReadable,
+			&job.JobSortOrder,
+			&job.JobHidden,
+		); err != nil {
+			return nil, err
+		}
+		allJobs = append(allJobs, job)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return allJobs, nil
+}

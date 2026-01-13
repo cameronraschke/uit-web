@@ -76,11 +76,13 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/departments", httpsFullAPIChain.ThenFunc(endpoints.GetDepartments))
 	httpsRouter.Handle("GET /api/check_auth", httpsFullAPIChain.ThenFunc(endpoints.CheckAuth))
 	httpsRouter.Handle("GET /api/reports/battery/stats", httpsFullAPIChain.ThenFunc(endpoints.GetBatteryStandardDeviation))
+	httpsRouter.Handle("GET /api/job_queue/all_jobs", httpsFullAPIChain.ThenFunc(endpoints.GetAllJobs))
 
 	httpsRouter.Handle("POST /api/notes", httpsFullAPIChain.ThenFunc(endpoints.InsertNewNote))
 	httpsRouter.Handle("POST /api/update_inventory", httpsFullAPIChain.ThenFunc(endpoints.UpdateInventory))
 	httpsRouter.Handle("POST /api/images/toggle_pin", httpsFullAPIChain.ThenFunc(endpoints.TogglePinImage))
 	httpsRouter.Handle("POST /api/client/health/battery", httpsFullAPIChain.ThenFunc(endpoints.SetClientBatteryHealth))
+	httpsRouter.Handle("POST /api/job_queue/set_all_jobs", httpsFullAPIChain.ThenFunc(endpoints.SetAllJobs))
 
 	httpsRouter.Handle("DELETE /api/images", httpsFullAPIChain.ThenFunc(endpoints.DeleteImage))
 

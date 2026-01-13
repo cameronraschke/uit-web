@@ -52,11 +52,106 @@ type JobQueueTableRow = {
 	power_usage: number | null;
 };
 
+type AllJobs = {
+	job_name: string;
+	job_name_readable: string;
+	job_sort_order: number;
+	job_hidden: boolean;
+};
+
+const updateOnlineJobQueueForm = document.getElementById('update-online-job-queue-form') as HTMLFormElement | null;
+const updateOnlineJobQueueSelect = document.getElementById('update-online-job-queue-select') as HTMLSelectElement | null;
+const updateOnlineJobQueueButton = document.getElementById('update-online-job-queue-button') as HTMLButtonElement | null;
+
 let jobQueueInterval: number;
-getJobQueueData();
-jobQueueInterval = setInterval(() => {
+
+document.addEventListener('DOMContentLoaded', async () => {
+	const allJobs = await getAllJobs();
+	if (updateOnlineJobQueueSelect) {
+		for (const job of allJobs) {
+			if (job.job_hidden) {
+				continue;
+			}
+			const option = document.createElement('option');
+			option.value = job.job_name;
+			option.textContent = job.job_name_readable;
+			updateOnlineJobQueueSelect.appendChild(option);
+		}
+	}
+
+	// Initial fetch and set interval for realtime updates
 	getJobQueueData();
-}, 10000);
+	jobQueueInterval = setInterval(() => {
+		getJobQueueData();
+	}, 10000);
+});
+
+async function getAllJobs(): Promise<AllJobs[]> {
+	try {
+		const data: AllJobs[] = await fetchData('/api/job_queue/all_jobs', true);
+		if (Array.isArray(data)) {
+			return data;
+		} else {
+			console.error('Expected array but got:', data);
+			return [];
+		}
+	} catch (error) {
+		console.error('Error fetching all jobs:', error);
+		return [];
+	}
+}
+		
+
+if (updateOnlineJobQueueForm && updateOnlineJobQueueSelect && updateOnlineJobQueueButton) {
+	updateOnlineJobQueueForm.addEventListener('submit', async (event) => {
+		event.preventDefault();
+		updateOnlineJobQueueSelect.disabled = true;
+		updateOnlineJobQueueButton.disabled = true;
+
+		const selectedValue = updateOnlineJobQueueSelect.value;
+		if (!selectedValue) {
+			alert('Please select a valid job to queue.');
+			updateOnlineJobQueueSelect.disabled = false;
+			updateOnlineJobQueueButton.disabled = false;
+			return;
+		}
+
+		try {
+			const allJobsArr: AllJobs[] = await getAllJobs();
+			if (!allJobsArr || !Array.isArray(allJobsArr) || allJobsArr.length === 0) {
+				throw new Error('Failed to get available jobs from ' + '/api/job_queue/all_jobs');
+			}
+
+			for (const job of allJobsArr) {
+				if (job.job_name === selectedValue) {
+					let clientJob: AllJobs = {
+						job_name: job.job_name,
+						job_name_readable: job.job_name_readable,
+						job_sort_order: job.job_sort_order,
+						job_hidden: job.job_hidden
+					};
+					const response = await fetch('/api/job_queue/update_all_online_clients', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+						},
+						body: JSON.stringify({ clientJob }),
+					});
+					if (!response.ok) {
+						throw new Error('Server responded with ' + response.status);
+					}
+				}
+			}
+
+		} catch (error) {
+			console.error('Error updating all online clients with the selected job:', error);
+			alert('An error occurred while updating all online clients with the selected job.');
+		} finally {
+			updateOnlineJobQueueSelect.disabled = false;
+			updateOnlineJobQueueButton.disabled = false;
+		}
+	});
+}
 
 document.addEventListener('visibilitychange', () => {
 	clearInterval(jobQueueInterval);

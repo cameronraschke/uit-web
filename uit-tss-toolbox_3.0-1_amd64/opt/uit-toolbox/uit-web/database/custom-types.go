@@ -251,3 +251,10 @@ type ClientReport struct {
 	BatteryHealthStdDev    *float64   `json:"battery_health_stddev"`
 	BatteryHealthTimestamp *time.Time `json:"battery_health_timestamp"`
 }
+
+type AllJobs struct {
+	JobName         string `json:"job_name"`
+	JobNameReadable string `json:"job_name_readable"`
+	JobSortOrder    int    `json:"job_sort_order"`
+	JobHidden       bool   `json:"job_hidden"`
+}

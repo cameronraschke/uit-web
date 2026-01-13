@@ -777,3 +777,44 @@ func SetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 	}
 	middleware.WriteJson(w, http.StatusOK, "Battery health updated successfully")
 }
+
+func SetAllJobs(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx)
+
+	if req.Method != http.MethodPost {
+		log.HTTPWarning(req, "Invalid HTTP method for SetAllJobs")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	clientBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.HTTPWarning(req, "Cannot read request body for SetAllJobs: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	var clientJson database.AllJobs
+
+	if err := json.Unmarshal(clientBody, &clientJson); err != nil {
+		log.HTTPWarning(req, "Cannot decode SetAllJobs JSON: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.HTTPWarning(req, "no database connection available for SetAllJobs")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	repo := database.NewRepo(db)
+	err = repo.SetAllJobs(ctx, clientJson)
+	if err != nil {
+		log.HTTPError(req, "Failed to set all jobs: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, "All jobs set successfully")
+}

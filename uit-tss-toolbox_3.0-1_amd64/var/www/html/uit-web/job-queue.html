@@ -15,6 +15,20 @@
 		<div><h1>UIT - ITSC Inventory Management</h1></div>
 		<div id="main-content"><h2>Job Queue</h2></div>
 
+		
+		<form id="update-all-online-jobs-form">
+			<input type="hidden" name="csrf_token" value="{{ .CsrfToken }}">
+			<div id="job-queue-controls" class="flex-container">
+				<label for="update-all-online-jobs-select">Filter Jobs:</label>
+				<select id="update-all-online-jobs-select">
+					<option value="" disabled selected>Update All Online Jobs</option>
+					<!-- Rest of options populated w/ JS -->
+				</select>
+				<button id="update-all-online-jobs-submit" type="submit" disabled>Update All Online Jobs</button>
+			</div>
+		</form>
+
+			
     <div id="online-container" class="flex-container">
 			<table id="online-clients-table">
 				<thead>
