@@ -205,6 +205,7 @@ type JobQueueTableRow struct {
 	JobQueued            *bool          `json:"job_queued"`
 	QueuePosition        *int64         `json:"queue_position"`
 	JobName              *string        `json:"job_name"`
+	JobNameReadable      *string        `json:"job_name_readable"`
 	JobCloneMode         *string        `json:"job_clone_mode"`
 	JobEraseMode         *string        `json:"job_erase_mode"`
 	JobStatus            *string        `json:"job_status"`

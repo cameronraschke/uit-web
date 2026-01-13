@@ -638,6 +638,7 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 		(CASE WHEN job_queue.job_queued IS NOT NULL THEN TRUE ELSE FALSE END) AS "job_queued",
 		job_queue.job_queued_position AS "queue_position",
 		job_queue.job_queued AS "job_name",
+		static_job_names.job_name_readable,
 		(CASE
 			WHEN job_queue.job_active = TRUE AND job_queue.job_queued IS NOT NULL THEN job_queue.clone_mode
 			ELSE 'N/A'
@@ -698,6 +699,7 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 	LEFT JOIN latest_jobstats ON locations.tagnumber = latest_jobstats.tagnumber
 	LEFT JOIN latest_job ON locations.tagnumber = latest_job.tagnumber
 	LEFT JOIN static_image_names ON latest_job.clone_image = static_image_names.image_name
+	LEFT JOIN static_job_names ON job_queue.job_queued = static_job_names.job_name
 	LEFT JOIN static_bios_stats ON system_data.system_model = static_bios_stats.system_model
 	LEFT JOIN static_disk_stats ON latest_jobstats.disk_model = static_disk_stats.disk_model
 	LEFT JOIN static_ad_domains ON latest_locations.ad_domain = static_ad_domains.domain_name
@@ -735,6 +737,7 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 			&row.JobQueued,
 			&row.QueuePosition,
 			&row.JobName,
+			&row.JobNameReadable,
 			&row.JobCloneMode,
 			&row.JobEraseMode,
 			&row.JobStatus,

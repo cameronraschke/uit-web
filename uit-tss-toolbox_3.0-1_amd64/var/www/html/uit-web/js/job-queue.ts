@@ -20,6 +20,7 @@ type JobQueueTableRow = {
 	job_queued: boolean | null;
 	queue_position: number | null;
 	job_name: string | null;
+	job_name_readable: string | null;
 	job_clone_mode: string | null;
 	job_erase_mode: string | null;
 	job_status: string | null;
@@ -139,7 +140,7 @@ if (updateOnlineJobQueueForm && updateOnlineJobQueueSelect && updateOnlineJobQue
 						headers: {
 							'Content-Type': 'application/json',
 						},
-						body: JSON.stringify({ clientJob }),
+						body: JSON.stringify(clientJob),
 					});
 					if (!response.ok) {
 						throw new Error('Server responded with ' + response.status);
@@ -201,6 +202,15 @@ function updateJobQueueTable(data: JobQueueTableRow[]) {
 		tagLink.target = '_blank';
 		tagCell.appendChild(tagLink);
 		row.appendChild(tagCell);
+
+		if (entry.online) {
+			const imageTd = document.createElement('td');
+			row.appendChild(imageTd);
+		}
+
+		const jobQueuedCell = document.createElement('td');
+		jobQueuedCell.textContent = entry.job_name;
+		row.appendChild(jobQueuedCell);
 
 		if (entry.online) {
 			onlineTableFragment.appendChild(row);
