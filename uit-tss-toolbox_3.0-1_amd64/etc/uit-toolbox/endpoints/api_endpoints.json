@@ -31,5 +31,9 @@
 	},
 	"/api/domains": {},
 	"/api/departments": {},
-	"/api/reports/battery/stats": {}
+	"/api/reports/battery/stats": {},
+	"/api/job_queue/all_jobs": {},
+	"/api/job_queue/set_all_jobs": {
+		"allowed_methods": ["OPTIONS", "POST"]
+	}
 }
