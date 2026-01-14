@@ -70,7 +70,7 @@ async function lookupTagOrSerial(tagnumber: number | null, serial: string | null
 }
 
 async function submitInventoryLookup() {
-	await setFiltersFromURL();
+	await updateURLFilters();
 	const searchParams: URLSearchParams = new URLSearchParams(window.location.search);
 	const lookupTag: number | null = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : (searchParams.get('tagnumber') ? Number(searchParams.get('tagnumber')) : null);
   const lookupSerial: string | null = inventoryLookupSystemSerialInput.value || searchParams.get('system_serial') || null;
@@ -183,7 +183,7 @@ inventoryLookupFormResetButton.addEventListener("click", (event) => {
   event.preventDefault();
 	history.replaceState(null, '', window.location.pathname);
   resetInventoryLookupAndUpdateForm();
-	updateURLParameters(null, null);
+	setURLParameter(null, null);
 });
 
 inventoryLookupMoreDetailsButton.addEventListener("click", (event) => {
@@ -207,7 +207,7 @@ inventoryUpdateFormCancelButton.addEventListener("click", (event) => {
   event.preventDefault();
 	history.replaceState(null, '', window.location.pathname);
   resetInventoryLookupAndUpdateForm();
-	updateURLParameters(null, null);
+	setURLParameter(null, null);
 });
 
 function renderTagOptions(tags: number[]): void {
@@ -257,7 +257,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
   if (updatingInventory) return;
   updatingInventory = true;
 
-	await setFiltersFromURL();
+	updateURLFilters();
 
   try {
     const jsonObject: { [key: string]: any } = {};
@@ -508,7 +508,6 @@ async function fetchDepartments(purgeCache: boolean = false): Promise<Array<Depa
 }
 
 async function initializeInventoryPage() {
-	setFiltersFromURL();
 	initializeSearch();
 
 	try {

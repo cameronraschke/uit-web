@@ -58,7 +58,7 @@ const urlSearchParams: FilterParams[] = [
 let allModelsData: string[] = [];
 
 function initializeSearch() {
-	setFiltersFromURL();
+	updateURLFilters();
 
 	createFilterResetHandler(filterLocation, filterLocationReset);
 	createFilterResetHandler(filterDepartment, filterDepartmentReset);
@@ -75,7 +75,7 @@ function initializeSearch() {
 function resetSearchURLParameters() {
 	for (const param of urlSearchParams) {
 		if (!param.paramString) continue;
-		updateURLParameters(param.paramString, null);
+		setURLParameter(param.paramString, null);
 	}
 }
 
@@ -92,7 +92,7 @@ function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton:
 	filterElement.addEventListener("change", () => {
 		resetButton.style.display = 'inline-block';
 		const paramString = getURLParamName(filterElement);
-		updateURLParameters(paramString, filterElement.value);
+		setURLParameter(paramString, filterElement.value);
 		if ((filterElement.value && filterElement.value.trim().length >= 0) || typeof filterElement.value === 'boolean') {
 			resetButton.style.display = 'inline-block';
 		} else {
@@ -133,45 +133,17 @@ function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton:
 async function fetchFilteredInventoryData(csvDownload = false): Promise<void> {
 	const currentParams = new URLSearchParams(window.location.search);
 
-	const update = currentParams.get('update');
-	const tagnumber = currentParams.get('tagnumber') || null;
-	const systemSerial = currentParams.get('system_serial') || null;
+	setURLParameter('update', currentParams.get('update')?.trim() || null);
+	setURLParameter('tagnumber', currentParams.get('tagnumber')?.trim() || null);
+	setURLParameter('system_serial', currentParams.get('system_serial')?.trim() || null);
 
-	const location = filterLocation.value.trim() || null;
-	const department = filterDepartment.value.trim() || null;
-	const manufacturer = filterManufacturer.value.trim() || null;
-	const model = filterModel.value.trim() || null;
-	const domain = filterDomain.value.trim() || null;
-	const status = filterStatus.value.trim() || null;
-	const broken = filterBroken.value.trim() || null;
-	const hasImages = filterHasImages.value.trim() || null;
+	updateURLFilters();
 
-	const browserQuery = new URLSearchParams();
-	if (update) browserQuery.set('update', update);
-	if (tagnumber) browserQuery.set('tagnumber', tagnumber);
-	if (systemSerial) browserQuery.set('system_serial', systemSerial);
-	if (location) browserQuery.set('location', location);
-	if (department) browserQuery.set('department_name', department);
-	if (manufacturer) browserQuery.set('system_manufacturer', manufacturer);
-	if (model) browserQuery.set('system_model', model);
-	if (domain) browserQuery.set('ad_domain', domain);
-	if (status) browserQuery.set('status', status);
-	if (broken) browserQuery.set('is_broken', broken);
-	if (hasImages) browserQuery.set('has_images', hasImages);
-
-	const apiQuery = new URLSearchParams(browserQuery); // Copy
-	if (update === "true") {
+	const apiQuery = new URLSearchParams(); // API query parameters
+	if (currentParams.get('update') === "true") {
 		apiQuery.delete("update");
 		apiQuery.delete("tagnumber");
 		apiQuery.delete("system_serial");
-	}
-
-	const newURL = new URL(window.location.href);
-	newURL.search = browserQuery.toString();
-	if (browserQuery.toString()) {
-		history.replaceState(null, '', newURL.pathname + '?' + browserQuery.toString());
-	} else {
-		history.replaceState(null, '', newURL.pathname);
 	}
 
 	if (csvDownload) {
@@ -291,10 +263,10 @@ async function populateManufacturerSelect(purgeCache: boolean = false) {
 
   filterManufacturer.value = (initialValue && uniqueArray.some(item => item.system_manufacturer === initialValue)) ? initialValue : '';
 	if (filterManufacturer.value !== '') {
-		updateURLParameters('system_manufacturer', filterManufacturer.value);
+		setURLParameter('system_manufacturer', filterManufacturer.value);
 		filterModel.disabled = false;
 	} else {
-		updateURLParameters('system_manufacturer', null);
+		setURLParameter('system_manufacturer', null);
 	}
 	filterManufacturer.disabled = false;
 }
@@ -308,7 +280,7 @@ async function populateModelSelect(purgeCache: boolean = false) {
 
 	if (!filterManufacturer.value || filterManufacturer.value.trim().length === 0) {
 		resetSelectElement(filterModel, 'Model', true);
-		updateURLParameters('system_model', null);
+		setURLParameter('system_model', null);
 		return;
 	}
 

@@ -185,11 +185,10 @@ function getURLParamName(filterElement: HTMLSelectElement): string {
 	return '';
 }
 
-function setFiltersFromURL(): void {
-	const currentParams = new URLSearchParams(window.location.search);
+function updateURLFilters(): void {
 	for (const param of urlSearchParams) {
-		if (!param.inputElement || !param.paramString) continue;
-		param.inputElement.value = currentParams.get(param.paramString) || '';
+		if (!param.inputElement.value || !param.paramString) continue;
+		setURLParameter(param.paramString, param.inputElement.value);
 	}
 }
 
@@ -339,7 +338,7 @@ async function getTagsFromServer(): Promise<TagCache | null> {
 	}
 }
 
-function updateURLParameters(urlParameter: string | null, value: string | null) {
+function setURLParameter(urlParameter: string | null, value: string | null) {
 	const newURL = new URL(window.location.href);
 	if (urlParameter && value) {
 		newURL.searchParams.set(urlParameter, value);
