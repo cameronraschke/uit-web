@@ -152,11 +152,11 @@ func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]Manufacturer
 	defer rows.Close()
 
 	for rows.Next() {
-		var mam ManufacturersAndModels
-		if err := rows.Scan(&mam.SystemModel, &mam.SystemModelFormatted, &mam.SystemManufacturer, &mam.SystemManufacturerFormatted); err != nil {
+		var row ManufacturersAndModels
+		if err := rows.Scan(&row.SystemModel, &row.SystemManufacturer); err != nil {
 			return nil, err
 		}
-		manufacturersAndModels = append(manufacturersAndModels, mam)
+		manufacturersAndModels = append(manufacturersAndModels, row)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
