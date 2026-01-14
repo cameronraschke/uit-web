@@ -8,20 +8,20 @@
 	<link rel="stylesheet" href="../css/test.css" />
 	<title>Test Page - ITSC Mgmt</title>
 	<style>
-		.container {
+		.client-row-container {
 			display: flex;
 			flex-direction: column;
 			position: relative;
 			justify-content: center;
 			width: 93dvw;
 			padding: 0.5rem 0.5rem 0.5rem 1rem;
-			margin-top: 3dvh;
+			margin-top: 3rem;
 			margin-left: 3dvw; 
 			margin-right: 3dvw;
 			border: 1px solid black;
 			border-radius: 1rem;
 		}
-		.grid-container {
+		.client-row-grid {
 			display: grid;
 			grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 			grid-template-rows: auto;
@@ -104,7 +104,7 @@
 			}
 		}
 		@media (max-width: 880px) {
-			.grid-container {
+			.client-row-grid {
 				grid-template-columns: 1fr;
 			}
 			.image-container {
@@ -117,66 +117,68 @@
 		}
 	</style>
 	<body>
-		<div class="container">
-			<div class="grid-container">
-				<div class="grid-item">
-					<p><b>111111</b></p>
-					<p><i>Serial Number</i></p>
-					<p><i>Manufacturer/Model</i></p>
-					<p><i>Location (location status)</i></p>
-					<p><i>Department</i></p>
-					<p><i>Status Icons</i></p>
-				</div>
-				<div id="live-view" class="grid-item">
-					<p><b>Live View</b></p>
-					<p><i>Last Heard: (timestamp)</i></p>
-					<!-- 16:9 aspect ratio -->
-					<div class="image-container">
-						<h2 id="client-offline">Client Offline</h2>
+		<div id="online-clients">
+			<div class="client-row-container">
+				<div class="client-row-grid">
+					<div class="grid-item headers">
+						<p><b>111111</b></p>
+						<p><i>Serial Number</i></p>
+						<p><i>Manufacturer/Model</i></p>
+						<p><i>Location (location status)</i></p>
+						<p><i>Department</i></p>
+						<p><i>Status Icons</i></p>
+					</div>
+					<div id="live-view" class="grid-item">
+						<p><b>Live View</b></p>
+						<p><i>Last Heard: (timestamp)</i></p>
+						<!-- 16:9 aspect ratio -->
+						<div class="image-container">
+							<h2 id="client-offline">Client Offline</h2>
+						</div>
+					</div>
+					<div class="grid-item">
+						<p><b>Job Queue</b></p>
+						<p><i>Job Status</i></p>
+						<div>
+							<select>
+								<option selected disabled>Queue Job</option>
+								<option>#1 in Queue</option>
+								<option>Job 1</option>
+								<option>Job 2</option>
+								<option>Job 3</option>
+							</select>
+							<span> [red 'x' icon] </span>
+						</div>
+						<p><i>Last Job Time (job fail warnings, [in progress])</i></p>
+						<p><i>Uptime (duration) since (timestamp)</i></p>
+					</div>
+					<div class="grid-item">
+						<p><b>Software Info</b></p>
+						<p><i>OS Installed (version, up to date)</i></p>
+						<p><i>AD Domain Joined (domain name)</i></p>
+						<p><i>BIOS Updated (version)</i></p>
+						<p><i></i></p>
+					</div>
+					<div class="grid-item">
+						<p><b>Hardware Info</b></p>
+						<p><i>CPU <span>(30%/50*C)</span> <span>(warnings)</span></i></p>
+						<p><i>RAM <span>(40%/4GB)</span> <span>(warnings)</span></i></p>
+						<p><i>Disk <span>(5%/40*C)</span> <span>(warnings)</span></i></p>
+						<p><i>Network <span>(100mbps/1000mbps)</span> <span>(warnings)</span></i></p>
+						<p><i>Battery <span>(80%/Charging)</span> <span>(warnings)</span></i></p>
+					</div>
+					<div class="grid-item">
+						<p><b>Other Info</b></p>
+						<p><i>Most Recent Note (timestamp) - Note content... (truncated)</i></p>
+						<p><i>Upload Client Images</i></p>
+						<p><i>View Client Images</i></p>
 					</div>
 				</div>
-				<div class="grid-item">
-					<p><b>Job Queue</b></p>
-					<p><i>Job Status</i></p>
-					<div>
-						<select>
-							<option selected disabled>Queue Job</option>
-							<option>#1 in Queue</option>
-							<option>Job 1</option>
-							<option>Job 2</option>
-							<option>Job 3</option>
-						</select>
-						<span> [red 'x' icon] </span>
-					</div>
-					<p><i>Last Job Time (job fail warnings, [in progress])</i></p>
-					<p><i>Uptime (duration) since (timestamp)</i></p>
+				<div id="button-container">
+					<button id="edit-client-button">Edit Client Info [edit icon]</button>
+					<button id="view-reports-button">View Reports [search icon]</button>
+					<button id="shutdown-button">Shutdown/restart Client [shutdown icon]</button>
 				</div>
-				<div class="grid-item">
-					<p><b>Software Info</b></p>
-					<p><i>OS Installed (version, up to date)</i></p>
-					<p><i>AD Domain Joined (domain name)</i></p>
-					<p><i>BIOS Updated (version)</i></p>
-					<p><i></i></p>
-				</div>
-				<div class="grid-item">
-					<p><b>Hardware Info</b></p>
-					<p><i>CPU <span>(30%/50*C)</span> <span>(warnings)</span></i></p>
-					<p><i>RAM <span>(40%/4GB)</span> <span>(warnings)</span></i></p>
-					<p><i>Disk <span>(5%/40*C)</span> <span>(warnings)</span></i></p>
-					<p><i>Network <span>(100mbps/1000mbps)</span> <span>(warnings)</span></i></p>
-					<p><i>Battery <span>(80%/Charging)</span> <span>(warnings)</span></i></p>
-				</div>
-				<div class="grid-item">
-					<p><b>Other Info</b></p>
-					<p><i>Most Recent Note (timestamp) - Note content... (truncated)</i></p>
-					<p><i>Upload Client Images</i></p>
-					<p><i>View Client Images</i></p>
-				</div>
-			</div>
-			<div id="button-container">
-				<button id="edit-client-button">Edit Client Info [edit icon]</button>
-				<button id="view-reports-button">View Reports [search icon]</button>
-				<button id="shutdown-button">Shutdown/restart Client [shutdown icon]</button>
 			</div>
 		</div>
 		<div style="margin-top: 5rem; text-align: center;"><a href="">View Offline Clients</a></div>

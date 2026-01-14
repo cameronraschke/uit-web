@@ -63,6 +63,8 @@ type AllJobs = {
 const updateOnlineJobQueueForm = document.getElementById('update-all-online-jobs-form') as HTMLFormElement | null;
 const updateOnlineJobQueueSelect = document.getElementById('update-all-online-jobs-select') as HTMLSelectElement | null;
 const updateOnlineJobQueueButton = document.getElementById('update-all-online-jobs-submit') as HTMLButtonElement | null;
+const onlineClientsDiv = document.getElementById('online-clients') as HTMLDivElement | null;
+const offlineClientsDiv = document.getElementById('offline-clients') as HTMLDivElement | null;
 
 let jobQueueInterval: number;
 
@@ -183,44 +185,81 @@ async function getJobQueueData() {
 }
 
 function updateJobQueueTable(data: JobQueueTableRow[]) {
-	const onlineTableBody = document.querySelector('#online-clients-table tbody');
-	const offlineTableBody = document.querySelector('#offline-clients-table tbody');
-	if (!onlineTableBody || !offlineTableBody) return;
+	if (!onlineClientsDiv || !offlineClientsDiv) return;
 
 	const onlineTableFragment = document.createDocumentFragment();
 	const offlineTableFragment = document.createDocumentFragment();
 
 	for (const entry of data) {
-		const row = document.createElement('tr');
-		const tagCell = document.createElement('td');
-		const tag = entry.tagnumber !== null ? entry.tagnumber.toString() : 'N/A';
-		const tagLink = document.createElement('a');
-		const tagURL = new URL(window.location.origin + '/client');
-		tagURL.searchParams.append('tagnumber', tag);
-		tagLink.textContent = tag;
-		tagLink.href = tagURL.toString();
-		tagLink.target = '_blank';
-		tagCell.appendChild(tagLink);
-		row.appendChild(tagCell);
+		if (!entry.tagnumber) continue;
+
+		const clientRow = document.createElement('div');
+		clientRow.id = `client-row-${entry.tagnumber}`;
+		// clientRow.dataset.tagnumber = entry.tagnumber.toString();
+		clientRow.className = 'client-row-container';
+
+		const gridContainer = document.createElement('div');
+		gridContainer.className = 'client-row-grid';
+
+		const col1 = document.createElement('div');
+		col1.className = 'grid-item headers';
+
+		const tagNum = document.createElement('p');
+		tagNum.style.fontWeight = 'bold';
+		tagNum.textContent = entry.tagnumber !== null ? entry.tagnumber.toString() : 'N/A';
+		col1.appendChild(tagNum);
+
+		const serialNumberLabel = document.createElement('p');
+		serialNumberLabel.style.fontStyle = 'italic';
+		serialNumberLabel.textContent = 'Serial Number: ';
+		col1.appendChild(serialNumberLabel);
+		const serialNumber = document.createElement('span');
+		serialNumber.textContent = entry.system_serial || 'N/A';
+		serialNumberLabel.appendChild(serialNumber);
+
+		const manufacturerModelLabel = document.createElement('p');
+		manufacturerModelLabel.style.fontStyle = 'italic';
+		manufacturerModelLabel.textContent = 'Manufacturer/Model: ';
+		col1.appendChild(manufacturerModelLabel);
+		const manufacturerModel = document.createElement('span');
+		manufacturerModel.textContent = `${entry.system_manufacturer || 'N/A'} - ${entry.system_model || 'N/A'}`;
+		manufacturerModelLabel.appendChild(manufacturerModel);
+
+		const locationLabel = document.createElement('p');
+		locationLabel.style.fontStyle = 'italic';
+		locationLabel.textContent = 'Location: ';
+		col1.appendChild(locationLabel);
+		const location = document.createElement('span');
+		location.textContent = entry.location || 'N/A';
+		locationLabel.appendChild(location);
+
+		const departmentLabel = document.createElement('p');
+		departmentLabel.style.fontStyle = 'italic';
+		departmentLabel.textContent = 'Department: ';
+		col1.appendChild(departmentLabel);
+		const department = document.createElement('span');
+		department.textContent = entry.department_name || 'N/A';
+		departmentLabel.appendChild(department);
+
+		const statusLabel = document.createElement('p');
+		statusLabel.style.fontStyle = 'italic';
+		statusLabel.textContent = 'Status: ';
+		col1.appendChild(statusLabel);
+		const status = document.createElement('span');
+		status.textContent = entry.client_status || 'N/A';
+		statusLabel.appendChild(status);
+
+		gridContainer.appendChild(col1);
 
 		if (entry.online) {
-			const imageTd = document.createElement('td');
-			row.appendChild(imageTd);
-		}
-
-		const jobQueuedCell = document.createElement('td');
-		jobQueuedCell.textContent = entry.job_name;
-		row.appendChild(jobQueuedCell);
-
-		if (entry.online) {
-			onlineTableFragment.appendChild(row);
+			onlineTableFragment.appendChild(clientRow);
 		} else {
-			offlineTableFragment.appendChild(row);
+			offlineTableFragment.appendChild(clientRow);
 		}
 	}
-	onlineTableBody.innerHTML = '';
-	onlineTableBody.appendChild(onlineTableFragment);
+	onlineClientsDiv.innerHTML = '';
+	onlineClientsDiv.appendChild(onlineTableFragment);
 	
-	offlineTableBody.innerHTML = '';
-	offlineTableBody.appendChild(offlineTableFragment);
+	offlineClientsDiv.innerHTML = '';
+	offlineClientsDiv.appendChild(offlineTableFragment);
 }
