@@ -76,13 +76,14 @@ async function fetchAllLocations(purgeCache: boolean = false): Promise<AllLocati
 	}
 }
 
-function getLocationSearchResults(inputElement: HTMLInputElement, data: Array<AllLocations>): Array<string> {
+function getLocationSearchResults(inputElement: HTMLInputElement, data: Array<AllLocations>): Array<{ location: string, location_formatted: string | null }> {
 	if (!inputElement || !data || data.length === 0) {
 		return [];
 	}
 
 	const charsToTrim = new RegExp(['"', "'", '`', ' '].join(''), 'g');
-	const inputValue = inputElement.value.trim().toLowerCase().replaceAll(charsToTrim, '');
+	const inputValue = inputElement.value;
+	const inputValueStripped = inputValue.trim().toLowerCase().replaceAll(charsToTrim, '');
 
 	return data
 		.filter((entry) => {
@@ -90,15 +91,21 @@ function getLocationSearchResults(inputElement: HTMLInputElement, data: Array<Al
 				console.warn('Data entry location is not a string:', entry);
 				return false;
 			}
+			if (inputValue === entry.location) {
+				return false; // Return early on match
+			}
 			const strippedLocation = entry.location.trim().toLowerCase().replaceAll(charsToTrim, '');
-			return strippedLocation.includes(inputValue);
+			return strippedLocation.includes(inputValueStripped);
 		})
 		.sort((a, b) => {
 			const timestampA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
 			const timestampB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
 			return timestampB - timestampA;
 		})
-		.map(entry => entry.location!.trim().toLowerCase().replaceAll(charsToTrim, ''))
+		.map(entry => ({
+			location: entry.location!,
+			location_formatted: entry.location_formatted
+		}))
 		.slice(0, 10);
 }
 
@@ -599,9 +606,12 @@ inventoryUpdateLocationInput.addEventListener("keyup", async () => {
 	const searchResults = getLocationSearchResults(inventoryUpdateLocationInput, allLocations);
 	const dataListElement = document.getElementById('location-suggestions') as HTMLDataListElement;
 	dataListElement.innerHTML = '';
-	searchResults.forEach(location => {
+	searchResults.forEach(item => {
 		const option = document.createElement('option');
-		option.value = location;
+		option.value = item.location;
+		if (item.location_formatted) {
+			option.label = item.location_formatted;
+		}
 		dataListElement.appendChild(option);
 	});
 });
