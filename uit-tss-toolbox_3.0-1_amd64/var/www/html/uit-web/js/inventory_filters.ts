@@ -1,3 +1,21 @@
+type Domain = {
+	domain_name: string;
+	domain_name_formatted: string;
+	domain_sort_order: number;
+};
+
+type ManufacturersAndModels = {
+	system_model: string;
+	system_model_formatted: string;
+	system_manufacturer: string;
+	system_manufacturer_formatted: string;
+};
+
+type ManufacturerAndModelsCache = {
+	timestamp: number;
+	manufacturers_and_models: ManufacturersAndModels[];
+};
+
 const inventoryFilterForm = document.getElementById('inventory-search-form') as HTMLFormElement;
 const filterLocation = document.getElementById('inventory-search-location') as HTMLSelectElement;
 const filterLocationReset = document.getElementById('inventory-search-location-reset') as HTMLElement;
@@ -29,14 +47,14 @@ function updateURLParameters(urlParameter: string | null, value: string | null) 
 		newURL.searchParams.delete(urlParameter);
 	}
 	if (newURL.searchParams.toString()) {
-		history.replaceState(null, '', newURL.pathname + '?' + newURL.searchParams.toString());
+		history.pushState(null, '', newURL.pathname + '?' + newURL.searchParams.toString());
 	} else {
 		history.replaceState(null, '', newURL.pathname);
 	}
 }
 
-async function initializeSearch() {
-	await setFiltersFromURL();
+function initializeSearch() {
+	setFiltersFromURL();
 
 	createFilterResetHandler(filterLocation, filterLocationReset);
 	createFilterResetHandler(filterDepartment, filterDepartmentReset);
@@ -47,62 +65,55 @@ async function initializeSearch() {
 	createFilterResetHandler(filterBroken, filterBrokenReset);
 	createFilterResetHandler(filterHasImages, filterHasImagesReset);
 
-	if (filterLocation.value) filterLocationReset.style.display = 'inline-block';
-	if (filterDepartment.value) filterDepartmentReset.style.display = 'inline-block';
-	if (filterManufacturer.value) filterManufacturerReset.style.display = 'inline-block';
-	if (filterModel.value) filterModelReset.style.display = 'inline-block';
-	if (filterDomain.value) filterDomainReset.style.display = 'inline-block';
-	if (filterStatus.value) filterStatusReset.style.display = 'inline-block';
-	if (filterBroken.value) filterBrokenReset.style.display = 'inline-block';
-	if (filterHasImages.value) filterHasImagesReset.style.display = 'inline-block';
-
 	filterModel.disabled = !filterManufacturer.value;
 }
 
-// Reset search
 function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton: HTMLElement) {
-	if (!filterElement || !resetButton) return;
+	if (!filterElement || !resetButton) {
+		console.error("Filter element or reset button not found.");
+		return;
+	}
+
 	if (filterElement.value && filterElement.value.length > 0) {
 		resetButton.style.display = 'inline-block';
 	}
 
-	filterElement.addEventListener("change", async () => {
+	filterElement.addEventListener("change", () => {
 		resetButton.style.display = 'inline-block';
 		const paramName = getURLParamName(filterElement);
 		updateURLParameters(paramName, filterElement.value);
-		if (filterElement === filterManufacturer) {
-			filterModel.disabled = !filterManufacturer.value;
-			await populateModelSelect(filterManufacturer.value);
-			if (!filterManufacturer.value) {
-        filterModel.value = '';
-        filterModelReset.style.display = 'none';
-        updateURLParameters('system_model', null);
-      }
+		if (filterElement === filterManufacturerReset || filterElement == filterModelReset) {
+			populateManufacturerSelect().catch((error) => {
+				console.error("Error populating manufacturer select:", error);
+			});
+			populateModelSelect().catch((error) => {
+				console.error("Error populating model select:", error);
+			});
+			return;
 		}
-		await fetchFilteredInventoryData();
+		fetchFilteredInventoryData().catch((error) => {
+			console.error("Error fetching filtered inventory data:", error);
+		});
 	});
   
-	resetButton.addEventListener("click", async (event) => {
+	resetButton.addEventListener("click", (event) => {
 		event.preventDefault();
 		resetButton.style.display = 'none';
 		filterElement.value = '';
 		const paramName = getURLParamName(filterElement);
 		updateURLParameters(paramName, null);
-		if (filterElement === filterManufacturer) {
-			filterModel.value = '';
-			filterModelReset.style.display = 'none';
-			filterModel.disabled = true;
-			updateURLParameters('system_model', null);
-			await loadAllManufacturersAndModels();
-			const manufacturerSelect = document.getElementById('inventory-search-manufacturer') as HTMLSelectElement;
-			if (manufacturerSelect) manufacturerSelect.value = '';
-			await populateModelSelect(null);
+		if (resetButton === filterManufacturerReset || resetButton == filterModelReset) {
+			populateManufacturerSelect().catch((error) => {
+				console.error("Error populating manufacturer select:", error);
+			});
+			populateModelSelect().catch((error) => {
+				console.error("Error populating model select:", error);
+			});
+			return;
 		}
-		if (filterElement === filterModel) {
-			await populateModelSelect(filterManufacturer.value || null);
-      filterModel.disabled = !filterManufacturer.value;
-		}
-		await fetchFilteredInventoryData();
+		fetchFilteredInventoryData().catch((error) => {
+			console.error("Error fetching filtered inventory data:", error);
+		});
 	});
 }
 
@@ -118,7 +129,7 @@ function getURLParamName(filterElement: HTMLSelectElement): string {
 	return '';
 }
 
-async function setFiltersFromURL(): Promise<void> {
+function setFiltersFromURL(): void {
 	const currentParams = new URLSearchParams(window.location.search);
 	filterLocation.value = currentParams.get('location') || '';
 	filterDepartment.value = currentParams.get('department_name') || '';
@@ -128,7 +139,6 @@ async function setFiltersFromURL(): Promise<void> {
 	filterStatus.value = currentParams.get('status') || '';
 	filterBroken.value = currentParams.get('is_broken') || '';
 	filterHasImages.value = currentParams.get('has_images') || '';
-	return;
 }
 
 async function fetchFilteredInventoryData(csvDownload = false): Promise<void> {
@@ -193,7 +203,7 @@ async function fetchFilteredInventoryData(csvDownload = false): Promise<void> {
   }
 }
 
-inventoryFilterForm.addEventListener("submit", async (event) => {
+inventoryFilterForm.addEventListener("submit", (event) => {
   event.preventDefault();
   fetchFilteredInventoryData();
 });
@@ -207,124 +217,127 @@ inventoryFilterResetButton.addEventListener("click", async (event) => {
     elem.style.display = 'none';
   });
 	currentURL.search = '';
-	await loadAllManufacturersAndModels();
+	await populateManufacturerSelect();
+	await populateModelSelect();
 
-	const modelSelect = document.getElementById('inventory-search-model') as HTMLSelectElement;
-  modelSelect.innerHTML = '';
+  filterModel.innerHTML = '';
   const defaultOption = document.createElement('option');
   defaultOption.value = '';
   defaultOption.textContent = 'Model';
   defaultOption.selected = true;
-  modelSelect.appendChild(defaultOption);
-	modelSelect.disabled = true;
+  filterModel.appendChild(defaultOption);
+	filterModel.disabled = true;
 	
   await fetchFilteredInventoryData();
 });
 
-async function populateManufacturerSelect() {
-  const manufacturerSelect = document.getElementById('inventory-search-manufacturer') as HTMLSelectElement;
-  if (!manufacturerSelect) return;
+async function fetchAllManufacturersAndModels(): Promise<Array<ManufacturersAndModels> | []> {
+	const cached = sessionStorage.getItem("uit_manufacturers_and_models");
 
-	const savedValue = manufacturerSelect.value;
-
-  // Get manufacturers
-  const manufacturersMap = new Map<string, string>();
-  allModelsData.forEach((item: any) => {
-    if (item.system_manufacturer && !manufacturersMap.has(item.system_manufacturer)) {
-      manufacturersMap.set(item.system_manufacturer, item.system_manufacturer_formatted || item.system_manufacturer);
-    }
-  });
-
-  // Clear and rebuild manufacturer select options
-  manufacturerSelect.innerHTML = '';
-  const defaultOption = document.createElement('option');
-  defaultOption.value = '';
-  defaultOption.textContent = 'Manufacturer';
-  defaultOption.selected = true;
-  manufacturerSelect.appendChild(defaultOption);
-
-  // Sort by formatted name
-  const sortedManufacturers = Array.from(manufacturersMap.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-  sortedManufacturers.forEach(([manufacturer, manufacturerFormatted]) => {
-    const option = document.createElement('option');
-    option.value = manufacturer;
-    option.textContent = manufacturerFormatted;
-    manufacturerSelect.appendChild(option);
-  });
-
-  manufacturerSelect.value = (savedValue && manufacturersMap.has(savedValue)) ? savedValue : '';
-}
-
-async function populateModelSelect(selectedManufacturer: string | null = null) {
-  const modelSelect = document.getElementById('inventory-search-model') as HTMLSelectElement;
-  if (!modelSelect) return;
-
-	if (!selectedManufacturer) {
-    modelSelect.innerHTML = '';
-    const defaultOption = document.createElement('option');
-    defaultOption.value = '';
-    defaultOption.textContent = 'Model';
-    defaultOption.selected = true;
-    modelSelect.appendChild(defaultOption);
-    modelSelect.disabled = true;
-    return;
-  }
-
-	const savedValue = modelSelect.value;
-
-  // Filter models by manufacturer if one is selected
-  const filteredModels = allModelsData.filter((item: any) => item.system_manufacturer === selectedManufacturer);
-
-
-  // Get models
-  const modelsMap = new Map<string, string>();
-  filteredModels.forEach((item: any) => {
-    if (item.system_model && !modelsMap.has(item.system_model)) {
-      modelsMap.set(item.system_model, item.system_model_formatted || item.system_model);
-    }
-  });
-
-  // Clear and rebuild model select options
-	modelSelect.innerHTML = '';
-	const defaultOption = document.createElement('option');
-	defaultOption.value = '';
-	defaultOption.textContent = 'Model';
-	defaultOption.selected = true;
-	modelSelect.appendChild(defaultOption);
-
-  // Sort by formatted name
-  const sortedModels = Array.from(modelsMap.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-  sortedModels.forEach(([model, modelFormatted]) => {
-    const option = document.createElement('option');
-    option.value = model;
-    option.textContent = modelFormatted;
-    modelSelect.appendChild(option);
-  });
-
-	modelSelect.disabled = false;
-	modelSelect.value = (savedValue && modelsMap.has(savedValue)) ? savedValue : '';
-}
-
-async function loadAllManufacturersAndModels() {
   try {
-    const response = await fetchData('/api/models');
-    if (!response) {
+		if (cached) {
+			const cacheEntry: ManufacturerAndModelsCache = JSON.parse(cached);
+			if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.manufacturers_and_models)) {
+				console.log("Loaded manufacturers and models from cache");
+				return cacheEntry.manufacturers_and_models;
+			}
+		}
+
+    const data: ManufacturersAndModels[] = await fetchData('/api/models');
+    if (!data || !Array.isArray(data) || data.length === 0) {
       throw new Error('No data returned from /api/models');
     }
-
-    allModelsData = Array.isArray(response) ? response : [];
-    await populateManufacturerSelect();
-
+		const cacheEntry: ManufacturerAndModelsCache = {
+			timestamp: Date.now(),
+			manufacturers_and_models: data
+		};
+		sessionStorage.setItem("uit_manufacturers_and_models", JSON.stringify(cacheEntry));
+		console.log("Cached manufacturers and models data");
+    return data;
   } catch (error) {
-    console.error('Error fetching models:', error);
+    console.error('Error fetching manufacturers and models:', error);
+		return [];
   }
 }
 
-type Domain = {
-	domain_name: string;
-	domain_name_formatted: string;
-	domain_sort_order: number;
-};
+async function populateManufacturerSelect() {
+  if (!filterManufacturer) return;
+
+	const initialValue = filterManufacturer.value;
+
+	filterManufacturer.disabled = true;
+
+  const data: ManufacturersAndModels[] = await fetchAllManufacturersAndModels();
+	if (!data || !Array.isArray(data) || data.length === 0) return;
+
+	// Sort manufacturers array
+	data.sort((a, b) => {
+		const manufacturerA = a.system_manufacturer_formatted || a.system_manufacturer;
+		const manufacturerB = b.system_manufacturer_formatted || b.system_manufacturer;
+		return manufacturerA.localeCompare(manufacturerB);
+	});
+
+  // Clear and rebuild manufacturer select options
+  resetSelectElement(filterManufacturer, 'Manufacturer');
+
+  // Sort by formatted name
+  for (const item of data) {
+		if (!item.system_manufacturer || !item.system_manufacturer_formatted) continue;
+		const option = document.createElement('option');
+		option.value = item.system_manufacturer;
+		option.textContent = item.system_manufacturer_formatted || item.system_manufacturer;
+		filterManufacturer.appendChild(option);
+	}
+
+  filterManufacturer.value = (initialValue && data.some(item => item.system_manufacturer === initialValue)) ? initialValue : '';
+	if (filterManufacturer.value !== '') {
+		updateURLParameters('system_manufacturer', filterManufacturer.value);
+	} else {
+		updateURLParameters('system_manufacturer', null);
+	}
+	filterManufacturer.disabled = false;
+}
+
+
+
+async function populateModelSelect() {
+  if (!filterModel) return;
+	
+	const initialValue = filterModel.value;
+
+	if (!filterManufacturer.value || filterManufacturer.value.trim().length === 0) {
+		resetSelectElement(filterModel, 'Model', true);
+		updateURLParameters('system_model', null);
+		return;
+	}
+
+	filterModel.disabled = true;
+
+  const data: ManufacturersAndModels[] = await fetchAllManufacturersAndModels();
+	if (!data || !Array.isArray(data) || data.length === 0) return;
+
+	data.sort((a, b) => {
+		const modelA = a.system_model_formatted || a.system_model;
+		const modelB = b.system_model_formatted || b.system_model;
+		return modelA.localeCompare(modelB);
+	});
+
+	resetSelectElement(filterModel, 'Model');
+
+	for (const item of data) {
+		if (item.system_manufacturer !== filterManufacturer.value) continue;
+		if (!item.system_model || !item.system_model_formatted) continue;
+		const option = document.createElement('option');
+		option.value = item.system_model;
+		option.textContent = item.system_model_formatted || item.system_model;
+		filterModel.appendChild(option);
+	}
+
+	filterModel.value = (initialValue && data.some(item => item.system_model === initialValue)) ? initialValue : '';
+	filterModel.disabled = false;
+}
+
+
 async function populateDomainSelect(elem: HTMLSelectElement) {
 	if (!elem) return;
 	try {

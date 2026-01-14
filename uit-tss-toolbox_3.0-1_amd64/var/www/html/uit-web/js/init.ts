@@ -96,7 +96,16 @@ document.addEventListener("visibilitychange", async () => {
 		}, checkAuthTimeout);
 	}
 });
-	
+
+function resetSelectElement(selectElement: HTMLSelectElement, defaultText: string, disabled: boolean = false) {
+	selectElement.innerHTML = '';
+	const defaultOption = document.createElement('option');
+	defaultOption.value = '';
+	defaultOption.textContent = defaultText;
+	defaultOption.selected = true;
+	selectElement.appendChild(defaultOption);
+	selectElement.disabled = disabled;
+}
 
 function validateTagInput(tagInput: number): boolean {
 	let validRange = false;

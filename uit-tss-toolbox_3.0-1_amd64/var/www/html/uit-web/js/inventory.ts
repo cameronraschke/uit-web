@@ -511,19 +511,25 @@ async function populateDepartmentSelect(departmentSelect: HTMLSelectElement): Pr
 }
 
 async function initializeInventoryPage() {
-	await loadAllManufacturersAndModels();
-	await setFiltersFromURL();
-	await initializeSearch();
-	await populateModelSelect(filterManufacturer.value || null);
-	await populateDomainSelect(inventorySearchDomainSelect);
-	await populateDepartmentSelect(inventorySearchDepartmentSelect);
-  await fetchFilteredInventoryData();
-	const urlParams = new URLSearchParams(window.location.search);
-	const updateParam: string | null = urlParams.get('update');
-	const tagnumberParam: string | null = urlParams.get('tagnumber');
-	if (tagnumberParam && updateParam === 'true') {
-		inventoryLookupTagInput.value = tagnumberParam;
-		await submitInventoryLookup();
+	setFiltersFromURL();
+	initializeSearch();
+
+	try {
+		await populateManufacturerSelect();
+		await populateModelSelect();
+		await populateDomainSelect(inventorySearchDomainSelect);
+		await populateDepartmentSelect(inventorySearchDepartmentSelect);
+		await fetchFilteredInventoryData();
+		const urlParams = new URLSearchParams(window.location.search);
+		const updateParam: string | null = urlParams.get('update');
+		const tagnumberParam: string | null = urlParams.get('tagnumber');
+		if (tagnumberParam && updateParam === 'true') {
+			inventoryLookupTagInput.value = tagnumberParam;
+			await submitInventoryLookup();
+		}
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		console.error("Error initializing inventory page:", errorMessage);
 	}
 }
 
