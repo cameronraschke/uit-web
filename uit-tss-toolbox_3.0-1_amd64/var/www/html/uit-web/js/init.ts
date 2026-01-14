@@ -102,9 +102,13 @@ function resetSelectElement(selectElement: HTMLSelectElement, defaultText: strin
 	const defaultOption = document.createElement('option');
 	defaultOption.value = '';
 	defaultOption.textContent = defaultText;
+	selectElement.disabled = disabled;
 	defaultOption.selected = true;
 	selectElement.appendChild(defaultOption);
-	selectElement.disabled = disabled;
+
+	selectElement.addEventListener('click', () => {
+		defaultOption.disabled = true;
+	});
 }
 
 function validateTagInput(tagInput: number): boolean {
@@ -169,6 +173,23 @@ function base64ToJson(inputStr: string) {
 	} catch (error) {
 		console.log("Error decoding base64: " + error);
 		return null;
+	}
+}
+
+function getURLParamName(filterElement: HTMLSelectElement): string {
+	for (const param of urlSearchParams) {
+		if (param.inputElement === filterElement) {
+			return param.paramString;
+		}
+	}
+	return '';
+}
+
+function setFiltersFromURL(): void {
+	const currentParams = new URLSearchParams(window.location.search);
+	for (const param of urlSearchParams) {
+		if (!param.inputElement || !param.paramString) continue;
+		param.inputElement.value = currentParams.get(param.paramString) || '';
 	}
 }
 
@@ -315,6 +336,20 @@ async function getTagsFromServer(): Promise<TagCache | null> {
 	} catch (error) {
 		console.error("Error fetching tags from server:", error);
 		return null;
+	}
+}
+
+function updateURLParameters(urlParameter: string | null, value: string | null) {
+	const newURL = new URL(window.location.href);
+	if (urlParameter && value) {
+		newURL.searchParams.set(urlParameter, value);
+	} else if (urlParameter && !value) {
+		newURL.searchParams.delete(urlParameter);
+	}
+	if (newURL.searchParams.toString()) {
+		history.pushState(null, '', newURL.pathname + '?' + newURL.searchParams.toString());
+	} else {
+		history.replaceState(null, '', newURL.pathname);
 	}
 }
 

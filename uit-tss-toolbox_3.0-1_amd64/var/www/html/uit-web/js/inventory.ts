@@ -6,6 +6,11 @@ type Department = {
 	department_sort_order: number;
 };
 
+type DepartmentsCache = {
+	timestamp: number;
+	departments: Department[];
+};
+
 type ClientLookupResult = {
 	tagnumber: number | null;
 	system_serial: string | null;
@@ -474,40 +479,33 @@ csvDownloadButton.addEventListener('click', async (event) => {
   }
 });
 
-async function populateDepartmentSelect(departmentSelect: HTMLSelectElement): Promise<void> {
-	if (!departmentSelect) return;
+async function fetchDepartments(purgeCache: boolean = false): Promise<Department[] | null> {
+	const cached = sessionStorage.getItem("uit_departments");
 
 	try {
-		const departments: Department[] = await fetchData('/api/departments');
-		if (!departments || !Array.isArray(departments)) {
-			throw new Error('Invalid departments data received from server');
+		if (cached && !purgeCache) {
+			const cacheEntry: DepartmentsCache = JSON.parse(cached);
+			if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.departments)) {
+				console.log("Loaded departments from cache");
+				return cacheEntry.departments;
+			}
 		}
 
-		departmentSelect.innerHTML = '';
-		const defaultOption = document.createElement('option');
-		defaultOption.value = '';
-		defaultOption.disabled = true;
-		defaultOption.selected = true;
-		defaultOption.textContent = 'Department';
-		departmentSelect.addEventListener('click', () => {
-			defaultOption.disabled = true;
-		});
-		departmentSelect.appendChild(defaultOption);
-
-		departments.sort((a, b) => {
-			return a.department_sort_order - b.department_sort_order;
-		});
-
-		departments.forEach((dept) => {
-			const option = document.createElement('option');
-			option.value = dept.department_name;
-			option.textContent = dept.department_name_formatted;
-			departmentSelect.appendChild(option);
-		});
-	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		console.error('Error populating department select:', errorMessage);
-	}
+		const departments: Department[] = await fetchData('/api/departments');
+    if (!departments || !Array.isArray(departments) || departments.length === 0) {
+			throw new Error('Invalid departments data received from server');
+		}
+		const cacheEntry: DepartmentsCache = {
+			timestamp: Date.now(),
+			departments: departments
+		};
+		sessionStorage.setItem("uit_departments", JSON.stringify(cacheEntry));
+		console.log("Cached departments data");
+    return departments;
+  } catch (error) {
+    console.error('Error fetching departments:', error);
+		return [];
+  }
 }
 
 async function initializeInventoryPage() {
@@ -515,10 +513,10 @@ async function initializeInventoryPage() {
 	initializeSearch();
 
 	try {
-		await populateManufacturerSelect();
-		await populateModelSelect();
-		await populateDomainSelect(inventorySearchDomainSelect);
-		await populateDepartmentSelect(inventorySearchDepartmentSelect);
+		await populateManufacturerSelect(true);
+		await populateModelSelect(true);
+		await populateDomainSelect(inventorySearchDomainSelect, true);
+		await populateDepartmentSelect(inventorySearchDepartmentSelect, true);
 		await fetchFilteredInventoryData();
 		const urlParams = new URLSearchParams(window.location.search);
 		const updateParam: string | null = urlParams.get('update');
