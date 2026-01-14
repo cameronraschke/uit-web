@@ -185,7 +185,7 @@ function getURLParamName(filterElement: HTMLSelectElement): string {
 	return '';
 }
 
-function updateURLFilters(): void {
+function updateURLFromFilters(): void {
 	for (const param of urlSearchParams) {
 		if (!param.inputElement.value || !param.paramString) continue;
 		setURLParameter(param.paramString, param.inputElement.value);

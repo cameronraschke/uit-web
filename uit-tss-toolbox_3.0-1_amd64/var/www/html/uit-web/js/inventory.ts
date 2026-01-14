@@ -70,7 +70,7 @@ async function lookupTagOrSerial(tagnumber: number | null, serial: string | null
 }
 
 async function submitInventoryLookup() {
-	await updateURLFilters();
+	updateURLFromFilters();
 	const searchParams: URLSearchParams = new URLSearchParams(window.location.search);
 	const lookupTag: number | null = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : (searchParams.get('tagnumber') ? Number(searchParams.get('tagnumber')) : null);
   const lookupSerial: string | null = inventoryLookupSystemSerialInput.value || searchParams.get('system_serial') || null;
@@ -132,16 +132,6 @@ async function submitInventoryLookup() {
   }
 }
 
-inventoryLookupForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-	await submitInventoryLookup();
-	await updateCheckoutStatus();
-});
-
-clientStatus.addEventListener("change", async () => {
-	await updateCheckoutStatus();
-});
-
 async function updateCheckoutStatus() {
 	const printCheckoutDiv = document.getElementById('print-checkout-link') as HTMLElement;
 	if (statusesThatIndicateCheckout.includes(clientStatus.value)) {
@@ -179,22 +169,6 @@ function resetInventoryLookupAndUpdateForm() {
   inventoryLookupTagInput.focus();
 }
 
-inventoryLookupFormResetButton.addEventListener("click", (event) => {
-  event.preventDefault();
-	history.replaceState(null, '', window.location.pathname);
-  resetInventoryLookupAndUpdateForm();
-	setURLParameter(null, null);
-});
-
-inventoryLookupMoreDetailsButton.addEventListener("click", (event) => {
-  event.preventDefault();
-  const tag = inventoryLookupTagInput.value;
-  if (tag) {
-    const url = `/client?tagnumber=${encodeURIComponent(tag)}`;
-		window.open(url, '_blank');
-  }
-});
-
 function resetInventorySearchQuery() {
 	const url = new URL(window.location.pathname, window.location.origin);
 	url.searchParams.delete('tagnumber');
@@ -202,13 +176,6 @@ function resetInventorySearchQuery() {
 	url.searchParams.delete('update');
 	history.replaceState(null, '', url.toString());
 }
-
-inventoryUpdateFormCancelButton.addEventListener("click", (event) => {
-  event.preventDefault();
-	history.replaceState(null, '', window.location.pathname);
-  resetInventoryLookupAndUpdateForm();
-	setURLParameter(null, null);
-});
 
 function renderTagOptions(tags: number[]): void {
   if (!allTagsDatalist) {
@@ -228,14 +195,171 @@ function renderTagOptions(tags: number[]): void {
   });
 }
 
-if (Array.isArray(window.allTags)) {
-  console.log("Available tags found:", window.allTags);
-  renderTagOptions(window.allTags);
+async function getLocationFormData(tag: number): Promise<any | null> {
+  try {
+    const response = await fetchData(`/api/client/location_form_data?tagnumber=${tag}`);
+    if (!response) {
+      throw new Error("Cannot parse json from /api/client/location_form_data");
+    }
+    return response;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.log("Error fetching location form data: " + errorMessage);
+    return null;
+  }
 }
 
-document.addEventListener('tags:loaded', (event: CustomEvent<{ tags: number[] }>) => {
-  const tags = (event && event.detail && Array.isArray(event.detail.tags)) ? event.detail.tags : window.allTags;
-  renderTagOptions(tags || []);
+function showInventoryUpdateChanges(): void {
+	inventoryUpdateForm.querySelectorAll("input, select, textarea, file").forEach((element: HTMLElement) => {
+		element.style.border = "revert-layer";
+		element.style.boxShadow = "revert-layer";
+		element.addEventListener("change", () => {
+			updatingInventory = false;
+			element.style.border = "2px solid orange";
+			element.style.boxShadow = "0 0 2px orange";
+		});
+	});
+}
+showInventoryUpdateChanges();
+
+async function populateLocationForm(tag: number): Promise<void> {
+  const locationFormData = await getLocationFormData(tag);
+	showInventoryUpdateChanges();
+  if (locationFormData) {
+		if (locationFormData.last_update_time) {
+			const lastUpdate = new Date(locationFormData.last_update_time);
+			if (isNaN(lastUpdate.getTime())) {
+				lastUpdateTimeMessage.textContent = 'Uknown timestamp of last update';
+			} else {
+				lastUpdateTimeMessage.textContent = `Last updated: ${lastUpdate.toLocaleString()}` || '';
+			}
+		} else {
+			lastUpdateTimeMessage.textContent = 'Uknown timestamp of last update';
+		}
+
+    inventoryUpdateLocationInput.value = locationFormData.location || '';
+
+		const building = inventoryUpdateForm.querySelector("#building") as HTMLInputElement;
+		const buildingVal: string = locationFormData.building || '';
+		building.value = buildingVal;
+
+		const room = inventoryUpdateForm.querySelector("#room") as HTMLInputElement;
+		const roomVal: string = locationFormData.room || '';
+		room.value = roomVal;
+
+    const systemManufacturer = inventoryUpdateForm.querySelector("#system_manufacturer") as HTMLInputElement;
+		const systemManufacturerVal: string = locationFormData.system_manufacturer || '';
+		systemManufacturer.value = systemManufacturerVal;
+		if (systemManufacturerVal) {
+			systemManufacturer.style.backgroundColor = "gainsboro";
+			systemManufacturer.disabled = true;
+		}
+
+    const systemModel = inventoryUpdateForm.querySelector("#system_model") as HTMLInputElement;
+		const systemModelVal: string = locationFormData.system_model || '';
+		systemModel.value = systemModelVal;
+		if (systemModelVal) {
+			systemModel.style.backgroundColor = "gainsboro";
+			systemModel.disabled = true;
+		}
+
+		await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
+		const departmentNameVal: string = locationFormData.department_name || '';
+		inventoryUpdateDepartmentSelect.value = departmentNameVal;
+
+		const propertyCustodian = inventoryUpdateForm.querySelector("#property_custodian") as HTMLInputElement;
+		const propertyCustodianVal: string = locationFormData.property_custodian || '';
+		propertyCustodian.value = propertyCustodianVal;
+
+		await populateDomainSelect(inventoryUpdateDomainSelect);
+		const adDomainVal: string = locationFormData.ad_domain || '';
+		inventoryUpdateDomainSelect.value = adDomainVal;
+
+		const isBroken = inventoryUpdateForm.querySelector("#is_broken") as HTMLInputElement;
+		const brokenValue = typeof locationFormData.is_broken === "boolean" 
+			? String(locationFormData.is_broken) 
+			: '';
+		isBroken.value = brokenValue;
+
+		const statusSelect = inventoryUpdateForm.querySelector("#status") as HTMLSelectElement;
+    statusSelect.value = locationFormData.status || '';
+
+		const acquiredDateInput = inventoryUpdateForm.querySelector("#acquired_date") as HTMLInputElement;
+		const acquiredDateValue = locationFormData.acquired_date
+			? new Date(locationFormData.acquired_date)
+			: null;
+		if (acquiredDateValue && !isNaN(acquiredDateValue.getTime())) {
+			const year = acquiredDateValue.getFullYear();
+			const month = String(acquiredDateValue.getMonth() + 1).padStart(2, '0');
+			const day = String(acquiredDateValue.getDate()).padStart(2, '0');
+			const acquiredDateFormatted = `${year}-${month}-${day}`;
+			acquiredDateInput.value = acquiredDateFormatted;
+		} else {
+			acquiredDateInput.value = '';
+		}
+
+    const noteInput = inventoryUpdateForm.querySelector("#note") as HTMLInputElement;
+    const noteValue: string = locationFormData.note || '';
+    noteInput.value = noteValue;
+  }
+	await updateCheckoutStatus();
+}
+
+async function fetchDepartments(purgeCache: boolean = false): Promise<Array<Department> | []> {
+	const cached = sessionStorage.getItem("uit_departments");
+
+	try {
+		if (cached && !purgeCache) {
+			const cacheEntry: DepartmentsCache = JSON.parse(cached);
+			if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.departments)) {
+				console.log("Loaded departments from cache");
+				return cacheEntry.departments;
+			}
+		}
+		const data: Array<Department> = await fetchData('/api/departments');
+		if (!data || !Array.isArray(data) || data.length === 0) {
+			throw new Error('No data returned from /api/departments');
+		}
+		const cacheEntry: DepartmentsCache = {
+			timestamp: Date.now(),
+			departments: data
+		};
+		sessionStorage.setItem("uit_departments", JSON.stringify(cacheEntry));
+		console.log("Cached departments data");
+		return data;
+	} catch (error) {
+		console.error('Error fetching departments:', error);
+		return [];
+	}
+}
+
+async function initializeInventoryPage() {
+	initializeSearch();
+
+	try {
+		await populateManufacturerSelect(true);
+		await populateModelSelect(true);
+		await populateDomainSelect(inventorySearchDomainSelect, true);
+		await populateDepartmentSelect(inventorySearchDepartmentSelect, true);
+		await fetchFilteredInventoryData();
+		const urlParams = new URLSearchParams(window.location.search);
+		const updateParam: string | null = urlParams.get('update');
+		const tagnumberParam: string | null = urlParams.get('tagnumber');
+		if (tagnumberParam && updateParam === 'true') {
+			inventoryLookupTagInput.value = tagnumberParam;
+			await submitInventoryLookup();
+		}
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		console.error("Error initializing inventory page:", errorMessage);
+	}
+}
+
+inventoryUpdateFormCancelButton.addEventListener("click", (event) => {
+  event.preventDefault();
+	history.replaceState(null, '', window.location.pathname);
+  resetInventoryLookupAndUpdateForm();
+	setURLParameter(null, null);
 });
 
 inventoryLookupTagInput.addEventListener("keyup", (event: KeyboardEvent) => {
@@ -257,7 +381,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
   if (updatingInventory) return;
   updatingInventory = true;
 
-	updateURLFilters();
+	updateURLFromFilters();
 
   try {
     const jsonObject: { [key: string]: any } = {};
@@ -356,116 +480,6 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
   }
 });
 
-async function getLocationFormData(tag: number): Promise<any | null> {
-  try {
-    const response = await fetchData(`/api/client/location_form_data?tagnumber=${tag}`);
-    if (!response) {
-      throw new Error("Cannot parse json from /api/client/location_form_data");
-    }
-    return response;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.log("Error fetching location form data: " + errorMessage);
-    return null;
-  }
-}
-
-function showInventoryUpdateChanges(): void {
-	inventoryUpdateForm.querySelectorAll("input, select, textarea, file").forEach((element: HTMLElement) => {
-		element.style.border = "revert-layer";
-		element.style.boxShadow = "revert-layer";
-		element.addEventListener("change", () => {
-			updatingInventory = false;
-			element.style.boxShadow = "0 0 2px orange";
-			element.style.border = "2px solid orange";
-		});
-	});
-}
-showInventoryUpdateChanges();
-
-async function populateLocationForm(tag: number): Promise<void> {
-  const locationFormData = await getLocationFormData(tag);
-	showInventoryUpdateChanges();
-  if (locationFormData) {
-		if (locationFormData.last_update_time) {
-			const lastUpdate = new Date(locationFormData.last_update_time);
-			if (isNaN(lastUpdate.getTime())) {
-				lastUpdateTimeMessage.textContent = 'Uknown timestamp of last update';
-			} else {
-				lastUpdateTimeMessage.textContent = `Last updated: ${lastUpdate.toLocaleString()}` || '';
-			}
-		} else {
-			lastUpdateTimeMessage.textContent = 'Uknown timestamp of last update';
-		}
-
-    inventoryUpdateLocationInput.value = locationFormData.location || '';
-
-		const building = inventoryUpdateForm.querySelector("#building") as HTMLInputElement;
-		const buildingVal: string = locationFormData.building || '';
-		building.value = buildingVal;
-
-		const room = inventoryUpdateForm.querySelector("#room") as HTMLInputElement;
-		const roomVal: string = locationFormData.room || '';
-		room.value = roomVal;
-
-    const systemManufacturer = inventoryUpdateForm.querySelector("#system_manufacturer") as HTMLInputElement;
-		const systemManufacturerVal: string = locationFormData.system_manufacturer || '';
-		systemManufacturer.value = systemManufacturerVal;
-		if (systemManufacturerVal) {
-			systemManufacturer.style.backgroundColor = "gainsboro";
-			systemManufacturer.disabled = true;
-		}
-
-    const systemModel = inventoryUpdateForm.querySelector("#system_model") as HTMLInputElement;
-		const systemModelVal: string = locationFormData.system_model || '';
-		systemModel.value = systemModelVal;
-		if (systemModelVal) {
-			systemModel.style.backgroundColor = "gainsboro";
-			systemModel.disabled = true;
-		}
-
-		await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
-		const departmentNameVal: string = locationFormData.department_name || '';
-		inventoryUpdateDepartmentSelect.value = departmentNameVal;
-
-		const propertyCustodian = inventoryUpdateForm.querySelector("#property_custodian") as HTMLInputElement;
-		const propertyCustodianVal: string = locationFormData.property_custodian || '';
-		propertyCustodian.value = propertyCustodianVal;
-
-		await populateDomainSelect(inventoryUpdateDomainSelect);
-		const adDomainVal: string = locationFormData.ad_domain || '';
-		inventoryUpdateDomainSelect.value = adDomainVal;
-
-		const isBroken = inventoryUpdateForm.querySelector("#is_broken") as HTMLInputElement;
-		const brokenValue = typeof locationFormData.is_broken === "boolean" 
-			? String(locationFormData.is_broken) 
-			: '';
-		isBroken.value = brokenValue;
-
-		const statusSelect = inventoryUpdateForm.querySelector("#status") as HTMLSelectElement;
-    statusSelect.value = locationFormData.status || '';
-
-		const acquiredDateInput = inventoryUpdateForm.querySelector("#acquired_date") as HTMLInputElement;
-		const acquiredDateValue = locationFormData.acquired_date
-			? new Date(locationFormData.acquired_date)
-			: null;
-		if (acquiredDateValue && !isNaN(acquiredDateValue.getTime())) {
-			const year = acquiredDateValue.getFullYear();
-			const month = String(acquiredDateValue.getMonth() + 1).padStart(2, '0');
-			const day = String(acquiredDateValue.getDate()).padStart(2, '0');
-			const acquiredDateFormatted = `${year}-${month}-${day}`;
-			acquiredDateInput.value = acquiredDateFormatted;
-		} else {
-			acquiredDateInput.value = '';
-		}
-
-    const noteInput = inventoryUpdateForm.querySelector("#note") as HTMLInputElement;
-    const noteValue: string = locationFormData.note || '';
-    noteInput.value = noteValue;
-  }
-	await updateCheckoutStatus();
-}
-
 csvDownloadButton.addEventListener('click', async (event) => {
   event.preventDefault();
   csvDownloadButton.disabled = true;
@@ -479,57 +493,44 @@ csvDownloadButton.addEventListener('click', async (event) => {
   }
 });
 
-async function fetchDepartments(purgeCache: boolean = false): Promise<Array<Department> | []> {
-	const cached = sessionStorage.getItem("uit_departments");
+inventoryLookupFormResetButton.addEventListener("click", (event) => {
+  event.preventDefault();
+	history.replaceState(null, '', window.location.pathname);
+  resetInventoryLookupAndUpdateForm();
+	setURLParameter(null, null);
+});
 
-	try {
-		if (cached && !purgeCache) {
-			const cacheEntry: DepartmentsCache = JSON.parse(cached);
-			if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.departments)) {
-				console.log("Loaded departments from cache");
-				return cacheEntry.departments;
-			}
-		}
-		const data: Array<Department> = await fetchData('/api/departments');
-		if (!data || !Array.isArray(data) || data.length === 0) {
-			throw new Error('No data returned from /api/departments');
-		}
-		const cacheEntry: DepartmentsCache = {
-			timestamp: Date.now(),
-			departments: data
-		};
-		sessionStorage.setItem("uit_departments", JSON.stringify(cacheEntry));
-		console.log("Cached departments data");
-		return data;
-	} catch (error) {
-		console.error('Error fetching departments:', error);
-		return [];
-	}
-}
+inventoryLookupMoreDetailsButton.addEventListener("click", (event) => {
+  event.preventDefault();
+  const tag = inventoryLookupTagInput.value;
+  if (tag) {
+    const url = `/client?tagnumber=${encodeURIComponent(tag)}`;
+		window.open(url, '_blank');
+  }
+});
 
-async function initializeInventoryPage() {
-	initializeSearch();
+clientStatus.addEventListener("change", async () => {
+	await updateCheckoutStatus();
+});
 
-	try {
-		await populateManufacturerSelect(true);
-		await populateModelSelect(true);
-		await populateDomainSelect(inventorySearchDomainSelect, true);
-		await populateDepartmentSelect(inventorySearchDepartmentSelect, true);
-		await fetchFilteredInventoryData();
-		const urlParams = new URLSearchParams(window.location.search);
-		const updateParam: string | null = urlParams.get('update');
-		const tagnumberParam: string | null = urlParams.get('tagnumber');
-		if (tagnumberParam && updateParam === 'true') {
-			inventoryLookupTagInput.value = tagnumberParam;
-			await submitInventoryLookup();
-		}
-	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		console.error("Error initializing inventory page:", errorMessage);
-	}
-}
+inventoryLookupForm.addEventListener("submit", async (event) => {
+	event.preventDefault();
+	await submitInventoryLookup();
+	await updateCheckoutStatus();
+});
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initializeInventoryPage();
+	updateFiltersFromURL();
+	if (Array.isArray(window.allTags)) {
+		console.log("Available tags found:", window.allTags);
+		renderTagOptions(window.allTags);
+	}
+
+	document.addEventListener('tags:loaded', (event: CustomEvent<{ tags: number[] }>) => {
+		const tags = (event && event.detail && Array.isArray(event.detail.tags)) ? event.detail.tags : window.allTags;
+		renderTagOptions(tags || []);
+	});
 });
+
 

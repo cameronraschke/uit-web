@@ -19,6 +19,12 @@ type ManufacturerAndModelsCache = {
 	manufacturers_and_models: ManufacturersAndModels[];
 };
 
+type FilterParams = {
+	inputElement: HTMLSelectElement;
+	resetElement: HTMLElement;
+	paramString: string;
+};
+
 const inventoryFilterForm = document.getElementById('inventory-search-form') as HTMLFormElement;
 const inventoryFilterFormResetButton = document.getElementById('inventory-search-form-reset-button') as HTMLElement;
 const filterLocation = document.getElementById('inventory-search-location') as HTMLSelectElement;
@@ -38,12 +44,6 @@ const filterBrokenReset = document.getElementById('inventory-search-broken-reset
 const filterHasImages = document.getElementById('inventory-search-has_images') as HTMLSelectElement;
 const filterHasImagesReset = document.getElementById('inventory-search-has_images-reset') as HTMLElement;
 
-type FilterParams = {
-	inputElement: HTMLSelectElement;
-	resetElement: HTMLElement;
-	paramString: string;
-};
-
 const urlSearchParams: FilterParams[] = [
 	{ inputElement: filterLocation, resetElement: filterLocationReset, paramString: 'location' },
 	{ inputElement: filterDepartment, resetElement: filterDepartmentReset, paramString: 'department_name' },
@@ -58,7 +58,7 @@ const urlSearchParams: FilterParams[] = [
 let allModelsData: string[] = [];
 
 function initializeSearch() {
-	updateURLFilters();
+	updateURLFromFilters();
 
 	createFilterResetHandler(filterLocation, filterLocationReset);
 	createFilterResetHandler(filterDepartment, filterDepartmentReset);
@@ -79,6 +79,27 @@ function resetSearchURLParameters() {
 	}
 }
 
+function updateFiltersFromURL() {
+	const currentParams = new URLSearchParams(window.location.search);
+	for (const param of urlSearchParams) {
+		if (!param.inputElement || !param.paramString) continue;
+		const urlValue = currentParams.get(param.paramString);
+		if (urlValue && urlValue.trim().length > 0) {
+			param.inputElement.value = urlValue;
+			param.inputElement.style.border = "1px solid orange";
+			param.inputElement.style.outline = "1px solid orange;"
+			param.inputElement.style.boxShadow = "0 0 2px orange";
+			param.resetElement.style.display = 'inline-block';
+		} else {
+			param.inputElement.value = '';
+			param.inputElement.style.border = "revert-layer";
+			param.inputElement.style.boxShadow = "revert-layer";
+			param.inputElement.style.outline = "revert-layer";
+			param.resetElement.style.display = 'none';
+		}
+	}
+}
+
 function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton: HTMLElement) {
 	if (!filterElement || !resetButton) {
 		console.error("Filter inputElement or reset button not found.");
@@ -87,6 +108,9 @@ function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton:
 
 	if (filterElement.value && filterElement.value.length > 0) {
 		resetButton.style.display = 'inline-block';
+		filterElement.style.border = "1px solid orange";
+		filterElement.style.outline = "1px solid orange;"
+		filterElement.style.boxShadow = "0 0 2px orange";
 	}
 
 	filterElement.addEventListener("change", () => {
@@ -95,8 +119,13 @@ function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton:
 		setURLParameter(paramString, filterElement.value);
 		if ((filterElement.value && filterElement.value.trim().length >= 0) || typeof filterElement.value === 'boolean') {
 			resetButton.style.display = 'inline-block';
+			filterElement.style.border = "1px solid orange";
+			filterElement.style.outline = "1px solid orange;"
+			filterElement.style.boxShadow = "0 0 2px orange";
 		} else {
 			resetButton.style.display = 'none';
+			filterElement.style.border = "revert-layer";
+			filterElement.style.boxShadow = "revert-layer";
 		}
 		if (filterElement === filterManufacturerReset || filterElement == filterModelReset) {
 			populateManufacturerSelect().catch((error) => {
@@ -114,6 +143,9 @@ function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton:
 	resetButton.addEventListener("click", (event) => {
 		event.preventDefault();
 		resetButton.style.display = 'none';
+		filterElement.style.border = "revert-layer";
+		filterElement.style.boxShadow = "revert-layer";
+		filterElement.style.outline = "revert-layer";
 		filterElement.value = '';
 		if (resetButton === filterManufacturerReset || resetButton == filterModelReset) {
 			populateManufacturerSelect().catch((error) => {
@@ -137,9 +169,9 @@ async function fetchFilteredInventoryData(csvDownload = false): Promise<void> {
 	setURLParameter('tagnumber', currentParams.get('tagnumber')?.trim() || null);
 	setURLParameter('system_serial', currentParams.get('system_serial')?.trim() || null);
 
-	updateURLFilters();
+	updateURLFromFilters();
 
-	const apiQuery = new URLSearchParams(); // API query parameters
+	const apiQuery = new URLSearchParams(currentParams); // API query parameters
 	if (currentParams.get('update') === "true") {
 		apiQuery.delete("update");
 		apiQuery.delete("tagnumber");
@@ -163,37 +195,6 @@ async function fetchFilteredInventoryData(csvDownload = false): Promise<void> {
     console.error("Error fetching inventory data:", error);
   }
 }
-
-inventoryFilterForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  fetchFilteredInventoryData();
-});
-
-inventoryFilterFormResetButton.addEventListener("click", async (event) => {
-  event.preventDefault();
-	history.replaceState(null, '', window.location.pathname);
-  document.querySelectorAll('#inventory-search-form input').forEach((input: HTMLInputElement) => {
-    input.value = '';
-		input.disabled = true;
-  });
-
-	for (const param of urlSearchParams) {
-		if (!param.inputElement || !param.paramString) continue;
-		param.resetElement.style.display = 'none';
-		param.inputElement.value = '';
-	}
-
-	resetSearchURLParameters();
-	try{
-		await populateDepartmentSelect(filterDepartment);
-		await populateManufacturerSelect();
-		await populateModelSelect();
-		await populateDomainSelect(filterDomain);
-		await fetchFilteredInventoryData();
-	} catch (error) {
-		console.error("Error resetting filters and fetching data:", error);
-	}
-});
 
 async function fetchAllManufacturersAndModels(purgeCache: boolean = false): Promise<Array<ManufacturersAndModels> | []> {
 	const cached = sessionStorage.getItem("uit_manufacturers_and_models");
@@ -396,3 +397,36 @@ async function populateDepartmentSelect(elem: HTMLSelectElement, purgeCache: boo
 	elem.value = (initialValue && departmentsData.some(item => item.department_name === initialValue)) ? initialValue : '';
 	elem.disabled = false;
 }
+
+inventoryFilterForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  fetchFilteredInventoryData();
+});
+
+inventoryFilterFormResetButton.addEventListener("click", async (event) => {
+  event.preventDefault();
+  document.querySelectorAll('#inventory-search-form input').forEach((input: HTMLInputElement) => {
+    input.value = '';
+		input.disabled = true;
+  });
+
+	for (const param of urlSearchParams) {
+		if (!param.inputElement || !param.paramString) continue;
+		param.inputElement.style.border = "revert-layer";
+		param.inputElement.style.boxShadow = "revert-layer";
+		param.inputElement.style.outline = "revert-layer";
+		param.resetElement.style.display = 'none';
+		param.inputElement.value = '';
+	}
+
+	resetSearchURLParameters();
+	try{
+		await populateDepartmentSelect(filterDepartment);
+		await populateManufacturerSelect();
+		await populateModelSelect();
+		await populateDomainSelect(filterDomain);
+		await fetchFilteredInventoryData();
+	} catch (error) {
+		console.error("Error resetting filters and fetching data:", error);
+	}
+});
