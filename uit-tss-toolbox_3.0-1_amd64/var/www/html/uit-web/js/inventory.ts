@@ -479,7 +479,7 @@ csvDownloadButton.addEventListener('click', async (event) => {
   }
 });
 
-async function fetchDepartments(purgeCache: boolean = false): Promise<Department[] | null> {
+async function fetchDepartments(purgeCache: boolean = false): Promise<Array<Department> | []> {
 	const cached = sessionStorage.getItem("uit_departments");
 
 	try {
@@ -490,22 +490,21 @@ async function fetchDepartments(purgeCache: boolean = false): Promise<Department
 				return cacheEntry.departments;
 			}
 		}
-
-		const departments: Department[] = await fetchData('/api/departments');
-    if (!departments || !Array.isArray(departments) || departments.length === 0) {
-			throw new Error('Invalid departments data received from server');
+		const data: Array<Department> = await fetchData('/api/departments');
+		if (!data || !Array.isArray(data) || data.length === 0) {
+			throw new Error('No data returned from /api/departments');
 		}
 		const cacheEntry: DepartmentsCache = {
 			timestamp: Date.now(),
-			departments: departments
+			departments: data
 		};
 		sessionStorage.setItem("uit_departments", JSON.stringify(cacheEntry));
 		console.log("Cached departments data");
-    return departments;
-  } catch (error) {
-    console.error('Error fetching departments:', error);
+		return data;
+	} catch (error) {
+		console.error('Error fetching departments:', error);
 		return [];
-  }
+	}
 }
 
 async function initializeInventoryPage() {

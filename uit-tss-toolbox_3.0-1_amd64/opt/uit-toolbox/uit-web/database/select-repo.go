@@ -137,10 +137,7 @@ func (repo *Repo) GetLocations(ctx context.Context) (map[string]string, error) {
 }
 
 func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]ManufacturersAndModels, error) {
-	const sqlQuery = `SELECT system_model, 
-		(CASE WHEN LENGTH(system_model) > 17 THEN CONCAT(LEFT(system_model, 8), '...', RIGHT(system_model, 9)) ELSE system_model END) AS system_model_formatted,
-		system_manufacturer, 
-		(CASE WHEN LENGTH(system_manufacturer) > 10 THEN CONCAT(LEFT(system_manufacturer, 10), '...') ELSE system_manufacturer END) AS system_manufacturer_formatted
+	const sqlQuery = `SELECT system_model, system_manufacturer
 		FROM system_data 
 		WHERE system_manufacturer IS NOT NULL 
 			AND system_model IS NOT NULL

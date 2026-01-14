@@ -11,9 +11,7 @@ type DomainCache = {
 
 type ManufacturersAndModels = {
 	system_model: string;
-	system_model_formatted: string;
 	system_manufacturer: string;
-	system_manufacturer_formatted: string;
 };
 
 type ManufacturerAndModelsCache = {
@@ -107,7 +105,6 @@ function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton:
 			populateModelSelect().catch((error) => {
 				console.error("Error populating model select:", error);
 			});
-			return;
 		}
 		fetchFilteredInventoryData().catch((error) => {
 			console.error("Error fetching filtered inventory data:", error);
@@ -118,7 +115,6 @@ function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton:
 		event.preventDefault();
 		resetButton.style.display = 'none';
 		filterElement.value = '';
-		resetSearchURLParameters();
 		if (resetButton === filterManufacturerReset || resetButton == filterModelReset) {
 			populateManufacturerSelect().catch((error) => {
 				console.error("Error populating manufacturer select:", error);
@@ -126,11 +122,11 @@ function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton:
 			populateModelSelect().catch((error) => {
 				console.error("Error populating model select:", error);
 			});
-			return;
 		}
 		fetchFilteredInventoryData().catch((error) => {
 			console.error("Error fetching filtered inventory data:", error);
 		});
+		resetSearchURLParameters();
 	});
 }
 
@@ -266,10 +262,18 @@ async function populateManufacturerSelect(purgeCache: boolean = false) {
   const data: ManufacturersAndModels[] = await fetchAllManufacturersAndModels(purgeCache);
 	if (!data || !Array.isArray(data) || data.length === 0) return;
 
-	// Sort manufacturers array
-	data.sort((a, b) => {
-		const manufacturerA = a.system_manufacturer_formatted || a.system_manufacturer;
-		const manufacturerB = b.system_manufacturer_formatted || b.system_manufacturer;
+	// Sort manufacturers array - get unique key
+	const uniqueMap = new Map<string, ManufacturersAndModels>();
+	for (const item of data) {
+		if (!item.system_manufacturer) continue;
+		if (!uniqueMap.has(item.system_manufacturer)) {
+			uniqueMap.set(item.system_manufacturer, item);
+		}
+	}
+	const uniqueArray = Array.from(uniqueMap.values());
+	uniqueArray.sort((a, b) => {
+		const manufacturerA = a.system_manufacturer || a.system_manufacturer;
+		const manufacturerB = b.system_manufacturer || b.system_manufacturer;
 		return manufacturerA.localeCompare(manufacturerB);
 	});
 
@@ -277,17 +281,18 @@ async function populateManufacturerSelect(purgeCache: boolean = false) {
   resetSelectElement(filterManufacturer, 'Manufacturer');
 
   // Sort by formatted name
-  for (const item of data) {
-		if (!item.system_manufacturer || !item.system_manufacturer_formatted) continue;
+  for (const item of uniqueArray) {
+		if (!item.system_manufacturer || !item.system_manufacturer) continue;
 		const option = document.createElement('option');
 		option.value = item.system_manufacturer;
-		option.textContent = item.system_manufacturer_formatted || item.system_manufacturer;
+		option.textContent = item.system_manufacturer || item.system_manufacturer;
 		filterManufacturer.appendChild(option);
 	}
 
-  filterManufacturer.value = (initialValue && data.some(item => item.system_manufacturer === initialValue)) ? initialValue : '';
+  filterManufacturer.value = (initialValue && uniqueArray.some(item => item.system_manufacturer === initialValue)) ? initialValue : '';
 	if (filterManufacturer.value !== '') {
 		updateURLParameters('system_manufacturer', filterManufacturer.value);
+		filterModel.disabled = false;
 	} else {
 		updateURLParameters('system_manufacturer', null);
 	}
@@ -298,6 +303,8 @@ async function populateModelSelect(purgeCache: boolean = false) {
   if (!filterModel) return;
 	
 	const initialValue = filterModel.value;
+	
+	filterModel.disabled = true;
 
 	if (!filterManufacturer.value || filterManufacturer.value.trim().length === 0) {
 		resetSelectElement(filterModel, 'Model', true);
@@ -305,25 +312,26 @@ async function populateModelSelect(purgeCache: boolean = false) {
 		return;
 	}
 
-	filterModel.disabled = true;
-
   const data: ManufacturersAndModels[] = await fetchAllManufacturersAndModels(purgeCache);
 	if (!data || !Array.isArray(data) || data.length === 0) return;
 
 	data.sort((a, b) => {
-		const modelA = a.system_model_formatted || a.system_model;
-		const modelB = b.system_model_formatted || b.system_model;
+		const modelA = a.system_model || a.system_model;
+		const modelB = b.system_model || b.system_model;
 		return modelA.localeCompare(modelB);
 	});
 
 	resetSelectElement(filterModel, 'Model');
 
 	for (const item of data) {
-		if (item.system_manufacturer !== filterManufacturer.value) continue;
-		if (!item.system_model || !item.system_model_formatted) continue;
+		if (item.system_manufacturer !== filterManufacturer.value) {
+			console.log("Skipping model for manufacturer:", item.system_model, item.system_manufacturer, filterManufacturer.value);
+			continue;
+		};
+		if (!item.system_model || !item.system_model) continue;
 		const option = document.createElement('option');
 		option.value = item.system_model;
-		option.textContent = item.system_model_formatted || item.system_model;
+		option.textContent = item.system_model || item.system_model;
 		filterModel.appendChild(option);
 	}
 
@@ -342,7 +350,7 @@ async function fetchDomains(purgeCache: boolean = false): Promise<Array<Domain> 
 				return cacheEntry.domains;
 			}
 		}
-		const data: Domain[] = await fetchData('/api/domains');
+		const data: Array<Domain> = await fetchData('/api/domains');
 		if (!data || !Array.isArray(data) || data.length === 0) {
 			throw new Error('No data returned from /api/domains');
 		}
@@ -362,17 +370,19 @@ async function fetchDomains(purgeCache: boolean = false): Promise<Array<Domain> 
 async function populateDomainSelect(elem: HTMLSelectElement, purgeCache: boolean = false) {
 	if (!elem) return;
 
-	const initalValue = elem.value;
+	const initialValue = elem.value;
 
 	elem.disabled = true;
 
 	try {
-		const domainData = await fetchDomains(purgeCache);
-		if (!domainData) {
+		const domainData: Array<Domain> = await fetchDomains(purgeCache);
+		if (!domainData || !Array.isArray(domainData) || domainData.length === 0) {
 			throw new Error('No data returned from /api/domains');
 		}
 
-		domainData.sort((a, b) => a.domain_sort_order - b.domain_sort_order);
+		domainData.sort((a, b) => {
+			return a.domain_sort_order - b.domain_sort_order;
+		});
 
 		resetSelectElement(elem, 'Domain');
 
@@ -383,7 +393,7 @@ async function populateDomainSelect(elem: HTMLSelectElement, purgeCache: boolean
 			elem.appendChild(option);
 		}
 
-		elem.value = (initalValue && domainData.some(item => item.domain_name === initalValue)) ? initalValue : '';
+		elem.value = (initialValue && domainData.some(item => item.domain_name === initialValue)) ? initialValue : '';
 	} catch (error) {
 		console.error('Error fetching domains:', error);
 	} finally {
@@ -394,7 +404,11 @@ async function populateDomainSelect(elem: HTMLSelectElement, purgeCache: boolean
 async function populateDepartmentSelect(elem: HTMLSelectElement, purgeCache: boolean = false) {
 	if (!elem) return;
 
-	const departmentsData = await fetchDepartments();
+	const initialValue = elem.value;
+
+	elem.disabled = true;
+
+	const departmentsData: Array<Department> = await fetchDepartments(purgeCache);
 	if (!departmentsData || !Array.isArray(departmentsData) || departmentsData.length === 0) return;
 
 	resetSelectElement(elem, 'Department');
@@ -407,4 +421,6 @@ async function populateDepartmentSelect(elem: HTMLSelectElement, purgeCache: boo
 		option.textContent = department.department_name_formatted || department.department_name;
 		elem.appendChild(option);
 	}
+	elem.value = (initialValue && departmentsData.some(item => item.department_name === initialValue)) ? initialValue : '';
+	elem.disabled = false;
 }
