@@ -591,7 +591,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   await initializeInventoryPage();
 	updateFiltersFromURL();
 	if (Array.isArray(window.allTags)) {
-		console.log("Available tags found:", window.allTags);
 		renderTagOptions(window.allTags);
 	}
 
