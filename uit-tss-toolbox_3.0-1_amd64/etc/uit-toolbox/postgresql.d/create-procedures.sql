@@ -36,9 +36,6 @@ RETURNS VARCHAR(128) AS $$
 BEGIN
   RETURN CASE
     WHEN REGEXP_MATCH(location, '^.{1}$') IS NOT NULL THEN UPPER(location)
-    WHEN REGEXP_MATCH(location, '^(checkout|check-out|check out)$') IS NOT NULL THEN 'Check Out'
-    WHEN REGEXP_MATCH(location, '^(cam desk|cams desk|cam''s desk)$') IS NOT NULL THEN 'Cam''s Desk'
-    WHEN REGEXP_MATCH(location, '^(matthew desk|matthews desk|matthew''s desk)$') IS NOT NULL THEN 'Matthew''s Desk'
     ELSE location
   END;
 END;

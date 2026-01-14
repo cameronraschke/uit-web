@@ -969,3 +969,26 @@ func GetAllJobs(w http.ResponseWriter, req *http.Request) {
 	}
 	middleware.WriteJson(w, http.StatusOK, allJobs)
 }
+
+func GetAllLocations(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx)
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.HTTPWarning(req, "No database connection available in GetAllLocations")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	repo := database.NewRepo(db)
+
+	allLocations, err := repo.GetAllLocations(ctx)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.HTTPWarning(req, "Query error in GetAllLocations: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+	}
+	middleware.WriteJson(w, http.StatusOK, allLocations)
+}

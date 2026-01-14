@@ -35,5 +35,6 @@
 	"/api/job_queue/all_jobs": {},
 	"/api/job_queue/update_all_online_clients": {
 		"allowed_methods": ["OPTIONS", "POST"]
-	}
+	},
+	"/api/locations": {}
 }

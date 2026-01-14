@@ -155,10 +155,15 @@ function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton:
 				console.error("Error populating model select:", error);
 			});
 		}
+		for (const elem of urlSearchParams) {
+			if (elem.inputElement === filterElement) {
+				setURLParameter(elem.paramString, null);
+				break;
+			}
+		}
 		fetchFilteredInventoryData().catch((error) => {
 			console.error("Error fetching filtered inventory data:", error);
 		});
-		resetSearchURLParameters();
 	});
 }
 

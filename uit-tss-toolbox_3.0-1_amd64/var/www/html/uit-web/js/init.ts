@@ -392,6 +392,14 @@ async function getAllTags():  Promise<TagCache | null> {
 	return null;
 }
 
+async function waitForNextPaint(frames = 1) {
+  while (frames-- > 0) {
+    await new Promise(requestAnimationFrame);
+  }
+}
+
+
+
 document.addEventListener("DOMContentLoaded", async () => {
 	if (!navigator.onLine) {
 		console.warn("Offline, redirecting to logout");
@@ -424,9 +432,3 @@ document.addEventListener("DOMContentLoaded", async () => {
 		window.allTags = [];
 	}
 });
-
-async function waitForNextPaint(frames = 1) {
-  while (frames-- > 0) {
-    await new Promise(requestAnimationFrame);
-  }
-}

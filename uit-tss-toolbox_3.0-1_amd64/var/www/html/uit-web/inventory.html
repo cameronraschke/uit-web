@@ -15,10 +15,10 @@
 		<div><h1>UIT - ITSC Inventory Management</h1></div>
 		<div id="main-content"><h2>Update and View Inventory</h2></div>
 
-		<div id="inventory-section" class="flex-container inventory">
-			<div class="flex-box inventory">
-				<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
-				<form id="inventory-lookup-form">
+		<form id="inventory-lookup-form">
+			<div id="inventory-section" class="flex-container inventory">
+				<div class="flex-box inventory">
+					<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
 					<div class="inventory-lookup-label"><h3>Update Client Information</h3></div>
 					<div class="grid-container inventory inventory-lookup-form">
 						<div class="inventory-lookup-label"><p>Tag Number/Serial Number Lookup:</p></div>
@@ -64,12 +64,14 @@
 							<div><p class="required-field">Location/Building/Room:</p></div>
 							<div><p class="required-field">Manufacturer/Model:</p></div>
 							<div>
+								<datalist id="location-suggestions"></datalist>
 								<input type="text" id="location" name="location"
 									placeholder="Location" 
 									maxlength="128"
 									autocomplete="off"
 									autocorrect="off"
 									autocapitalize="on" 
+									list="location-suggestions"
 								/>
 							</div>
 							<div>
@@ -183,23 +185,24 @@
 
 							<div class="vertical-spacer"></div>
 
-							<div>
-								<input id="inventory-update-submit-button" name="inventory-update-submit-button" 
-									type="submit"
-									class="submit" 
-									value="Submit Inventory Update" 
-								/>
+							
+							<div class="message"><p id="inventory-error" class="error-message"></p></div>
+							<div id="inventory-update-form-buttons">
 								<input id="inventory-update-cancel-button" name="inventory-update-cancel-button" 
 									type="reset"
 									class="cancel" 
 									value="Cancel" 
 								/>
+								<input id="inventory-update-submit-button" name="inventory-update-submit-button" 
+									type="submit"
+									class="submit" 
+									value="Submit Inventory Update" 
+								/>
 							</div>
-							<div class="message"><p id="inventory-error" class="error-message"></p></div>
-					</form>
+						</div>
+					</div>
 				</div>
-			</div>
-		</div>
+			</form>
 
 			<div class="flex-box inventory">
 				<form id="inventory-search-form">

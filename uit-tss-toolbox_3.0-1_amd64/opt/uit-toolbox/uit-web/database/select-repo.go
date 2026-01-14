@@ -846,3 +846,38 @@ func (repo *Repo) GetAllJobs(ctx context.Context) ([]AllJobs, error) {
 	}
 	return allJobs, nil
 }
+
+func (repo *Repo) GetAllLocations(ctx context.Context) ([]AllLocations, error) {
+	const sqlQuery = `WITH latest_locations AS (
+		SELECT DISTINCT ON (tagnumber) location, time
+		FROM locations
+		WHERE location IS NOT NULL AND location != ''
+		ORDER BY tagnumber, time DESC
+	)
+	SELECT location, MAX(time) as time
+	FROM latest_locations
+	GROUP BY location
+	ORDER BY location ASC;`
+
+	var allLocations []AllLocations
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var location AllLocations
+		if err := rows.Scan(
+			&location.Location,
+			&location.Timestamp,
+		); err != nil {
+			return nil, err
+		}
+		allLocations = append(allLocations, location)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return allLocations, nil
+}

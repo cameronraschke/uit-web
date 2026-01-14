@@ -257,3 +257,9 @@ type AllJobs struct {
 	JobSortOrder    int    `json:"job_sort_order"`
 	JobHidden       bool   `json:"job_hidden"`
 }
+
+type AllLocations struct {
+	Timestamp         *time.Time `json:"timestamp"`
+	Location          *string    `json:"location"`
+	LocationFormatted *string    `json:"location_formatted"`
+}

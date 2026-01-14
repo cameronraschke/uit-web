@@ -16,6 +16,17 @@ type ClientLookupResult = {
 	system_serial: string | null;
 };
 
+type AllLocations = {
+	timestamp: Date | null;
+	location: string | null;
+	location_formatted: string | null;
+};
+
+type AllLocationsCache = {
+	timestamp: number;
+	locations: AllLocations[];
+};
+
 // Inventory update form (and lookup)
 const lastUpdateTimeMessage = document.getElementById('last-update-time-message') as HTMLElement;
 const inventoryLookupWarningMessage = document.getElementById('existing-inventory-message') as HTMLElement;
@@ -40,6 +51,56 @@ const inventorySearchDomainSelect = document.getElementById('inventory-search-do
 const csvDownloadButton = document.getElementById('inventory-search-download-button') as HTMLButtonElement;
 const statusesThatIndicateBroken = ["needs-repair"];
 const statusesThatIndicateCheckout = ["checked-out", "reserved-for-checkout"];
+
+async function fetchAllLocations(purgeCache: boolean = false): Promise<AllLocations[] | []> {
+	const cached = sessionStorage.getItem("uit_all_locations");
+
+	try {
+		if (cached && !purgeCache) {
+			const cacheEntry: AllLocationsCache = JSON.parse(cached);
+			if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.locations)) {
+				console.log("Loaded all locations from cache");
+				return cacheEntry.locations;
+			}
+		}
+		const data: AllLocations[] = await fetchData('/api/locations', false);
+		if (!data || !Array.isArray(data)) {
+			throw new Error("No data returned from /api/locations");
+		}
+		sessionStorage.setItem("uit_all_locations", JSON.stringify({ timestamp: Date.now(), locations: data }));
+		return data;
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		console.error("Error fetching all locations:", errorMessage);
+		return [];
+	}
+}
+
+function getLocationSearchResults(inputElement: HTMLInputElement, data: Array<AllLocations>): Array<string> {
+	if (!inputElement || !data || data.length === 0) {
+		return [];
+	}
+
+	const charsToTrim = new RegExp(['"', "'", '`', ' '].join(''), 'g');
+	const inputValue = inputElement.value.trim().toLowerCase().replaceAll(charsToTrim, '');
+
+	return data
+		.filter((entry) => {
+			if (typeof entry.location !== 'string') {
+				console.warn('Data entry location is not a string:', entry);
+				return false;
+			}
+			const strippedLocation = entry.location.trim().toLowerCase().replaceAll(charsToTrim, '');
+			return strippedLocation.includes(inputValue);
+		})
+		.sort((a, b) => {
+			const timestampA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+			const timestampB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+			return timestampB - timestampA;
+		})
+		.map(entry => entry.location!.trim().toLowerCase().replaceAll(charsToTrim, ''))
+		.slice(0, 10);
+}
 
 async function lookupTagOrSerial(tagnumber: number | null, serial: string | null): Promise<{ tagnumber: number | null; system_serial: string | null } | null> {
   const query = new URLSearchParams();
@@ -533,4 +594,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 	});
 });
 
-
+inventoryUpdateLocationInput.addEventListener("keyup", async () => {
+	const allLocations = await fetchAllLocations();
+	const searchResults = getLocationSearchResults(inventoryUpdateLocationInput, allLocations);
+	const dataListElement = document.getElementById('location-suggestions') as HTMLDataListElement;
+	dataListElement.innerHTML = '';
+	searchResults.forEach(location => {
+		const option = document.createElement('option');
+		option.value = location;
+		dataListElement.appendChild(option);
+	});
+});
