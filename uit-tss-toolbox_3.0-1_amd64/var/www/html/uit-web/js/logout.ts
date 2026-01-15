@@ -8,7 +8,7 @@ authChannel.onmessage = function(event) {
   }
 };
 
-const logoutButton = document.getElementById("logout-button") as HTMLButtonElement;
+const logoutButton = document.getElementById("menu-logout-button") as HTMLButtonElement;
 logoutButton.addEventListener("click", function(event) {
   event.preventDefault();
   logout();

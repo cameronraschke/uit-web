@@ -179,6 +179,7 @@ td {
 .text-search:not(:placeholder-shown) {
 	background-image: none;
 	padding-left: var(--input-padding);
+	padding-right: calc(var(--input-padding) + 1.5rem + 0.5rem);
 }
 
 .error-message {
@@ -230,9 +231,10 @@ td {
 }
 
 .flex-container.menubar {
-	margin: 2rem auto;
+	padding-left: auto;
+	padding-right: auto;
 	box-shadow: 0 4px 6px var(--shadow-color);
-	gap: 1.5rem;
+	gap: 0rem;
 	border: 1px solid var(--shadow-color);
 	border-radius: var(--border-radius);
 	background-color: var(--bg-color);
@@ -244,35 +246,53 @@ td {
 	width: 90dvw;
 }
 
+.flex-container.menubar a:not(.active) {
+	text-decoration: none;
+}
+
 .flex-container.menubar .logout {
+	align-self: flex-end;
+	justify-self: flex-end;
+}
+
+.flex-container.menubar .search {
 	margin-left: auto;
+	margin-right: auto;
 	align-self: flex-end;
 	justify-self: flex-end;
 }
 
 .flex-container.menubar .menuitem {
 	display: flex;
+	gap: 0.1rem;
+	height: 100%;
 	flex-wrap: nowrap;
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
-	gap: 0rem;
-	padding: 1.5rem 1rem;
+	padding: 0rem 1rem;
 	transition: 
 		color 0.25s ease,
-		background-color 0.25s ease
+		background-color 0.25s ease,
+		text-decoration 0.25s ease
 		;
 }
 
-.flex-container.menubar .menuitem a {
-	height: 100%;
-}
-
-.flex-container.menubar .menuitem a:hover {
+.flex-container.menubar .menuitem:hover:not(.search) {
 	cursor: pointer;
 	background-color: var(--accent-color);
 	color: var(--fg-color);
-	text-decoration: none;
+	text-decoration: underline;
+}
+
+@media (max-width: 1080px) {
+	#menu-tag-lookup {
+		display: none;
+	}
+}
+
+.flex-container.menubar .menuitem:hover img {
+	filter: invert(1);
 }
 
 .flex-container.footer {
@@ -370,4 +390,8 @@ td {
 
 .clickable {
 	cursor: pointer;
+}
+
+.active {
+	text-decoration: underline;
 }

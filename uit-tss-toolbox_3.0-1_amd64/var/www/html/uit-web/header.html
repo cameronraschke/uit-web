@@ -1,14 +1,27 @@
 <nav>
 	<div class="flex-container menubar">
-			<div class="menuitem">
-				<a href="/dashboard" ><img src="/icons/navigation/home.svg" /></a>
-				<a href="/dashboard" >Home</a>
-			</div>
-			<div class="menuitem"><a href="/inventory">Inventory</a></div>
-			<div class="menuitem"><a href="/checkouts">Checkouts</a></div>
-			<div class="menuitem"><a href="/job-queue">Job Queue</a></div>
-			<div class="menuitem"><a href="/reports">Reports</a></div>
-			<div class="menuitem"><a id="logout-button" class="logout" href="/logout">Logout</a></div>
+			<a id="menu-dashboard" href="/dashboard" class="menuitem">
+				<img src="/icons/navigation/home.svg" />
+				<span>Home</span>
+			</a>
+			<a id="menu-inventory" href="/inventory" class="menuitem">
+				<span>Inventory</span>
+			</a>
+			<a id="menu-checkouts" href="/checkouts" class="menuitem">
+				<span>Checkouts</span>
+			</a>
+			<a id="menu-job-queue" href="/job-queue" class="menuitem">
+				<span>Job Queue</span>
+			</a>
+			<a id="menu-reports" href="/reports" class="menuitem">
+				<span>Reports</span>
+			</a>
+			<form id="menu-tag-lookup" class="menuitem search">
+				<input type="text" class="text-search" placeholder="Search Tag/Serial No."/>
+			</form>
+			<a id="menu-logout-button" href="/logout" class="menuitem logout">
+				<span>Logout</span>
+			</a>
 		</div>
 	</div>
 </nav>
