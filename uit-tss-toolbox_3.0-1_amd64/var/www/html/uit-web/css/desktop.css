@@ -230,9 +230,14 @@ td {
   text-align: center;
 }
 
+.flex-container.title.pagetitle {
+	margin-top: 5rem;
+}
+
 .flex-container.menubar {
-	padding-left: auto;
-	padding-right: auto;
+	position:fixed;
+	top:0;
+	z-index: 1000;
 	box-shadow: 0 4px 6px var(--shadow-color);
 	gap: 0rem;
 	border: 1px solid var(--shadow-color);
@@ -243,7 +248,7 @@ td {
 	justify-content: space-evenly;
 	flex-wrap: wrap;
 	height: 4rem;
-	width: 90dvw;
+	width: 100%;
 }
 
 .flex-container.menubar a:not(.active) {

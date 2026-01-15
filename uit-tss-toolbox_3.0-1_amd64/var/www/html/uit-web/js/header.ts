@@ -1,19 +1,12 @@
-const menuDashboard = document.getElementById("menu-dashboard") as HTMLAnchorElement;
-const menuInventory = document.getElementById("menu-inventory") as HTMLAnchorElement;
-const menuCheckouts = document.getElementById("menu-checkouts") as HTMLAnchorElement;
-const menuJobQueue = document.getElementById("menu-job-queue") as HTMLAnchorElement;
-const menuReports = document.getElementById("menu-reports") as HTMLAnchorElement;
-const menuTagLookup = document.getElementById("menu-tag-lookup") as HTMLAnchorElement;
-const menuLogout = document.getElementById("menu-logout-button") as HTMLAnchorElement;
 const currentPath = window.location.pathname;
 
-const pathMap : { [key: string]: HTMLAnchorElement } = {
-	"/dashboard": menuDashboard,
-	"/inventory": menuInventory,
-	"/checkouts": menuCheckouts,
-	"/job-queue": menuJobQueue,
-	"/reports": menuReports
-};
+const pathMap : Map<string, string> = new Map([
+	["/dashboard", "menu-dashboard"],
+	["/inventory", "menu-inventory"],
+	["/checkouts", "menu-checkouts"],
+	["/job-queue", "menu-job-queue"],
+	["/reports", "menu-reports"]
+]);
 
 async function drawHeader() {
 	const header = document.getElementById("uit-header");
@@ -25,14 +18,23 @@ async function drawHeader() {
     console.error("Error fetching header:", error);
   }
 }
-drawHeader();
 
 document.addEventListener("DOMContentLoaded", () => {
-	for (const [path, menuItem] of Object.entries(pathMap)) {
-		if (currentPath === path) {
-			menuItem.classList.add("active");
-		} else {
-			menuItem.classList.remove("active");
+	drawHeader().then(() => {
+		for (const [path, elementId] of pathMap) {
+			const menuItem = document.getElementById(elementId);
+			if (!menuItem) continue;
+
+			console.log(`Checking path: ${path} against currentPath: ${currentPath}`);
+			if (currentPath === path) {
+				menuItem.classList.add("active");
+			} else if (menuItem.classList.contains('active')) {
+				menuItem.classList.remove("active");
+			}
 		}
-	}
+	}).catch(
+		(error) => {
+			console.error("Error in drawHeader:", error);
+		}
+	);
 });
