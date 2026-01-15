@@ -17,7 +17,7 @@
 		<div class="flex-container title"><h2>Update and View Inventory</h2></div>
 
 		<section id="update-and-search-container" class="flex-container horizontal">
-			<form id="inventory-lookup-form">
+			<form id="inventory-lookup-form" class="flex-item">
 				<div class="flex-container vertical">
 					<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
 					<div class="flex-container title"><h3>Update Client Information</h3></div>
@@ -205,76 +205,74 @@
 				</div>
 			</form>
 
-			<div class="flex-box inventory">
-				<form id="inventory-search-form">
-					<div><h3>Advanced Search</h3></div>
-					<div class="grid-container advanced-search">	
-						<span>
-							<select id="inventory-search-location" name="location" form="inventory-search-form">
-							<option value="" disabled selected>Location</option>
-								{{ range $location, $locationReadable := .Locations }}
-									<option value="{{ $location }}">{{ $locationReadable }}</option>
-								{{ end }}
-							</select>
-							<a id="inventory-search-location-reset" class="inventory-search-reset" href="">x</a>
-						</span>
-						<span>
-							<select id="inventory-search-department" name="department_name" form="inventory-search-form">
-								<option value="" disabled selected>Department</option>
-							</select>
-							<a id="inventory-search-department-reset" class="inventory-search-reset" href="">x</a>
-						</span>
-						<span>
-							<select id="inventory-search-manufacturer" name="manufacturer" form="inventory-search-form">
-								<option value="" disabled selected>Manufacturer</option>
-							</select>
-							<a id="inventory-search-manufacturer-reset" class="inventory-search-reset" href="">x</a>
-						</span>
-						<span>
-							<select id="inventory-search-model" name="model" form="inventory-search-form">
-								<option value="" disabled selected>Model</option>
-							</select>
-							<a id="inventory-search-model-reset" class="inventory-search-reset" href="">x</a></span>
-						<span>
-							<select id="inventory-search-domain" name="ad_domain" form="inventory-search-form">
-							<option value="" disabled selected>AD Domain</option>
-								{{ range $domain, $domainReadable := .Domains }}
-									<option value="{{ $domain }}">{{ $domainReadable }}</option>
-								{{ end }}
-							</select>
-							<a id="inventory-search-domain-reset" class="inventory-search-reset" href="">x</a>
-						</span>
-						<span>
-							<select id="inventory-search-status" name="status" form="inventory-search-form">
-							<option value="" disabled selected>Status</option>
-								{{ range $status, $statusReadable := .Statuses }}
-									<option value="{{ $status }}">{{ $statusReadable }}</option>
-								{{ end }}
-							</select>
-							<a id="inventory-search-status-reset" class="inventory-search-reset" href="">x</a>
-						</span>
-						<span>
-							<select id="inventory-search-broken" name="is_broken" form="inventory-search-form">
-							<option value="" disabled selected>Broken?</option>
-							<option value="true">Yes - Is broken</option>
-							<option value="false">No - Is functional</option>
-							</select>
-							<a id="inventory-search-broken-reset" class="inventory-search-reset" href="">x</a>
-						</span>
-						<span>
-							<select id="inventory-search-has_images" name="has_images" form="inventory-search-form">
-								<option value="" disabled selected>Has Images?</option>
-								<option value="true">Yes - Has images</option>
-								<option value="false">No - Missing images</option>
-							</select>
-							<a id="inventory-search-has_images-reset" class="inventory-search-reset" href="">x</a>
-						</span>
-						<button id="inventory-search-form-reset-button" type="button" class="cancel">Reset Search</button>
-						<button type="submit" class="submit" id="inventory-search-download-button">Download Results</button>
-						<div class="vertical-spacer"></div>
-					</div>
-				</form>
-			</div>
+			<form class="flex-item" id="inventory-search-form">
+				<div><h3>Advanced Search</h3></div>
+				<div class="grid-container advanced-search">	
+					<span>
+						<select id="inventory-search-location" name="location" form="inventory-search-form">
+						<option value="" disabled selected>Location</option>
+							{{ range $location, $locationReadable := .Locations }}
+								<option value="{{ $location }}">{{ $locationReadable }}</option>
+							{{ end }}
+						</select>
+						<a id="inventory-search-location-reset" class="inventory-search-reset" href="">x</a>
+					</span>
+					<span>
+						<select id="inventory-search-department" name="department_name" form="inventory-search-form">
+							<option value="" disabled selected>Department</option>
+						</select>
+						<a id="inventory-search-department-reset" class="inventory-search-reset" href="">x</a>
+					</span>
+					<span>
+						<select id="inventory-search-manufacturer" name="manufacturer" form="inventory-search-form">
+							<option value="" disabled selected>Manufacturer</option>
+						</select>
+						<a id="inventory-search-manufacturer-reset" class="inventory-search-reset" href="">x</a>
+					</span>
+					<span>
+						<select id="inventory-search-model" name="model" form="inventory-search-form">
+							<option value="" disabled selected>Model</option>
+						</select>
+						<a id="inventory-search-model-reset" class="inventory-search-reset" href="">x</a></span>
+					<span>
+						<select id="inventory-search-domain" name="ad_domain" form="inventory-search-form">
+						<option value="" disabled selected>AD Domain</option>
+							{{ range $domain, $domainReadable := .Domains }}
+								<option value="{{ $domain }}">{{ $domainReadable }}</option>
+							{{ end }}
+						</select>
+						<a id="inventory-search-domain-reset" class="inventory-search-reset" href="">x</a>
+					</span>
+					<span>
+						<select id="inventory-search-status" name="status" form="inventory-search-form">
+						<option value="" disabled selected>Status</option>
+							{{ range $status, $statusReadable := .Statuses }}
+								<option value="{{ $status }}">{{ $statusReadable }}</option>
+							{{ end }}
+						</select>
+						<a id="inventory-search-status-reset" class="inventory-search-reset" href="">x</a>
+					</span>
+					<span>
+						<select id="inventory-search-broken" name="is_broken" form="inventory-search-form">
+						<option value="" disabled selected>Broken?</option>
+						<option value="true">Yes - Is broken</option>
+						<option value="false">No - Is functional</option>
+						</select>
+						<a id="inventory-search-broken-reset" class="inventory-search-reset" href="">x</a>
+					</span>
+					<span>
+						<select id="inventory-search-has_images" name="has_images" form="inventory-search-form">
+							<option value="" disabled selected>Has Images?</option>
+							<option value="true">Yes - Has images</option>
+							<option value="false">No - Missing images</option>
+						</select>
+						<a id="inventory-search-has_images-reset" class="inventory-search-reset" href="">x</a>
+					</span>
+					<button id="inventory-search-form-reset-button" type="button" class="cancel">Reset Search</button>
+					<button type="submit" class="submit" id="inventory-search-download-button">Download Results</button>
+					<div class="vertical-spacer"></div>
+				</div>
+			</form>
 		</section>
 
 		<section>

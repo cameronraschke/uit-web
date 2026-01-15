@@ -241,7 +241,6 @@ td {
 	justify-content: space-evenly;
 	flex-wrap: wrap;
 	width: 90dvw;
-	transition: all 0.3s ease-in-out;
 }
 
 .flex-container.menubar .logout {
@@ -251,6 +250,7 @@ td {
 }
 
 .flex-container.menubar a {
+	transition: background-color 0.25s ease;
 	padding: 1.5rem 1rem;
 	height: 100%;
 }
@@ -331,6 +331,12 @@ td {
 
 .flex-box tbody tr:hover {
   background-color: var(--bg-color);
+}
+
+.flex-item {
+	background-color: var(--bg-color);
+	border: var(--border-width) solid var(--button-border-color);
+	border-radius: var(--border-radius);
 }
 
 .required-field::after {
