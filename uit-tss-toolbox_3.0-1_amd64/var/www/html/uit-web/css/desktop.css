@@ -240,6 +240,7 @@ td {
 	align-items: center;
 	justify-content: space-evenly;
 	flex-wrap: wrap;
+	height: 4rem;
 	width: 90dvw;
 }
 
@@ -249,13 +250,26 @@ td {
 	justify-self: flex-end;
 }
 
-.flex-container.menubar a {
-	transition: background-color 0.25s ease;
+.flex-container.menubar .menuitem {
+	display: flex;
+	flex-wrap: nowrap;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	gap: 0rem;
 	padding: 1.5rem 1rem;
+	transition: 
+		color 0.25s ease,
+		background-color 0.25s ease
+		;
+}
+
+.flex-container.menubar .menuitem a {
 	height: 100%;
 }
 
-.flex-container.menubar a:hover {
+.flex-container.menubar .menuitem a:hover {
+	cursor: pointer;
 	background-color: var(--accent-color);
 	color: var(--fg-color);
 	text-decoration: none;
