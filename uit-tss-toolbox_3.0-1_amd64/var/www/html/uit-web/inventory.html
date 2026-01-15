@@ -16,17 +16,16 @@
 		<div class="flex-container title"><h1>UIT - ITSC Inventory Management</h1></div>
 		<div class="flex-container title"><h2>Update and View Inventory</h2></div>
 
-		<form id="inventory-lookup-form">
-			<div id="inventory-section" class="flex-container inventory">
-				<div class="flex-box inventory">
+		<section id="update-and-search-container" class="flex-container horizontal">
+			<form id="inventory-lookup-form">
+				<div class="flex-container vertical">
 					<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
-					<div class="inventory-lookup-label"><h3>Update Client Information</h3></div>
-					<div class="grid-container inventory inventory-lookup-form">
-						<div class="inventory-lookup-label"><p>Tag Number/Serial Number Lookup:</p></div>
-						<div><img src="/icons/search/search.svg" /><p>Search Tag Number:</p></div>
-						<div><p>Search Serial Number:</p></div>
+					<div class="flex-container title"><h3>Update Client Information</h3></div>
+					<div class="flex-container vertical">
+						<div class="flex-container horizontal"><p>Tag Number/Serial Number Lookup:</p></div>
 						<input type="number" id="inventory-tag-lookup" list="inventory-tag-suggestions"
-							placeholder="Enter Tag Number"
+							class="text-search"
+							placeholder="Search Tag Number"
 							minlength="6"
 							maxlength="6"
 							autocomplete="off"
@@ -37,7 +36,8 @@
 						/>
 						<datalist id="inventory-tag-suggestions"></datalist>
 						<input type="text" id="inventory-serial-lookup"
-							placeholder="Enter Serial Number"
+							class="text-search"
+							placeholder="Search Serial Number"
 							minlength="4"
 							maxlength="64"
 							autocomplete="off"
@@ -45,7 +45,7 @@
 							autocapitalize="off"
 							pattern="[A-Za-z0-9\-_]{1,64}"
 						/>
-						<div>
+						<div class="flex-container horizontal">
 							<button type="submit" id="inventory-lookup-submit-button">Search for Client</button>
 							<button type="button" id="inventory-lookup-reset-button">Reset Search</button>
 							<button type="button" id="inventory-lookup-more-details">More Details</button>
@@ -61,7 +61,7 @@
 					<form id="inventory-update-form" enctype="multipart/form-data" method="POST" action="/api/update_inventory">
 						<input type="hidden" id="csrf-token" value="" />
 						<div class="grid-container inventory inventory-update-form">
-							<div class="inventory-lookup-label"><p class="bold">Location, Manufacturer, and Model:</p></div>
+							<div><p class="bold">Location, Manufacturer, and Model:</p></div>
 							<div><p class="required-field">Location/Building/Room:</p></div>
 							<div><p class="required-field">Manufacturer/Model:</p></div>
 							<div>
@@ -116,7 +116,7 @@
 						<div class="vertical-spacer"></div>
 
 						<div class="grid-container inventory inventory-update-form">
-							<div class="inventory-lookup-label"><p class="bold">Department and AD Domain:</p></div>
+							<div><p class="bold">Department and AD Domain:</p></div>
 							<div><label for="department_name" class="required-field">Department:</label></div>
 							<div>
 								<select id="department_name" name="department_name">
@@ -143,7 +143,7 @@
 						<div class="vertical-spacer"></div>
 
 						<div class="grid-container inventory inventory-update-form">
-							<div class="inventory-lookup-label"><p class="bold">Health and Status:</p></div>
+							<div><p class="bold">Health and Status:</p></div>
 							<label for="is_broken" class="required-field">Is it Broken?</label>
 							<div>
 								<select id="is_broken" name="is_broken">
@@ -207,8 +207,8 @@
 
 			<div class="flex-box inventory">
 				<form id="inventory-search-form">
-					<div class="inventory-lookup-label"><h3>Advanced Search</h3></div>
-					<div class="grid-container inventory inventory-search-form">	
+					<div><h3>Advanced Search</h3></div>
+					<div class="grid-container advanced-search">	
 						<span>
 							<select id="inventory-search-location" name="location" form="inventory-search-form">
 							<option value="" disabled selected>Location</option>
@@ -275,9 +275,10 @@
 					</div>
 				</form>
 			</div>
+		</section>
 
 		<section>
-			<div id="inventory-sort-container" class="flex-container inventory-sort">
+			<div>
 				<input id="inventory-sort-tagnumber" name="inventory-sort-tagnumber"
 					type="text" 
 					placeholder="Search tags..."

@@ -25,6 +25,8 @@
 	--border-radius: 1rem;
 	--border-radius-text: 0.5rem;
 	--border-radius-button: 0.5rem;
+	--svg-padding-left: 2.5rem;
+	--input-padding: 0.5rem;
 }
 
 body {
@@ -62,7 +64,7 @@ label {
 button {
   cursor: pointer;
 	font-weight: bold;
-  padding: 0.5rem;
+  padding: var(--input-padding);
   border-radius: var(--border-radius-button);
   border: var(--border-width) solid var(--button-border-color);
 	background-color: var(--bg-color);
@@ -98,22 +100,22 @@ button.cancel:hover {
 input[type="file"] {
 	max-width: 100%;
 	color: var(--text-color);
-	padding: 0.5rem;
+	padding: var(--input-padding);
 	border: var(--border-width) solid var(--button-border-color);
 	border-radius: var(--border-radius-text);
 }
 
-input[type="text"], input[type="password"], input[type="number"], select, textarea, button, input[type="file"] {
-  background: var(--fg-color);
-  padding: 0.5rem;
-	margin-bottom: 0.25rem;
+.text-search, input[type="text"]:not(.text-search), input[type="password"]:not(.text-search), input[type="number"]:not(.text-search), select, textarea, button, input[type="file"] {
+  background-color: var(--fg-color);
+  padding: var(--input-padding);
+	margin-bottom: 0.5rem;
   border: var(--border-width) solid var(--button-border-color);
 	border-bottom: 1px solid var(--button-border-color);
   border-radius: var(--border-radius-text);
 }
 
-input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus, select:focus, textarea:focus, button:focus, input[type="file"]:focus {
-	margin-bottom: 0;
+.text-search:focus, input[type="text"]:not(.text-search):focus, input[type="password"]:not(.text-search):focus, input[type="number"]:not(.text-search):focus, select:focus, textarea:focus, button:focus, input[type="file"]:focus {
+	margin-bottom: 0.25rem;
   border-bottom: var(--focus-border-width) solid var(--focus-color-underline);
   outline: none;
 	transition: border-bottom 100ms ease;
@@ -138,7 +140,7 @@ tr {
   border-bottom: var(--border-width) solid var(--bg-color);
 }
 tbody > tr:nth-child(even) {
-  background: var(--shadow-color);
+  background-color: var(--shadow-color);
 }
 
 th {
@@ -164,6 +166,19 @@ td {
 
 .bold {
   font-weight: bold;
+}
+
+.text-search {
+	padding-left: var(--svg-padding-left);
+	background-image: url(/icons/search/search.svg);
+	background-repeat: no-repeat;
+	background-size: 1.5rem;
+	background-position: 0.5rem center;
+}
+
+.text-search:not(:placeholder-shown) {
+	background-image: none;
+	padding-left: var(--input-padding);
 }
 
 .error-message {
@@ -198,6 +213,14 @@ td {
 	margin: auto;
   overflow-x: auto;
   overflow-y: auto;
+}
+
+.flex-container.vertical {
+  flex-direction: column;
+}
+
+.flex-container.horizontal {
+  flex-direction: row;
 }
 
 .flex-container.title {
@@ -303,11 +326,11 @@ td {
 }
 
 .flex-box tbody tr:nth-child(even) {
-  background: var(--shadow-color);
+  background-color: var(--shadow-color);
 }
 
 .flex-box tbody tr:hover {
-  background: var(--bg-color);
+  background-color: var(--bg-color);
 }
 
 .required-field::after {
@@ -317,17 +340,14 @@ td {
 
 .grid-container {
   display: grid;
-  border: 1px solid #ccc;
-  border-radius: var(--border-radius);
-  background-color: #f9f9f9;
   word-wrap: break-word;
-  border-spacing: 0px;
-  border-radius: var(--border-radius);
   border-collapse: collapse;
   row-gap: 0px;
   column-gap: 0px;
   justify-content: start;
   align-content: end;
-  margin: 0;
-  padding: 0;
+}
+
+.clickable {
+	cursor: pointer;
 }

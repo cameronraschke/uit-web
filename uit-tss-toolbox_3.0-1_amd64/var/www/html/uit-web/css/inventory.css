@@ -1,22 +1,9 @@
-#inventory-lookup-submit-button {
-  grid-column-start: 1;
-  grid-column-end: 2;
-  text-align: center;
-  border: 1px solid black;
-}
-
 #inventory-lookup-reset-button {
   display: none;
-  margin-left: 1rem;
-  background-color: #888B8D;
-  border: 1px solid black;
 }
 
 #inventory-lookup-more-details {
   display: none;
-  margin-left: 1rem;
-  background-color: #00b3897e;
-  border: 1px solid black;
 }
 
 #inventory-update-section {
@@ -31,53 +18,8 @@
 	margin-top: 1rem;
 }
 
-.clickable {
-	cursor: pointer;
-}
-
-.inventory-lookup-label {
-  grid-column-start: 1;
-  grid-column-end: 3;
-  text-align: center;
-}
-
-.flex-container.inventory {
-  gap: 0;
-  align-items: center;
-  gap: 2dvw;
-  padding: 1dvw;
-  justify-content: center;
-}
-
-.grid-container.inventory.inventory-lookup-form {
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5dvw;
-  padding: 1dvw;
-  border: 1px solid #960C22;
-  border-radius: 1rem;
-}
-
-.grid-container.inventory.inventory-search-form {
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5dvw;
-  padding: 1dvw;
-  border: 1px solid #960C22;
-  border-radius: 1rem;
-}
-
-.grid-container.inventory.inventory-search-form select {
-  width: 85%;
-}
-
-.grid-container.inventory.inventory-search-form input[type="text"] {
-  width: 80%;
-}
-
-.grid-container.inventory.inventory-search-form a {
-  margin-left: 3%;
-  text-align: center;
-  color: red;
-  font-weight: bold;
+.flex-container.inventory.inventory-lookup-section {
+	flex-direction: column;
 }
 
 .grid-container.inventory.inventory-update-form {
@@ -86,15 +28,6 @@
   padding: 1dvw;
   border-radius: 1rem;
   background-color: whitesmoke;
-}
-
-.flex-box.inventory {
-  min-width: fit-content;
-}
-
-.flex-container.inventory-sort {
-  justify-content: flex-start;
-  padding: 1rem 0rem 1rem 0rem;
 }
 
 .inventory-search-reset {

@@ -13,7 +13,7 @@ type InventoryRow = {
 };
 
 const rowCountElement = document.getElementById('inventory-table-rowcount') as HTMLElement;
-const formAnchor = document.querySelector('#inventory-section') as HTMLElement;
+const formAnchor = document.querySelector('#update-and-search-container') as HTMLElement;
 const inventoryTagSortInput = document.getElementById('inventory-sort-tagnumber') as HTMLInputElement;
 const inventorySerialSortInput = document.getElementById('inventory-sort-serial') as HTMLInputElement;
 const inventoryTimeSortInput = document.getElementById('inventory-sort-time') as HTMLInputElement;

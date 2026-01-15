@@ -1,0 +1,26 @@
+{
+		"/favicon.png": {
+		"file_path": "/var/www/html/uit-web/favicon.ico",
+		"auth_required": false,
+		"endpoint_type": "web_content",
+		"content_type": "image/png"
+	},
+		"/favicon.ico": {
+		"file_path": "/var/www/html/uit-web/favicon.png",
+		"auth_required": false,
+		"endpoint_type": "web_content",
+		"content_type": "image/png"
+	},
+		"/icons/search/search.svg": {
+		"file_path": "/var/www/html/uit-web/icons/search/search.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+		"/icons/navigation/home.svg": {
+		"file_path": "/var/www/html/uit-web/icons/navigation/home.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	}
+}

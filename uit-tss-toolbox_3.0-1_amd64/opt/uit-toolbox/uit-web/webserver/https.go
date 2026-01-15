@@ -55,6 +55,7 @@ func StartWebServer(ctx context.Context) error {
 
 	httpsRouter := http.NewServeMux()
 
+	// API GET endpoints
 	httpsRouter.Handle("GET /api/server_time", httpsFullAPIChain.ThenFunc(endpoints.GetServerTime))
 	httpsRouter.Handle("GET /api/lookup", httpsFullAPIChain.ThenFunc(endpoints.GetClientLookup))
 	httpsRouter.Handle("GET /api/all_tags", httpsFullAPIChain.ThenFunc(endpoints.GetAllTags))
@@ -79,16 +80,21 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/job_queue/all_jobs", httpsFullAPIChain.ThenFunc(endpoints.GetAllJobs))
 	httpsRouter.Handle("GET /api/locations", httpsFullAPIChain.ThenFunc(endpoints.GetAllLocations))
 
+	// API POST endpoints
 	httpsRouter.Handle("POST /api/notes", httpsFullAPIChain.ThenFunc(endpoints.InsertNewNote))
 	httpsRouter.Handle("POST /api/update_inventory", httpsFullAPIChain.ThenFunc(endpoints.UpdateInventory))
 	httpsRouter.Handle("POST /api/images/toggle_pin", httpsFullAPIChain.ThenFunc(endpoints.TogglePinImage))
 	httpsRouter.Handle("POST /api/client/health/battery", httpsFullAPIChain.ThenFunc(endpoints.SetClientBatteryHealth))
 	httpsRouter.Handle("POST /api/job_queue/update_all_online_clients", httpsFullAPIChain.ThenFunc(endpoints.SetAllJobs))
 
+	// API DELETE endpoints
 	httpsRouter.Handle("DELETE /api/images", httpsFullAPIChain.ThenFunc(endpoints.DeleteImage))
 
+	// Static client files
 	httpsRouter.Handle("GET /client/api/configs/uit-client", httpsFullAPIChain.ThenFunc(endpoints.GetClientConfig))
 	httpsRouter.Handle("GET /client/pkg/uit-client", httpsFullAPIChain.ThenFunc(endpoints.WebServerHandler))
+
+	// Login page and assets, no auth required
 	httpsRouter.Handle("GET /login", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("POST /login", httpsFullLoginChain.ThenFunc(endpoints.WebAuthEndpoint))
 	httpsRouter.Handle("GET /css/login.css", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
@@ -97,13 +103,17 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /css/desktop.css", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("GET /favicon.png", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 
-	httpsRouter.Handle("GET /icons/search/search.svg", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
-
+	// Logout
 	httpsRouter.Handle("GET /logout", httpsFullLogoutChain.ThenFunc(endpoints.LogoutHandler))
 
+	// Static HTML, CSS, and JS files
 	httpsRouter.Handle("/js/", httpsFullCookieAuthChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("/css/", httpsFullCookieAuthChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("/", httpsFullCookieAuthChain.ThenFunc(endpoints.WebServerHandler))
+
+	// Images and icons
+	httpsRouter.Handle("GET /icons/search/search.svg", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
+	httpsRouter.Handle("GET /icons/navigation/home.svg", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 
 	log.Info("Starting HTTPS web server...")
 

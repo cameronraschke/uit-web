@@ -1,13 +1,13 @@
 #note-text {
-  height: 45dvh;
-  background: white;
-  min-width: 45%;
-  font-size: 1.1rem;
-  padding: 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 0.25rem;
-  overflow-y: auto;
-  overflow-x: clip;
+	height: 45dvh;
+	background-color: white;
+	min-width: 45%;
+	font-size: 1.1rem;
+	padding: 0.5rem;
+	border: 1px solid #ccc;
+	border-radius: 0.25rem;
+	overflow-y: auto;
+	overflow-x: clip;
 }
 
 #note-text:focus {

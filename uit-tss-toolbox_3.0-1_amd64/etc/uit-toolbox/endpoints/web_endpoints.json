@@ -13,24 +13,6 @@
     "redirect": false,
     "redirect_url": ""
   },
-  "/favicon.png": {
-    "file_path": "/var/www/html/uit-web/favicon.ico",
-    "auth_required": false,
-    "endpoint_type": "web_content",
-    "content_type": "image/png"
-  },
-	"/icons/search/search.svg": {
-		"file_path": "/var/www/html/uit-web/icons/search/search.svg",
-    "auth_required": true,
-    "endpoint_type": "web_content",
-    "content_type": "image/svg+xml"
-	},
-  "/favicon.ico": {
-    "file_path": "/var/www/html/uit-web/favicon.png",
-    "auth_required": false,
-    "endpoint_type": "web_content",
-    "content_type": "image/png"
-  },
   "/header": {
     "file_path": "/var/www/html/uit-web/header.html",
     "endpoint_type": "web_content",
