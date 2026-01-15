@@ -19,6 +19,12 @@
     "endpoint_type": "web_content",
     "content_type": "image/png"
   },
+	"/icons/search/search.svg": {
+		"file_path": "/var/www/html/uit-web/icons/search/search.svg",
+    "auth_required": true,
+    "endpoint_type": "web_content",
+    "content_type": "image/svg"
+	},
   "/favicon.ico": {
     "file_path": "/var/www/html/uit-web/favicon.png",
     "auth_required": false,

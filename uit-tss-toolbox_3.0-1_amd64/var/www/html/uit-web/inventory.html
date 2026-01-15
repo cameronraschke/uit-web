@@ -12,8 +12,9 @@
 	<body>
 		<div id="uit-header"></div>
 		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/header.js"></script>
-		<div><h1>UIT - ITSC Inventory Management</h1></div>
-		<div id="main-content"><h2>Update and View Inventory</h2></div>
+		
+		<div class="flex-container title"><h1>UIT - ITSC Inventory Management</h1></div>
+		<div class="flex-container title"><h2>Update and View Inventory</h2></div>
 
 		<form id="inventory-lookup-form">
 			<div id="inventory-section" class="flex-container inventory">
@@ -22,7 +23,7 @@
 					<div class="inventory-lookup-label"><h3>Update Client Information</h3></div>
 					<div class="grid-container inventory inventory-lookup-form">
 						<div class="inventory-lookup-label"><p>Tag Number/Serial Number Lookup:</p></div>
-						<div><p>Search Tag Number:</p></div>
+						<div><img src="/icons/search/search.svg" /><p>Search Tag Number:</p></div>
 						<div><p>Search Serial Number:</p></div>
 						<input type="number" id="inventory-tag-lookup" list="inventory-tag-suggestions"
 							placeholder="Enter Tag Number"
@@ -46,7 +47,7 @@
 						/>
 						<div>
 							<button type="submit" id="inventory-lookup-submit-button">Search for Client</button>
-							<button type="reset" id="inventory-lookup-reset-button">Reset Search</button>
+							<button type="button" id="inventory-lookup-reset-button">Reset Search</button>
 							<button type="button" id="inventory-lookup-more-details">More Details</button>
 						</div>
 					</div>
@@ -188,16 +189,16 @@
 							
 							<div class="message"><p id="inventory-error" class="error-message"></p></div>
 							<div id="inventory-update-form-buttons">
-								<input id="inventory-update-cancel-button" name="inventory-update-cancel-button" 
-									type="reset"
-									class="cancel" 
-									value="Cancel" 
-								/>
-								<input id="inventory-update-submit-button" name="inventory-update-submit-button" 
+								<button id="inventory-update-cancel-button" name="inventory-update-cancel-button"
+									type="button"
+									class="cancel">
+									Cancel
+							</button>
+								<button id="inventory-update-submit-button" name="inventory-update-submit-button" 
 									type="submit"
-									class="submit" 
-									value="Submit Inventory Update" 
-								/>
+									class="submit">
+									Submit Inventory Update
+							</button>
 							</div>
 						</div>
 					</div>
@@ -268,7 +269,7 @@
 							</select>
 							<a id="inventory-search-has_images-reset" class="inventory-search-reset" href="">x</a>
 						</span>
-						<button id="inventory-search-form-reset-button" type="reset" class="cancel">Reset Search</button>
+						<button id="inventory-search-form-reset-button" type="button" class="cancel">Reset Search</button>
 						<button type="submit" class="submit" id="inventory-search-download-button">Download Results</button>
 						<div class="vertical-spacer"></div>
 					</div>

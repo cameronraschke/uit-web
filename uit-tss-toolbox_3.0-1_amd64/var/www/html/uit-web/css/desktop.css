@@ -1,23 +1,35 @@
 :root {
-	--font: sans-serif;
+	--font-family: "Tahoma", sans-serif;
+	--font-size: 1rem;
 	--text-color: oklch(0 0 0);
-	--bg-color: oklch(0.98 0 0);
+	--bg-color-darker: oklch(0.92 0 0);
+	--bg-color: oklch(0.96 0 0);
 	--fg-color: oklch(0.99 0 0);
 	--highlight-color: oklch(1 0 0);
 	--shadow-color: oklch(0.94 0 0);
+	--lighter-accent-color: oklch(0.6 0.2074 22.32);
+	--light-accent-color: oklch(0.55 0.2074 22.32);
 	--accent-color: oklch(0.5304 0.2074 22.32);
 	--dark-accent-color: oklch(0.4301 0.1663 21.86);
+	--darker-accent-color: oklch(0.3301 0.1263 21.86);
+	--lighter-submit-color: oklch(0.8 0.106381 172.7396);
+	--light-submit-color: oklch(0.7 0.106381 172.7396);
 	--submit-color: oklch(0.5526 0.106381 172.7396);
-	--light-submit-color: oklch(0.553 0.106381 172.7396 / 50%);
+	--dark-submit-color: oklch(0.4526 0.106381 172.7396);
 	--warning-color: oklch(0.829 0.1695 87.07);
 	--error-color: red;
 	--button-border-color: black;
+	--focus-color-underline: oklch(54.56% 0.20447 264.901);
+	--focus-border-width: 0.25rem;
 	--border-width: 1px;
 	--border-radius: 1rem;
+	--border-radius-text: 0.5rem;
+	--border-radius-button: 0.5rem;
 }
 
 body {
-  font-family: var(--font);
+  font-family: var(--font-family);
+	font-size: 20px;
 	color: var(--text-color);
 	background-color: var(--bg-color);
   margin: 0;
@@ -26,10 +38,6 @@ body {
 div {
   margin: 0;
   box-sizing: border-box;
-}
-
-h1, h2 {
-  text-align: center;
 }
 
 a {
@@ -51,36 +59,64 @@ label {
   margin-top: 0.7rem;
 }
 
-button, input[type="button"], input[type="submit"], input[type="reset"] {
+button {
   cursor: pointer;
+	font-weight: bold;
   padding: 0.5rem;
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-button);
   border: var(--border-width) solid var(--button-border-color);
 	background-color: var(--bg-color);
 	color: var(--text-color);
+	transition: 
+		background-color 0.3s ease,
+		color 0.3s ease,
+		border-color 0.3s ease,
+		box-shadow 0.3s ease
+	;
+}
+
+button:hover {
+	background-color: var(--bg-color-darker);
+}
+
+button.submit {
+	background-color: var(--lighter-submit-color);
+}
+
+button.submit:hover {
+	background-color: var(--light-submit-color);
+}
+
+button.cancel {
+  background-color: var(--lighter-accent-color);
+}
+
+button.cancel:hover {
+	background-color: var(--light-accent-color);
 }
 
 input[type="file"] {
-	width: 50%;
 	max-width: 100%;
 	color: var(--text-color);
 	padding: 0.5rem;
 	border: var(--border-width) solid var(--button-border-color);
-	border-radius: var(--border-radius);
+	border-radius: var(--border-radius-text);
 }
 
-input[type="text"], input[type="password"], input[type="number"], select, textarea {
-  background: white;
+input[type="text"], input[type="password"], input[type="number"], select, textarea, button, input[type="file"] {
+  background: var(--fg-color);
   padding: 0.5rem;
+	margin-bottom: 0.25rem;
   border: var(--border-width) solid var(--button-border-color);
-  border-radius: var(--border-radius);
+	border-bottom: 1px solid var(--button-border-color);
+  border-radius: var(--border-radius-text);
 }
 
-input[type="text"]:focus, select:focus, input[type="password"]:focus, input[type="number"]:focus, textarea:focus {
-  padding: 0.5rem;
-  border: var(--border-width) solid #007BFF;
+input[type="text"]:focus, input[type="password"]:focus, input[type="number"]:focus, select:focus, textarea:focus, button:focus, input[type="file"]:focus {
+	margin-bottom: 0;
+  border-bottom: var(--focus-border-width) solid var(--focus-color-underline);
   outline: none;
-  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+	transition: border-bottom 100ms ease;
 }
 
 table {
@@ -94,7 +130,7 @@ thead {
   top: 0;
   border: 1px solid black;
   background-color: var(--accent-color);
-  color: white;
+  color: var(--fg-color);
   font-weight: bold;
 }
 
@@ -107,29 +143,17 @@ tbody > tr:nth-child(even) {
 
 th {
   text-align: left;
-  padding: 1rem 0.5rem 1rem 0.5rem;
+  padding: 1rem 0.5rem;
 }
 
 td {
   vertical-align: middle;
   text-align: left;
-  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+  padding: 0.5rem;
 }
 
 .vertical-spacer {
   margin: 5dvh 0 0 0;
-}
-
-button.submit, input[type="button"].submit, input[type="submit"].submit {
-	color: white;
-  background: var(--submit-color);
-  border: var(--border-width) solid var(--button-border-color);
-}
-
-button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[type="submit"].cancel {
-	color: white;
-  background: var(--dark-accent-color);
-  border: 1px solid black;
 }
 
 .message {
@@ -163,7 +187,6 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
 }
 
 .flex-container {
-	width: 90dvw;
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
@@ -175,6 +198,44 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
 	margin: auto;
   overflow-x: auto;
   overflow-y: auto;
+}
+
+.flex-container.title {
+	align-items: center;
+	justify-content: center;
+  text-align: center;
+}
+
+.flex-container.menubar {
+	margin: 2rem auto;
+	box-shadow: 0 4px 6px var(--shadow-color);
+	gap: 1.5rem;
+	border: 1px solid var(--shadow-color);
+	border-radius: var(--border-radius);
+	background-color: var(--bg-color);
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-evenly;
+	flex-wrap: wrap;
+	width: 90dvw;
+	transition: all 0.3s ease-in-out;
+}
+
+.flex-container.menubar .logout {
+	margin-left: auto;
+	align-self: flex-end;
+	justify-self: flex-end;
+}
+
+.flex-container.menubar a {
+	padding: 1.5rem 1rem;
+	height: 100%;
+}
+
+.flex-container.menubar a:hover {
+	background-color: var(--accent-color);
+	color: var(--fg-color);
+	text-decoration: none;
 }
 
 .flex-container.footer {
@@ -191,7 +252,7 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
   padding: 1rem;
 	align-self: flex-start;
 	border: 1px solid var(--shadow-color);
-  border-radius: 1rem;
+  border-radius: var(--border-radius);
   background-color: var(--bg-color);
   flex-wrap: wrap;
   min-width: fit-content;
@@ -203,28 +264,6 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
   overflow-x: auto;
   overflow-y: auto;
 }
-
-.flex-box.nav {
-	flex-direction: row;
-	align-items: center;
-	justify-content: flex-start;
-	gap: 1rem;
-}
-
-.flex-box.nav .logout {
-  align-self: flex-end;
-	border: none;
-	border-radius: 0;
-	background: none;
-	padding: 0;
-	margin: 0;
-	justify-content: flex-end;
-}
-
-.flex-box div {
-  width: 100%;
-}
-
 
 .flex-box.footer {
   display: flex;
@@ -279,7 +318,7 @@ button.cancel, input[type="reset"].cancel, input[type="button"].cancel, input[ty
 .grid-container {
   display: grid;
   border: 1px solid #ccc;
-  border-radius: 1rem;
+  border-radius: var(--border-radius);
   background-color: #f9f9f9;
   word-wrap: break-word;
   border-spacing: 0px;
