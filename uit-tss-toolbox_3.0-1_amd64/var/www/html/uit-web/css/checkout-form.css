@@ -16,7 +16,15 @@ h1 {
 h2 {
 	text-align: center;
 	font-size: 22px;
-	margin: 0.2in 0 0.2in 0;
+	margin: 0.2in 0in 0.1in 0in;
+}
+
+h3 {
+	margin: 0;
+	text-align: center;
+	font-size: 18px;
+	text-decoration: none;
+	font-style: italic;
 }
 
 p {
@@ -56,14 +64,11 @@ span {
 	margin-top: 0.3in;
 	justify-content: left;
 	align-items: end;
-	grid-template:
-		"a b c d" 1.5cm 
-		"e f g h" 1.5cm
-		"i j k l " 1.5cm / 0.3fr 2fr 0.3fr 1fr;
+	grid-template-columns: 1fr 2fr 1fr 2fr;
 }
 
 .grid-container > p {
-	margin: 0;
+	margin-top: 0.1in;
 	font-size: 14px;
 }
 

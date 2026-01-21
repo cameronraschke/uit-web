@@ -3,7 +3,7 @@
 	<head>
 		<link rel="stylesheet" href="/css/checkout-form.css" />
 		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/checkout_form.js"></script>
-		<title>UIT - Laptop Checkout Form</title>
+		<title>{{ .ClientTag }} - Laptop Checkout Form</title>
 	</head>
 	<body>
 		<div class="print-form" id="print-checkout-form-container">
@@ -32,7 +32,8 @@
       <img src="/images/uh-logo.png">
     </div>
     <div>
-      <h2><b>University Information Technology (UIT) - Laptop Checkout Program</b></h2>
+      <h2>Laptop Checkout Program</h2>
+			<h3>University Information Technology (UIT)</h3>
     </div>
     <div>
       <p>
@@ -84,7 +85,7 @@
 			<p>Customer Name:</p> <span id="customer_name">{{ .CustomerName }}</span>
 			<p>Customer PSID:</p> <span id="customer_psid"></span>
 			<p>Checkout Date:</p> <span id="checkout_date">{{ .CheckoutDate }}</span>
-			<p>Return Date:</p> <span id="return_date">{{ .ReturnDate }}</span>
+			<p>Check-in/Return Date:</p> <span id="return_date">{{ .ReturnDate }}</span>
 			<p>Customer Signature:</p> </span><span class="signature"> </span>
 			<p>Date:</p> <span class="signature"> </span>
     </div>
