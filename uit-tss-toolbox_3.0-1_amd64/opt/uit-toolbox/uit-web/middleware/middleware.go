@@ -701,6 +701,25 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func CheckForRedirectsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := GetLoggerFromContext(req.Context())
+		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
+		if err != nil {
+			log.HTTPWarning(req, "Error getting endpoint config in CheckForRedirectsMiddleware: "+err.Error())
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		redirectURL, err := config.GetWebEndpointRedirectURL(endpointConfig)
+		if err != nil {
+			next.ServeHTTP(w, req)
+			return
+		}
+		log.HTTPInfo(req, "Redirecting request to: "+redirectURL)
+		http.Redirect(w, req, redirectURL, http.StatusFound)
+	})
+}
+
 func AllowedFilesMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()

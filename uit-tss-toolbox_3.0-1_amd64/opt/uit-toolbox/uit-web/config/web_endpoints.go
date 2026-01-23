@@ -98,3 +98,16 @@ func GetWebEndpointType(webEndpoint *WebEndpointConfig) (string, error) {
 	}
 	return webEndpoint.EndpointType, nil
 }
+
+func GetWebEndpointRedirectURL(webEndpoint *WebEndpointConfig) (string, error) {
+	if webEndpoint == nil {
+		return "", fmt.Errorf("web endpoint config is nil in GetWebEndpointRedirectURL")
+	}
+	if strings.TrimSpace(webEndpoint.RedirectURL) == "" {
+		return "", fmt.Errorf("redirect URL field is empty for endpoint")
+	}
+	if webEndpoint.Redirect == nil || !*webEndpoint.Redirect {
+		return "", fmt.Errorf("redirect field is not set to true for endpoint")
+	}
+	return webEndpoint.RedirectURL, nil
+}

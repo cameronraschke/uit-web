@@ -1,6 +1,6 @@
 {
-  "": {
-    "file_path": "404.html",
+  "/test": {
+    "file_path": "/var/www/html/uit-web/404.html",
     "allowed_methods": ["OPTIONS", "GET", "POST", "PUSH", "DELETE"],
     "tls_required": true,
     "auth_required": false,
@@ -12,6 +12,14 @@
     "status_code": 404,
     "redirect": false,
     "redirect_url": ""
+  },
+	  "": {
+    "auth_required": false,
+    "endpoint_type": "web_content",
+    "content_type": "application/json; charset=utf-8",
+    "status_code": 302,
+    "redirect": true,
+    "redirect_url": "/dashboard"
   },
   "/header": {
     "file_path": "/var/www/html/uit-web/header.html",

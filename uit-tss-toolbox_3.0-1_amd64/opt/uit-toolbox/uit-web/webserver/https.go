@@ -33,6 +33,7 @@ func StartWebServer(ctx context.Context) error {
 		middleware.CheckValidURLMiddleware,
 		middleware.CheckHeadersMiddleware,
 		middleware.SetHeadersMiddleware,
+		middleware.CheckForRedirectsMiddleware,
 	)
 
 	// No allowedFilesMiddleware here, as API calls do not serve files
@@ -97,7 +98,6 @@ func StartWebServer(ctx context.Context) error {
 	// Login page and assets, no auth required
 	httpsRouter.Handle("GET /login", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("POST /login", httpsFullLoginChain.ThenFunc(endpoints.WebAuthEndpoint))
-	httpsRouter.Handle("GET /css/login.css", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("GET /js/login.js", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("GET /js/init.js", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("GET /css/desktop.css", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))

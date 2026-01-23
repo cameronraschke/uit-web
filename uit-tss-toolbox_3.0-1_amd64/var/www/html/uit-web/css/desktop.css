@@ -1,6 +1,6 @@
 :root {
 	--font-family: "Tahoma", sans-serif;
-	--font-size: 1rem;
+	--font-size: 20px;
 	--text-color: oklch(0 0 0);
 	--bg-color-darker: oklch(0.92 0 0);
 	--bg-color: oklch(0.96 0 0);
@@ -18,7 +18,7 @@
 	--dark-submit-color: oklch(0.4526 0.106381 172.7396);
 	--warning-color: oklch(0.829 0.1695 87.07);
 	--error-color: red;
-	--button-border-color: black;
+	--default-border-color: black;
 	--focus-color-underline: oklch(54.56% 0.20447 264.901);
 	--focus-border-width: 0.25rem;
 	--border-width: 1px;
@@ -27,18 +27,18 @@
 	--border-radius-button: 0.5rem;
 	--svg-padding-left: 2.5rem;
 	--input-padding: 0.5rem;
+	--container-padding: 2rem;
+	--horizontal-element-margin: 0.5rem;
 }
 
 body {
   font-family: var(--font-family);
-	font-size: 20px;
+	font-size: var(--font-size);
 	color: var(--text-color);
 	background-color: var(--bg-color);
-  margin: 0;
 }
 
 div {
-  margin: 0;
   box-sizing: border-box;
 }
 
@@ -47,6 +47,14 @@ a {
   font-weight: bold;
   color: var(--accent-color);
   text-decoration: underline;
+}
+
+a:hover {
+	color: var(--dark-accent-color);
+}
+
+a:focus {
+	outline: calc(var(--border-width) * 2) solid var(--default-border-color);
 }
 
 img {
@@ -66,7 +74,7 @@ button {
 	font-weight: bold;
   padding: var(--input-padding);
   border-radius: var(--border-radius-button);
-  border: var(--border-width) solid var(--button-border-color);
+  border: var(--border-width) solid var(--default-border-color);
 	background-color: var(--bg-color);
 	color: var(--text-color);
 	transition: 
@@ -101,7 +109,7 @@ input[type="file"] {
 	max-width: 100%;
 	color: var(--text-color);
 	padding: var(--input-padding);
-	border: var(--border-width) solid var(--button-border-color);
+	border: var(--border-width) solid var(--default-border-color);
 	border-radius: var(--border-radius-text);
 }
 
@@ -110,7 +118,7 @@ input[type="file"] {
   background-color: var(--fg-color);
   padding: var(--input-padding);
   border-radius: var(--border-radius-text);
-	border: var(--border-width) solid var(--button-border-color);
+	border: var(--border-width) solid var(--default-border-color);
 	box-shadow: 2px var(--focus-border-width) 5px lightgray;
 	transition: 
 		box-shadow 100ms ease
@@ -225,7 +233,7 @@ td {
 }
 
 .flex-container.vertical.outlined {
-	border: var(--border-width) solid var(--button-border-color);
+	border: var(--border-width) solid var(--default-border-color);
 	padding: 1rem;
 	border-radius: var(--border-radius);
 }
@@ -235,8 +243,13 @@ td {
 	width: 100%;
 }
 
-.flex-container.horizontal input, .flex-container.horizontal select, .flex-container.horizontal button {
-	margin: 2rem 0rem;
+.flex-container.horizontal label {
+	align-self: flex-start;
+	min-width: fit-content;
+}
+
+.flex-container.horizontal small, .flex-container.horizontal a, .flex-container.horizontal input, .flex-container.horizontal select, .flex-container.horizontal button {
+	margin: var(--horizontal-element-margin);
 }
 
 .flex-container.form-buttons {
@@ -360,7 +373,7 @@ td {
 
 .flex-item {
 	background-color: var(--bg-color);
-	border: var(--border-width) solid var(--button-border-color);
+	border: var(--border-width) solid var(--default-border-color);
 	border-radius: var(--border-radius);
 }
 

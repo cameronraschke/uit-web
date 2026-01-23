@@ -1,10 +1,4 @@
 {
-  "/css/login.css": {
-    "file_path": "/var/www/html/uit-web/css/login.css",
-    "auth_required": false,
-    "endpoint_type": "web_content",
-    "content_type": "text/css; charset=utf-8"
-  },
   "/css/desktop.css": {
     "file_path": "/var/www/html/uit-web/css/desktop.css",
     "auth_required": false,
