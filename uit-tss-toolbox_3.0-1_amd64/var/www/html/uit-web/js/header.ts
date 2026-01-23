@@ -25,7 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
 			const menuItem = document.getElementById(elementId);
 			if (!menuItem) continue;
 
-			console.log(`Checking path: ${path} against currentPath: ${currentPath}`);
 			if (currentPath === path) {
 				menuItem.classList.add("active");
 			} else if (menuItem.classList.contains('active')) {
