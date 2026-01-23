@@ -13,14 +13,13 @@
 		<div id="uit-header"></div>
 		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/header.js"></script>
 		
-		<div class="flex-container title pagetitle"><h1>UIT - ITSC Inventory Management</h1></div>
-		<div class="flex-container title"><h2>Update and View Inventory</h2></div>
+		<div class="flex-container title pagetitle"><h2>Update and View Inventory</h2></div>
 
 		<section id="update-and-search-container" class="flex-container horizontal">
 			<form id="inventory-lookup-form" class="flex-item">
 				<div class="flex-container vertical">
 					<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
-					<div class="flex-container title"><h3>Update Client Information</h3></div>
+					<div class="flex-container horizontal"><div class="flex-container title"><h3>Update Client Information</h3></div></div>
 					<div class="flex-container vertical">
 						<div class="flex-container horizontal"><p>Tag Number/Serial Number Lookup:</p></div>
 						<input type="number" id="inventory-tag-lookup" list="inventory-tag-suggestions"
@@ -206,104 +205,114 @@
 			</form>
 
 			<form class="flex-item" id="inventory-search-form">
-				<div><h3>Advanced Search</h3></div>
-				<div class="grid-container advanced-search">	
-					<span>
-						<select id="inventory-search-location" name="location" form="inventory-search-form">
-						<option value="" disabled selected>Location</option>
-							{{ range $location, $locationReadable := .Locations }}
-								<option value="{{ $location }}">{{ $locationReadable }}</option>
-							{{ end }}
-						</select>
-						<a id="inventory-search-location-reset" class="inventory-search-reset" href="">x</a>
-					</span>
-					<span>
-						<select id="inventory-search-department" name="department_name" form="inventory-search-form">
-							<option value="" disabled selected>Department</option>
-						</select>
-						<a id="inventory-search-department-reset" class="inventory-search-reset" href="">x</a>
-					</span>
-					<span>
-						<select id="inventory-search-manufacturer" name="manufacturer" form="inventory-search-form">
-							<option value="" disabled selected>Manufacturer</option>
-						</select>
-						<a id="inventory-search-manufacturer-reset" class="inventory-search-reset" href="">x</a>
-					</span>
-					<span>
-						<select id="inventory-search-model" name="model" form="inventory-search-form">
-							<option value="" disabled selected>Model</option>
-						</select>
-						<a id="inventory-search-model-reset" class="inventory-search-reset" href="">x</a></span>
-					<span>
-						<select id="inventory-search-domain" name="ad_domain" form="inventory-search-form">
-						<option value="" disabled selected>AD Domain</option>
-							{{ range $domain, $domainReadable := .Domains }}
-								<option value="{{ $domain }}">{{ $domainReadable }}</option>
-							{{ end }}
-						</select>
-						<a id="inventory-search-domain-reset" class="inventory-search-reset" href="">x</a>
-					</span>
-					<span>
-						<select id="inventory-search-status" name="status" form="inventory-search-form">
-						<option value="" disabled selected>Status</option>
-							{{ range $status, $statusReadable := .Statuses }}
-								<option value="{{ $status }}">{{ $statusReadable }}</option>
-							{{ end }}
-						</select>
-						<a id="inventory-search-status-reset" class="inventory-search-reset" href="">x</a>
-					</span>
-					<span>
-						<select id="inventory-search-broken" name="is_broken" form="inventory-search-form">
-						<option value="" disabled selected>Broken?</option>
-						<option value="true">Yes - Is broken</option>
-						<option value="false">No - Is functional</option>
-						</select>
-						<a id="inventory-search-broken-reset" class="inventory-search-reset" href="">x</a>
-					</span>
-					<span>
-						<select id="inventory-search-has_images" name="has_images" form="inventory-search-form">
-							<option value="" disabled selected>Has Images?</option>
-							<option value="true">Yes - Has images</option>
-							<option value="false">No - Missing images</option>
-						</select>
-						<a id="inventory-search-has_images-reset" class="inventory-search-reset" href="">x</a>
-					</span>
-					<button id="inventory-search-form-reset-button" type="button" class="cancel">Reset Search</button>
-					<button type="submit" class="submit" id="inventory-search-download-button">Download Results</button>
-					<div class="vertical-spacer"></div>
+				<div class="flex-container vertical">
+					<div class="flex-container horizontal">
+						<div><h3>Advanced Search</h3></div>
+					</div>
+					<div class="flex-container vertical">
+						<div class="flex-container horizontal">
+								<select id="inventory-search-location" name="location" form="inventory-search-form">
+								<option value="" disabled selected>Location</option>
+									{{ range $location, $locationReadable := .Locations }}
+										<option value="{{ $location }}">{{ $locationReadable }}</option>
+									{{ end }}
+								</select>
+								<a id="inventory-search-location-reset" class="inventory-search-reset" href="">x</a>
+						</div>
+						<div class="flex-container horizontal">
+								<select id="inventory-search-department" name="department_name" form="inventory-search-form">
+									<option value="" disabled selected>Department</option>
+								</select>
+								<a id="inventory-search-department-reset" class="inventory-search-reset" href="">x</a>
+						</div>
+						<div class="flex-container horizontal">
+								<select id="inventory-search-manufacturer" name="manufacturer" form="inventory-search-form">
+									<option value="" disabled selected>Manufacturer</option>
+								</select>
+								<a id="inventory-search-manufacturer-reset" class="inventory-search-reset" href="">x</a>
+						</div>
+						<div class="flex-container horizontal">
+								<select id="inventory-search-model" name="model" form="inventory-search-form">
+									<option value="" disabled selected>Model</option>
+								</select>
+								<a id="inventory-search-model-reset" class="inventory-search-reset" href="">x</a>
+						</div>
+						<div class="flex-container horizontal">
+								<select id="inventory-search-domain" name="ad_domain" form="inventory-search-form">
+								<option value="" disabled selected>AD Domain</option>
+									{{ range $domain, $domainReadable := .Domains }}
+										<option value="{{ $domain }}">{{ $domainReadable }}</option>
+									{{ end }}
+								</select>
+								<a id="inventory-search-domain-reset" class="inventory-search-reset" href="">x</a>
+						</div>
+						<div class="flex-container horizontal">
+								<select id="inventory-search-status" name="status" form="inventory-search-form">
+								<option value="" disabled selected>Status</option>
+									{{ range $status, $statusReadable := .Statuses }}
+										<option value="{{ $status }}">{{ $statusReadable }}</option>
+									{{ end }}
+								</select>
+								<a id="inventory-search-status-reset" class="inventory-search-reset" href="">x</a>
+						</div>
+						<div class="flex-container horizontal">
+								<select id="inventory-search-broken" name="is_broken" form="inventory-search-form">
+								<option value="" disabled selected>Broken?</option>
+								<option value="true">Yes - Is broken</option>
+								<option value="false">No - Is functional</option>
+								</select>
+								<a id="inventory-search-broken-reset" class="inventory-search-reset" href="">x</a>
+						</div>
+						<div class="flex-container horizontal">
+								<select id="inventory-search-has_images" name="has_images" form="inventory-search-form">
+									<option value="" disabled selected>Has Images?</option>
+									<option value="true">Yes - Has images</option>
+									<option value="false">No - Missing images</option>
+								</select>
+								<a id="inventory-search-has_images-reset" class="inventory-search-reset" href="">x</a>
+						</div>
+						</div>
+						</div>
+					<div class="flex-container horizontal form-buttons">
+						<button id="inventory-search-form-reset-button" type="button" class="cancel">Reset Search</button>
+						<button type="submit" class="submit" id="inventory-search-download-button">Download Results</button>
+					</div>
+					</form>
 				</div>
-			</form>
+			</div>
 		</section>
 
 		<section>
-			<div>
-				<input id="inventory-sort-tagnumber" name="inventory-sort-tagnumber"
-					type="text" 
-					placeholder="Search tags..."
-				/>
-				<input id="inventory-sort-serial" name="inventory-sort-serial" 
-					type="text" 
-					placeholder="Search serial..."
-				/>
-				<select id="inventory-sort-by">
-					<option value="time-desc" selected>Sort by Time (Desc)</option>
-					<option value="time-asc">Sort by Time (Asc)</option>
-					<option value="tagnumber-asc">Sort by Tag # (Asc)</option>
-					<option value="tagnumber-desc">Sort by Tag # (Desc)</option>
-					<option value="location-asc">Sort by Location (A-Z)</option>
-					<option value="location-desc">Sort by Location (Z-A)</option>
-					<option value="manufacturer-asc">Sort by Manufacturer (A-Z)</option>
-					<option value="manufacturer-desc">Sort by Manufacturer (Z-A)</option>
-					<option value="model-asc">Sort by Model (A-Z)</option>
-					<option value="model-desc">Sort by Model (Z-A)</option>
-					<option value="department-asc">Sort by Department (A-Z)</option>
-					<option value="department-desc">Sort by Department (Z-A)</option>
-					<option value="domain-asc">Sort by AD Domain (A-Z)</option>
-					<option value="domain-desc">Sort by AD Domain (Z-A)</option>
-					<option value="status-asc">Sort by Status (A-Z)</option>
-					<option value="status-desc">Sort by Status (Z-A)</option>
-				</select>
-				<p id="inventory-table-rowcount">0 entries</p>
+			<div class="flex-container vertical">
+				<div class="flex-container horizontal">
+					<input id="inventory-sort-tagnumber" name="inventory-sort-tagnumber"
+						type="text" 
+						placeholder="Search tags..."
+					/>
+					<input id="inventory-sort-serial" name="inventory-sort-serial" 
+						type="text" 
+						placeholder="Search serial..."
+					/>
+					<select id="inventory-sort-by">
+						<option value="time-desc" selected>Sort by Time (Desc)</option>
+						<option value="time-asc">Sort by Time (Asc)</option>
+						<option value="tagnumber-asc">Sort by Tag # (Asc)</option>
+						<option value="tagnumber-desc">Sort by Tag # (Desc)</option>
+						<option value="location-asc">Sort by Location (A-Z)</option>
+						<option value="location-desc">Sort by Location (Z-A)</option>
+						<option value="manufacturer-asc">Sort by Manufacturer (A-Z)</option>
+						<option value="manufacturer-desc">Sort by Manufacturer (Z-A)</option>
+						<option value="model-asc">Sort by Model (A-Z)</option>
+						<option value="model-desc">Sort by Model (Z-A)</option>
+						<option value="department-asc">Sort by Department (A-Z)</option>
+						<option value="department-desc">Sort by Department (Z-A)</option>
+						<option value="domain-asc">Sort by AD Domain (A-Z)</option>
+						<option value="domain-desc">Sort by AD Domain (Z-A)</option>
+						<option value="status-asc">Sort by Status (A-Z)</option>
+						<option value="status-desc">Sort by Status (Z-A)</option>
+					</select>
+					<p id="inventory-table-rowcount">0 entries</p>
+				</div>
 			</div>
 			<table id="inventory-table">
 				<thead>

@@ -105,20 +105,24 @@ input[type="file"] {
 	border-radius: var(--border-radius-text);
 }
 
-.text-search, input[type="text"]:not(.text-search), input[type="password"]:not(.text-search), input[type="number"]:not(.text-search), select, textarea, button, input[type="file"] {
+.text-search, input:not(.text-search), select, textarea, button {
+	outline: none;
   background-color: var(--fg-color);
   padding: var(--input-padding);
-	margin-bottom: 0.5rem;
-  border: var(--border-width) solid var(--button-border-color);
-	border-bottom: 1px solid var(--button-border-color);
   border-radius: var(--border-radius-text);
+	border: var(--border-width) solid var(--button-border-color);
+	box-shadow: 2px var(--focus-border-width) 5px lightgray;
+	transition: 
+		box-shadow 100ms ease
+	;
 }
 
-.text-search:focus, input[type="text"]:not(.text-search):focus, input[type="password"]:not(.text-search):focus, input[type="number"]:not(.text-search):focus, select:focus, textarea:focus, button:focus, input[type="file"]:focus {
-	margin-bottom: 0.25rem;
-  border-bottom: var(--focus-border-width) solid var(--focus-color-underline);
+.text-search:focus, input:not(.text-search):focus, select:focus, textarea:focus, button:focus {
   outline: none;
-	transition: border-bottom 100ms ease;
+	box-shadow: 0px var(--focus-border-width) var(--focus-color-underline);
+	transition: 
+		box-shadow 100ms ease
+	;
 }
 
 table {
@@ -222,6 +226,16 @@ td {
 
 .flex-container.horizontal {
   flex-direction: row;
+	width: 100%;
+}
+
+.flex-container.horizontal select, .flex-container.horizontal button {
+	margin: 0.5rem;
+}
+
+.flex-container.form-buttons {
+  justify-content: flex-end;
+	width: 85%;
 }
 
 .flex-container.title {
@@ -232,6 +246,18 @@ td {
 
 .flex-container.title.pagetitle {
 	margin-top: 5rem;
+	margin-bottom: 2rem;
+}
+
+.flex-container.title.subtitle {
+	margin-top: 0rem;
+	margin-bottom: 2rem;
+}
+
+.flex-container footer {
+	margin-top: 2rem;
+	margin-bottom: 2rem;
+	text-align: center;
 }
 
 .flex-container.menubar {
@@ -246,7 +272,7 @@ td {
 	flex-direction: row;
 	align-items: center;
 	justify-content: space-evenly;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 	height: 4rem;
 	width: 100%;
 }
@@ -293,6 +319,25 @@ td {
 @media (max-width: 1080px) {
 	#menu-tag-lookup {
 		display: none;
+	}
+}
+
+@media (max-width: 760px) {
+	#menu-inventory {
+		display: none;
+	}
+	#menu-checkouts {
+		display: none;
+	}
+	#menu-job-queue {
+		display: none;
+	}
+	#menu-reports {
+		display: none;
+	}
+	#menu-tag-lookup {
+		display: flex;
+		width: 8rem;
 	}
 }
 

@@ -12,9 +12,8 @@
 	<body>
 		<div id="uit-header"></div>
 		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/header.js"></script>
-		<div><h1>UIT - ITSC Inventory Management</h1></div>
-		<div id="main-content"><h2>Job Queue</h2></div>
-
+		
+		<div class="flex-container title pagetitle"><h2>Queue Client Jobs</h2></div>
 		
 		<form id="update-all-online-jobs-form">
 			<div id="job-queue-controls" class="flex-container">
@@ -63,7 +62,7 @@
 			</table>
 		</div>
 
-    <div id="uit-footer" class="flex-container footer"></div>
+    <div id="uit-footer" class="flex-container horizontal"></div>
     <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/footer.js"></script>
     <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/job-queue.js"></script>
   </body>
