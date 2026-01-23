@@ -13,7 +13,7 @@
     "redirect": false,
     "redirect_url": ""
   },
-	  "": {
+	  "/": {
     "auth_required": false,
     "endpoint_type": "web_content",
     "content_type": "application/json; charset=utf-8",
