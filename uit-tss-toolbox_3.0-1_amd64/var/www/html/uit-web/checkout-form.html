@@ -28,72 +28,75 @@
 				<button type="button" id="confirm-and-print">Confirm and Print</button>
 			</form>
 		</div>
-    <div class="uh-logo">
-      <img src="/images/uh-logo.png">
-    </div>
-    <div>
-      <h2>Laptop Checkout Program</h2>
-			<h3>University Information Technology (UIT)</h3>
-    </div>
-    <div>
-      <p>
-        We hope that you enjoy using this laptop. We have pre-installed a few apps for you, 
-        including Microsoft Office, Microsoft Outlook, Microsoft Teams, Zoom, Chrome, Edge, Firefox, 
-        LockDown Browser, and Cisco Secure Client (VPN).
-      </p>
-    </div>
-    <div> 
-      <p>
-        Please treat our laptops with respect. Many other UH community members 
-        will use these laptops after you, so we ask that you return this laptop 
-        in the same condition in which you received it.
-      </p>
-    </div>
-    <div>
-      <p>
-        To login to this laptop, please use your <b><u>CougarNet ID</u></b> and <b><u>CougarNet Password</u></b>
-      </p>
-    </div>
-    <div id="div1">
-      <p>
-        When you return this laptop back to our office, 
-        we make sure that all of your data is completely and securely erased.
-      </p>
-    </div>
-    <div>
-        <h1>The number associated with this laptop is <b>{{ .ClientTag }}</b></h1>
-    </div>
-    <div>
-      <p>
-        <i>
-          In receiving this laptop loan from UIT, I agree to the following: 
-          <ul>
-            <li>I acknowledge that this laptop is the property of the State of Texas.
-            <li>I agree to follow all federal, state, and local laws as well as UH 
-                policies regarding proper usage of this laptop.
-            <li>I agree to return this laptop, charger, and all other accessories that were loaned to me 
-                by the return date written below. UIT reserves the right to modify the return
-                date at any time.
-            <li>I agree to treat this laptop with respect, to not modify the hardware 
-                of this laptop, and to contact UIT Support with any questions or concerns
-                (contact information below).
-          </ul>
-        </i>
-      </p>
-    </div>
-    <div class="grid-container">
-			<p>Customer Name:</p> <span id="customer_name">{{ .CustomerName }}</span>
-			<p>Customer PSID:</p> <span id="customer_psid"></span>
-			<p>Checkout Date:</p> <span id="checkout_date">{{ .CheckoutDate }}</span>
-			<p>Check-in/Return Date:</p> <span id="return_date">{{ .ReturnDate }}</span>
-			<p>Customer Signature:</p> </span><span class="signature"> </span>
-			<p>Date:</p> <span class="signature"> </span>
-    </div>
-    <div class="contact-info">
-      <p>Please reach out to our office with any questions or concerns:</p>
-			<p><b>Phone</b>: (713) 743-1411</p>
-      <p><b>Email</b>: uitsupport@uh.edu</p>
-      <p><b>Live Chat</b>: https://uh.edu/uit (Click the red chat icon in the bottom right corner)</p>
-    </div>
+		
+		<section id="printable-form">
+			<div class="uh-logo">
+				<img src="/images/uh-logo.png">
+			</div>
+			<div>
+				<h2>Laptop Checkout Program</h2>
+				<h3>University Information Technology (UIT)</h3>
+			</div>
+			<div>
+				<p>
+					We hope that you enjoy using this laptop. We have pre-installed a few apps for you, 
+					including Microsoft Office, Microsoft Outlook, Microsoft Teams, Zoom, Chrome, Edge, Firefox, 
+					LockDown Browser, and Cisco Secure Client (VPN).
+				</p>
+			</div>
+			<div> 
+				<p>
+					Please treat our laptops with respect. Many other UH community members 
+					will use these laptops after you, so we ask that you return this laptop 
+					in the same condition in which you received it.
+				</p>
+			</div>
+			<div>
+				<p>
+					To login to this laptop, please use your <b><u>CougarNet ID</u></b> and <b><u>CougarNet Password</u></b>
+				</p>
+			</div>
+			<div id="div1">
+				<p>
+					When you return this laptop back to our office, 
+					we make sure that all of your data is completely and securely erased.
+				</p>
+			</div>
+			<div>
+					<h1>The number associated with this laptop is <b>{{ .ClientTag }}</b></h1>
+			</div>
+			<div>
+				<p>
+					<i>
+						In receiving this laptop loan from UIT, I agree to the following: 
+						<ul>
+							<li>I acknowledge that this laptop is the property of the State of Texas.
+							<li>I agree to follow all federal, state, and local laws as well as UH 
+									policies regarding proper usage of this laptop.
+							<li>I agree to return this laptop, charger, and all other accessories that were loaned to me 
+									by the return date written below. UIT reserves the right to modify the return
+									date at any time.
+							<li>I agree to treat this laptop with respect, to not modify the hardware 
+									of this laptop, and to contact UIT Support with any questions or concerns
+									(contact information below).
+						</ul>
+					</i>
+				</p>
+			</div>
+			<div class="grid-container">
+				<p>Customer Name:</p> <span id="customer_name">{{ .CustomerName }}</span>
+				<p>Customer PSID:</p> <span id="customer_psid"></span>
+				<p>Checkout Date:</p> <span id="checkout_date">{{ .CheckoutDate }}</span>
+				<p>Check-in/Return Date:</p> <span id="return_date">{{ .ReturnDate }}</span>
+				<p>Customer Signature:</p> </span><span class="signature"> </span>
+				<p>Date:</p> <span class="signature"> </span>
+			</div>
+			<div class="contact-info">
+				<p>Please reach out to our office with any questions or concerns:</p>
+				<p><b>Phone</b>: (713) 743-1411</p>
+				<p><b>Email</b>: uitsupport@uh.edu</p>
+				<p><b>Live Chat</b>: https://uh.edu/uit (Click the red chat icon in the bottom right corner)</p>
+			</div>
+		</section>
   </body>
 </html>

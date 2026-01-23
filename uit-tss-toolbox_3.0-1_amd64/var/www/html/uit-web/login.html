@@ -9,15 +9,16 @@
 		<title>Login - ITSC Mgmt</title>
 	</head>
 	<body>
-		<div><h1>UIT - ITSC Inventory Management</h1></div>
+		<div class="flex-container horizontal"><h1>UIT - ITSC Inventory Management</h1></div>
 
-    <div class="flex-container login">
-			<div class="flex-box login">
-				<form id="login-form" method="POST">
-					<fieldset>
-						<legend><b>Login</b></legend>
-						<div><label for="username">Username<sup id="username-star">*</sup></label></div>
-						<div>
+		
+		<div class="flex-container horizontal">
+			<form id="login-form" method="POST">
+					<div class="flex-container vertical outlined">
+						<div class="flex-container horizontal">
+							<label for="username">Username<sup id="username-star">*</sup></label>
+						</div>
+						<div class="flex-container horizontal">
 							<input
 								type="text"
 								id="username"
@@ -32,8 +33,10 @@
 								autofocus
 								required />
 						</div>
-						<div><label for="password">Password<sup id="password-star">*</sup></label></div>
-						<div>
+						<div class="flex-container horizontal">
+							<label for="password">Password<sup id="password-star">*</sup></label>
+						</div>
+						<div class="flex-container horizontal">
 							<input 
 								type="password" 
 								id="password"
@@ -47,14 +50,18 @@
 								autocapitalize="off"
 								required />
 						</div>
-						<div class="message"><p id="login-error" class="error-message"></p></div>
-						<div><small><a href="/forgot-password">Forgot password?</a></small></div>
-						<div>
+						<div class="flex-container horizontal">
+							<div class="message"><p id="login-error" class="error-message"></p></div>
+						</div>
+						<div class="flex-container horizontal">
+							<small><a href="/forgot-password">Forgot password?</a></small>
+						</div>
+						<div class="flex-container horizontal">
 							<button type="submit" id="login-button" form="login-form">Login</button>
 						</div>
-					</fieldset>
-				</form>
-			</div>
+					</div>
+				</div>
+			</form>
 		</div>
 
 		<div id="uit-footer" class="flex-container footer">

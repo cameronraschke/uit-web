@@ -111,4 +111,7 @@ span {
 	#print-checkout-form-container {
 		display: block !important;
 	}
+	#printable-form {
+		display: none !important;
+	}
 }

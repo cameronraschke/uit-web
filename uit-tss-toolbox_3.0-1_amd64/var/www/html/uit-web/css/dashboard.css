@@ -43,32 +43,3 @@
   padding: 1rem 2rem 1rem 2rem;
   gap: 1rem;
 }
-
-.flex-box.home {
-  display: flex;
-  flex: 1 1 45%;
-  font-size: 1.1rem;
-}
-
-.flex-box.home.notes-section {
-  height: 70dvh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  width: 100%;
-}
-
-.flex-box.home.inventory-summary-section {
-  min-height: fit-content;
-  width: 100%;
-  padding: 1rem;
-}
-
-.flex-box.home.notes-section {
-  display: flex;
-  align-self: flex-start;
-  margin: 1rem;
-  padding: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 1rem;
-  background-color: #f9f9f9;
-}

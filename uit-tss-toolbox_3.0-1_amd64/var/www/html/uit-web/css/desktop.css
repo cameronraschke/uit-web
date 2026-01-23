@@ -212,7 +212,7 @@ td {
   flex-wrap: wrap;
   min-width: fit-content;
   justify-content: space-evenly;
-	align-items: stretch;
+	align-items: center;
   align-content: space-between;
 	gap: 1rem;
 	margin: auto;
@@ -224,13 +224,19 @@ td {
   flex-direction: column;
 }
 
+.flex-container.vertical.outlined {
+	border: var(--border-width) solid var(--button-border-color);
+	padding: 1rem;
+	border-radius: var(--border-radius);
+}
+
 .flex-container.horizontal {
   flex-direction: row;
 	width: 100%;
 }
 
-.flex-container.horizontal select, .flex-container.horizontal button {
-	margin: 0.5rem;
+.flex-container.horizontal input, .flex-container.horizontal select, .flex-container.horizontal button {
+	margin: 2rem 0rem;
 }
 
 .flex-container.form-buttons {
@@ -350,71 +356,6 @@ td {
   flex-direction: row;
   align-items: center;
   justify-content: center;
-}
-
-.flex-box {
-	display: flex;
-	flex-direction: column;
-	flex: 1 1 auto;
-  padding: 1rem;
-	align-self: flex-start;
-	border: 1px solid var(--shadow-color);
-  border-radius: var(--border-radius);
-  background-color: var(--bg-color);
-  flex-wrap: wrap;
-  min-width: fit-content;
-  justify-content: space-evenly;
-	align-items: stretch;
-  align-content: center;
-	gap: 1rem;
-	margin: auto;
-  overflow-x: auto;
-  overflow-y: auto;
-}
-
-.flex-box.footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.flex-box thead {
-  font-weight: bold;
-  border-bottom: 2px solid black;
-  z-index: 1;
-}
-
-.flex-box tbody {
-  max-height: 20em;
-  overflow-y: auto;
-  width: 100%;
-}
-
-.flex-box tfoot {
-  font-weight: bold;
-  border-top: 2px solid black;
-  border-bottom: 2px solid black;
-  z-index: 1;
-}
-
-.flex-box tbody td, .flex-box tbody th {
-  display: block;
-  border-bottom: 1px solid #eee;
-  padding: 1rem 1rem 1rem 1rem;
-}
-
-.flex-box tbody tr {
-  display: block;
-  width: 100%;
-  border-bottom: 1px solid #ddd;
-}
-
-.flex-box tbody tr:nth-child(even) {
-  background-color: var(--shadow-color);
-}
-
-.flex-box tbody tr:hover {
-  background-color: var(--bg-color);
 }
 
 .flex-item {

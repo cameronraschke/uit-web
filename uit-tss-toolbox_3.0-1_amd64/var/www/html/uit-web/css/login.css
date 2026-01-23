@@ -32,10 +32,3 @@ button {
 	width: 100%;
 	background-color: var(--light-submit-color);
 }
-
-.flex-box.login {
-	flex: unset;
-	padding: 2rem;
-	margin: 1rem;
-	align-items: center;;
-}
