@@ -16,8 +16,8 @@
 		<div class="flex-container title pagetitle"><h2>Update and View Inventory</h2></div>
 
 		<section id="update-and-search-container" class="flex-container horizontal">
-			<form id="inventory-lookup-form" class="flex-item">
-				<div class="flex-container vertical">
+			<form id="inventory-lookup-form">
+				<div class="flex-container vertical outlined">
 					<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
 					<div class="flex-container horizontal"><div class="flex-container title"><h3>Update Client Information</h3></div></div>
 					<div class="flex-container vertical">
@@ -60,152 +60,155 @@
 					<form id="inventory-update-form" enctype="multipart/form-data" method="POST" action="/api/update_inventory">
 						<input type="hidden" id="csrf-token" value="" />
 						<div class="grid-container inventory inventory-update-form">
-							<div><p class="bold">Location, Manufacturer, and Model:</p></div>
-							<div><p class="required-field">Location/Building/Room:</p></div>
-							<div><p class="required-field">Manufacturer/Model:</p></div>
-							<div>
+							<div class="flex-container vertical separated">
+								<div class="flex-container horizontal">
+									<p class="required-field">Location/Building/Room:</p>
+								</div>
 								<datalist id="location-suggestions"></datalist>
-								<input type="text" id="location" name="location"
-									placeholder="Location" 
-									maxlength="128"
-									autocomplete="off"
-									autocorrect="off"
-									autocapitalize="on" 
-									list="location-suggestions"
-								/>
+								<div class="flex-container horizontal">
+									<input type="text" id="location" name="location"
+										placeholder="Location" 
+										maxlength="128"
+										autocomplete="off"
+										autocorrect="off"
+										autocapitalize="on" 
+										list="location-suggestions" />
+								</div>
+								<div class="flex-container horizontal">
+									<input type="text" id="building" name="building"
+										placeholder="Building" 
+										maxlength="64" 
+										autocomplete="off"
+										autocorrect="off"
+										autocapitalize="on" />
+								</div>
+								<div class="flex-container horizontal">
+									<input type="text" id="room" name="room"
+										placeholder="Room" 
+										maxlength="64" 
+										autocomplete="off"
+										autocorrect="off"
+										autocapitalize="on" />
+								</div>
 							</div>
-							<div>
-								<input type="text" id="system_manufacturer" name="system_manufacturer"
-									placeholder="Manufacturer" 
-									maxlength="128" 
-									autocomplete="off"
-									autocorrect="off"
-									autocapitalize="on" 
-								/>
-							</div>
-							<div>
-								<input type="text" id="building" name="building"
-									placeholder="Building" 
-									maxlength="64" 
-									autocomplete="off"
-									autocorrect="off"
-									autocapitalize="on" 
-								/>
-							</div>
-							<div>
-								<input type="text" id="system_model" name="system_model"
-									placeholder="Model" 
-									maxlength="128" 
-									autocomplete="off"
-									autocorrect="off"
-									autocapitalize="on" 
-								/>
-							</div>
-							<div>
-								<input type="text" id="room" name="room"
-									placeholder="Room" 
-									maxlength="64" 
-									autocomplete="off"
-									autocorrect="off"
-									autocapitalize="on" 
-								/>
-							</div>
-						</div>
 
-						<div class="vertical-spacer"></div>
-
-						<div class="grid-container inventory inventory-update-form">
-							<div><p class="bold">Department and AD Domain:</p></div>
-							<div><label for="department_name" class="required-field">Department:</label></div>
-							<div>
-								<select id="department_name" name="department_name">
-									<option value="" disabled selected>Select Department</option>
-								</select>
+							<div class="flex-container vertical separated">
+								<div class="flex-container horizontal"><p class="required-field">Manufacturer/Model:</p></div>
+								<div class="flex-container horizontal">
+									<input type="text" id="system_manufacturer" name="system_manufacturer"
+										placeholder="Manufacturer" 
+										maxlength="128" 
+										autocomplete="off"
+										autocorrect="off"
+										autocapitalize="on" />
+								</div>
+								<div class="flex-container horizontal">
+									<input type="text" id="system_model" name="system_model"
+										placeholder="Model" 
+										maxlength="128" 
+										autocomplete="off"
+										autocorrect="off"
+										autocapitalize="on" />
+								</div>
 							</div>
-							<div><label for="property_custodian">Property Custodian:</label></div>
-							<div>
-								<input type="text" id="property_custodian" name="property_custodian"
-									placeholder="Property Custodian" 
-									maxlength="64" 
-									autocomplete="off"
-									autocorrect="off"
-									autocapitalize="words" 
-								/>
-							</div>
-							<div><label for="ad_domain" class="required-field">AD Domain:</label></div>
-							<div>
-								<select id="ad_domain" name="ad_domain">
-								</select>
-							</div>
-						</div>
 
-						<div class="vertical-spacer"></div>
-
-						<div class="grid-container inventory inventory-update-form">
-							<div><p class="bold">Health and Status:</p></div>
-							<label for="is_broken" class="required-field">Is it Broken?</label>
-							<div>
-								<select id="is_broken" name="is_broken">
-									<option value="" disabled selected>Is it Broken?</option>
-									<option value="true">Yes, it is broken</option>
-									<option value="false">No, it isn't broken</option>
-								</select>
+							<div class="flex-container vertical separated">
+								<div class="flex-container horizontal"><p class="required-field">Department/Property Custodian:</p></div>
+								<div class="flex-container horizontal">
+									<select id="department_name" name="department_name">
+										<option value="" disabled selected>Select Department</option>
+									</select>
+								</div>
+								<div class="flex-container horizontal">
+									<select id="ad_domain" name="ad_domain"></select>
+								</div>
 							</div>
-							<label for="status" class="required-field">Status:</label>
-							<div>
-								<select id="status" name="status">
-									<option value="" disabled selected>Select Status</option>
-									{{ range $status, $statusReadable := .Statuses }}
-									<option value="{{ $status }}">{{ $statusReadable }}</option>
-									{{ end }}
-								</select>
-								<div id="print-checkout-link"></div>
+
+							<div class="flex-container vertical separated">
+								<div class="flex-container horizontal"><p>Property Custodian:</p></div>
+								<div class="flex-container horizontal">
+									<input type="text" id="property_custodian" name="property_custodian"
+										placeholder="Property Custodian" 
+										maxlength="64" 
+										autocomplete="off"
+										autocorrect="off"
+										autocapitalize="words" />
+								</div>
 							</div>
-							<label for="acquired_date">Date Acquired:</label>
-							<div><input type="date" id="acquired_date" name="acquired_date" /></div>
 
-							<div class="vertical-spacer"></div>
 
+							<div class="flex-container vertical separated">
+								<div class="flex-container horizontal"><p>Is it Broken?</p></div>
+								<div class="flex-container horizontal">
+									<select id="is_broken" name="is_broken">
+										<option value="" disabled selected>Is it Broken?</option>
+										<option value="true">Yes, it is broken</option>
+										<option value="false">No, it isn't broken</option>
+									</select>
+								</div>
+							</div>
+
+							<div class="flex-container vertical separated">
+								<div class="flex-container horizontal"><p class="required-field">Status:</p></div>
+								<div class="flex-container horizontal">
+									<select id="status" name="status">
+										<option value="" disabled selected>Select Status</option>
+										{{ range $status, $statusReadable := .Statuses }}
+										<option value="{{ $status }}">{{ $statusReadable }}</option>
+										{{ end }}
+									</select>
+								</div>
+								<div class="flex-container horizontal">
+									<a id="print-checkout-link"></a>
+								</div>
+							</div>
+
+							<div class="flex-container vertical separated">
+								<div class="flex-container horizontal"><p>Date Acquired:</p></div>
+								<div class="flex-container horizontal">
+									<input type="date" id="acquired_date" name="acquired_date" />
+								</div>
+							</div>
+
+							<div class="flex-container vertical separated">
+								<div class="flex-container horizontal"><p>Upload Inventory Image(s):</p></div>
+								<div class="flex-container horizontal">
+									<input type="file" id="inventory-file-input" name="inventory-file-input" 
+										accept="image/jpeg,image/jpg,image/png,video/mp4" 
+										multiple />
+								</div>
+								<div class="flex-container horizontal">
+									<a id="client_images_link" href="">View Client Images</a>
+								</div>
+							</div>
+
+						<!-- Close grid -->
+						</div> 
+
+						<div class="flex-container horizontal">
 							<label for="note">Notes:</label>
-							<div>
-								<textarea id="note" name="note" placeholder="Enter notes..." maxlength="1024" rows="6" cols="50"></textarea>
-							</div>
-
-							<div class="vertical-spacer"></div>
-
-							<div><a id="client_images_link" href="">View Client Images</a></div>
-							<div class="vertical-spacer"></div>
-							<label for="inventory-file-input">Upload Inventory Image(s):</label>
-							<div>
-								<input type="file" id="inventory-file-input" name="inventory-file-input" 
-									accept="image/jpeg,image/jpg,image/png,video/mp4" 
-									multiple 
-								/>
-							</div>
-
-							<div class="vertical-spacer"></div>
-
-							
-							<div class="message"><p id="inventory-error" class="error-message"></p></div>
-							<div id="inventory-update-form-buttons">
-								<button id="inventory-update-cancel-button" name="inventory-update-cancel-button"
-									type="button"
-									class="cancel">
-									Cancel
-							</button>
-								<button id="inventory-update-submit-button" name="inventory-update-submit-button" 
-									type="submit"
-									class="submit">
-									Submit Inventory Update
-							</button>
-							</div>
+							<textarea id="note" name="note" placeholder="Enter notes..." maxlength="1024" rows="6" cols="50"></textarea>
 						</div>
-					</div>
-				</div>
-			</form>
 
-			<form class="flex-item" id="inventory-search-form">
-				<div class="flex-container vertical">
+						<div class="flex-container horizontal"><div class="message"><p id="inventory-error" class="error-message"></p></div></div>
+						<div class="flex-container horizontal form-buttons" id="inventory-update-form-buttons">
+							<button id="inventory-update-cancel-button" name="inventory-update-cancel-button"
+								type="button"
+								class="cancel">
+								Cancel
+							</button>
+							<button id="inventory-update-submit-button" name="inventory-update-submit-button" 
+								type="submit"
+								class="submit">
+								Submit Inventory Update
+							</button>
+						</div>
+					</form>
+				</div>
+			</div>
+
+			<form id="inventory-search-form">
+				<div class="flex-container vertical outlined">
 					<div class="flex-container horizontal">
 						<div><h3>Advanced Search</h3></div>
 					</div>

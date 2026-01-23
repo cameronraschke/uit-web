@@ -49,6 +49,7 @@ const inventoryUpdateDomainSelect = document.getElementById('ad_domain') as HTML
 const inventorySearchDepartmentSelect = document.getElementById('inventory-search-department') as HTMLSelectElement;
 const inventorySearchDomainSelect = document.getElementById('inventory-search-domain') as HTMLSelectElement;
 const csvDownloadButton = document.getElementById('inventory-search-download-button') as HTMLButtonElement;
+const printCheckoutAnchor = document.getElementById('print-checkout-link') as HTMLElement;
 const statusesThatIndicateBroken = ["needs-repair"];
 const statusesThatIndicateCheckout = ["checked-out", "reserved-for-checkout"];
 
@@ -201,17 +202,13 @@ async function submitInventoryLookup() {
 }
 
 async function updateCheckoutStatus() {
-	const printCheckoutDiv = document.getElementById('print-checkout-link') as HTMLElement;
 	if (statusesThatIndicateCheckout.includes(clientStatus.value)) {
-		const printCheckoutAnchor = document.createElement('a');
 		printCheckoutAnchor.setAttribute('href', `/checkout-form?tagnumber=${encodeURIComponent(inventoryLookupTagInput.value)}`);
 		printCheckoutAnchor.setAttribute('target', '_blank');
 		printCheckoutAnchor.textContent = 'Print Checkout Form';
-		printCheckoutDiv.innerHTML = '';
-		printCheckoutDiv.appendChild(printCheckoutAnchor);
 	} else {
-		if (printCheckoutDiv) {
-			printCheckoutDiv.innerHTML = '';
+		if (printCheckoutAnchor) {
+			printCheckoutAnchor.innerHTML = '';
 		}
 	}
 }
