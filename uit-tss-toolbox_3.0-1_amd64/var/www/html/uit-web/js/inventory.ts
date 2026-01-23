@@ -329,6 +329,9 @@ async function populateLocationForm(tag: number): Promise<void> {
 		if (systemModelVal) {
 			systemModel.style.backgroundColor = "gainsboro";
 			systemModel.disabled = true;
+		} else {
+			systemModel.style.backgroundColor = "initial";
+			systemModel.disabled = false;
 		}
 
 		await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
