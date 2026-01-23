@@ -318,6 +318,9 @@ async function populateLocationForm(tag: number): Promise<void> {
 		if (systemManufacturerVal) {
 			systemManufacturer.style.backgroundColor = "gainsboro";
 			systemManufacturer.disabled = true;
+		} else {
+			systemManufacturer.style.backgroundColor = "initial";
+			systemManufacturer.disabled = false;
 		}
 
     const systemModel = inventoryUpdateForm.querySelector("#system_model") as HTMLInputElement;

@@ -236,7 +236,6 @@ td {
 	border: var(--border-width) solid var(--default-border-color);
 	padding: 1rem;
 	border-radius: var(--border-radius);
-	width: 40dvw;
 }
 
 .flex-container.vertical.separated {
