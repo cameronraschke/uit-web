@@ -541,6 +541,6 @@ INSERT INTO static_client_statuses (status, status_formatted, sort_order) VALUES
   ('storage', 'Storage', 60),
   ('needs-repair', 'Needs Repair', 70),
   ('retired', 'Retired', 80),
-  ('lost', 'Lost', 90),
+  ('lost', 'Lost/Stolen', 90),
   ('other', 'Other', 100) ON CONFLICT (status) DO NOTHING
   ;

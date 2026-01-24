@@ -481,7 +481,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
       else jsonObject["is_broken"] = null;
     jsonObject["status"] = getInputValue("#status");
 		if (getInputValue("#acquired_date")) {
-			jsonObject["acquired_date"] = new Date(getInputValue("#acquired_date") as string).toISOString() || null;
+			jsonObject["acquired_date"] = new Date((getInputValue("#acquired_date") as string) + "T00:00:00").toISOString() || null;
 		}
     jsonObject["note"] = getInputValue("#note");
 
