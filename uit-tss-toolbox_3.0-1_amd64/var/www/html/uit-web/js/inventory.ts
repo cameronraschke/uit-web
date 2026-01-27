@@ -110,7 +110,7 @@ function getLocationSearchResults(inputElement: HTMLInputElement, data: Array<Al
 		.slice(0, 10);
 }
 
-async function lookupTagOrSerial(tagnumber: number | null, serial: string | null): Promise<{ tagnumber: number | null; system_serial: string | null } | null> {
+async function lookupTagOrSerial(tagnumber: number | null, serial: string | null): Promise<ClientLookupResult | null> {
   const query = new URLSearchParams();
   if (tagnumber) {
     query.append("tagnumber", tagnumber.toString());
@@ -144,7 +144,6 @@ async function submitInventoryLookup() {
 	const lookupTag: number | null = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : (searchParams.get('tagnumber') ? Number(searchParams.get('tagnumber')) : null);
   const lookupSerial: string | null = inventoryLookupSystemSerialInput.value || searchParams.get('system_serial') || null;
 
-  const lookupResult = await lookupTagOrSerial(lookupTag, lookupSerial);
   if (!lookupTag && !lookupSerial) {
     inventoryLookupWarningMessage.style.display = "block";
     inventoryLookupWarningMessage.textContent = "Please provide a tag number or serial number to look up.";
@@ -165,40 +164,38 @@ async function submitInventoryLookup() {
     inventoryLookupWarningMessage.textContent = "Tag number must be exactly 6 digits long.";
     return;
   }
-
-	const resultTag: number | null = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : (searchParams.get('tagnumber') ? Number(searchParams.get('tagnumber')) : null);
-  const resultSerial: string | null = inventoryLookupSystemSerialInput.value || searchParams.get('system_serial') || null;
-
-	
-	searchParams.set('update', 'true');
-	searchParams.set('tagnumber', resultTag !== null ? resultTag.toString() : '');
-	searchParams.set('system_serial', resultSerial !== null ? resultSerial : '');
-	history.replaceState(null, '', window.location.pathname + '?' + searchParams.toString());
-  await populateLocationForm(resultTag !== null ? resultTag : undefined, resultSerial !== null ? resultSerial : undefined);
-
-  inventoryUpdateFormSection.style.display = "block";
-  if (lookupResult) {
-    inventoryLookupTagInput.value = lookupResult.tagnumber !== null ? lookupResult.tagnumber.toString() : "";
-    inventoryLookupSystemSerialInput.value = lookupResult.system_serial || "";
-    inventoryLookupTagInput.disabled = true;
-    inventoryLookupSystemSerialInput.disabled = true;
-    inventoryLookupTagInput.style.backgroundColor = "gainsboro";
-    inventoryLookupSystemSerialInput.style.backgroundColor = "gainsboro";
-    inventoryUpdateLocationInput.focus();
-  } else {
+	const lookupResult: ClientLookupResult | null = await lookupTagOrSerial(lookupTag, lookupSerial);
+	if (!lookupResult) {
     inventoryLookupWarningMessage.style.display = "block";
     inventoryLookupWarningMessage.textContent = "No inventory entry was found for the provided tag number or serial number. A new entry can be created.";
     if (!inventoryLookupTagInput.value) inventoryLookupTagInput.focus();
     else if (!inventoryLookupSystemSerialInput.value) inventoryLookupSystemSerialInput.focus();
-  }
+	}
+	const lookupTagValid = lookupResult && lookupResult.tagnumber !== null && !isNaN(Number(lookupResult.tagnumber)) ? lookupResult.tagnumber : inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : null;
+	const lookupSerialValid = lookupResult && lookupResult.system_serial !== null ? lookupResult.system_serial.trim() : inventoryLookupSystemSerialInput.value ? inventoryLookupSystemSerialInput.value.trim() : null;
+	
+	searchParams.set('update', 'true');
+	searchParams.set('tagnumber', lookupTagValid !== null ? lookupTagValid.toString() : '');
+	searchParams.set('system_serial', lookupSerialValid !== null ? lookupSerialValid : '');
+	history.replaceState(null, '', window.location.pathname + '?' + searchParams.toString());
+  await populateLocationForm(lookupTagValid !== null ? lookupTagValid : undefined, lookupSerialValid !== null ? lookupSerialValid : undefined);
+
+  inventoryUpdateFormSection.style.display = "block";
+	inventoryLookupTagInput.value = lookupTagValid !== null ? lookupTagValid.toString() : "";
+	inventoryLookupSystemSerialInput.value = lookupSerialValid !== null ? lookupSerialValid : "";
+	inventoryLookupTagInput.disabled = true;
+	inventoryLookupSystemSerialInput.disabled = true;
+	inventoryLookupTagInput.style.backgroundColor = "gainsboro";
+	inventoryLookupSystemSerialInput.style.backgroundColor = "gainsboro";
+	inventoryUpdateLocationInput.focus();
 
   inventoryLookupFormSubmitButton.disabled = true;
   inventoryLookupFormSubmitButton.style.cursor = "not-allowed";
   inventoryLookupFormSubmitButton.style.border = "1px solid gray";
   inventoryLookupFormResetButton.style.display = "inline-block";
   inventoryLookupMoreDetailsButton.style.display = "inline-block";
-  if (resultTag) {
-    clientImagesLink.href = `/client_images?tagnumber=${resultTag || ''}`;
+  if (lookupTagValid !== null) {
+    clientImagesLink.href = `/client_images?tagnumber=${lookupTagValid}`;
     clientImagesLink.target = "_blank";
     clientImagesLink.style.display = "inline";
   } else {
@@ -273,7 +270,7 @@ async function getLocationFormData(tag?: number, serial?: string): Promise<any |
 	url.searchParams.set('system_serial', serialNum !== null ? serialNum : '');
 
   try {
-    const response = await fetchData(url.toString(), true);
+    const response = await fetchData(url.toString(), false);
     if (!response) {
       throw new Error("Cannot parse json from /api/client/location_form_data");
     }
@@ -305,12 +302,12 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		if (locationFormData.last_update_time) {
 			const lastUpdate = new Date(locationFormData.last_update_time);
 			if (isNaN(lastUpdate.getTime())) {
-				lastUpdateTimeMessage.textContent = 'Uknown timestamp of last update';
+				lastUpdateTimeMessage.textContent = 'Unknown timestamp of last update';
 			} else {
 				lastUpdateTimeMessage.textContent = `Last updated: ${lastUpdate.toLocaleString()}` || '';
 			}
 		} else {
-			lastUpdateTimeMessage.textContent = 'Uknown timestamp of last update';
+			lastUpdateTimeMessage.textContent = 'Unknown timestamp of last update';
 		}
 		lastUpdateTimeMessage.style.display = "block";
 
@@ -550,7 +547,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
 		if (fileInput) fileInput.value = "";
 		inventoryLookupWarningMessage.style.display = "none";
 		lastUpdateTimeMessage.textContent = "";
-    await populateLocationForm(returnedJson.tagnumber);
+    await populateLocationForm(returnedJson.tagnumber, undefined);
     await fetchFilteredInventoryData();
   } catch (error) {
     console.error("Error updating inventory:", error);
