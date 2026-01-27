@@ -24,26 +24,6 @@
   overflow-x: hidden;
 }
 
-.grid-container.inventory-summary {
-  min-width: fit-content;
-  height: 60dvh;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 1dvw;
-  padding: 1dvw;
-}
-
-.grid-item {
-  grid-column: 1/5;
-}
-
-.flex-container.home {
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem 1rem 2rem;
-  gap: 1rem;
-}
-
 #mobile-nav {
 	display: none;
 }

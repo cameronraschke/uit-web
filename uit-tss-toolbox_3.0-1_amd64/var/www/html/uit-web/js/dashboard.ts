@@ -48,9 +48,6 @@ async function fetchNotes() {
 
   try {
     const response = await fetchData('/api/notes?note_type=general', true);
-		if (!response.ok) {
-			throw new Error(`Failed to fetch notes: ${response.statusText}`);
-		}
     if (!response || response.length === 0) throw new Error('No data received from /api/notes');
     const jsonParsed = JSON.parse(response);
     if (!jsonParsed || Object.keys(jsonParsed).length === 0 || (jsonParsed && typeof jsonParsed === 'object' && Object.prototype.hasOwnProperty.call(jsonParsed, '__proto__'))) {
