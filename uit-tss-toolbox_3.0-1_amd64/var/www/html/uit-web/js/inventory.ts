@@ -165,11 +165,16 @@ async function submitInventoryLookup() {
     inventoryLookupWarningMessage.textContent = "Tag number must be exactly 6 digits long.";
     return;
   }
+
+	const resultTag: number | null = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : (searchParams.get('tagnumber') ? Number(searchParams.get('tagnumber')) : null);
+  const resultSerial: string | null = inventoryLookupSystemSerialInput.value || searchParams.get('system_serial') || null;
+
 	
 	searchParams.set('update', 'true');
-	searchParams.set('tagnumber', lookupTag !== null ? lookupTag.toString() : '');
+	searchParams.set('tagnumber', resultTag !== null ? resultTag.toString() : '');
+	searchParams.set('system_serial', resultSerial !== null ? resultSerial : '');
 	history.replaceState(null, '', window.location.pathname + '?' + searchParams.toString());
-  await populateLocationForm(lookupTag !== null ? lookupTag : NaN);
+  await populateLocationForm(resultTag !== null ? resultTag : undefined, resultSerial !== null ? resultSerial : undefined);
 
   inventoryUpdateFormSection.style.display = "block";
   if (lookupResult) {
@@ -192,8 +197,8 @@ async function submitInventoryLookup() {
   inventoryLookupFormSubmitButton.style.border = "1px solid gray";
   inventoryLookupFormResetButton.style.display = "inline-block";
   inventoryLookupMoreDetailsButton.style.display = "inline-block";
-  if (lookupTag) {
-    clientImagesLink.href = `/client_images?tagnumber=${lookupTag || ''}`;
+  if (resultTag) {
+    clientImagesLink.href = `/client_images?tagnumber=${resultTag || ''}`;
     clientImagesLink.target = "_blank";
     clientImagesLink.style.display = "inline";
   } else {
@@ -260,9 +265,15 @@ function renderTagOptions(tags: number[]): void {
   });
 }
 
-async function getLocationFormData(tag: number): Promise<any | null> {
+async function getLocationFormData(tag?: number, serial?: string): Promise<any | null> {
+	const tagNum = tag ? tag : inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : null;
+	const serialNum = serial ? serial : inventoryLookupSystemSerialInput.value ? String(inventoryLookupSystemSerialInput.value) : null;
+	const url = new URL('/api/client/location_form_data', window.location.origin);
+	url.searchParams.set('tagnumber', tagNum !== null ? tagNum.toString() : '');
+	url.searchParams.set('system_serial', serialNum !== null ? serialNum : '');
+
   try {
-    const response = await fetchData(`/api/client/location_form_data?tagnumber=${tag}`);
+    const response = await fetchData(url.toString(), true);
     if (!response) {
       throw new Error("Cannot parse json from /api/client/location_form_data");
     }
@@ -287,8 +298,8 @@ function showInventoryUpdateChanges(): void {
 }
 showInventoryUpdateChanges();
 
-async function populateLocationForm(tag: number): Promise<void> {
-  const locationFormData = await getLocationFormData(tag);
+async function populateLocationForm(tag?: number, serial?: string): Promise<void> {
+  const locationFormData = await getLocationFormData(tag, serial);
 	showInventoryUpdateChanges();
   if (locationFormData) {
 		if (locationFormData.last_update_time) {
@@ -301,6 +312,7 @@ async function populateLocationForm(tag: number): Promise<void> {
 		} else {
 			lastUpdateTimeMessage.textContent = 'Uknown timestamp of last update';
 		}
+		lastUpdateTimeMessage.style.display = "block";
 
     inventoryUpdateLocationInput.value = locationFormData.location || '';
 

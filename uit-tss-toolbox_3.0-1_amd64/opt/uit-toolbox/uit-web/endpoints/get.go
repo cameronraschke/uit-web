@@ -341,11 +341,15 @@ func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	tagnumber, err := ConvertTagnumber(requestQueries.Get("tagnumber"))
-	if err != nil {
-		log.HTTPWarning(req, "Invalid tagnumber provided in GetLocationFormData: "+err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
+
+	serial := strings.TrimSpace(requestQueries.Get("system_serial"))
+	tagnumber, tagErr := ConvertTagnumber(requestQueries.Get("tagnumber"))
+	if tagErr != nil {
+		if serial == "" {
+			log.HTTPWarning(req, "No or invalid tagnumber and no system_serial provided in GetLocationFormData")
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
 	}
 
 	db := config.GetDatabaseConn()
@@ -355,7 +359,7 @@ func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	repo := database.NewRepo(db)
-	locationData, err := repo.GetLocationFormData(ctx, tagnumber)
+	locationData, err := repo.GetLocationFormData(ctx, &tagnumber, &serial)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetLocationFormData: "+err.Error())

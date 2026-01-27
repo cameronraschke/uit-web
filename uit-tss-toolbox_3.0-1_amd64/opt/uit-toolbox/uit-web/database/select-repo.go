@@ -392,16 +392,16 @@ func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]Dashboard
 	return dashboardInventorySummary, nil
 }
 
-func (repo *Repo) GetLocationFormData(ctx context.Context, tag int64) (*InventoryFormAutofill, error) {
+func (repo *Repo) GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*InventoryFormAutofill, error) {
 	const sqlQuery = `SELECT locations.time, locations.tagnumber, locations.system_serial, locations.location, locations.building, locations.room, system_data.system_manufacturer, system_data.system_model,
 	locations.department_name, locations.property_custodian, locations.ad_domain, locations.is_broken, locations.client_status, locations.disk_removed, locations.note, locations.acquired_date
 	FROM locations
 	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-	AND locations.tagnumber = $1
+	AND (locations.tagnumber = $1 OR locations.system_serial = $2)
 	ORDER BY locations.time DESC NULLS LAST
 	LIMIT 1;`
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, toNullInt64(tag), toNullString(serial))
 
 	inventoryUpdateForm := &InventoryFormAutofill{}
 	if err := row.Scan(
