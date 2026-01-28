@@ -185,7 +185,12 @@ async function submitInventoryLookup() {
     else if (!inventoryLookupSystemSerialInput.value) inventoryLookupSystemSerialInput.focus();
 	}
 
+	inventoryLookupFormResetButton.style.display = "inline-block";
+	inventoryLookupMoreDetailsButton.style.display = "inline-block";
+	inventoryLookupMoreDetailsButton.disabled = false;
+
 	inventoryUpdateFormSection.style.display = "block";
+	
 	if (lookupResult) {
 		if (lookupResult.tagnumber && !isNaN(Number(lookupResult.tagnumber))) {
 			searchParams.set('tagnumber', lookupResult.tagnumber !== null ? lookupResult.tagnumber.toString() : '');
@@ -215,6 +220,8 @@ async function submitInventoryLookup() {
 			await populateLocationForm(lookupResult.tagnumber ? lookupResult.tagnumber : undefined, lookupResult.system_serial ? lookupResult.system_serial : undefined);
 		}
 	} else {
+		inventoryLookupMoreDetailsButton.disabled = true;
+		inventoryLookupMoreDetailsButton.style.cursor = "not-allowed";
 		const tagNum = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : '';
 		const serialNum = inventoryLookupSystemSerialInput.value ? inventoryLookupSystemSerialInput.value : '';
 		searchParams.set('tagnumber', tagNum.toString());
@@ -222,7 +229,6 @@ async function submitInventoryLookup() {
 		await populateLocationForm(tagNum ? tagNum : undefined, serialNum ? serialNum : undefined);
 	}
 
-	inventoryLookupFormResetButton.style.display = "inline-block";
 
 	// Set 'update' parameter in URL
 	searchParams.set('update', 'true');
