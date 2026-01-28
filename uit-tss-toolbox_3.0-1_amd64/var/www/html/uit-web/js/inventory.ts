@@ -135,7 +135,8 @@ async function lookupTagOrSerial(tagnumber: number | null, serial: string | null
   try {
     const data = await fetchData(`/api/lookup?${query.toString()}`);
     if (!data) {
-      throw new Error("No data returned from /api/lookup");
+      console.log("No data returned from /api/lookup");
+			return null;
     }
 		const jsonResponse: ClientLookupResult = data as ClientLookupResult;
 		if (!jsonResponse || (jsonResponse.tagnumber === null && !jsonResponse.system_serial)) {
@@ -189,18 +190,18 @@ async function submitInventoryLookup() {
 		if (lookupResult.tagnumber && !isNaN(Number(lookupResult.tagnumber))) {
 			searchParams.set('tagnumber', lookupResult.tagnumber !== null ? lookupResult.tagnumber.toString() : '');
 			inventoryLookupTagInput.value = Number(lookupResult.tagnumber).toString();
-			inventoryLookupTagInput.disabled = true;
 			inventoryLookupTagInput.style.backgroundColor = "gainsboro";
+			inventoryLookupTagInput.disabled = true;
 			clientImagesLink.href = `/client_images?tagnumber=${lookupResult.tagnumber}`;
 			clientImagesLink.target = "_blank";
 			clientImagesLink.style.display = "inline";
 		}
-		if (lookupResult.system_serial && lookupResult.system_serial.trim()) {
+		if (lookupResult.system_serial && lookupResult.system_serial && lookupResult.system_serial.trim().length > 0) {
 			searchParams.set('system_serial', lookupResult.system_serial !== null ? lookupResult.system_serial.trim() : '');
 			inventoryLookupSystemSerialInput.value = lookupResult.system_serial.trim();
 			inventoryLookupSystemSerialInput.value = lookupResult.system_serial !== null ? lookupResult.system_serial : "";
-			inventoryLookupSystemSerialInput.disabled = true;
 			inventoryLookupSystemSerialInput.style.backgroundColor = "gainsboro";
+			inventoryLookupSystemSerialInput.disabled = true;
 		}
 		if (lookupResult.tagnumber && lookupResult.system_serial) {
 			inventoryUpdateLocationInput.focus();
@@ -210,13 +211,15 @@ async function submitInventoryLookup() {
 		inventoryLookupFormSubmitButton.style.border = "1px solid gray";
 		inventoryLookupMoreDetailsButton.style.display = "inline-block";
 
-		if (lookupResult?.tagnumber || lookupResult?.system_serial) {
-			await populateLocationForm(lookupResult.tagnumber !== null ? lookupResult.tagnumber : undefined, lookupResult.system_serial !== null ? lookupResult.system_serial : undefined);
+		if (lookupResult.tagnumber || lookupResult.system_serial) {
+			await populateLocationForm(lookupResult.tagnumber ? lookupResult.tagnumber : undefined, lookupResult.system_serial ? lookupResult.system_serial : undefined);
 		}
 	} else {
-		searchParams.set('tagnumber', inventoryLookupTagInput.value ? inventoryLookupTagInput.value : '');
-		searchParams.set('system_serial', inventoryLookupSystemSerialInput.value ? inventoryLookupSystemSerialInput.value : '');
-		clientImagesLink.style.display = "none";
+		const tagNum = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : '';
+		const serialNum = inventoryLookupSystemSerialInput.value ? inventoryLookupSystemSerialInput.value : '';
+		searchParams.set('tagnumber', tagNum.toString());
+		searchParams.set('system_serial', serialNum);
+		await populateLocationForm(tagNum ? tagNum : undefined, serialNum ? serialNum : undefined);
 	}
 
 	inventoryLookupFormResetButton.style.display = "inline-block";
@@ -321,7 +324,22 @@ showInventoryUpdateChanges();
 async function populateLocationForm(tag?: number, serial?: string): Promise<void> {
   const locationFormData = await getLocationFormData(tag, serial);
 	showInventoryUpdateChanges();
-  if (locationFormData.last_update_time) {
+
+	lastUpdateTimeMessage.style.display = "none";
+
+	inventoryLookupTagInput.disabled = false;
+	inventoryLookupTagInput.style.backgroundColor = "initial";
+	
+	inventoryLookupSystemSerialInput.disabled = false;
+	inventoryLookupSystemSerialInput.style.backgroundColor = "initial";
+
+	systemManufacturer.disabled = false;
+	systemManufacturer.style.backgroundColor = "initial";
+
+	systemModel.disabled = false;
+	systemModel.style.backgroundColor = "initial";
+
+  if (locationFormData) {
 		if (locationFormData.last_update_time) {
 			const lastUpdate = new Date(locationFormData.last_update_time);
 			if (isNaN(lastUpdate.getTime())) {
@@ -331,17 +349,17 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			}
 			lastUpdateTimeMessage.style.display = "block";
 		}
-
-		inventoryLookupTagInput.value = locationFormData.tagnumber || '';
-		if (inventoryLookupTagInput.value) {
+		
+		if (locationFormData.tagnumber) {
+			inventoryLookupTagInput.value = locationFormData.tagnumber.toString().trim();
 			inventoryLookupTagInput.style.backgroundColor = "gainsboro";
 			inventoryLookupTagInput.disabled = true;
 		}
-
-		inventoryLookupSystemSerialInput.value = locationFormData.system_serial || '';
-		if (inventoryLookupSystemSerialInput.value) {
-			inventoryLookupSystemSerialInput.disabled = false;
-			inventoryLookupSystemSerialInput.style.backgroundColor = "initial";
+		
+		if (locationFormData.system_serial) {
+			inventoryLookupSystemSerialInput.value = locationFormData.system_serial.trim();
+			inventoryLookupSystemSerialInput.style.backgroundColor = "gainsboro";
+			inventoryLookupSystemSerialInput.disabled = true;
 		}
 
     inventoryUpdateLocationInput.value = locationFormData.location || '';
@@ -350,31 +368,25 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 
 		room.value = locationFormData.room || '';
 
-		systemManufacturer.value = locationFormData.system_manufacturer || '';
-		if (systemManufacturer.value) {
+		
+		if (locationFormData.system_manufacturer) {
+			systemManufacturer.value = locationFormData.system_manufacturer.trim();
 			systemManufacturer.style.backgroundColor = "gainsboro";
 			systemManufacturer.disabled = true;
-		} else {
-			systemManufacturer.style.backgroundColor = "initial";
-			systemManufacturer.disabled = false;
 		}
 
-		systemModel.value = locationFormData.system_model || '';
-		if (systemModel.value) {
+		
+		if (locationFormData.system_model) {
+			systemModel.value = locationFormData.system_model.trim();
 			systemModel.style.backgroundColor = "gainsboro";
 			systemModel.disabled = true;
-		} else {
-			systemModel.style.backgroundColor = "initial";
-			systemModel.disabled = false;
 		}
 
-		await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
 		inventoryUpdateDepartmentSelect.value = locationFormData.department_name || '';
-		
-		await populateDomainSelect(inventoryUpdateDomainSelect);
+
 		inventoryUpdateDomainSelect.value = locationFormData.ad_domain || '';
 
-		propertyCustodian.value = locationFormData.property_custodian || '';
+		propertyCustodian.value = locationFormData.property_custodian.trim() || '';
 
 		const acquiredDateValue = locationFormData.acquired_date ? new Date(locationFormData.acquired_date) : null;
 		if (acquiredDateValue && !isNaN(acquiredDateValue.getTime())) {
@@ -384,18 +396,16 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			const day = String(acquiredDateValue.getDate()).padStart(2, '0');
 			const acquiredDateFormatted = `${year}-${month}-${day}`;
 			acquiredDateInput.value = acquiredDateFormatted;
-		} else {
-			acquiredDateInput.value = '';
 		}
 		
-		const brokenValue = typeof locationFormData.is_broken === "boolean" ? String(locationFormData.is_broken) : '';
-		isBroken.value = brokenValue;
+		isBroken.value = typeof locationFormData.is_broken === "boolean" ? String(locationFormData.is_broken) : '';
 
-    clientStatus.value = locationFormData.status || '';
+    clientStatus.value = locationFormData.status.trim() || '';
 
-    const noteValue: string = locationFormData.note || '';
-    noteInput.value = noteValue;
+    noteInput.value = locationFormData.note || '';
   }
+	await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
+	await populateDomainSelect(inventoryUpdateDomainSelect);
 	await updateCheckoutStatus();
 }
 
