@@ -27,8 +27,7 @@ type AllLocationsCache = {
 	locations: AllLocations[];
 };
 
-// Inventory update form (and lookup)
-const lastUpdateTimeMessage = document.getElementById('last-update-time-message') as HTMLElement;
+// Inventory lookup form elements
 const inventoryLookupWarningMessage = document.getElementById('existing-inventory-message') as HTMLElement;
 const inventoryLookupForm = document.getElementById('inventory-lookup-form') as HTMLFormElement;
 const inventoryLookupTagInput = document.getElementById('inventory-tag-lookup') as HTMLInputElement;
@@ -36,13 +35,6 @@ const inventoryLookupSystemSerialInput = document.getElementById('inventory-seri
 const inventoryLookupFormSubmitButton = document.getElementById('inventory-lookup-submit-button') as HTMLButtonElement;
 const inventoryLookupFormResetButton = document.getElementById('inventory-lookup-reset-button') as HTMLButtonElement;
 const inventoryLookupMoreDetailsButton = document.getElementById('inventory-lookup-more-details') as HTMLButtonElement;
-const inventoryUpdateForm = document.getElementById('inventory-update-form') as HTMLFormElement;
-const inventoryUpdateFormSection = document.getElementById('inventory-update-section') as HTMLElement;
-const inventoryUpdateLocationInput = document.getElementById('location') as HTMLInputElement;
-const inventoryUpdateDepartmentSelect = document.getElementById('department_name') as HTMLSelectElement;
-const clientStatus = inventoryUpdateForm.querySelector("#status") as HTMLSelectElement;
-const inventoryUpdateFormSubmitButton = document.getElementById('inventory-update-submit-button') as HTMLButtonElement;
-const inventoryUpdateFormCancelButton = document.getElementById('inventory-update-cancel-button') as HTMLButtonElement;
 const allTagsDatalist = document.getElementById('inventory-tag-suggestions') as HTMLDataListElement;
 const clientImagesLink = document.getElementById('client_images_link') as HTMLAnchorElement;
 const inventoryUpdateDomainSelect = document.getElementById('ad_domain') as HTMLSelectElement;
@@ -50,6 +42,26 @@ const inventorySearchDepartmentSelect = document.getElementById('inventory-searc
 const inventorySearchDomainSelect = document.getElementById('inventory-search-domain') as HTMLSelectElement;
 const csvDownloadButton = document.getElementById('inventory-search-download-button') as HTMLButtonElement;
 const printCheckoutAnchor = document.getElementById('print-checkout-link') as HTMLElement;
+
+// Inventory update form elements
+const inventoryUpdateForm = document.getElementById('inventory-update-form') as HTMLFormElement;
+const inventoryUpdateFormSection = document.getElementById('inventory-update-section') as HTMLElement;
+const lastUpdateTimeMessage = document.getElementById('last-update-time-message') as HTMLElement;
+const inventoryUpdateLocationInput = document.getElementById('location') as HTMLInputElement;
+const inventoryUpdateDepartmentSelect = document.getElementById('department_name') as HTMLSelectElement;
+const inventoryUpdateFormSubmitButton = document.getElementById('inventory-update-submit-button') as HTMLButtonElement;
+const inventoryUpdateFormCancelButton = document.getElementById('inventory-update-cancel-button') as HTMLButtonElement;
+const building = inventoryUpdateForm.querySelector("#building") as HTMLInputElement;
+const room = inventoryUpdateForm.querySelector("#room") as HTMLInputElement;
+const systemManufacturer = inventoryUpdateForm.querySelector("#system_manufacturer") as HTMLInputElement;
+const systemModel = inventoryUpdateForm.querySelector("#system_model") as HTMLInputElement;
+const propertyCustodian = inventoryUpdateForm.querySelector("#property_custodian") as HTMLInputElement;
+const acquiredDateInput = inventoryUpdateForm.querySelector("#acquired_date") as HTMLInputElement;
+const isBroken = inventoryUpdateForm.querySelector("#is_broken") as HTMLInputElement;
+const clientStatus = inventoryUpdateForm.querySelector("#status") as HTMLSelectElement;
+const noteInput = inventoryUpdateForm.querySelector("#note") as HTMLInputElement;
+
+
 const statusesThatIndicateBroken = ["needs-repair"];
 const statusesThatIndicateCheckout = ["checked-out", "reserved-for-checkout"];
 
@@ -171,36 +183,47 @@ async function submitInventoryLookup() {
     if (!inventoryLookupTagInput.value) inventoryLookupTagInput.focus();
     else if (!inventoryLookupSystemSerialInput.value) inventoryLookupSystemSerialInput.focus();
 	}
-	const lookupTagValid = lookupResult && lookupResult.tagnumber !== null && !isNaN(Number(lookupResult.tagnumber)) ? lookupResult.tagnumber : inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : null;
-	const lookupSerialValid = lookupResult && lookupResult.system_serial !== null ? lookupResult.system_serial.trim() : inventoryLookupSystemSerialInput.value ? inventoryLookupSystemSerialInput.value.trim() : null;
-	
+
+	inventoryUpdateFormSection.style.display = "block";
+	if (lookupResult) {
+		if (lookupResult.tagnumber && !isNaN(Number(lookupResult.tagnumber))) {
+			searchParams.set('tagnumber', lookupResult.tagnumber !== null ? lookupResult.tagnumber.toString() : '');
+			inventoryLookupTagInput.value = Number(lookupResult.tagnumber).toString();
+			inventoryLookupTagInput.disabled = true;
+			inventoryLookupTagInput.style.backgroundColor = "gainsboro";
+			clientImagesLink.href = `/client_images?tagnumber=${lookupResult.tagnumber}`;
+			clientImagesLink.target = "_blank";
+			clientImagesLink.style.display = "inline";
+		}
+		if (lookupResult.system_serial && lookupResult.system_serial.trim()) {
+			searchParams.set('system_serial', lookupResult.system_serial !== null ? lookupResult.system_serial.trim() : '');
+			inventoryLookupSystemSerialInput.value = lookupResult.system_serial.trim();
+			inventoryLookupSystemSerialInput.value = lookupResult.system_serial !== null ? lookupResult.system_serial : "";
+			inventoryLookupSystemSerialInput.disabled = true;
+			inventoryLookupSystemSerialInput.style.backgroundColor = "gainsboro";
+		}
+		if (lookupResult.tagnumber && lookupResult.system_serial) {
+			inventoryUpdateLocationInput.focus();
+		}
+		inventoryLookupFormSubmitButton.disabled = true;
+		inventoryLookupFormSubmitButton.style.cursor = "not-allowed";
+		inventoryLookupFormSubmitButton.style.border = "1px solid gray";
+		inventoryLookupMoreDetailsButton.style.display = "inline-block";
+
+		if (lookupResult?.tagnumber || lookupResult?.system_serial) {
+			await populateLocationForm(lookupResult.tagnumber !== null ? lookupResult.tagnumber : undefined, lookupResult.system_serial !== null ? lookupResult.system_serial : undefined);
+		}
+	} else {
+		searchParams.set('tagnumber', inventoryLookupTagInput.value ? inventoryLookupTagInput.value : '');
+		searchParams.set('system_serial', inventoryLookupSystemSerialInput.value ? inventoryLookupSystemSerialInput.value : '');
+		clientImagesLink.style.display = "none";
+	}
+
+	inventoryLookupFormResetButton.style.display = "inline-block";
+
+	// Set 'update' parameter in URL
 	searchParams.set('update', 'true');
-	searchParams.set('tagnumber', lookupTagValid !== null ? lookupTagValid.toString() : '');
-	searchParams.set('system_serial', lookupSerialValid !== null ? lookupSerialValid : '');
 	history.replaceState(null, '', window.location.pathname + '?' + searchParams.toString());
-  await populateLocationForm(lookupTagValid !== null ? lookupTagValid : undefined, lookupSerialValid !== null ? lookupSerialValid : undefined);
-
-  inventoryUpdateFormSection.style.display = "block";
-	inventoryLookupTagInput.value = lookupTagValid !== null ? lookupTagValid.toString() : "";
-	inventoryLookupSystemSerialInput.value = lookupSerialValid !== null ? lookupSerialValid : "";
-	inventoryLookupTagInput.disabled = true;
-	inventoryLookupSystemSerialInput.disabled = true;
-	inventoryLookupTagInput.style.backgroundColor = "gainsboro";
-	inventoryLookupSystemSerialInput.style.backgroundColor = "gainsboro";
-	inventoryUpdateLocationInput.focus();
-
-  inventoryLookupFormSubmitButton.disabled = true;
-  inventoryLookupFormSubmitButton.style.cursor = "not-allowed";
-  inventoryLookupFormSubmitButton.style.border = "1px solid gray";
-  inventoryLookupFormResetButton.style.display = "inline-block";
-  inventoryLookupMoreDetailsButton.style.display = "inline-block";
-  if (lookupTagValid !== null) {
-    clientImagesLink.href = `/client_images?tagnumber=${lookupTagValid}`;
-    clientImagesLink.target = "_blank";
-    clientImagesLink.style.display = "inline";
-  } else {
-    clientImagesLink.style.display = "none";
-  }
 }
 
 async function updateCheckoutStatus() {
@@ -298,7 +321,7 @@ showInventoryUpdateChanges();
 async function populateLocationForm(tag?: number, serial?: string): Promise<void> {
   const locationFormData = await getLocationFormData(tag, serial);
 	showInventoryUpdateChanges();
-  if (locationFormData) {
+  if (locationFormData.last_update_time) {
 		if (locationFormData.last_update_time) {
 			const lastUpdate = new Date(locationFormData.last_update_time);
 			if (isNaN(lastUpdate.getTime())) {
@@ -306,25 +329,29 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			} else {
 				lastUpdateTimeMessage.textContent = `Last updated: ${lastUpdate.toLocaleString()}` || '';
 			}
-		} else {
-			lastUpdateTimeMessage.textContent = 'Unknown timestamp of last update';
+			lastUpdateTimeMessage.style.display = "block";
 		}
-		lastUpdateTimeMessage.style.display = "block";
+
+		inventoryLookupTagInput.value = locationFormData.tagnumber || '';
+		if (inventoryLookupTagInput.value) {
+			inventoryLookupTagInput.style.backgroundColor = "gainsboro";
+			inventoryLookupTagInput.disabled = true;
+		}
+
+		inventoryLookupSystemSerialInput.value = locationFormData.system_serial || '';
+		if (inventoryLookupSystemSerialInput.value) {
+			inventoryLookupSystemSerialInput.disabled = false;
+			inventoryLookupSystemSerialInput.style.backgroundColor = "initial";
+		}
 
     inventoryUpdateLocationInput.value = locationFormData.location || '';
 
-		const building = inventoryUpdateForm.querySelector("#building") as HTMLInputElement;
-		const buildingVal: string = locationFormData.building || '';
-		building.value = buildingVal;
+		building.value = locationFormData.building || '';
 
-		const room = inventoryUpdateForm.querySelector("#room") as HTMLInputElement;
-		const roomVal: string = locationFormData.room || '';
-		room.value = roomVal;
+		room.value = locationFormData.room || '';
 
-    const systemManufacturer = inventoryUpdateForm.querySelector("#system_manufacturer") as HTMLInputElement;
-		const systemManufacturerVal: string = locationFormData.system_manufacturer || '';
-		systemManufacturer.value = systemManufacturerVal;
-		if (systemManufacturerVal) {
+		systemManufacturer.value = locationFormData.system_manufacturer || '';
+		if (systemManufacturer.value) {
 			systemManufacturer.style.backgroundColor = "gainsboro";
 			systemManufacturer.disabled = true;
 		} else {
@@ -332,10 +359,8 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			systemManufacturer.disabled = false;
 		}
 
-    const systemModel = inventoryUpdateForm.querySelector("#system_model") as HTMLInputElement;
-		const systemModelVal: string = locationFormData.system_model || '';
-		systemModel.value = systemModelVal;
-		if (systemModelVal) {
+		systemModel.value = locationFormData.system_model || '';
+		if (systemModel.value) {
 			systemModel.style.backgroundColor = "gainsboro";
 			systemModel.disabled = true;
 		} else {
@@ -344,31 +369,16 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		}
 
 		await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
-		const departmentNameVal: string = locationFormData.department_name || '';
-		inventoryUpdateDepartmentSelect.value = departmentNameVal;
-
-		const propertyCustodian = inventoryUpdateForm.querySelector("#property_custodian") as HTMLInputElement;
-		const propertyCustodianVal: string = locationFormData.property_custodian || '';
-		propertyCustodian.value = propertyCustodianVal;
-
+		inventoryUpdateDepartmentSelect.value = locationFormData.department_name || '';
+		
 		await populateDomainSelect(inventoryUpdateDomainSelect);
-		const adDomainVal: string = locationFormData.ad_domain || '';
-		inventoryUpdateDomainSelect.value = adDomainVal;
+		inventoryUpdateDomainSelect.value = locationFormData.ad_domain || '';
 
-		const isBroken = inventoryUpdateForm.querySelector("#is_broken") as HTMLInputElement;
-		const brokenValue = typeof locationFormData.is_broken === "boolean" 
-			? String(locationFormData.is_broken) 
-			: '';
-		isBroken.value = brokenValue;
+		propertyCustodian.value = locationFormData.property_custodian || '';
 
-		const statusSelect = inventoryUpdateForm.querySelector("#status") as HTMLSelectElement;
-    statusSelect.value = locationFormData.status || '';
-
-		const acquiredDateInput = inventoryUpdateForm.querySelector("#acquired_date") as HTMLInputElement;
-		const acquiredDateValue = locationFormData.acquired_date
-			? new Date(locationFormData.acquired_date)
-			: null;
+		const acquiredDateValue = locationFormData.acquired_date ? new Date(locationFormData.acquired_date) : null;
 		if (acquiredDateValue && !isNaN(acquiredDateValue.getTime())) {
+			// Format as YYYY-MM-DD for input[type="date"]
 			const year = acquiredDateValue.getFullYear();
 			const month = String(acquiredDateValue.getMonth() + 1).padStart(2, '0');
 			const day = String(acquiredDateValue.getDate()).padStart(2, '0');
@@ -377,8 +387,12 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		} else {
 			acquiredDateInput.value = '';
 		}
+		
+		const brokenValue = typeof locationFormData.is_broken === "boolean" ? String(locationFormData.is_broken) : '';
+		isBroken.value = brokenValue;
 
-    const noteInput = inventoryUpdateForm.querySelector("#note") as HTMLInputElement;
+    clientStatus.value = locationFormData.status || '';
+
     const noteValue: string = locationFormData.note || '';
     noteInput.value = noteValue;
   }
