@@ -236,7 +236,7 @@ func (repo *Repo) GetBiosData(ctx context.Context, tag int64) (*BiosData, error)
 
 func (repo *Repo) GetOsData(ctx context.Context, tag int64) (*OsData, error) {
 	const sqlQuery = `SELECT locations.tagnumber, client_health.os_installed, client_health.os_name,
-	client_health.last_imaged_time AT TIME ZONE 'America/Chicago', client_health.tpm_version, jobstats.boot_time
+	client_health.last_imaged_time, client_health.tpm_version, jobstats.boot_time
 	FROM locations
 	LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
 	LEFT JOIN jobstats ON locations.tagnumber = jobstats.tagnumber AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
@@ -319,7 +319,7 @@ func (repo *Repo) GetJobQueueOverview(ctx context.Context) (*JobQueueOverview, e
 }
 
 func (repo *Repo) GetNotes(ctx context.Context, noteType string) (*NotesTable, error) {
-	const sqlQuery = `SELECT time AT TIME ZONE 'America/Chicago', note_type, note FROM notes WHERE note_type = $1 ORDER BY time DESC NULLS LAST LIMIT 1;`
+	const sqlQuery = `SELECT time, note_type, note FROM notes WHERE note_type = $1 ORDER BY time DESC NULLS LAST LIMIT 1;`
 
 	var notesTable NotesTable
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, noteType)
@@ -650,8 +650,8 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 			ELSE 'Idle'
 		END) AS "job_status",
 		(CASE
-			WHEN latest_job.erase_completed = TRUE THEN latest_job.time AT TIME ZONE 'America/Chicago'
-			WHEN latest_job.clone_completed = TRUE THEN latest_job.time AT TIME ZONE 'America/Chicago'
+			WHEN latest_job.erase_completed = TRUE THEN latest_job.time
+			WHEN latest_job.clone_completed = TRUE THEN latest_job.time
 			ELSE NULL
 		END) AS "last_job_time",
 		(CASE 
