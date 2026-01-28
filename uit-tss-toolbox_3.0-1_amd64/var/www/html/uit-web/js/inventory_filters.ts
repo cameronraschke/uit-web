@@ -386,21 +386,31 @@ async function populateDepartmentSelect(elem: HTMLSelectElement, purgeCache: boo
 
 	elem.disabled = true;
 
-	const departmentsData: Array<Department> = await fetchDepartments(purgeCache);
-	if (!departmentsData || !Array.isArray(departmentsData) || departmentsData.length === 0) return;
+	try {
+		const departmentsData: Array<Department> = await fetchDepartments(purgeCache);
+		if (!departmentsData || !Array.isArray(departmentsData) || departmentsData.length === 0) {
+			throw new Error('No data returned from /api/departments');
+		}
 
-	resetSelectElement(elem, 'Department');
+		departmentsData.sort((a, b) => {
+			return a.department_sort_order - b.department_sort_order;
+		});
 
-	departmentsData.sort((a, b) => a.department_sort_order - b.department_sort_order);
+		resetSelectElement(elem, 'Department');
 
-	for (const department of departmentsData) {
-		const option = document.createElement('option');
-		option.value = department.department_name;
-		option.textContent = department.department_name_formatted || department.department_name;
-		elem.appendChild(option);
+
+		for (const department of departmentsData) {
+			const option = document.createElement('option');
+			option.value = department.department_name;
+			option.textContent = department.department_name_formatted || department.department_name;
+			elem.appendChild(option);
+		}
+		elem.value = (initialValue && departmentsData.some(item => item.department_name === initialValue)) ? initialValue : '';
+	} catch (error) {
+		console.error('Error fetching departments:', error);
+	} finally {
+		elem.disabled = false;
 	}
-	elem.value = (initialValue && departmentsData.some(item => item.department_name === initialValue)) ? initialValue : '';
-	elem.disabled = false;
 }
 
 inventoryFilterForm.addEventListener("submit", (event) => {

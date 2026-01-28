@@ -28,6 +28,7 @@ type AllLocationsCache = {
 };
 
 // Inventory lookup form elements
+const inventoryFormContainer = document.getElementById('inventory-form-container') as HTMLElement;
 const inventoryLookupWarningMessage = document.getElementById('existing-inventory-message') as HTMLElement;
 const inventoryLookupForm = document.getElementById('inventory-lookup-form') as HTMLFormElement;
 const inventoryLookupTagInput = document.getElementById('inventory-tag-lookup') as HTMLInputElement;
@@ -190,7 +191,7 @@ async function submitInventoryLookup() {
 	inventoryLookupMoreDetailsButton.disabled = false;
 
 	inventoryUpdateFormSection.style.display = "block";
-	
+
 	if (lookupResult) {
 		if (lookupResult.tagnumber && !isNaN(Number(lookupResult.tagnumber))) {
 			searchParams.set('tagnumber', lookupResult.tagnumber !== null ? lookupResult.tagnumber.toString() : '');
@@ -215,6 +216,9 @@ async function submitInventoryLookup() {
 		inventoryLookupFormSubmitButton.style.cursor = "not-allowed";
 		inventoryLookupFormSubmitButton.style.border = "1px solid gray";
 		inventoryLookupMoreDetailsButton.style.display = "inline-block";
+
+		inventoryLookupMoreDetailsButton.disabled = false;
+		inventoryLookupMoreDetailsButton.style.cursor = "pointer";
 
 		if (lookupResult.tagnumber || lookupResult.system_serial) {
 			await populateLocationForm(lookupResult.tagnumber ? lookupResult.tagnumber : undefined, lookupResult.system_serial ? lookupResult.system_serial : undefined);
@@ -248,24 +252,27 @@ async function updateCheckoutStatus() {
 }
 
 function resetInventoryLookupAndUpdateForm() {
-  inventoryLookupForm.reset();
-  inventoryUpdateForm.reset();
-  inventoryLookupTagInput.value = "";
-  inventoryLookupTagInput.style.backgroundColor = "initial";
-  inventoryLookupTagInput.disabled = false;
-  inventoryLookupSystemSerialInput.value = "";
-  inventoryLookupSystemSerialInput.style.backgroundColor = "initial";
-  inventoryLookupSystemSerialInput.disabled = false;
-  inventoryLookupFormSubmitButton.style.cursor = "pointer";
-  inventoryLookupFormSubmitButton.style.border = "1px solid black";
-  inventoryLookupFormSubmitButton.disabled = false;
-  inventoryLookupFormResetButton.style.display = "none";
-  inventoryLookupMoreDetailsButton.style.display = "none";
-  inventoryUpdateFormSection.style.display = "none";
-  inventoryLookupWarningMessage.style.display = "none";
-  inventoryLookupWarningMessage.textContent = "";
+	inventoryLookupForm.reset();
+	inventoryUpdateForm.reset();
+	inventoryLookupTagInput.value = "";
+	inventoryLookupTagInput.style.backgroundColor = "initial";
+	inventoryLookupTagInput.disabled = false;
+	inventoryLookupSystemSerialInput.value = "";
+	inventoryLookupSystemSerialInput.style.backgroundColor = "initial";
+	inventoryLookupSystemSerialInput.disabled = false;
+	inventoryLookupFormSubmitButton.style.cursor = "pointer";
+
+	inventoryLookupFormSubmitButton.style.border = "1px solid black";
+	inventoryLookupFormSubmitButton.disabled = false;
+	inventoryLookupFormResetButton.style.display = "none";
+	inventoryLookupMoreDetailsButton.style.display = "none";
+	inventoryLookupMoreDetailsButton.disabled = false;
+	inventoryLookupMoreDetailsButton.style.cursor = "pointer";
+	inventoryUpdateFormSection.style.display = "none";
+	inventoryLookupWarningMessage.style.display = "none";
+	inventoryLookupWarningMessage.textContent = "";
 	lastUpdateTimeMessage.textContent = "";
-  inventoryLookupTagInput.focus();
+	inventoryLookupTagInput.focus();
 }
 
 function resetInventorySearchQuery() {
@@ -630,6 +637,10 @@ inventoryLookupForm.addEventListener("submit", async (event) => {
 });
 
 document.addEventListener("DOMContentLoaded", async () => {
+	updateFormContainerDisplay();
+	window.addEventListener("resize", () => {
+		updateFormContainerDisplay();
+	});
   await initializeInventoryPage();
 	updateFiltersFromURL();
 	if (Array.isArray(window.allTags)) {
@@ -656,3 +667,13 @@ inventoryUpdateLocationInput.addEventListener("keyup", async () => {
 		dataListElement.appendChild(option);
 	});
 });
+
+function updateFormContainerDisplay() {
+	if (window.matchMedia("(max-width: 768px)").matches) {
+		inventoryFormContainer.classList.remove("grid-container", "inventory", "inventory-update-form");
+		inventoryFormContainer.classList.add("flex-container", "horizontal");
+	} else {
+		inventoryFormContainer.classList.remove("flex-container", "horizontal");
+		inventoryFormContainer.classList.add("grid-container", "inventory", "inventory-update-form");
+	}
+}
