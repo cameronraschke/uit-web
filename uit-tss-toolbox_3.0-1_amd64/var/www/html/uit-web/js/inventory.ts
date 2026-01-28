@@ -178,65 +178,71 @@ async function submitInventoryLookup() {
     inventoryLookupWarningMessage.textContent = "Tag number must be exactly 6 digits long.";
     return;
   }
-	const lookupResult: ClientLookupResult | null = await lookupTagOrSerial(lookupTag, lookupSerial);
-	if (!lookupResult) {
-    inventoryLookupWarningMessage.style.display = "block";
-    inventoryLookupWarningMessage.textContent = "No inventory entry was found for the provided tag number or serial number. A new entry can be created.";
-    if (!inventoryLookupTagInput.value) inventoryLookupTagInput.focus();
-    else if (!inventoryLookupSystemSerialInput.value) inventoryLookupSystemSerialInput.focus();
-	}
 
 	inventoryLookupFormResetButton.style.display = "inline-block";
 	inventoryLookupMoreDetailsButton.style.display = "inline-block";
 	inventoryLookupMoreDetailsButton.disabled = false;
 
-	inventoryUpdateFormSection.style.display = "block";
 
-	if (lookupResult) {
-		if (lookupResult.tagnumber && !isNaN(Number(lookupResult.tagnumber))) {
-			searchParams.set('tagnumber', lookupResult.tagnumber !== null ? lookupResult.tagnumber.toString() : '');
-			inventoryLookupTagInput.value = Number(lookupResult.tagnumber).toString();
-			inventoryLookupTagInput.style.backgroundColor = "gainsboro";
-			inventoryLookupTagInput.disabled = true;
-			clientImagesLink.href = `/client_images?tagnumber=${lookupResult.tagnumber}`;
-			clientImagesLink.target = "_blank";
-			clientImagesLink.style.display = "inline";
+	try {
+		const lookupResult: ClientLookupResult | null = await lookupTagOrSerial(lookupTag, lookupSerial);
+		if (!lookupResult) {
+			inventoryLookupWarningMessage.style.display = "block";
+			inventoryLookupWarningMessage.textContent = "No inventory entry was found for the provided tag number or serial number. A new entry can be created.";
+			if (!inventoryLookupTagInput.value) inventoryLookupTagInput.focus();
+			else if (!inventoryLookupSystemSerialInput.value) inventoryLookupSystemSerialInput.focus();
 		}
-		if (lookupResult.system_serial && lookupResult.system_serial && lookupResult.system_serial.trim().length > 0) {
-			searchParams.set('system_serial', lookupResult.system_serial !== null ? lookupResult.system_serial.trim() : '');
-			inventoryLookupSystemSerialInput.value = lookupResult.system_serial.trim();
-			inventoryLookupSystemSerialInput.value = lookupResult.system_serial !== null ? lookupResult.system_serial : "";
-			inventoryLookupSystemSerialInput.style.backgroundColor = "gainsboro";
-			inventoryLookupSystemSerialInput.disabled = true;
-		}
-		if (lookupResult.tagnumber && lookupResult.system_serial) {
-			inventoryUpdateLocationInput.focus();
-		}
-		inventoryLookupFormSubmitButton.disabled = true;
-		inventoryLookupFormSubmitButton.style.cursor = "not-allowed";
-		inventoryLookupFormSubmitButton.style.border = "1px solid gray";
-		inventoryLookupMoreDetailsButton.style.display = "inline-block";
 
-		inventoryLookupMoreDetailsButton.disabled = false;
-		inventoryLookupMoreDetailsButton.style.cursor = "pointer";
+		if (lookupResult) {
+			if (lookupResult.tagnumber && !isNaN(Number(lookupResult.tagnumber))) {
+				searchParams.set("tagnumber", lookupResult.tagnumber ? lookupResult.tagnumber.toString() : '');
+				inventoryLookupTagInput.value = Number(lookupResult.tagnumber).toString();
+				inventoryLookupTagInput.style.backgroundColor = "gainsboro";
+				inventoryLookupTagInput.disabled = true;
+				clientImagesLink.href = `/client_images?tagnumber=${lookupResult.tagnumber}`;
+				clientImagesLink.target = "_blank";
+				clientImagesLink.style.display = "inline";
+			}
+			if (lookupResult.system_serial && lookupResult.system_serial && lookupResult.system_serial.trim().length > 0) {
+				searchParams.set("system_serial", lookupResult.system_serial ? lookupResult.system_serial.trim() : '');
+				inventoryLookupSystemSerialInput.value = lookupResult.system_serial.trim();
+				inventoryLookupSystemSerialInput.value = lookupResult.system_serial ? lookupResult.system_serial : "";
+				inventoryLookupSystemSerialInput.style.backgroundColor = "gainsboro";
+				inventoryLookupSystemSerialInput.disabled = true;
+			}
+			if (lookupResult.tagnumber && lookupResult.system_serial) {
+				inventoryUpdateLocationInput.focus();
+			}
+			inventoryLookupFormSubmitButton.disabled = true;
+			inventoryLookupFormSubmitButton.style.cursor = "not-allowed";
+			inventoryLookupFormSubmitButton.style.border = "1px solid gray";
+			inventoryLookupMoreDetailsButton.style.display = "inline-block";
 
-		if (lookupResult.tagnumber || lookupResult.system_serial) {
-			await populateLocationForm(lookupResult.tagnumber ? lookupResult.tagnumber : undefined, lookupResult.system_serial ? lookupResult.system_serial : undefined);
+			inventoryLookupMoreDetailsButton.disabled = false;
+			inventoryLookupMoreDetailsButton.style.cursor = "pointer";
+
+			if (lookupResult.tagnumber || lookupResult.system_serial) {
+				await populateLocationForm(lookupResult.tagnumber ? lookupResult.tagnumber : undefined, lookupResult.system_serial ? lookupResult.system_serial : undefined);
+			}
+		} else {
+			inventoryLookupMoreDetailsButton.disabled = true;
+			inventoryLookupMoreDetailsButton.style.cursor = "not-allowed";
+			const tagNum = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : '';
+			const serialNum = inventoryLookupSystemSerialInput.value ? inventoryLookupSystemSerialInput.value : '';
+			searchParams.set("tagnumber", tagNum.toString());
+			searchParams.set("system_serial", serialNum);
+			await populateLocationForm(tagNum ? tagNum : undefined, serialNum ? serialNum : undefined);
 		}
-	} else {
-		inventoryLookupMoreDetailsButton.disabled = true;
-		inventoryLookupMoreDetailsButton.style.cursor = "not-allowed";
-		const tagNum = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : '';
-		const serialNum = inventoryLookupSystemSerialInput.value ? inventoryLookupSystemSerialInput.value : '';
-		searchParams.set('tagnumber', tagNum.toString());
-		searchParams.set('system_serial', serialNum);
-		await populateLocationForm(tagNum ? tagNum : undefined, serialNum ? serialNum : undefined);
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		inventoryLookupWarningMessage.style.display = "block";
+		inventoryLookupWarningMessage.textContent = "Error looking up inventory entry: " + errorMessage;
+	} finally {
+		inventoryUpdateFormSection.style.display = "block";
+		// Set 'update' parameter in URL
+		searchParams.set('update', 'true');
+		history.replaceState(null, '', window.location.pathname + '?' + searchParams.toString());
 	}
-
-
-	// Set 'update' parameter in URL
-	searchParams.set('update', 'true');
-	history.replaceState(null, '', window.location.pathname + '?' + searchParams.toString());
 }
 
 async function updateCheckoutStatus() {
@@ -342,15 +348,31 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 
 	inventoryLookupTagInput.disabled = false;
 	inventoryLookupTagInput.style.backgroundColor = "initial";
-	
+	inventoryLookupTagInput.value = inventoryLookupTagInput.value.trim();
+
 	inventoryLookupSystemSerialInput.disabled = false;
 	inventoryLookupSystemSerialInput.style.backgroundColor = "initial";
+	inventoryLookupSystemSerialInput.value = inventoryLookupSystemSerialInput.value.trim();
+
+	inventoryUpdateLocationInput.value = "";
 
 	systemManufacturer.disabled = false;
+	systemManufacturer.value = "";
 	systemManufacturer.style.backgroundColor = "initial";
 
 	systemModel.disabled = false;
+	systemModel.value = "";
 	systemModel.style.backgroundColor = "initial";
+
+	propertyCustodian.value = "";
+
+	acquiredDateInput.value = "";
+
+	isBroken.value = "";
+
+	clientStatus.value = "";
+
+	noteInput.value = "";
 
   if (locationFormData) {
 		if (locationFormData.last_update_time) {
@@ -395,11 +417,14 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			systemModel.disabled = true;
 		}
 
+		await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
 		inventoryUpdateDepartmentSelect.value = locationFormData.department_name || '';
 
+		
+		await populateDomainSelect(inventoryUpdateDomainSelect);
 		inventoryUpdateDomainSelect.value = locationFormData.ad_domain || '';
 
-		propertyCustodian.value = locationFormData.property_custodian.trim() || '';
+		propertyCustodian.value = locationFormData.property_custodian || '';
 
 		const acquiredDateValue = locationFormData.acquired_date ? new Date(locationFormData.acquired_date) : null;
 		if (acquiredDateValue && !isNaN(acquiredDateValue.getTime())) {
@@ -416,9 +441,10 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
     clientStatus.value = locationFormData.status.trim() || '';
 
     noteInput.value = locationFormData.note || '';
-  }
-	await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
-	await populateDomainSelect(inventoryUpdateDomainSelect);
+  } else {
+		await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
+		await populateDomainSelect(inventoryUpdateDomainSelect);
+	}
 	await updateCheckoutStatus();
 }
 
