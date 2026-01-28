@@ -190,13 +190,13 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	newNote.Content = strings.TrimSpace(newNote.Content)
-	if len(newNote.Content) > 2000 {
+	if len(newNote.Content) > 32768 { // 8192 runes * 4 bytes per rune (4 bytes includes emojis)
 		log.HTTPWarning(req, "Note content too long, not inserting new note")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if strings.TrimSpace(newNote.Content) == "" {
-		log.HTTPWarning(req, "Empty note content, not inserting new note")
+	if utf8.RuneCountInString(newNote.Content) > 8192 {
+		log.HTTPWarning(req, "Note content exceeds rune count limit, not inserting new note")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
