@@ -523,10 +523,10 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		}
 
 		// File size checks (in addition to header checks - not necessarily same value)
-		fileSize := len(fileBytes)
+		fileSize := int64(len(fileBytes))
 		if fileSize > maxInventoryFileSizeBytes {
 			_ = file.Close()
-			log.HTTPWarning(req, "Uploaded file too large for UpdateInventory ("+strconv.Itoa(fileSize)+" bytes)")
+			log.HTTPWarning(req, "Uploaded file too large for UpdateInventory ("+strconv.Itoa(int(fileSize))+" bytes)")
 			continue
 		}
 		if fileSize == 0 {
@@ -536,10 +536,10 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		}
 		if fileSize < minInventoryFileSizeBytes {
 			_ = file.Close()
-			log.HTTPWarning(req, "Uploaded file too small for UpdateInventory: "+fileHeader.Filename+" ("+strconv.Itoa(fileSize)+" bytes)")
+			log.HTTPWarning(req, "Uploaded file too small for UpdateInventory: "+fileHeader.Filename+" ("+strconv.Itoa(int(fileSize))+" bytes)")
 			continue
 		}
-		*manifest.FileSize = int64(fileSize)
+		manifest.FileSize = &fileSize
 
 		// MIME type detection
 		mimeType := http.DetectContentType(fileBytes[:fileSize])
@@ -548,7 +548,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			log.HTTPWarning(req, "Uploaded file has a non-accepted MIME type for UpdateInventory: (Content-Type: "+mimeType+")")
 			continue
 		}
-		*manifest.MimeType = mimeType
+		manifest.MimeType = &mimeType
 
 		// Create reader (stream) for image decoding
 		imageReader := bytes.NewReader(fileBytes)
@@ -580,18 +580,22 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			log.HTTPError(req, "Failed to decode uploaded image config for UpdateInventory: "+err.Error()+": "+fileHeader.Filename+" ("+fileHeader.Filename+")")
 			continue
 		}
-		*manifest.ResolutionX = int64(decodedImageConfig.Width)
-		*manifest.ResolutionY = int64(decodedImageConfig.Height)
+		resX := int64(decodedImageConfig.Width)
+		manifest.ResolutionX = &resX
+		resY := int64(decodedImageConfig.Height)
+		manifest.ResolutionY = &resY
 
 		// Get upload timestamp
 		fileTimeStamp := time.Now()
-		*manifest.Time = fileTimeStamp.UTC()
+		timeUTC := fileTimeStamp.UTC()
+		manifest.Time = &timeUTC
 
 		// Generate unique file name
 		fileTimeStampFormatted := fileTimeStamp.Format("2006-01-02-150405")
 		fileUUID := uuid.New()
+		fileUUIDString := fileUUID.String()
 		var fileName string
-		baseFileName := fileTimeStampFormatted + "-" + fileUUID.String()
+		baseFileName := fileTimeStampFormatted + "-" + fileUUIDString
 		switch mimeType {
 		case "image/jpeg", "image/jpg":
 			if imageFormat != "jpeg" {
@@ -613,8 +617,8 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			log.HTTPWarning(req, "Unsupported image MIME type for UpdateInventory: (Content-Type: "+mimeType+")")
 			continue
 		}
-		*manifest.FileName = fileName
-		*manifest.UUID = fileUUID.String()
+		manifest.FileName = &fileName
+		manifest.UUID = &fileUUIDString
 
 		// Compute SHA256 hash of file
 		fileHash := crypto.SHA256.New()
@@ -625,7 +629,8 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		fileHashBytes := fileHash.Sum(nil)
-		*manifest.SHA256Hash = fmt.Sprintf("%x", fileHashBytes)
+		fileHashString := fmt.Sprintf("%x", fileHashBytes)
+		manifest.SHA256Hash = &fileHashString
 
 		// Create directories if not existing
 		imageDirectoryPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber))
@@ -652,7 +657,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		*manifest.FilePath = fullFilePath
+		manifest.FilePath = &fullFilePath
 
 		// Close the uploaded file, not needed anymore
 		_ = file.Close()
@@ -677,11 +682,13 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			}
 			thumbnailFile.Close()
 		}
-		*manifest.ThumbnailFilePath = fullThumbnailPath
+		manifest.ThumbnailFilePath = &fullThumbnailPath
 
 		// Insert image metadata into database
-		*manifest.Tagnumber = tagnumber
+		manifest.Tagnumber = &tagnumber
+		manifest.Hidden = new(bool)
 		*manifest.Hidden = false
+		manifest.PrimaryImage = new(bool)
 		*manifest.PrimaryImage = false
 
 		err = updateRepo.UpdateClientImages(ctx, manifest)
