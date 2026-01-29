@@ -482,8 +482,11 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 				_ = file.Close()
 				continue
 			}
-			imageManifest.ResolutionX = &imageConfig.Width
-			imageManifest.ResolutionY = &imageConfig.Height
+
+			resX := int64(imageConfig.Width)
+			resY := int64(imageConfig.Height)
+			imageManifest.ResolutionX = &resX
+			imageManifest.ResolutionY = &resY
 
 			mimeType := "image/" + acceptedImageExtensionsAndMimeTypes[fileExtension]
 			imageManifest.FileType = &imageType

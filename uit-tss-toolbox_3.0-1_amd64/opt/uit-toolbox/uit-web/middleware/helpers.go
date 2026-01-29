@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	config "uit-toolbox/config"
@@ -354,6 +355,18 @@ func IsASCIIStringPrintable(s string) bool {
 	}
 	for _, char := range s {
 		if char < 32 || char > 126 {
+			return false
+		}
+	}
+	return true
+}
+
+func IsPrintableUnicodeString(s string) bool {
+	if !utf8.ValidString(s) {
+		return false
+	}
+	for _, char := range s {
+		if !unicode.IsPrint(char) && !unicode.IsSpace(char) {
 			return false
 		}
 	}

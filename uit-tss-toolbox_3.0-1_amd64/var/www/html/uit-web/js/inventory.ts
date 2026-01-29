@@ -1,5 +1,23 @@
 let updatingInventory = false;
 
+type InventoryForm = {
+	tagnumber: number | null;
+	system_serial: string | null;
+	location: string | null;
+	building: string | null;
+	room: string | null;
+	system_manufacturer: string | null;
+	system_model: string | null;
+	property_custodian: string | null;
+	department_name: string | null;
+	ad_domain: string | null;
+	is_broken: boolean | null;
+	disk_removed: boolean | null;
+	status: string | null;
+	acquired_date: string | null;
+	note: string | null;
+};
+
 type Department = {
 	department_name: string;
 	department_name_formatted: string;
@@ -59,9 +77,13 @@ const systemModel = inventoryUpdateForm.querySelector("#system_model") as HTMLIn
 const propertyCustodian = inventoryUpdateForm.querySelector("#property_custodian") as HTMLInputElement;
 const acquiredDateInput = inventoryUpdateForm.querySelector("#acquired_date") as HTMLInputElement;
 const isBroken = inventoryUpdateForm.querySelector("#is_broken") as HTMLInputElement;
+const diskRemoved = inventoryUpdateForm.querySelector("#disk_removed") as HTMLInputElement;
 const clientStatus = inventoryUpdateForm.querySelector("#status") as HTMLSelectElement;
 const noteInput = inventoryUpdateForm.querySelector("#note") as HTMLInputElement;
+const fileInput = inventoryUpdateForm.querySelector("#inventory-file-input") as HTMLInputElement | null;
 
+const allowedFileNameRegex = /^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$/; // file name + extension
+const allowedFileExtensions = [".jpg", ".jpeg", ".jfif", ".png"];
 
 const statusesThatIndicateBroken = ["needs-repair"];
 const statusesThatIndicateCheckout = ["checked-out", "reserved-for-checkout"];
@@ -420,7 +442,6 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
 		inventoryUpdateDepartmentSelect.value = locationFormData.department_name || '';
 
-		
 		await populateDomainSelect(inventoryUpdateDomainSelect);
 		inventoryUpdateDomainSelect.value = locationFormData.ad_domain || '';
 
@@ -437,6 +458,8 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		}
 		
 		isBroken.value = typeof locationFormData.is_broken === "boolean" ? String(locationFormData.is_broken) : '';
+
+		diskRemoved.value = typeof locationFormData.disk_removed === "boolean" ? String(locationFormData.disk_removed) : '';
 
     clientStatus.value = locationFormData.status.trim() || '';
 
@@ -527,9 +550,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
 	updateURLFromFilters();
 
   try {
-    const jsonObject: { [key: string]: any } = {};
-    const inventoryLookupTagInput = inventoryLookupForm.querySelector("#inventory-tag-lookup") as HTMLInputElement | null;
-    const inventoryLookupSystemSerialInput = inventoryLookupForm.querySelector("#inventory-serial-lookup") as HTMLInputElement | null;
+		const jsonObject = {} as InventoryForm;
     jsonObject.tagnumber = inventoryLookupTagInput && inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : null;
     jsonObject.system_serial = inventoryLookupSystemSerialInput && inventoryLookupSystemSerialInput.value ? String(inventoryLookupSystemSerialInput.value) : null;
     if (!inventoryLookupTagInput && !inventoryLookupSystemSerialInput) {
@@ -539,53 +560,69 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
       const input = inventoryUpdateForm.querySelector(documentID) as HTMLInputElement | null;
       return input && input.value ? String(input.value) : null;
     };
-    jsonObject["location"] = getInputValue("#location");
-		jsonObject["building"] = getInputValue("#building");
-		jsonObject["room"] = getInputValue("#room");
-    jsonObject["system_manufacturer"] = getInputValue("#system_manufacturer");
-    jsonObject["system_model"] = getInputValue("#system_model");
-    jsonObject["department_name"] = getInputValue("#department_name");
-		jsonObject["property_custodian"] = getInputValue("#property_custodian");
-    jsonObject["ad_domain"] = getInputValue("#ad_domain");
-    const brokenBool = getInputValue("#is_broken");
-      if (brokenBool === "true") jsonObject["is_broken"] = true;
-      else if (brokenBool === "false") jsonObject["is_broken"] = false;
-      else jsonObject["is_broken"] = null;
-    jsonObject["status"] = getInputValue("#status");
-		if (getInputValue("#acquired_date")) {
-			jsonObject["acquired_date"] = new Date((getInputValue("#acquired_date") as string) + "T00:00:00").toISOString() || null;
+		const locationValue = getInputValue("#location");
+		if (!locationValue || locationValue.trim().length === 0) {
+			throw new Error("Location field cannot be empty");
 		}
-    jsonObject["note"] = getInputValue("#note");
+    jsonObject.location = locationValue;
+		
+		jsonObject.building = getInputValue("#building");
+		jsonObject.room = getInputValue("#room");
+    jsonObject.system_manufacturer = getInputValue("#system_manufacturer");
+    jsonObject.system_model = getInputValue("#system_model");
+		jsonObject.property_custodian = getInputValue("#property_custodian");
 
+		const departmentValue = getInputValue("#department_name");
+		if (!departmentValue || departmentValue.trim().length === 0) {
+			throw new Error("Department field cannot be empty");
+		}
+    jsonObject.department_name = departmentValue;
+
+    jsonObject.ad_domain = getInputValue("#ad_domain");
+    const brokenBool = getInputValue("#is_broken");
+      if (brokenBool === "true") jsonObject.is_broken = true;
+      else if (brokenBool === "false") jsonObject.is_broken = false;
+      else jsonObject.is_broken = null;
+		const diskRemovedBool = getInputValue("#disk_removed");
+			if (diskRemovedBool === "true") jsonObject.disk_removed = true;
+			else if (diskRemovedBool === "false") jsonObject.disk_removed = false;
+			else jsonObject.disk_removed = null;
+
+		const statusValue = getInputValue("#status");
+		if (!statusValue || statusValue.trim().length === 0) {
+			throw new Error("Status field cannot be empty");
+		}
+    jsonObject.status = statusValue;
+		if (getInputValue("#acquired_date")) {
+			jsonObject.acquired_date = new Date((getInputValue("#acquired_date") as string) + "T00:00:00").toISOString() || null;
+		}
+    jsonObject.note = getInputValue("#note");
     // const jsonBase64 = jsonToBase64(JSON.stringify(jsonObject));
     // const jsonPayload = new Blob([jsonBase64], { type: "application/json" });
 
     const formData = new FormData();
     formData.append("json", new Blob([JSON.stringify(jsonObject)], { type: "application/json" }), "inventory.json");
 
-    const fileInput = inventoryUpdateForm.querySelector("#inventory-file-input") as HTMLInputElement | null;
     if (fileInput && fileInput.files && fileInput.files.length > 0) {
 			const fileList = Array.from(fileInput.files);
       for (const file of fileList) {
         if (!file) continue;
 				let fileName: string = file.name || '';
-        if (file.size > 64 * 1024 * 1024) {
+        if (file.size > 64 * 1024 * 1024) { // 64 MB limit per file
           throw new Error(`File ${fileName} exceeds the maximum allowed size of 64 MB`);
         }
-        if (fileName.length > 100) {
+        if (fileName.length > 100) { // 100 characters limit for file name
           throw new Error(`File name ${fileName} exceeds the maximum allowed length of 100 characters`);
         }
-        const allowedRegex = /^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$/;
-        if (!allowedRegex.test(fileName)) {
+        if (!allowedFileNameRegex.test(fileName)) {
           throw new Error(`File name ${fileName} contains invalid characters`);
         }
-        const disallowedExtensions = [".exe", ".bat", ".sh", ".js", ".html", ".zip", ".rar", ".7z", ".tar", ".gz", ".dll", ".sys", ".ps1", ".cmd"];
-        if (disallowedExtensions.some(ext => fileName.endsWith(ext))) {
+        if (!allowedFileExtensions.some(ext => fileName.toLowerCase().endsWith(ext))) {
           throw new Error(`File name ${fileName} has a forbidden extension`);
         }
-        if (fileName.endsWith(".jfif")) {
-          fileName = fileName.replace(/\.jfif$/i, ".jpeg");
-        }
+				if (fileName.endsWith(".jfif")) {
+					fileName = fileName.replace(/\.jfif$/i, ".jpeg");
+				}
         formData.append("inventory-file-input", file, fileName);
       }
     }

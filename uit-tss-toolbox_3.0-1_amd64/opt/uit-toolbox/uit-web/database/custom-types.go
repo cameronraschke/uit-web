@@ -116,8 +116,8 @@ type ImageManifest struct {
 	FileSize          *int64     `json:"file_size"`
 	MimeType          *string    `json:"mime_type"`
 	ExifTimestamp     *time.Time `json:"exif_timestamp"`
-	ResolutionX       *int       `json:"resolution_x"`
-	ResolutionY       *int       `json:"resolution_y"`
+	ResolutionX       *int64     `json:"resolution_x"`
+	ResolutionY       *int64     `json:"resolution_y"`
 	URL               *string    `json:"url"`
 	Hidden            *bool      `json:"hidden"`
 	PrimaryImage      *bool      `json:"primary_image"`

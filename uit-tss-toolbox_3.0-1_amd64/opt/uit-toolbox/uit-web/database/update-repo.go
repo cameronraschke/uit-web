@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 )
@@ -19,11 +20,27 @@ func (repo *Repo) InsertNewNote(ctx context.Context, time time.Time, noteType, n
 }
 
 func (repo *Repo) InsertInventory(ctx context.Context, inventoryUpdateFormInput *InventoryUpdateFormInput) error {
+	if repo.DB == nil {
+		return fmt.Errorf("database connection is nil in InsertInventory")
+	}
+
+	tx, err := repo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
 	sqlCode := `INSERT INTO locations (time, tagnumber, system_serial, location, building, room, is_broken, disk_removed, department_name, property_custodian, ad_domain, note, client_status, acquired_date) 
 		VALUES 
 	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
 
-	_, err := repo.DB.ExecContext(ctx, sqlCode,
+	_, err = tx.ExecContext(ctx, sqlCode,
 		toNullInt64(inventoryUpdateFormInput.Tagnumber),
 		toNullString(inventoryUpdateFormInput.SystemSerial),
 		toNullString(inventoryUpdateFormInput.Location),
@@ -38,7 +55,10 @@ func (repo *Repo) InsertInventory(ctx context.Context, inventoryUpdateFormInput 
 		toNullString(inventoryUpdateFormInput.Status),
 		toNullTime(inventoryUpdateFormInput.AcquiredDate),
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (repo *Repo) UpdateSystemData(ctx context.Context, tagnumber int64, systemManufacturer *string, systemModel *string) error {
@@ -49,14 +69,66 @@ func (repo *Repo) UpdateSystemData(ctx context.Context, tagnumber int64, systemM
 				system_manufacturer = EXCLUDED.system_manufacturer, 
 				system_model = EXCLUDED.system_model;`
 	_, err := repo.DB.ExecContext(ctx, sqlCode, tagnumber, systemManufacturer, systemModel)
-	return err
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (repo *Repo) UpdateClientImages(ctx context.Context, tagnumber int64, uuid string, filename *string, filePath string, thumbnailFilePath *string, filesize *float64, sha256Hash *[]byte, mimeType *string, exifTimestamp *time.Time, resolutionX *int, resolutionY *int, note *string, hidden *bool, primaryImage *bool) error {
-	sqlCode := `INSERT INTO client_images (uuid, time, tagnumber, filename, filepath, thumbnail_filepath, filesize, sha256_hash, mime_type, exif_timestamp, resolution_x, resolution_y, note, hidden, primary_image)
-		VALUES ($1, CURRENT_TIMESTAMP, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`
-	_, err := repo.DB.ExecContext(ctx, sqlCode, uuid, tagnumber, filename, filePath, thumbnailFilePath, filesize, sha256Hash, mimeType, exifTimestamp, resolutionX, resolutionY, note, hidden, primaryImage)
-	return err
+func (repo *Repo) UpdateClientImages(ctx context.Context, manifest ImageManifest) (err error) {
+	if repo.DB == nil {
+		return fmt.Errorf("database connection is nil in UpdateClientImages")
+	}
+	sqlCode := `INSERT INTO client_images (uuid, 
+		time, 
+		tagnumber, 
+		filename, 
+		filepath, 
+		thumbnail_filepath, 
+		filesize, 
+		sha256_hash, 
+		mime_type, 
+		exif_timestamp, 
+		resolution_x, 
+		resolution_y, 
+		note, 
+		hidden, 
+		primary_image)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`
+
+	tx, err := repo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	_, err = tx.ExecContext(ctx, sqlCode,
+		toNullString(manifest.UUID),
+		toNullTime(manifest.Time),
+		toNullInt64(manifest.Tagnumber),
+		toNullString(manifest.FileName),
+		toNullString(manifest.FilePath),
+		toNullString(manifest.ThumbnailFilePath),
+		toNullInt64(manifest.FileSize),
+		toNullString(manifest.SHA256Hash),
+		toNullString(manifest.MimeType),
+		toNullTime(manifest.ExifTimestamp),
+		toNullInt64(manifest.ResolutionX),
+		toNullInt64(manifest.ResolutionY),
+		toNullString(manifest.Note),
+		toNullBool(manifest.Hidden),
+		toNullBool(manifest.PrimaryImage),
+	)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (repo *Repo) HideClientImageByUUID(ctx context.Context, tagnumber int64, uuid string) (err error) {
@@ -73,7 +145,7 @@ func (repo *Repo) TogglePinImage(ctx context.Context, uuid string, tagnumber int
 
 func (repo *Repo) SetClientBatteryHealth(ctx context.Context, uuid string, healthPcnt *int64) (err error) {
 	if repo.DB == nil {
-		return errors.New("database connection is nil in SetClientBatteryHealth")
+		return fmt.Errorf("database connection is nil in SetClientBatteryHealth")
 	}
 
 	tx, err := repo.DB.BeginTx(ctx, nil)
@@ -89,11 +161,11 @@ func (repo *Repo) SetClientBatteryHealth(ctx context.Context, uuid string, healt
 	}()
 
 	if strings.TrimSpace(uuid) == "" {
-		err = errors.New("UUID is empty in SetClientBatteryHealth")
+		err = fmt.Errorf("UUID is empty in SetClientBatteryHealth")
 		return err
 	}
 	if healthPcnt == nil {
-		err = errors.New("health percentage is nil in SetClientBatteryHealth")
+		err = fmt.Errorf("health percentage is nil in SetClientBatteryHealth")
 		return err
 	}
 	sql := `UPDATE jobstats SET battery_health = $1 WHERE uuid = $2;`

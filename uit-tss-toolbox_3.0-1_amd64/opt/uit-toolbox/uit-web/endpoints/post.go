@@ -15,17 +15,24 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 	config "uit-toolbox/config"
 	"uit-toolbox/database"
 	middleware "uit-toolbox/middleware"
-	"unicode"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
 )
+
+const maxInventoryFileSizeBytes = 64 << 20  // 64 MB
+const minInventoryFileSizeBytes = 512       // 512 bytes
+const maxInventoryFormSizeBytes = 128 << 20 // 128 MB
+
+const allowedFileNameRegex = `^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$` // file name + extension
+var allowedFileExtensions = []string{".jpg", ".jpeg", ".jfif", ".png"}
 
 type RemoteTable struct {
 	Tagnumber         *int       `sql:"tagnumber"`
@@ -219,8 +226,8 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	// Field location: required (string), min 1 char, max 128 chars, printable ASCII only
 	// Field is_broken: optional (bool)
 	// Field disk_removed: optional (bool)
-	// Field department: optional (string), must match foreign key in database
-	// Field domain: optional (string), must match foreign in database
+	// Field department: required (string), must match foreign key in database
+	// Field domain: required (string), must match foreign key in database
 	// Field note: optional (string), max 512 chars, printable ASCII only
 	// Field status: mandatory (string), must match existing foreign key in DB
 	// Field system_manufacturer: optional (string), min 1 char, max 24 chars, alphanumeric ASCII only
@@ -243,7 +250,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Parse inventory data
-	if err := req.ParseMultipartForm(64 << 20); err != nil {
+	if err := req.ParseMultipartForm(maxInventoryFormSizeBytes); err != nil {
 		log.HTTPWarning(req, "Cannot parse multipart form: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
@@ -283,12 +290,12 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	}
 	tagnumber, err := strconv.ParseInt(strconv.FormatInt(*inventoryUpdate.Tagnumber, 10), 10, 64)
 	if err != nil {
-		log.HTTPWarning(req, "Cannot parse tag number for UpdateInventory")
+		log.HTTPWarning(req, "Cannot parse tag number in UpdateInventory")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	if tagnumber < 100000 || tagnumber > 999999 {
-		log.HTTPWarning(req, "Invalid tag number provided for UpdateInventory")
+		log.HTTPWarning(req, "Invalid range for tag number provided in UpdateInventory")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -322,11 +329,11 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	// if !middleware.IsPrintableASCII([]byte(*inventoryUpdate.Location)) {
-	// 	log.HTTPWarning(req, "Non-printable ASCII characters in location field for UpdateInventory")
-	// 	middleware.WriteJsonError(w, http.StatusBadRequest)
-	// 	return
-	// }
+	if !utf8.ValidString(*inventoryUpdate.Location) {
+		log.HTTPWarning(req, "Invalid UTF-8 in location field for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
 	*inventoryUpdate.Location = strings.TrimSpace(*inventoryUpdate.Location)
 
 	// Broken (optional, bool)
@@ -339,39 +346,41 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		log.HTTPInfo(req, "No disk removed bool value provided for inventory update")
 	}
 
-	// Department (optional, max 24 chars)
-	if inventoryUpdate.Department != nil && strings.TrimSpace(*inventoryUpdate.Department) != "" {
-		if utf8.RuneCountInString(*inventoryUpdate.Department) < 1 || utf8.RuneCountInString(*inventoryUpdate.Department) > 24 {
-			log.HTTPWarning(req, "Invalid department length for inventory update")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		if !middleware.IsPrintableASCII([]byte(*inventoryUpdate.Department)) {
-			log.HTTPWarning(req, "Non-printable ASCII characters in department field for inventory update")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		*inventoryUpdate.Department = strings.TrimSpace(*inventoryUpdate.Department)
-	} else {
-		log.HTTPInfo(req, "No department provided for inventory update")
+	// Department (required, max 24 chars)
+	if inventoryUpdate.Department == nil || strings.TrimSpace(*inventoryUpdate.Department) == "" {
+		log.HTTPWarning(req, "No department provided for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
 	}
+	if utf8.RuneCountInString(*inventoryUpdate.Department) < 1 || utf8.RuneCountInString(*inventoryUpdate.Department) > 24 {
+		log.HTTPWarning(req, "Invalid department length for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.Department) {
+		log.HTTPWarning(req, "Non-printable ASCII characters in department field for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	*inventoryUpdate.Department = strings.TrimSpace(*inventoryUpdate.Department)
 
-	// Domain (optional, min 1 char, max 24 chars)
-	if inventoryUpdate.Domain != nil && strings.TrimSpace(*inventoryUpdate.Domain) != "" {
-		if utf8.RuneCountInString(*inventoryUpdate.Domain) < 1 || utf8.RuneCountInString(*inventoryUpdate.Domain) > 24 {
-			log.HTTPWarning(req, "Invalid domain length for inventory update")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		if !middleware.IsPrintableASCII([]byte(*inventoryUpdate.Domain)) {
-			log.HTTPWarning(req, "Non-printable ASCII characters in domain field for inventory update")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		*inventoryUpdate.Domain = strings.TrimSpace(*inventoryUpdate.Domain)
-	} else {
-		log.HTTPInfo(req, "No domain provided for inventory update")
+	// Domain (required, min 1 char, max 24 chars)
+	if inventoryUpdate.Domain == nil || strings.TrimSpace(*inventoryUpdate.Domain) == "" {
+		log.HTTPWarning(req, "No domain provided for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
 	}
+	if utf8.RuneCountInString(*inventoryUpdate.Domain) < 1 || utf8.RuneCountInString(*inventoryUpdate.Domain) > 24 {
+		log.HTTPWarning(req, "Invalid domain length for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.Domain) {
+		log.HTTPWarning(req, "Non-printable ASCII characters in domain field for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	*inventoryUpdate.Domain = strings.TrimSpace(*inventoryUpdate.Domain)
 
 	// Note (optional, max 512 chars)
 	if inventoryUpdate.Note != nil && strings.TrimSpace(*inventoryUpdate.Note) != "" {
@@ -380,19 +389,17 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
-		for _, rune := range *inventoryUpdate.Note {
-			if !unicode.IsPrint(rune) && !unicode.IsSpace(rune) {
-				log.HTTPWarning(req, "Non-printable characters in note field for inventory update")
-				middleware.WriteJsonError(w, http.StatusBadRequest)
-				return
-			}
+		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.Note) {
+			log.HTTPWarning(req, "Non-printable characters in note field for inventory update")
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
 		}
 		*inventoryUpdate.Note = strings.TrimSpace(*inventoryUpdate.Note)
 	} else {
 		log.HTTPInfo(req, "No note provided for inventory update")
 	}
 
-	// Status (mandatory, max 64 chars)
+	// Status (required, max 64 chars)
 	if inventoryUpdate.Status == nil || strings.TrimSpace(*inventoryUpdate.Status) == "" {
 		log.HTTPWarning(req, "No status provided for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -403,7 +410,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !middleware.IsPrintableASCII([]byte(*inventoryUpdate.Status)) {
+	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.Status) {
 		log.HTTPWarning(req, "Non-printable ASCII characters in status field for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -417,8 +424,8 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
-		if !middleware.IsASCIIStringPrintable(*inventoryUpdate.SystemManufacturer) {
-			log.HTTPWarning(req, "Non-alphanumeric characters in system manufacturer field for inventory update")
+		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.SystemManufacturer) {
+			log.HTTPWarning(req, "Non-printable Unicode characters in system manufacturer field for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -434,8 +441,8 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
-		if !middleware.IsASCIIStringPrintable(*inventoryUpdate.SystemModel) {
-			log.HTTPWarning(req, "Non-alphanumeric characters in system model field for inventory update")
+		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.SystemModel) {
+			log.HTTPWarning(req, "Non-printable Unicode characters in system model field for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -444,7 +451,7 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		log.HTTPInfo(req, "No system model provided for inventory update")
 	}
 
-	// acquired date
+	// acquired date, optional, process as UTC
 	if inventoryUpdate.AcquiredDate != nil {
 		acquiredDateUTC := inventoryUpdate.AcquiredDate.UTC()
 		inventoryUpdate.AcquiredDate = &acquiredDateUTC
@@ -452,7 +459,8 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 		log.HTTPInfo(req, "No acquired date provided for inventory update")
 	}
 
-	// Image (base64, optional, max 64MB, multiple file uploads supported)
+	// Other part of form:
+	// Image/File uploads (base64, optional, max 64MB, multiple file uploads supported)
 	var files []*multipart.FileHeader
 	if req.MultipartForm != nil && req.MultipartForm.File != nil {
 		if f := req.MultipartForm.File["inventory-file-input"]; len(f) > 0 {
@@ -469,115 +477,132 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 	}
 	updateRepo := database.NewRepo(dbConn)
 
-	const maxFileSize = 64 << 20 // 64 MB
+	// Process uploaded files
 	for _, fileHeader := range files {
-		for _, char := range fileHeader.Filename {
-			if !(unicode.IsLetter(char) || unicode.IsDigit(char) ||
-				char == '.' || char == '-' || char == '_' || char == ' ' || char == '(' || char == ')') {
-				log.HTTPWarning(req, "Invalid characters in uploaded file name for UpdateInventory")
-				middleware.WriteJsonError(w, http.StatusBadRequest)
-				return
-			}
+		var manifest database.ImageManifest
+		// Check multipart headers
+
+		// File name/extension checks
+		if matched, _ := regexp.MatchString(allowedFileNameRegex, fileHeader.Filename); !matched {
+			log.HTTPWarning(req, "Invalid characters in uploaded file name for UpdateInventory")
+			continue
 		}
-		if fileHeader.Size > maxFileSize {
-			log.HTTPWarning(req, "Uploaded file too large for UpdateInventory ("+strconv.FormatInt(fileHeader.Size, 10)+" bytes)")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
+		if !slices.Contains(allowedFileExtensions, strings.ToLower(filepath.Ext(fileHeader.Filename))) {
+			log.HTTPWarning(req, "Uploaded file has disallowed extension for UpdateInventory: ("+fileHeader.Filename+")")
+			continue
 		}
+
+		// File size from multipart header checks
+		if fileHeader.Size > maxInventoryFileSizeBytes {
+			log.HTTPWarning(req, "Multipart header size value is too large for UpdateInventory ("+strconv.FormatInt(fileHeader.Size, 10)+" bytes)")
+			continue
+		}
+		if fileHeader.Size == 0 {
+			log.HTTPWarning(req, "Multipart header size value is empty for UpdateInventory: "+fileHeader.Filename)
+			continue
+		}
+		if fileHeader.Size < minInventoryFileSizeBytes {
+			log.HTTPWarning(req, "Multipart header size value too small for UpdateInventory: "+fileHeader.Filename+" ("+strconv.FormatInt(fileHeader.Size, 10)+" bytes)")
+			continue
+		}
+
+		// Open uploaded file
 		file, err := fileHeader.Open()
 		if err != nil {
 			log.HTTPWarning(req, "Failed to open uploaded file for UpdateInventory: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
+			continue
 		}
 		defer file.Close()
 
-		lr := &io.LimitedReader{R: file, N: maxFileSize + 1}
-		fileData, err := io.ReadAll(lr)
+		lr := &io.LimitedReader{R: file, N: maxInventoryFileSizeBytes + 1}
+		fileBytes, err := io.ReadAll(lr)
 		if err != nil {
+			_ = file.Close()
 			log.HTTPWarning(req, "Failed to read uploaded file for UpdateInventory: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
+			continue
 		}
 
-		fileSize := int64(len(fileData))
-		if fileSize > maxFileSize {
-			log.HTTPWarning(req, "Uploaded file too large for UpdateInventory ("+strconv.FormatInt(fileSize, 10)+" bytes)")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
+		// File size checks (in addition to header checks - not necessarily same value)
+		fileSize := len(fileBytes)
+		if fileSize > maxInventoryFileSizeBytes {
+			_ = file.Close()
+			log.HTTPWarning(req, "Uploaded file too large for UpdateInventory ("+strconv.Itoa(fileSize)+" bytes)")
+			continue
 		}
 		if fileSize == 0 {
+			_ = file.Close()
 			log.HTTPWarning(req, "Empty file uploaded for UpdateInventory: "+fileHeader.Filename)
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
+			continue
 		}
-		if fileSize < 512 {
-			log.HTTPWarning(req, "Uploaded file too small for UpdateInventory: "+fileHeader.Filename+" ("+strconv.FormatInt(fileSize, 10)+" bytes)")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
+		if fileSize < minInventoryFileSizeBytes {
+			_ = file.Close()
+			log.HTTPWarning(req, "Uploaded file too small for UpdateInventory: "+fileHeader.Filename+" ("+strconv.Itoa(fileSize)+" bytes)")
+			continue
 		}
-		allowedRegex := regexp.MustCompile(`^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$`)
-		if !allowedRegex.MatchString(fileHeader.Filename) {
-			log.HTTPWarning(req, "Invalid characters in uploaded file name for UpdateInventory")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		disallowedExtensions := []string{".exe", ".bat", ".sh", ".js", ".ts", ".html", ".zip", ".rar", ".7z", ".tar", ".gz", ".dll", ".sys", ".ps1", ".cmd"}
-		lowerFileName := strings.ToLower(fileHeader.Filename)
-		for _, ext := range disallowedExtensions {
-			if strings.HasSuffix(lowerFileName, ext) {
-				log.HTTPWarning(req, "Uploaded file has disallowed extension for UpdateInventory: ("+fileHeader.Filename+")")
-				middleware.WriteJsonError(w, http.StatusBadRequest)
-				return
-			}
-		}
-		mimeType := http.DetectContentType(fileData[:fileSize])
-		if !strings.HasPrefix(mimeType, "image/") {
+		*manifest.FileSize = int64(fileSize)
+
+		// MIME type detection
+		mimeType := http.DetectContentType(fileBytes[:fileSize])
+		if !strings.HasPrefix(mimeType, "image/") { // temporary while implementing video support
+			_ = file.Close()
 			log.HTTPWarning(req, "Uploaded file has a non-accepted MIME type for UpdateInventory: (Content-Type: "+mimeType+")")
-			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)
-			return
+			continue
 		}
-		imageReader := bytes.NewReader(fileData)
+		*manifest.MimeType = mimeType
+
+		// Create reader (stream) for image decoding
+		imageReader := bytes.NewReader(fileBytes)
+
+		// Rewind and decode image to get image.Image
 		_, err = imageReader.Seek(0, io.SeekStart)
 		if err != nil {
+			_ = file.Close()
 			log.HTTPError(req, "Failed to seek to start of uploaded image for UpdateInventory: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
+			continue
 		}
 		decodedImage, imageFormat, err := image.Decode(imageReader)
 		if err != nil {
+			_ = file.Close()
 			log.HTTPError(req, "Failed to decode thumbnail in UpdateInventory: "+err.Error()+" ("+fileHeader.Filename+")")
+			continue
 		}
+
+		// Rewind and decode image to get image config
 		_, err = imageReader.Seek(0, io.SeekStart)
 		if err != nil {
+			_ = file.Close()
 			log.HTTPError(req, "Failed to seek to start of uploaded image for UpdateInventory: "+err.Error()+" ("+fileHeader.Filename+")")
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
+			continue
 		}
 		decodedImageConfig, _, err := image.DecodeConfig(imageReader)
 		if err != nil {
+			_ = file.Close()
 			log.HTTPError(req, "Failed to decode uploaded image config for UpdateInventory: "+err.Error()+": "+fileHeader.Filename+" ("+fileHeader.Filename+")")
+			continue
 		}
-		resolutionX := decodedImageConfig.Width
-		resolutionY := decodedImageConfig.Height
+		*manifest.ResolutionX = int64(decodedImageConfig.Width)
+		*manifest.ResolutionY = int64(decodedImageConfig.Height)
 
-		fileTimeStamp := time.Now().Format("2006-01-02-150405")
+		// Get upload timestamp
+		fileTimeStamp := time.Now()
+		*manifest.Time = fileTimeStamp.UTC()
+
+		// Generate unique file name
+		fileTimeStampFormatted := fileTimeStamp.Format("2006-01-02-150405")
 		fileUUID := uuid.New()
 		var fileName string
-		baseFileName := fileTimeStamp + "-" + fileUUID.String()
+		baseFileName := fileTimeStampFormatted + "-" + fileUUID.String()
 		switch mimeType {
 		case "image/jpeg", "image/jpg":
 			if imageFormat != "jpeg" {
 				log.HTTPWarning(req, "MIME type and image format mismatch for uploaded file for UpdateInventory: (MIME: "+mimeType+", Format: "+imageFormat+")")
-				middleware.WriteJsonError(w, http.StatusBadRequest)
-				return
+				continue
 			}
 			fileName = baseFileName + ".jpeg"
 		case "image/png":
 			if imageFormat != "png" {
 				log.HTTPWarning(req, "MIME type and image format mismatch for uploaded file for UpdateInventory: (MIME: "+mimeType+", Format: "+imageFormat+")")
-				middleware.WriteJsonError(w, http.StatusBadRequest)
-				return
+				continue
 			}
 			fileName = baseFileName + ".png"
 		case "video/mp4":
@@ -586,37 +611,55 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 			fileName = baseFileName + ".mov"
 		default:
 			log.HTTPWarning(req, "Unsupported image MIME type for UpdateInventory: (Content-Type: "+mimeType+")")
-			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)
-			return
+			continue
 		}
+		*manifest.FileName = fileName
+		*manifest.UUID = fileUUID.String()
+
+		// Compute SHA256 hash of file
 		fileHash := crypto.SHA256.New()
-		if _, err := fileHash.Write(fileData); err != nil {
+		if _, err := fileHash.Write(fileBytes); err != nil {
+			_ = file.Close()
 			log.HTTPError(req, "Failed to compute hash of uploaded file for UpdateInventory: "+err.Error()+" ("+fileHeader.Filename+")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		fileHashBytes := fileHash.Sum(nil)
+		*manifest.SHA256Hash = fmt.Sprintf("%x", fileHashBytes)
 
+		// Create directories if not existing
 		imageDirectoryPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber))
 		err = os.MkdirAll(imageDirectoryPath, 0755)
 		if err != nil {
+			_ = file.Close()
 			log.HTTPError(req, "Failed to create directories for uploaded file for UpdateInventory: "+err.Error())
-		}
-
-		if err := os.Chmod(imageDirectoryPath, 0755); err != nil {
-			log.HTTPError(req, "Failed to set directory permissions: "+err.Error()+" ("+fileHeader.Filename+")")
-		}
-
-		fullFilePath := filepath.Join(imageDirectoryPath, fileName)
-		if err := os.WriteFile(fullFilePath, fileData, 0644); err != nil {
-			log.HTTPError(req, "Failed to save uploaded file for UpdateInventory: "+err.Error()+" ("+fileHeader.Filename+")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
+		// Set file/directory permissions
+		if err := os.Chmod(imageDirectoryPath, 0755); err != nil {
+			_ = file.Close()
+			log.HTTPError(req, "Failed to set directory permissions: "+err.Error()+" ("+fileHeader.Filename+")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+
+		fullFilePath := filepath.Join(imageDirectoryPath, fileName)
+		if err := os.WriteFile(fullFilePath, fileBytes, 0644); err != nil {
+			_ = file.Close()
+			log.HTTPError(req, "Failed to save uploaded file for UpdateInventory: "+err.Error()+" ("+fileHeader.Filename+")")
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		*manifest.FilePath = fullFilePath
+
+		// Close the uploaded file, not needed anymore
+		_ = file.Close()
+
 		var fullThumbnailPath string
-		if mimeType != "image/jpeg" && mimeType != "image/jpg" && mimeType != "image/png" {
-			fullThumbnailPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), "thumbnail-"+baseFileName+".jpeg")
+		if strings.HasPrefix(mimeType, "image/") {
+			fullThumbnailPath = filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), "thumbnail-"+baseFileName+".jpeg")
 			thumbnailFile, err := os.Create(fullThumbnailPath)
 			if err != nil {
 				log.HTTPError(req, "Failed to create thumbnail file for UpdateInventory: "+err.Error()+" ("+fileHeader.Filename+")")
@@ -624,26 +667,30 @@ func UpdateInventory(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 			defer thumbnailFile.Close()
+
 			err = jpeg.Encode(thumbnailFile, decodedImage, &jpeg.Options{Quality: 50})
 			if err != nil {
+				_ = thumbnailFile.Close()
 				log.HTTPError(req, "Failed to encode thumbnail image for UpdateInventory: "+err.Error()+" ("+fileHeader.Filename+")")
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			thumbnailFile.Close()
 		}
+		*manifest.ThumbnailFilePath = fullThumbnailPath
 
 		// Insert image metadata into database
-		fileSizeMB := float64(fileSize) / (2 << 20)
-		hidden := false
-		primaryImage := false
-		err = updateRepo.UpdateClientImages(ctx, tagnumber, fileUUID.String(), &fileName, fullFilePath, &fullThumbnailPath, &fileSizeMB, &fileHashBytes, &mimeType, nil, &resolutionX, &resolutionY, nil, &hidden, &primaryImage)
+		*manifest.Tagnumber = tagnumber
+		*manifest.Hidden = false
+		*manifest.PrimaryImage = false
+
+		err = updateRepo.UpdateClientImages(ctx, manifest)
 		if err != nil {
 			log.HTTPError(req, "Failed to update inventory image data: "+err.Error()+" ("+fileHeader.Filename+")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		log.HTTPInfo(req, fmt.Sprintf("Uploaded file details - Name: %s, Size: %.2f MB, MIME Type: %s", fileName, fileSizeMB, mimeType)+" ("+fileHeader.Filename+")")
+		log.HTTPInfo(req, fmt.Sprintf("Uploaded file details - Name: %s, Size: %.2f MB, MIME Type: %s", fileName, float64(*manifest.FileSize)/1024/1024, mimeType)+" ("+fileHeader.Filename+")")
 		file.Close()
 	}
 	// Update db

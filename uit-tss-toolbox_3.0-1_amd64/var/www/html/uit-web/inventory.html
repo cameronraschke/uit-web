@@ -141,12 +141,21 @@
 
 
 							<div class="flex-container vertical separated">
-								<div class="flex-container horizontal"><p>Is it Broken?</p></div>
+								<div class="flex-container horizontal"><p>Is it Broken?/Disk Removed?</p></div>
 								<div class="flex-container horizontal">
 									<select id="is_broken" name="is_broken">
 										<option value="" disabled selected>Is it Broken?</option>
 										<option value="true">Yes, it is broken</option>
 										<option value="false">No, it isn't broken</option>
+										<option value="unknown">Unknown</option>
+									</select>
+								</div>
+								<div class="flex-container horizontal">
+									<select id="disk_removed" name="disk_removed">
+										<option value="" disabled selected>Disk Removed?</option>
+										<option value="true">Yes, disk removed</option>
+										<option value="false">No, disk present</option>
+										<option value="unknown">Unknown</option>
 									</select>
 								</div>
 							</div>
