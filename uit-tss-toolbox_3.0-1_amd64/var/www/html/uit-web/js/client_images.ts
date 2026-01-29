@@ -183,8 +183,9 @@ async function loadClientImages(clientTag: number) {
 				}
 				const imageEntry = document.getElementById(uuidToUnpin);
 
-				const clientTag = button.dataset.tagnumber ? parseInt(button.dataset.tagnumber) : null;
-				try {
+				const currentURL = new URL(window.location.href);
+				const clientTag = currentURL.searchParams.get("tagnumber") ? parseInt(currentURL.searchParams.get("tagnumber") as string) : null;				try {
+					
 					const unpinURL = new URL(`/api/images/toggle_pin`, window.location.origin);
 					const unpinResponse = await fetch(unpinURL, {
 						method: 'POST',
