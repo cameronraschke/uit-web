@@ -178,17 +178,19 @@ async function loadClientImages(clientTag: number) {
 				button.disabled = true;
 				const uuidToUnpin = button.dataset.uuid;
 				if (!uuidToUnpin) {
-				alert('Error: No UUID found for this image.');
-				return;
+					alert('Error: No UUID found for this image.');
+					return;
 				}
 				const imageEntry = document.getElementById(uuidToUnpin);
+
+				const clientTag = button.dataset.tagnumber ? parseInt(button.dataset.tagnumber) : null;
 				try {
 					const unpinURL = new URL(`/api/images/toggle_pin`, window.location.origin);
 					const unpinResponse = await fetch(unpinURL, {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						credentials: 'same-origin',
-						body: JSON.stringify({uuid: uuidToUnpin, tagnumber: clientTag.toString()})
+						body: JSON.stringify({uuid: uuidToUnpin, tagnumber: clientTag})
 					});
 					if (!unpinResponse.ok) {
 						throw new Error (`Failed to unpin image: ${unpinResponse.status} ${unpinResponse.statusText}`);

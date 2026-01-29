@@ -370,12 +370,11 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 
 	inventoryLookupTagInput.disabled = false;
 	inventoryLookupTagInput.style.backgroundColor = "initial";
-	inventoryLookupTagInput.value = inventoryLookupTagInput.value.trim();
+	inventoryLookupTagInput.value = inventoryLookupTagInput.value ? inventoryLookupTagInput.value.toString().trim() : "";
 
 	inventoryLookupSystemSerialInput.disabled = false;
 	inventoryLookupSystemSerialInput.style.backgroundColor = "initial";
-	inventoryLookupSystemSerialInput.value = inventoryLookupSystemSerialInput.value.trim();
-
+	inventoryLookupSystemSerialInput.value = inventoryLookupSystemSerialInput.value ? inventoryLookupSystemSerialInput.value.trim() : "";
 	inventoryUpdateLocationInput.value = "";
 
 	systemManufacturer.disabled = false;
@@ -408,44 +407,44 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		}
 		
 		if (locationFormData.tagnumber) {
-			inventoryLookupTagInput.value = locationFormData.tagnumber.toString().trim();
+			inventoryLookupTagInput.value = locationFormData.tagnumber ? locationFormData.tagnumber.toString().trim() : "";
 			inventoryLookupTagInput.style.backgroundColor = "gainsboro";
 			inventoryLookupTagInput.disabled = true;
 		}
 		
 		if (locationFormData.system_serial) {
-			inventoryLookupSystemSerialInput.value = locationFormData.system_serial.trim();
+			inventoryLookupSystemSerialInput.value = locationFormData.system_serial ? locationFormData.system_serial.trim() : "";
 			inventoryLookupSystemSerialInput.style.backgroundColor = "gainsboro";
 			inventoryLookupSystemSerialInput.disabled = true;
 		}
 
-    inventoryUpdateLocationInput.value = locationFormData.location || '';
+    inventoryUpdateLocationInput.value = locationFormData.location ? locationFormData.location.trim() : "";
 
-		building.value = locationFormData.building || '';
+		building.value = locationFormData.building ? locationFormData.building.trim() : "";
 
-		room.value = locationFormData.room || '';
+		room.value = locationFormData.room ? locationFormData.room.trim() : "";
 
 		
 		if (locationFormData.system_manufacturer) {
-			systemManufacturer.value = locationFormData.system_manufacturer.trim();
+			systemManufacturer.value = locationFormData.system_manufacturer ? locationFormData.system_manufacturer.trim() : "";
 			systemManufacturer.style.backgroundColor = "gainsboro";
 			systemManufacturer.disabled = true;
 		}
 
 		
 		if (locationFormData.system_model) {
-			systemModel.value = locationFormData.system_model.trim();
+			systemModel.value = locationFormData.system_model ? locationFormData.system_model.trim() : "";
 			systemModel.style.backgroundColor = "gainsboro";
 			systemModel.disabled = true;
 		}
 
 		await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
-		inventoryUpdateDepartmentSelect.value = locationFormData.department_name || '';
+		inventoryUpdateDepartmentSelect.value = locationFormData.department_name ? locationFormData.department_name.trim() : "";
 
 		await populateDomainSelect(inventoryUpdateDomainSelect);
-		inventoryUpdateDomainSelect.value = locationFormData.ad_domain || '';
+		inventoryUpdateDomainSelect.value = locationFormData.ad_domain ? locationFormData.ad_domain.trim() : "";
 
-		propertyCustodian.value = locationFormData.property_custodian || '';
+		propertyCustodian.value = locationFormData.property_custodian ? locationFormData.property_custodian.trim() : "";
 
 		const acquiredDateValue = locationFormData.acquired_date ? new Date(locationFormData.acquired_date) : null;
 		if (acquiredDateValue && !isNaN(acquiredDateValue.getTime())) {
@@ -461,9 +460,9 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 
 		diskRemoved.value = typeof locationFormData.disk_removed === "boolean" ? String(locationFormData.disk_removed) : '';
 
-    clientStatus.value = locationFormData.status.trim() || '';
+    clientStatus.value = locationFormData.status ? locationFormData.status.trim() : "";
 
-    noteInput.value = locationFormData.note || '';
+    noteInput.value = locationFormData.note ? locationFormData.note.trim() : "";
   } else {
 		await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
 		await populateDomainSelect(inventoryUpdateDomainSelect);
@@ -684,7 +683,9 @@ inventoryLookupMoreDetailsButton.addEventListener("click", (event) => {
   event.preventDefault();
   const tag = inventoryLookupTagInput.value;
   if (tag) {
-    const url = `/client?tagnumber=${encodeURIComponent(tag)}`;
+    // const url = `/client?tagnumber=${encodeURIComponent(tag)}`;
+		const url = new URL(window.location.origin + '/client_images');
+		url.searchParams.set('tagnumber', tag);
 		window.open(url, '_blank');
   }
 });
