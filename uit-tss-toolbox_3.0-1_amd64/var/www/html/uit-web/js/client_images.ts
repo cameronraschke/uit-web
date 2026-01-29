@@ -79,6 +79,17 @@ async function loadClientImages(clientTag: number) {
 			const imgDiv = document.createElement('div');
 			imgDiv.className = 'image-box';
 
+			const timestampDiv = document.createElement('div');
+      timestampDiv.className = 'image-caption';
+
+			const timeStampCaption = document.createElement('p');
+			const timeStamp = new Date(img.time);
+			if (isNaN(timeStamp.getTime())) {
+				timeStampCaption.textContent = 'N/A';
+			} else {
+				timeStampCaption.textContent = `Uploaded on: ${timeStamp.toLocaleDateString()} ${timeStamp.toLocaleTimeString()}`;
+			}
+
 			const imgLink = document.createElement('a');
       const imgURL = new URL(`/api/images`, window.location.origin);
       imgURL.searchParams.set('tagnumber', clientTag.toString());
@@ -109,13 +120,16 @@ async function loadClientImages(clientTag: number) {
       const captionDiv = document.createElement('div');
       captionDiv.className = 'image-caption';
 
-			const timeStampCaption = document.createElement('p');
-			const timeStamp = new Date(img.time);
-      if (isNaN(timeStamp.getTime())) {
-        timeStampCaption.textContent = 'Uploaded on: Unknown date';
-      } else {
-        timeStampCaption.textContent = `Uploaded on: ${timeStamp.toLocaleDateString()} ${timeStamp.toLocaleTimeString()}`;
-      }
+			const fileSizeCaption = document.createElement('p');
+			if (img.file_size && !isNaN(img.file_size)) {
+				const fileSizeInMB = img.file_size / (1024 * 1024);
+				if (fileSizeInMB >= 1) {
+					fileSizeCaption.textContent = `(size: ${fileSizeInMB.toFixed(2)} MB)`;
+				} else {
+					const fileSizeInKB = img.file_size / 1024;
+					fileSizeCaption.textContent = `(size: ${fileSizeInKB.toFixed(2)} KB)`;
+				}
+			}
 
 			const noteCaption = document.createElement('p');
 			noteCaption.textContent = img.note || "No description";
@@ -141,14 +155,16 @@ async function loadClientImages(clientTag: number) {
       imageCount.className = 'image-count';
       imageCount.textContent = imageIndex++ + "/" + manifestArr.length || '';
 
+			timestampDiv.appendChild(timeStampCaption);
 			imgLink.appendChild(media);
 			imgDiv.appendChild(imgLink);
-			captionDiv.appendChild(timeStampCaption);
+			captionDiv.appendChild(fileSizeCaption);
 			captionDiv.appendChild(noteCaption);
       
       captionDiv.appendChild(unpinIcon);
       captionDiv.appendChild(deleteIcon);
       captionDiv.appendChild(imageCount);
+			div.appendChild(timestampDiv);
 			div.appendChild(imgDiv);
 			div.appendChild(captionDiv);
       container.appendChild(div);
