@@ -150,15 +150,15 @@ textarea.empty-input {
 input.empty-required-input,
 select.empty-required-input,
 textarea.empty-required-input {
-	background-color: var(--empty-required-input-color) !important;
-	border: var(--input-border-width) solid var(--empty-required-input-border-color) !important;
+	background-color: var(--empty-required-input-color);
+	border: var(--input-border-width) solid var(--empty-required-input-border-color);
 }
 
 input.readonly-input,
 select.readonly-input,
 textarea.readonly-input {
-	background-color: var(--bg-color-darker) !important;
-	border: var(--border-width) solid var(--default-border-color) !important;
+	background-color: var(--bg-color-darker);
+	border: var(--border-width) solid var(--default-border-color);
 }
 
 .text-search:focus, input:not(.text-search):focus, select:focus, textarea:focus, button:focus {

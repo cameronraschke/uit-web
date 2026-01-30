@@ -57,7 +57,7 @@ const inventoryLookupFormResetButton = document.getElementById('inventory-lookup
 const inventoryLookupMoreDetailsButton = document.getElementById('inventory-lookup-more-details') as HTMLButtonElement;
 const allTagsDatalist = document.getElementById('inventory-tag-suggestions') as HTMLDataListElement;
 const clientImagesLink = document.getElementById('client_images_link') as HTMLAnchorElement;
-const inventoryUpdateDomainSelect = document.getElementById('ad_domain') as HTMLSelectElement;
+const selectElement = document.getElementById('ad_domain') as HTMLSelectElement;
 const inventorySearchDepartmentSelect = document.getElementById('inventory-search-department') as HTMLSelectElement;
 const inventorySearchDomainSelect = document.getElementById('inventory-search-domain') as HTMLSelectElement;
 const inventorySearchStatus = document.getElementById('inventory-search-status') as HTMLSelectElement;
@@ -99,7 +99,7 @@ const allInventoryUpdateFields = [
 	systemManufacturer,
 	systemModel,
 	inventoryUpdateDepartmentSelect,
-	inventoryUpdateDomainSelect,
+	selectElement,
 	propertyCustodian,
 	acquiredDateInput,
 	isBroken,
@@ -114,7 +114,7 @@ const requiredInventoryUpdateFields = [
 	inventoryLookupSystemSerialInput,
 	inventoryUpdateLocationInput,
 	inventoryUpdateDepartmentSelect,
-	inventoryUpdateDomainSelect,
+	selectElement,
 	clientStatus
 ];
 
@@ -446,14 +446,16 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 	resetSelectElement(inventoryUpdateDepartmentSelect, "Select Department", false, "empty-required-input");
 	try { 
 		await populateDepartmentSelect(inventoryUpdateDepartmentSelect)
+		inventoryUpdateDepartmentSelect.classList.add("empty-required-input");
 	} catch(e) {
 		const errorMessage = e instanceof Error ? e.message : String(e);
 		console.error(`Could not fetch all departments: ${errorMessage}`)
 	}
 
-	resetSelectElement(inventoryUpdateDomainSelect, "Select Domain", false, "empty-required-input");
+	resetSelectElement(selectElement, "Select Domain", false, "empty-required-input");
 	try { 
-		await populateDomainSelect(inventoryUpdateDomainSelect);
+		await populateDomainSelect(selectElement);
+		selectElement.classList.add("empty-required-input");
 	} catch(e) {
 		const errorMessage = e instanceof Error ? e.message : String(e);
 		console.error(`Could not fetch all domains: ${errorMessage}`)
@@ -504,6 +506,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 	resetSelectElement(clientStatus, "Select Client Status", false, "empty-required-input");
 	try { 
 		await populateStatusSelect(clientStatus);
+		clientStatus.classList.add("empty-required-input");
 	} catch(e) {
 		const errorMessage = e instanceof Error ? e.message : String(e);
 		console.error(`Could not fetch all statuses: ${errorMessage}`)
@@ -592,10 +595,10 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			}
 
 			if (locationFormData.ad_domain) {
-				inventoryUpdateDomainSelect.value = locationFormData.ad_domain.trim();
-				inventoryUpdateDomainSelect.classList.remove("empty-required-input");
+				selectElement.value = locationFormData.ad_domain.trim();
+				selectElement.classList.remove("empty-required-input");
 			} else {
-				inventoryUpdateDomainSelect.classList.add("empty-required-input");
+				selectElement.classList.add("empty-required-input");
 			}
 
 			if (locationFormData.property_custodian) {

@@ -130,6 +130,12 @@ function resetSelectElement(selectElement: HTMLSelectElement, defaultText: strin
 	selectElement.addEventListener('click', () => {
 		defaultOption.disabled = true;
 	});
+	selectElement.addEventListener('focus', () => {
+		selectElement.style.backgroundColor = "var(--fg-color)";
+	});
+	selectElement.addEventListener('blur', () => {
+		selectElement.style.removeProperty("background-color");
+	});
 }
 
 function resetInputElement(inputElement: HTMLInputElement, placeholderText: string, isReadOnly: boolean = false, newCSSClass: string | undefined) {
