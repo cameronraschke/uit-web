@@ -119,6 +119,7 @@ function resetSelectElement(selectElement: HTMLSelectElement, defaultText: strin
 	const defaultOption = document.createElement('option');
 	defaultOption.value = "";
 	defaultOption.textContent = defaultText;
+	selectElement.required = false;
 	selectElement.disabled = isDisabled;
 	defaultOption.selected = true;
 	// defaultOption.hidden = true;
@@ -137,6 +138,7 @@ function resetInputElement(inputElement: HTMLInputElement, placeholderText: stri
 	inputElement.value = "";
 	inputElement.placeholder = placeholderText;
 	inputElement.readOnly = isReadOnly;
+	inputElement.required = false;
 	inputElement.disabled = false;
 	if (newCSSClass && newCSSClass.trim().length > 0) {
 		inputElement.classList.add(newCSSClass);

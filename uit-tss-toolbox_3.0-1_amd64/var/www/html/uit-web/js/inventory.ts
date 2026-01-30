@@ -211,6 +211,9 @@ async function submitInventoryLookup() {
 	const lookupTag: number | null = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : (searchParams.get('tagnumber') ? Number(searchParams.get('tagnumber')) : null);
   const lookupSerial: string | null = inventoryLookupSystemSerialInput.value || searchParams.get('system_serial') || null;
 
+	inventoryLookupTagInput.dataset.initialValue = inventoryLookupTagInput.value;
+	inventoryLookupSystemSerialInput.dataset.initialValue = inventoryLookupSystemSerialInput.value;
+
   if (!lookupTag && !lookupSerial) {
     inventoryLookupWarningMessage.style.display = "block";
     inventoryLookupWarningMessage.textContent = "Please provide a tag number or serial number to look up.";
@@ -239,18 +242,12 @@ async function submitInventoryLookup() {
 
 	try {
 		const lookupResult: ClientLookupResult | null = await lookupTagOrSerial(lookupTag, lookupSerial);
-		if (!lookupResult) {
-			inventoryLookupWarningMessage.style.display = "block";
-			inventoryLookupWarningMessage.textContent = "No inventory entry was found for the provided tag number or serial number. A new entry can be created.";
-			if (!inventoryLookupTagInput.value) inventoryLookupTagInput.focus();
-			else if (!inventoryLookupSystemSerialInput.value) inventoryLookupSystemSerialInput.focus();
-		}
 
 		if (lookupResult) {
 			if (lookupResult.tagnumber && !isNaN(Number(lookupResult.tagnumber))) {
 				searchParams.set("tagnumber", lookupResult.tagnumber ? lookupResult.tagnumber.toString() : '');
 				inventoryLookupTagInput.value = Number(lookupResult.tagnumber).toString();
-				inventoryLookupTagInput.style.backgroundColor = "gainsboro";
+				inventoryLookupTagInput.dataset.initialValue = lookupResult.tagnumber ? lookupResult.tagnumber.toString() : "";
 				inventoryLookupTagInput.readOnly = true;
 				clientImagesLink.href = `/client_images?tagnumber=${lookupResult.tagnumber}`;
 				clientImagesLink.target = "_blank";
@@ -259,8 +256,7 @@ async function submitInventoryLookup() {
 			if (lookupResult.system_serial && lookupResult.system_serial && lookupResult.system_serial.trim().length > 0) {
 				searchParams.set("system_serial", lookupResult.system_serial ? lookupResult.system_serial.trim() : '');
 				inventoryLookupSystemSerialInput.value = lookupResult.system_serial.trim();
-				inventoryLookupSystemSerialInput.value = lookupResult.system_serial ? lookupResult.system_serial : "";
-				inventoryLookupSystemSerialInput.style.backgroundColor = "gainsboro";
+				inventoryLookupSystemSerialInput.dataset.initialValue = lookupResult.system_serial ? lookupResult.system_serial : "";
 				inventoryLookupSystemSerialInput.readOnly = true;
 			}
 
@@ -276,6 +272,9 @@ async function submitInventoryLookup() {
 				await populateLocationForm(lookupResult.tagnumber ? lookupResult.tagnumber : undefined, lookupResult.system_serial ? lookupResult.system_serial : undefined);
 			}
 		} else {
+			inventoryLookupWarningMessage.style.display = "block";
+			inventoryLookupWarningMessage.textContent = "No inventory entry was found for the provided tag number or serial number. A new entry can be created.";
+
 			inventoryLookupMoreDetailsButton.disabled = true;
 			inventoryLookupMoreDetailsButton.style.cursor = "not-allowed";
 			const tagNum = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : '';
@@ -415,6 +414,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 
 	// reset/zero/clear out all fields before processing new data
 	resetInputElement(inventoryLookupTagInput, "Enter Tag Number", false, undefined);
+	inventoryLookupTagInput.value = inventoryLookupTagInput.dataset.initialValue || "";
 	if (inventoryLookupTagInput.value) {
 		inventoryLookupTagInput.readOnly = true;
 		inventoryLookupTagInput.value = inventoryLookupTagInput.value.toString().trim();
@@ -424,6 +424,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 	}
 
 	resetInputElement(inventoryLookupSystemSerialInput, "Enter System Serial", false, undefined);
+	inventoryLookupSystemSerialInput.value = inventoryLookupSystemSerialInput.dataset.initialValue || "";
 	if (inventoryLookupSystemSerialInput.value) {
 		inventoryLookupSystemSerialInput.readOnly = true;
 		inventoryLookupSystemSerialInput.value = inventoryLookupSystemSerialInput.value.trim();
@@ -530,18 +531,18 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				inventoryLookupTagInput.value = locationFormData.tagnumber.toString();
 				inventoryLookupTagInput.classList.remove("empty-required-input");
 				inventoryLookupTagInput.classList.add("readonly-input");
+				inventoryLookupTagInput.readOnly = true;
 			} else {
 				inventoryLookupTagInput.classList.add("empty-required-input");
-				inventoryLookupTagInput.focus();
 			}
 
 			if (locationFormData.system_serial) {
 				inventoryLookupSystemSerialInput.value = locationFormData.system_serial.trim();
 				inventoryLookupSystemSerialInput.classList.remove("empty-required-input");
 				inventoryLookupSystemSerialInput.classList.add("readonly-input");
+				inventoryLookupSystemSerialInput.readOnly = true;
 			} else {
 				inventoryLookupSystemSerialInput.classList.add("empty-required-input");
-				inventoryLookupSystemSerialInput.focus();
 			}
 
 			if (locationFormData.location ) {
@@ -621,12 +622,12 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			
 			if (locationFormData.is_broken === true) {
 				isBroken.value = "true";
-				isBroken.classList.remove("empty-input");
+				isBroken.classList.remove("empty-required-input");
 			} else if (locationFormData.is_broken === false) {
 				isBroken.value = "false";
-				isBroken.classList.remove("empty-input");
+				isBroken.classList.remove("empty-required-input");
 			} else {
-				isBroken.classList.add("empty-input");
+				isBroken.classList.add("empty-required-input");
 			}
 
 			if (locationFormData.disk_removed === true) {
@@ -652,6 +653,10 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			} else {
 				noteInput.classList.add("empty-input");
 			}
+		} else {
+			console.warn("No location form data returned from server");
+			inventoryLookupTagInput.dataset.initialValue = inventoryLookupTagInput.value;
+			inventoryLookupSystemSerialInput.dataset.initialValue = inventoryLookupSystemSerialInput.value;
 		}
 		await updateCheckoutStatus();
 	} catch (error) {
@@ -660,7 +665,9 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 	} finally {
 		showInventoryUpdateChanges();
 		inventoryUpdateFormSection.style.display = "block";
-		inventoryUpdateLocationInput.focus();
+		if (!inventoryLookupTagInput.value) inventoryLookupTagInput.focus();
+		else if (!inventoryLookupSystemSerialInput.value) inventoryLookupSystemSerialInput.focus();
+		else inventoryUpdateLocationInput.focus();
 	}
 }
 
