@@ -1,6 +1,7 @@
 let updatingInventory = false;
 
 type InventoryForm = {
+	last_update_time: string | null;
 	tagnumber: number | null;
 	system_serial: string | null;
 	location: string | null;
@@ -76,17 +77,19 @@ const systemManufacturer = inventoryUpdateForm.querySelector("#system_manufactur
 const systemModel = inventoryUpdateForm.querySelector("#system_model") as HTMLInputElement;
 const propertyCustodian = inventoryUpdateForm.querySelector("#property_custodian") as HTMLInputElement;
 const acquiredDateInput = inventoryUpdateForm.querySelector("#acquired_date") as HTMLInputElement;
-const isBroken = inventoryUpdateForm.querySelector("#is_broken") as HTMLInputElement;
-const diskRemoved = inventoryUpdateForm.querySelector("#disk_removed") as HTMLInputElement;
+const isBroken = inventoryUpdateForm.querySelector("#is_broken") as HTMLSelectElement;
+const diskRemoved = inventoryUpdateForm.querySelector("#disk_removed") as HTMLSelectElement;
 const clientStatus = inventoryUpdateForm.querySelector("#status") as HTMLSelectElement;
 const noteInput = inventoryUpdateForm.querySelector("#note") as HTMLInputElement;
-const fileInput = inventoryUpdateForm.querySelector("#inventory-file-input") as HTMLInputElement | null;
+const fileInput = inventoryUpdateForm.querySelector("#inventory-file-input") as HTMLInputElement;
 
 const allowedFileNameRegex = /^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$/; // file name + extension
 const allowedFileExtensions = [".jpg", ".jpeg", ".jfif", ".png"];
 
 const statusesThatIndicateBroken = ["needs-repair"];
 const statusesThatIndicateCheckout = ["checked-out", "reserved-for-checkout"];
+
+const inputCSSClasses = ["empty-input", "empty-required-input", "changed-input"];
 
 async function fetchAllLocations(purgeCache: boolean = false): Promise<AllLocations[] | []> {
 	const cached = sessionStorage.getItem("uit_all_locations");
@@ -220,7 +223,7 @@ async function submitInventoryLookup() {
 				searchParams.set("tagnumber", lookupResult.tagnumber ? lookupResult.tagnumber.toString() : '');
 				inventoryLookupTagInput.value = Number(lookupResult.tagnumber).toString();
 				inventoryLookupTagInput.style.backgroundColor = "gainsboro";
-				inventoryLookupTagInput.disabled = true;
+				inventoryLookupTagInput.readOnly = true;
 				clientImagesLink.href = `/client_images?tagnumber=${lookupResult.tagnumber}`;
 				clientImagesLink.target = "_blank";
 				clientImagesLink.style.display = "inline";
@@ -230,9 +233,10 @@ async function submitInventoryLookup() {
 				inventoryLookupSystemSerialInput.value = lookupResult.system_serial.trim();
 				inventoryLookupSystemSerialInput.value = lookupResult.system_serial ? lookupResult.system_serial : "";
 				inventoryLookupSystemSerialInput.style.backgroundColor = "gainsboro";
-				inventoryLookupSystemSerialInput.disabled = true;
+				inventoryLookupSystemSerialInput.readOnly = true;
 			}
 			if (lookupResult.tagnumber && lookupResult.system_serial) {
+				inventoryLookupSystemSerialInput.style.backgroundColor = "aliceblue";
 				inventoryUpdateLocationInput.focus();
 			}
 			inventoryLookupFormSubmitButton.disabled = true;
@@ -260,7 +264,6 @@ async function submitInventoryLookup() {
 		inventoryLookupWarningMessage.style.display = "block";
 		inventoryLookupWarningMessage.textContent = "Error looking up inventory entry: " + errorMessage;
 	} finally {
-		inventoryUpdateFormSection.style.display = "block";
 		// Set 'update' parameter in URL
 		searchParams.set('update', 'true');
 		history.replaceState(null, '', window.location.pathname + '?' + searchParams.toString());
@@ -284,10 +287,12 @@ function resetInventoryLookupAndUpdateForm() {
 	inventoryUpdateForm.reset();
 	inventoryLookupTagInput.value = "";
 	inventoryLookupTagInput.style.backgroundColor = "initial";
-	inventoryLookupTagInput.disabled = false;
+	inventoryLookupTagInput.readOnly = false;
+	inventoryLookupTagInput.required = false;
 	inventoryLookupSystemSerialInput.value = "";
 	inventoryLookupSystemSerialInput.style.backgroundColor = "initial";
-	inventoryLookupSystemSerialInput.disabled = false;
+	inventoryLookupSystemSerialInput.readOnly = false;
+	inventoryLookupSystemSerialInput.required = false;
 	inventoryLookupFormSubmitButton.style.cursor = "pointer";
 
 	inventoryLookupFormSubmitButton.style.border = "1px solid black";
@@ -329,7 +334,7 @@ function renderTagOptions(tags: number[]): void {
   });
 }
 
-async function getLocationFormData(tag?: number, serial?: string): Promise<any | null> {
+async function getLocationFormData(tag?: number, serial?: string): Promise<InventoryForm | null> {
 	const tagNum = tag ? tag : inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : null;
 	const serialNum = serial ? serial : inventoryLookupSystemSerialInput.value ? String(inventoryLookupSystemSerialInput.value) : null;
 	const url = new URL('/api/client/location_form_data', window.location.origin);
@@ -337,7 +342,7 @@ async function getLocationFormData(tag?: number, serial?: string): Promise<any |
 	url.searchParams.set('system_serial', serialNum !== null ? serialNum : '');
 
   try {
-    const response = await fetchData(url.toString(), false);
+    const response: InventoryForm = await fetchData(url.toString(), false);
     if (!response) {
       throw new Error("Cannot parse json from /api/client/location_form_data");
     }
@@ -350,124 +355,203 @@ async function getLocationFormData(tag?: number, serial?: string): Promise<any |
 }
 
 function showInventoryUpdateChanges(): void {
-	inventoryUpdateForm.querySelectorAll("input, select, textarea, file").forEach((element: HTMLElement) => {
-		element.style.border = "revert-layer";
-		element.style.boxShadow = "revert-layer";
-		element.addEventListener("change", () => {
+	inventoryUpdateForm.querySelectorAll("input, select, textarea, file").forEach((el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
+		el.dataset.initialValue = el.value;
+		el.addEventListener("change", () => {
 			updatingInventory = false;
-			element.style.border = "2px solid orange";
-			element.style.boxShadow = "0 0 2px orange";
+			if (el.value === el.dataset.initialValue) return;
+			for (const cssClass of inputCSSClasses) {
+				el.classList.remove(cssClass);
+			}
+			el.classList.add("changed-input");
 		});
 	});
 }
 showInventoryUpdateChanges();
 
 async function populateLocationForm(tag?: number, serial?: string): Promise<void> {
-  const locationFormData = await getLocationFormData(tag, serial);
-	showInventoryUpdateChanges();
 
-	lastUpdateTimeMessage.style.display = "none";
+	try {
+		const locationFormData = await getLocationFormData(tag, serial);
+		showInventoryUpdateChanges();
 
-	inventoryLookupTagInput.disabled = false;
-	inventoryLookupTagInput.style.backgroundColor = "initial";
-	inventoryLookupTagInput.value = inventoryLookupTagInput.value ? inventoryLookupTagInput.value.toString().trim() : "";
+		// reset/zero/clear out all fields before processing new data
+		resetInputElement(inventoryLookupTagInput, "Enter Tag Number", false, undefined);
+		inventoryLookupTagInput.required = true;
+		if (inventoryLookupTagInput.value) {
+			inventoryLookupTagInput.readOnly = true;
+			inventoryLookupTagInput.value = inventoryLookupTagInput.value.toString().trim();
+			inventoryLookupTagInput.classList.add("readonly-input");
+		} else {
+			inventoryLookupTagInput.focus();
+			inventoryLookupTagInput.classList.add("empty-required-input");
+		}
 
-	inventoryLookupSystemSerialInput.disabled = false;
-	inventoryLookupSystemSerialInput.style.backgroundColor = "initial";
-	inventoryLookupSystemSerialInput.value = inventoryLookupSystemSerialInput.value ? inventoryLookupSystemSerialInput.value.trim() : "";
-	inventoryUpdateLocationInput.value = "";
+		resetInputElement(inventoryLookupSystemSerialInput, "Enter System Serial", false, undefined);
+		inventoryLookupSystemSerialInput.required = true;
+		if (inventoryLookupSystemSerialInput.value) {
+			inventoryLookupSystemSerialInput.readOnly = true;
+			inventoryLookupSystemSerialInput.value = inventoryLookupSystemSerialInput.value.trim();
+			inventoryLookupSystemSerialInput.classList.add("readonly-input");
+		} else {
+			inventoryLookupSystemSerialInput.focus();
+			inventoryLookupSystemSerialInput.classList.add("empty-required-input");
+		}
 
-	systemManufacturer.disabled = false;
-	systemManufacturer.value = "";
-	systemManufacturer.style.backgroundColor = "initial";
+		resetInputElement(inventoryUpdateLocationInput, "Enter Location", false, "empty-required-input");
 
-	systemModel.disabled = false;
-	systemModel.value = "";
-	systemModel.style.backgroundColor = "initial";
+		resetInputElement(building, "Building", false, "empty-input");
 
-	propertyCustodian.value = "";
+		resetInputElement(room, "Room", false, "empty-input");
 
-	acquiredDateInput.value = "";
+		resetInputElement(systemManufacturer, "System Manufacturer", false, "empty-input");
 
-	isBroken.value = "";
+		resetInputElement(systemModel, "System Model", false, "empty-input");
 
-	clientStatus.value = "";
+		removeCSSClasses(inventoryUpdateDepartmentSelect);
+		resetSelectElement(inventoryUpdateDepartmentSelect, "Select Department", false, "empty-required-input");
 
-	noteInput.value = "";
+		removeCSSClasses(inventoryUpdateDomainSelect);
+		resetSelectElement(inventoryUpdateDomainSelect, "Select Domain", false, "empty-required-input");
 
-  if (locationFormData) {
-		if (locationFormData.last_update_time) {
-			const lastUpdate = new Date(locationFormData.last_update_time);
-			if (isNaN(lastUpdate.getTime())) {
-				lastUpdateTimeMessage.textContent = 'Unknown timestamp of last update';
-			} else {
-				lastUpdateTimeMessage.textContent = `Last updated: ${lastUpdate.toLocaleString()}` || '';
+		resetInputElement(propertyCustodian, "Property Custodian", false, "empty-input");
+
+		resetInputElement(acquiredDateInput, "Acquired Date", false, "empty-input");
+
+		removeCSSClasses(isBroken);
+		resetSelectElement(isBroken, "Select Status", false, "empty-required-input");
+
+		removeCSSClasses(diskRemoved);
+		resetSelectElement(diskRemoved, "Is Disk Removed?", false, "empty-input");
+
+		removeCSSClasses(clientStatus);
+		resetSelectElement(clientStatus, "Select Client Status", false, "empty-required-input");
+
+		resetInputElement(fileInput, "", false, undefined);
+
+		resetInputElement(noteInput, "Enter Note", false, "empty-input");
+
+		lastUpdateTimeMessage.style.display = "none";
+		if (locationFormData) {
+			if (locationFormData.last_update_time) {
+				const lastUpdate = new Date(locationFormData.last_update_time);
+				if (isNaN(lastUpdate.getTime())) {
+					lastUpdateTimeMessage.textContent = 'Unknown timestamp of last update';
+				} else {
+					lastUpdateTimeMessage.textContent = `Last updated: ${lastUpdate.toLocaleString()}` || '';
+				}
+				lastUpdateTimeMessage.style.display = "block";
 			}
-			lastUpdateTimeMessage.style.display = "block";
+			
+			// tag and serial populated by function submitInventoryLookup(), no need to repeat here
+
+
+			if (locationFormData.location ) {
+				inventoryUpdateLocationInput.value = locationFormData.location.trim();
+			} else {
+				inventoryUpdateLocationInput.classList.add("empty-required-input");
+			}
+
+			if (locationFormData.building) {
+				building.value = locationFormData.building.trim();
+			} else {
+				building.classList.add("empty-input");
+			}
+
+			if (locationFormData.room) {
+				room.value = locationFormData.room.trim();
+			} else {
+				room.classList.add("empty-input");
+			}
+
+			if (locationFormData.system_manufacturer) {
+				systemManufacturer.readOnly = true;
+				systemManufacturer.value = locationFormData.system_manufacturer.trim();
+				systemManufacturer.classList.add("readonly-input");
+			} else {
+				systemManufacturer.classList.add("empty-input");
+			}
+
+			if (locationFormData.system_model) {
+				systemModel.readOnly = true;
+				systemModel.value = locationFormData.system_model.trim();
+				systemModel.classList.add("readonly-input");
+			} else {
+				systemModel.classList.add("empty-input");
+			}
+
+			await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
+			if (locationFormData.department_name) {
+				inventoryUpdateDepartmentSelect.value = locationFormData.department_name.trim();
+			} else {
+				inventoryUpdateDepartmentSelect.classList.add("empty-required-input");
+			}
+
+			await populateDomainSelect(inventoryUpdateDomainSelect);
+			if (locationFormData.ad_domain) {
+				inventoryUpdateDomainSelect.value = locationFormData.ad_domain.trim();
+			} else {
+				inventoryUpdateDomainSelect.classList.add("empty-required-input");
+			}
+
+			if (locationFormData.property_custodian) {
+				propertyCustodian.value = locationFormData.property_custodian.trim();
+			} else {
+				propertyCustodian.classList.add("empty-input");
+			}
+
+			if (locationFormData.acquired_date) {
+				const acquiredDateValue = locationFormData.acquired_date ? new Date(locationFormData.acquired_date) : null;
+				if (acquiredDateValue && !isNaN(acquiredDateValue.getTime())) {
+					// Format as YYYY-MM-DD for input[type="date"]
+					const year = acquiredDateValue.getFullYear();
+					const month = String(acquiredDateValue.getMonth() + 1).padStart(2, '0');
+					const day = String(acquiredDateValue.getDate()).padStart(2, '0');
+					const acquiredDateFormatted = `${year}-${month}-${day}`;
+					acquiredDateInput.value = acquiredDateFormatted;
+				}
+			} else {
+				acquiredDateInput.classList.add("empty-input");
+			}
+			
+			if (locationFormData.is_broken === true) {
+				isBroken.value = "true";
+			} else if (locationFormData.is_broken === false) {
+				isBroken.value = "false";
+			} else {
+				isBroken.classList.add("empty-input");
+			}
+
+			if (locationFormData.disk_removed === true) {
+				diskRemoved.value = "true";
+			} else if (locationFormData.disk_removed === false) {
+				diskRemoved.value = "false";
+			} else {
+				diskRemoved.classList.add("empty-input");
+			}
+
+			if (locationFormData.status) {
+				clientStatus.value = locationFormData.status.trim();
+			} else {
+				clientStatus.classList.add("empty-input");
+			}
+
+			if (locationFormData.note) {
+				noteInput.value = locationFormData.note.trim();
+			} else {
+				noteInput.classList.add("empty-input");
+			}
+		} else {
+			await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
+			await populateDomainSelect(inventoryUpdateDomainSelect);
 		}
-		
-		if (locationFormData.tagnumber) {
-			inventoryLookupTagInput.value = locationFormData.tagnumber ? locationFormData.tagnumber.toString().trim() : "";
-			inventoryLookupTagInput.style.backgroundColor = "gainsboro";
-			inventoryLookupTagInput.disabled = true;
-		}
-		
-		if (locationFormData.system_serial) {
-			inventoryLookupSystemSerialInput.value = locationFormData.system_serial ? locationFormData.system_serial.trim() : "";
-			inventoryLookupSystemSerialInput.style.backgroundColor = "gainsboro";
-			inventoryLookupSystemSerialInput.disabled = true;
-		}
-
-    inventoryUpdateLocationInput.value = locationFormData.location ? locationFormData.location.trim() : "";
-
-		building.value = locationFormData.building ? locationFormData.building.trim() : "";
-
-		room.value = locationFormData.room ? locationFormData.room.trim() : "";
-
-		
-		if (locationFormData.system_manufacturer) {
-			systemManufacturer.value = locationFormData.system_manufacturer ? locationFormData.system_manufacturer.trim() : "";
-			systemManufacturer.style.backgroundColor = "gainsboro";
-			systemManufacturer.disabled = true;
-		}
-
-		
-		if (locationFormData.system_model) {
-			systemModel.value = locationFormData.system_model ? locationFormData.system_model.trim() : "";
-			systemModel.style.backgroundColor = "gainsboro";
-			systemModel.disabled = true;
-		}
-
-		await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
-		inventoryUpdateDepartmentSelect.value = locationFormData.department_name ? locationFormData.department_name.trim() : "";
-
-		await populateDomainSelect(inventoryUpdateDomainSelect);
-		inventoryUpdateDomainSelect.value = locationFormData.ad_domain ? locationFormData.ad_domain.trim() : "";
-
-		propertyCustodian.value = locationFormData.property_custodian ? locationFormData.property_custodian.trim() : "";
-
-		const acquiredDateValue = locationFormData.acquired_date ? new Date(locationFormData.acquired_date) : null;
-		if (acquiredDateValue && !isNaN(acquiredDateValue.getTime())) {
-			// Format as YYYY-MM-DD for input[type="date"]
-			const year = acquiredDateValue.getFullYear();
-			const month = String(acquiredDateValue.getMonth() + 1).padStart(2, '0');
-			const day = String(acquiredDateValue.getDate()).padStart(2, '0');
-			const acquiredDateFormatted = `${year}-${month}-${day}`;
-			acquiredDateInput.value = acquiredDateFormatted;
-		}
-		
-		isBroken.value = typeof locationFormData.is_broken === "boolean" ? String(locationFormData.is_broken) : '';
-
-		diskRemoved.value = typeof locationFormData.disk_removed === "boolean" ? String(locationFormData.disk_removed) : '';
-
-    clientStatus.value = locationFormData.status ? locationFormData.status.trim() : "";
-
-    noteInput.value = locationFormData.note ? locationFormData.note.trim() : "";
-  } else {
-		await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
-		await populateDomainSelect(inventoryUpdateDomainSelect);
+		await updateCheckoutStatus();
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		console.error("Error populating location form:", errorMessage);
+	} finally {
+		inventoryUpdateFormSection.style.display = "block";
 	}
-	await updateCheckoutStatus();
 }
 
 async function fetchDepartments(purgeCache: boolean = false): Promise<Array<Department> | []> {

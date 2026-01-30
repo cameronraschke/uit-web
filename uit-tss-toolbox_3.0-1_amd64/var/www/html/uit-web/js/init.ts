@@ -97,18 +97,42 @@ document.addEventListener("visibilitychange", async () => {
 	}
 });
 
-function resetSelectElement(selectElement: HTMLSelectElement, defaultText: string, disabled: boolean = false) {
-	selectElement.innerHTML = '';
-	const defaultOption = document.createElement('option');
-	defaultOption.value = '';
-	defaultOption.textContent = defaultText;
-	selectElement.disabled = disabled;
-	defaultOption.selected = true;
-	selectElement.appendChild(defaultOption);
+function removeCSSClasses(el: HTMLElement) {
+	const currentClasses = Array.from(el.classList);
+	for (const className of currentClasses) {
+		el.classList.remove(className);
+	}
+}
 
+function resetSelectElement(selectElement: HTMLSelectElement, defaultText: string, isDisabled: boolean = false, newCSSClass = "") {
+	selectElement.disabled = true;
+	selectElement.innerHTML = "";
+	removeCSSClasses(selectElement);
+	const defaultOption = document.createElement('option');
+	defaultOption.value = "";
+	defaultOption.textContent = defaultText;
+	selectElement.disabled = isDisabled;
+	defaultOption.selected = true;
+	// defaultOption.hidden = true;
+	selectElement.appendChild(defaultOption);
+	if (newCSSClass && newCSSClass.trim().length > 0) {
+		selectElement.classList.add(newCSSClass);
+	}
 	selectElement.addEventListener('click', () => {
 		defaultOption.disabled = true;
 	});
+}
+
+function resetInputElement(inputElement: HTMLInputElement, placeholderText: string, isReadOnly: boolean = false, newCSSClass: string | undefined) {
+	inputElement.disabled = true;
+	removeCSSClasses(inputElement);
+	inputElement.value = "";
+	inputElement.placeholder = placeholderText;
+	inputElement.readOnly = isReadOnly;
+	inputElement.disabled = false;
+	if (newCSSClass && newCSSClass.trim().length > 0) {
+		inputElement.classList.add(newCSSClass);
+	}
 }
 
 function validateTagInput(tagInput: number): boolean {
