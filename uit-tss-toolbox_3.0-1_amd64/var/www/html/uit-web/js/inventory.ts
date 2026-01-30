@@ -60,6 +60,7 @@ const clientImagesLink = document.getElementById('client_images_link') as HTMLAn
 const inventoryUpdateDomainSelect = document.getElementById('ad_domain') as HTMLSelectElement;
 const inventorySearchDepartmentSelect = document.getElementById('inventory-search-department') as HTMLSelectElement;
 const inventorySearchDomainSelect = document.getElementById('inventory-search-domain') as HTMLSelectElement;
+const inventorySearchStatus = document.getElementById('inventory-search-status') as HTMLSelectElement;
 const csvDownloadButton = document.getElementById('inventory-search-download-button') as HTMLButtonElement;
 const printCheckoutAnchor = document.getElementById('print-checkout-link') as HTMLElement;
 
@@ -89,7 +90,34 @@ const allowedFileExtensions = [".jpg", ".jpeg", ".jfif", ".png"];
 const statusesThatIndicateBroken = ["needs-repair"];
 const statusesThatIndicateCheckout = ["checked-out", "reserved-for-checkout"];
 
-const inputCSSClasses = ["empty-input", "empty-required-input", "changed-input"];
+const allInventoryUpdateFields = [
+	inventoryLookupTagInput,
+	inventoryLookupSystemSerialInput,
+	inventoryUpdateLocationInput,
+	building,
+	room,
+	systemManufacturer,
+	systemModel,
+	inventoryUpdateDepartmentSelect,
+	inventoryUpdateDomainSelect,
+	propertyCustodian,
+	acquiredDateInput,
+	isBroken,
+	diskRemoved,
+	clientStatus,
+	fileInput,
+	noteInput,
+];
+
+const requiredInventoryUpdateFields = [
+	inventoryLookupTagInput,
+	inventoryLookupSystemSerialInput,
+	inventoryUpdateLocationInput,
+	inventoryUpdateDepartmentSelect,
+	inventoryUpdateDomainSelect,
+	clientStatus
+];
+
 
 async function fetchAllLocations(purgeCache: boolean = false): Promise<AllLocations[] | []> {
 	const cached = sessionStorage.getItem("uit_all_locations");
@@ -235,10 +263,7 @@ async function submitInventoryLookup() {
 				inventoryLookupSystemSerialInput.style.backgroundColor = "gainsboro";
 				inventoryLookupSystemSerialInput.readOnly = true;
 			}
-			if (lookupResult.tagnumber && lookupResult.system_serial) {
-				inventoryLookupSystemSerialInput.style.backgroundColor = "aliceblue";
-				inventoryUpdateLocationInput.focus();
-			}
+
 			inventoryLookupFormSubmitButton.disabled = true;
 			inventoryLookupFormSubmitButton.style.cursor = "not-allowed";
 			inventoryLookupFormSubmitButton.style.border = "1px solid gray";
@@ -285,14 +310,16 @@ async function updateCheckoutStatus() {
 function resetInventoryLookupAndUpdateForm() {
 	inventoryLookupForm.reset();
 	inventoryUpdateForm.reset();
-	inventoryLookupTagInput.value = "";
-	inventoryLookupTagInput.style.backgroundColor = "initial";
-	inventoryLookupTagInput.readOnly = false;
-	inventoryLookupTagInput.required = false;
-	inventoryLookupSystemSerialInput.value = "";
-	inventoryLookupSystemSerialInput.style.backgroundColor = "initial";
-	inventoryLookupSystemSerialInput.readOnly = false;
-	inventoryLookupSystemSerialInput.required = false;
+	for (const el of allInventoryUpdateFields) {
+		if (el instanceof HTMLInputElement) {
+			resetInputElement(el, "", false, undefined);
+		}
+		if (el instanceof HTMLSelectElement) {
+			resetSelectElement(el, "", false, undefined);
+		}
+	}
+	inventoryLookupTagInput.placeholder = "Enter Tag Number";
+	inventoryLookupSystemSerialInput.placeholder = "Enter System Serial";
 	inventoryLookupFormSubmitButton.style.cursor = "pointer";
 
 	inventoryLookupFormSubmitButton.style.border = "1px solid black";
@@ -355,83 +382,139 @@ async function getLocationFormData(tag?: number, serial?: string): Promise<Inven
 }
 
 function showInventoryUpdateChanges(): void {
-	inventoryUpdateForm.querySelectorAll("input, select, textarea, file").forEach((el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
+	const inputs = inventoryUpdateForm.querySelectorAll("input, select, textarea");
+
+	inputs.forEach((el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
 		el.dataset.initialValue = el.value;
-		el.addEventListener("change", () => {
-			updatingInventory = false;
-			if (el.value === el.dataset.initialValue) return;
+
+		const handleInputUpdate = () => {
+			if (updatingInventory) return;
+
+			// Check if value matches the initial value
+			if (el.dataset.initialValue === el.value) {
+				el.classList.remove("changed-input");
+				return;
+			}
+
+			// If different, update classes
 			for (const cssClass of inputCSSClasses) {
 				el.classList.remove(cssClass);
 			}
 			el.classList.add("changed-input");
-		});
+		};
+
+		el.oninput = handleInputUpdate;
+		el.onchange = handleInputUpdate;
 	});
 }
-showInventoryUpdateChanges();
 
 async function populateLocationForm(tag?: number, serial?: string): Promise<void> {
+	for (const el of requiredInventoryUpdateFields) {
+		el.required = true;
+	}
 
+	// reset/zero/clear out all fields before processing new data
+	resetInputElement(inventoryLookupTagInput, "Enter Tag Number", false, undefined);
+	if (inventoryLookupTagInput.value) {
+		inventoryLookupTagInput.readOnly = true;
+		inventoryLookupTagInput.value = inventoryLookupTagInput.value.toString().trim();
+		inventoryLookupTagInput.classList.add("readonly-input");
+	} else {
+		inventoryLookupTagInput.classList.add("empty-required-input");
+	}
+
+	resetInputElement(inventoryLookupSystemSerialInput, "Enter System Serial", false, undefined);
+	if (inventoryLookupSystemSerialInput.value) {
+		inventoryLookupSystemSerialInput.readOnly = true;
+		inventoryLookupSystemSerialInput.value = inventoryLookupSystemSerialInput.value.trim();
+		inventoryLookupSystemSerialInput.classList.add("readonly-input");
+	} else {
+		inventoryLookupSystemSerialInput.classList.add("empty-required-input");
+	}
+
+	resetInputElement(inventoryUpdateLocationInput, "Enter Location", false, "empty-required-input");
+
+	resetInputElement(building, "Building", false, "empty-input");
+
+	resetInputElement(room, "Room", false, "empty-input");
+
+	resetInputElement(systemManufacturer, "System Manufacturer", false, "empty-input");
+
+	resetInputElement(systemModel, "System Model", false, "empty-input");
+
+	resetSelectElement(inventoryUpdateDepartmentSelect, "Select Department", false, "empty-required-input");
+	try { 
+		await populateDepartmentSelect(inventoryUpdateDepartmentSelect)
+	} catch(e) {
+		const errorMessage = e instanceof Error ? e.message : String(e);
+		console.error(`Could not fetch all departments: ${errorMessage}`)
+	}
+
+	resetSelectElement(inventoryUpdateDomainSelect, "Select Domain", false, "empty-required-input");
+	try { 
+		await populateDomainSelect(inventoryUpdateDomainSelect);
+	} catch(e) {
+		const errorMessage = e instanceof Error ? e.message : String(e);
+		console.error(`Could not fetch all domains: ${errorMessage}`)
+	}
+
+	resetInputElement(propertyCustodian, "Property Custodian", false, "empty-input");
+
+	resetInputElement(acquiredDateInput, "Acquired Date", false, "empty-input");
+
+	resetSelectElement(isBroken, "Is Broken?", false, "empty-required-input");
+		if (isBroken) {
+		const op1 = document.createElement("option");
+		op1.value = "true";
+		op1.textContent = "Is broken"
+
+		const op2 = document.createElement("option");
+		op2.value = "false";
+		op2.textContent = "Is functional";
+
+		const op3 = document.createElement("option");
+		op3.value = "unknown";
+		op3.textContent = "Unknown";
+
+		isBroken.append(op1);
+		isBroken.append(op2);
+		isBroken.append(op3);
+	}
+
+	resetSelectElement(diskRemoved, "Disk Removed?", false, "empty-input");
+	if (diskRemoved) {
+		const op1 = document.createElement("option");
+		op1.value = "true";
+		op1.textContent = "Yes, disk removed"
+
+		const op2 = document.createElement("option");
+		op2.value = "false";
+		op2.textContent = "No, disk present";
+
+		const op3 = document.createElement("option");
+		op3.value = "unknown";
+		op3.textContent = "Unknown";
+
+		diskRemoved.append(op1);
+		diskRemoved.append(op2);
+		diskRemoved.append(op3);
+	}
+
+	resetSelectElement(clientStatus, "Select Client Status", false, "empty-required-input");
+	try { 
+		await populateStatusSelect(clientStatus);
+	} catch(e) {
+		const errorMessage = e instanceof Error ? e.message : String(e);
+		console.error(`Could not fetch all statuses: ${errorMessage}`)
+	}
+
+	resetInputElement(fileInput, "", false, undefined);
+
+	resetInputElement(noteInput, "Enter Note", false, "empty-input");
+
+	lastUpdateTimeMessage.style.display = "none";
 	try {
 		const locationFormData = await getLocationFormData(tag, serial);
-		showInventoryUpdateChanges();
-
-		// reset/zero/clear out all fields before processing new data
-		resetInputElement(inventoryLookupTagInput, "Enter Tag Number", false, undefined);
-		inventoryLookupTagInput.required = true;
-		if (inventoryLookupTagInput.value) {
-			inventoryLookupTagInput.readOnly = true;
-			inventoryLookupTagInput.value = inventoryLookupTagInput.value.toString().trim();
-			inventoryLookupTagInput.classList.add("readonly-input");
-		} else {
-			inventoryLookupTagInput.focus();
-			inventoryLookupTagInput.classList.add("empty-required-input");
-		}
-
-		resetInputElement(inventoryLookupSystemSerialInput, "Enter System Serial", false, undefined);
-		inventoryLookupSystemSerialInput.required = true;
-		if (inventoryLookupSystemSerialInput.value) {
-			inventoryLookupSystemSerialInput.readOnly = true;
-			inventoryLookupSystemSerialInput.value = inventoryLookupSystemSerialInput.value.trim();
-			inventoryLookupSystemSerialInput.classList.add("readonly-input");
-		} else {
-			inventoryLookupSystemSerialInput.focus();
-			inventoryLookupSystemSerialInput.classList.add("empty-required-input");
-		}
-
-		resetInputElement(inventoryUpdateLocationInput, "Enter Location", false, "empty-required-input");
-
-		resetInputElement(building, "Building", false, "empty-input");
-
-		resetInputElement(room, "Room", false, "empty-input");
-
-		resetInputElement(systemManufacturer, "System Manufacturer", false, "empty-input");
-
-		resetInputElement(systemModel, "System Model", false, "empty-input");
-
-		removeCSSClasses(inventoryUpdateDepartmentSelect);
-		resetSelectElement(inventoryUpdateDepartmentSelect, "Select Department", false, "empty-required-input");
-
-		removeCSSClasses(inventoryUpdateDomainSelect);
-		resetSelectElement(inventoryUpdateDomainSelect, "Select Domain", false, "empty-required-input");
-
-		resetInputElement(propertyCustodian, "Property Custodian", false, "empty-input");
-
-		resetInputElement(acquiredDateInput, "Acquired Date", false, "empty-input");
-
-		removeCSSClasses(isBroken);
-		resetSelectElement(isBroken, "Select Status", false, "empty-required-input");
-
-		removeCSSClasses(diskRemoved);
-		resetSelectElement(diskRemoved, "Is Disk Removed?", false, "empty-input");
-
-		removeCSSClasses(clientStatus);
-		resetSelectElement(clientStatus, "Select Client Status", false, "empty-required-input");
-
-		resetInputElement(fileInput, "", false, undefined);
-
-		resetInputElement(noteInput, "Enter Note", false, "empty-input");
-
-		lastUpdateTimeMessage.style.display = "none";
 		if (locationFormData) {
 			if (locationFormData.last_update_time) {
 				const lastUpdate = new Date(locationFormData.last_update_time);
@@ -442,24 +525,42 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				}
 				lastUpdateTimeMessage.style.display = "block";
 			}
-			
-			// tag and serial populated by function submitInventoryLookup(), no need to repeat here
+		
+			if (locationFormData.tagnumber) {
+				inventoryLookupTagInput.value = locationFormData.tagnumber.toString();
+				inventoryLookupTagInput.classList.remove("empty-required-input");
+				inventoryLookupTagInput.classList.add("readonly-input");
+			} else {
+				inventoryLookupTagInput.classList.add("empty-required-input");
+				inventoryLookupTagInput.focus();
+			}
 
+			if (locationFormData.system_serial) {
+				inventoryLookupSystemSerialInput.value = locationFormData.system_serial.trim();
+				inventoryLookupSystemSerialInput.classList.remove("empty-required-input");
+				inventoryLookupSystemSerialInput.classList.add("readonly-input");
+			} else {
+				inventoryLookupSystemSerialInput.classList.add("empty-required-input");
+				inventoryLookupSystemSerialInput.focus();
+			}
 
 			if (locationFormData.location ) {
 				inventoryUpdateLocationInput.value = locationFormData.location.trim();
+				inventoryUpdateLocationInput.classList.remove("empty-required-input");
 			} else {
 				inventoryUpdateLocationInput.classList.add("empty-required-input");
 			}
 
 			if (locationFormData.building) {
 				building.value = locationFormData.building.trim();
+				building.classList.remove("empty-input");
 			} else {
 				building.classList.add("empty-input");
 			}
 
 			if (locationFormData.room) {
 				room.value = locationFormData.room.trim();
+				room.classList.remove("empty-input");
 			} else {
 				room.classList.add("empty-input");
 			}
@@ -467,6 +568,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			if (locationFormData.system_manufacturer) {
 				systemManufacturer.readOnly = true;
 				systemManufacturer.value = locationFormData.system_manufacturer.trim();
+				systemManufacturer.classList.remove("empty-input");
 				systemManufacturer.classList.add("readonly-input");
 			} else {
 				systemManufacturer.classList.add("empty-input");
@@ -475,27 +577,29 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			if (locationFormData.system_model) {
 				systemModel.readOnly = true;
 				systemModel.value = locationFormData.system_model.trim();
+				systemModel.classList.remove("empty-input");
 				systemModel.classList.add("readonly-input");
 			} else {
 				systemModel.classList.add("empty-input");
 			}
 
-			await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
 			if (locationFormData.department_name) {
 				inventoryUpdateDepartmentSelect.value = locationFormData.department_name.trim();
+				inventoryUpdateDepartmentSelect.classList.remove("empty-required-input");
 			} else {
 				inventoryUpdateDepartmentSelect.classList.add("empty-required-input");
 			}
 
-			await populateDomainSelect(inventoryUpdateDomainSelect);
 			if (locationFormData.ad_domain) {
 				inventoryUpdateDomainSelect.value = locationFormData.ad_domain.trim();
+				inventoryUpdateDomainSelect.classList.remove("empty-required-input");
 			} else {
 				inventoryUpdateDomainSelect.classList.add("empty-required-input");
 			}
 
 			if (locationFormData.property_custodian) {
 				propertyCustodian.value = locationFormData.property_custodian.trim();
+				propertyCustodian.classList.remove("empty-input");
 			} else {
 				propertyCustodian.classList.add("empty-input");
 			}
@@ -509,6 +613,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 					const day = String(acquiredDateValue.getDate()).padStart(2, '0');
 					const acquiredDateFormatted = `${year}-${month}-${day}`;
 					acquiredDateInput.value = acquiredDateFormatted;
+					acquiredDateInput.classList.remove("empty-input");
 				}
 			} else {
 				acquiredDateInput.classList.add("empty-input");
@@ -516,41 +621,46 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			
 			if (locationFormData.is_broken === true) {
 				isBroken.value = "true";
+				isBroken.classList.remove("empty-input");
 			} else if (locationFormData.is_broken === false) {
 				isBroken.value = "false";
+				isBroken.classList.remove("empty-input");
 			} else {
 				isBroken.classList.add("empty-input");
 			}
 
 			if (locationFormData.disk_removed === true) {
 				diskRemoved.value = "true";
+				diskRemoved.classList.remove("empty-input");
 			} else if (locationFormData.disk_removed === false) {
 				diskRemoved.value = "false";
+				diskRemoved.classList.remove("empty-input");
 			} else {
 				diskRemoved.classList.add("empty-input");
 			}
 
 			if (locationFormData.status) {
 				clientStatus.value = locationFormData.status.trim();
+				clientStatus.classList.remove("empty-required-input");
 			} else {
-				clientStatus.classList.add("empty-input");
+				clientStatus.classList.add("empty-required-input");
 			}
 
 			if (locationFormData.note) {
 				noteInput.value = locationFormData.note.trim();
+				noteInput.classList.remove("empty-input");
 			} else {
 				noteInput.classList.add("empty-input");
 			}
-		} else {
-			await populateDepartmentSelect(inventoryUpdateDepartmentSelect);
-			await populateDomainSelect(inventoryUpdateDomainSelect);
 		}
 		await updateCheckoutStatus();
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		console.error("Error populating location form:", errorMessage);
 	} finally {
+		showInventoryUpdateChanges();
 		inventoryUpdateFormSection.style.display = "block";
+		inventoryUpdateLocationInput.focus();
 	}
 }
 
@@ -586,11 +696,17 @@ async function initializeInventoryPage() {
 	initializeSearch();
 
 	try {
-		await populateManufacturerSelect(true);
-		await populateModelSelect(true);
-		await populateDomainSelect(inventorySearchDomainSelect, true);
-		await populateDepartmentSelect(inventorySearchDepartmentSelect, true);
-		await fetchFilteredInventoryData();
+		const tasks = [
+			populateManufacturerSelect(true),
+			populateModelSelect(true),
+			populateDomainSelect(inventorySearchDomainSelect, true),
+			populateDepartmentSelect(inventorySearchDepartmentSelect, true),
+			populateStatusSelect(inventorySearchStatus),
+			fetchFilteredInventoryData()
+		];
+		await Promise.all(tasks);
+
+		// Check URL parameters for auto lookup
 		const urlParams = new URLSearchParams(window.location.search);
 		const updateParam: string | null = urlParams.get('update');
 		const tagnumberParam: string | null = urlParams.get('tagnumber');
@@ -598,8 +714,8 @@ async function initializeInventoryPage() {
 			inventoryLookupTagInput.value = tagnumberParam;
 			await submitInventoryLookup();
 		}
-	} catch (error) {
-		const errorMessage = error instanceof Error ? error.message : String(error);
+	} catch (e) {
+		const errorMessage = e instanceof Error ? e.message : String(e);
 		console.error("Error initializing inventory page:", errorMessage);
 	}
 }

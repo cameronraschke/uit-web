@@ -38,26 +38,6 @@
 	--changed-input-border-color: orange;
 }
 
-.empty-input {
-	background-color: var(--empty-input-color);
-	border: var(--input-border-width) solid var(--empty-input-border-color);
-}
-
-.changed-input {
-	background-color: var(--changed-input-color);
-	border: var(--input-border-width) solid var(--changed-input-border-color);
-}
-
-.empty-required-input {
-	background-color: var(--empty-required-input-color) !important;
-	border: var(--input-border-width) solid var(--empty-required-input-border-color) !important;
-}
-
-.readonly-input {
-	background-color: var(--bg-color-darker) !important;
-	border: var(--border-width) solid var(--default-border-color) !important;
-}
-
 body {
   font-family: var(--font-family);
 	font-size: var(--font-size);
@@ -150,6 +130,35 @@ input[type="file"] {
 	transition: 
 		box-shadow 100ms ease
 	;
+}
+
+/* Reinforce state classes with higher specificity so they beat the generic input styles above */
+input.changed-input,
+select.changed-input,
+textarea.changed-input {
+	background-color: var(--changed-input-color);
+	border: var(--input-border-width) solid var(--changed-input-border-color);
+}
+
+input.empty-input,
+select.empty-input,
+textarea.empty-input {
+	background-color: var(--empty-input-color);
+	border: var(--input-border-width) solid var(--empty-input-border-color);
+}
+
+input.empty-required-input,
+select.empty-required-input,
+textarea.empty-required-input {
+	background-color: var(--empty-required-input-color) !important;
+	border: var(--input-border-width) solid var(--empty-required-input-border-color) !important;
+}
+
+input.readonly-input,
+select.readonly-input,
+textarea.readonly-input {
+	background-color: var(--bg-color-darker) !important;
+	border: var(--border-width) solid var(--default-border-color) !important;
 }
 
 .text-search:focus, input:not(.text-search):focus, select:focus, textarea:focus, button:focus {

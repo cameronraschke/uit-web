@@ -263,3 +263,9 @@ type AllLocations struct {
 	Location          *string    `json:"location"`
 	LocationFormatted *string    `json:"location_formatted"`
 }
+
+type ClientStatus struct {
+	Status          *string `json:"status"`
+	StatusFormatted *string `json:"status_formatted"`
+	SortOrder       *int64  `json:"status_sort_order"`
+}

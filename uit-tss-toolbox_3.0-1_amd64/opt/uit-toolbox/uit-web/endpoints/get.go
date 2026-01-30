@@ -999,3 +999,24 @@ func GetAllLocations(w http.ResponseWriter, req *http.Request) {
 	}
 	middleware.WriteJson(w, http.StatusOK, allLocations)
 }
+
+func GetAllStatuses(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx)
+	db := config.GetDatabaseConn()
+	if db == nil {
+		log.HTTPWarning(req, "No database connection available in GetAllStatuses")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	repo := database.NewRepo(db)
+	allStatuses, err := repo.GetAllStatuses(ctx)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.HTTPWarning(req, "Query error in GetAllStatuses: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+	}
+	middleware.WriteJson(w, http.StatusOK, allStatuses)
+}

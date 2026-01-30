@@ -19,6 +19,17 @@ type ManufacturerAndModelsCache = {
 	manufacturers_and_models: ManufacturersAndModels[];
 };
 
+type Status = {
+	status: string;
+	status_formatted: string;
+	sort_order: number;
+};
+
+type StatusCache = {
+	timestamp: number;
+	statuses: Status[];
+}
+
 type FilterParams = {
 	inputElement: HTMLSelectElement;
 	resetElement: HTMLElement;
@@ -37,7 +48,6 @@ const filterModel = document.getElementById('inventory-search-model') as HTMLSel
 const filterModelReset = document.getElementById('inventory-search-model-reset') as HTMLElement;
 const filterDomain = document.getElementById('inventory-search-domain') as HTMLSelectElement;
 const filterDomainReset = document.getElementById('inventory-search-domain-reset') as HTMLElement;
-const filterStatus = document.getElementById('inventory-search-status') as HTMLSelectElement;
 const filterStatusReset = document.getElementById('inventory-search-status-reset') as HTMLElement;
 const filterBroken = document.getElementById('inventory-search-broken') as HTMLSelectElement;
 const filterBrokenReset = document.getElementById('inventory-search-broken-reset') as HTMLElement;
@@ -50,7 +60,7 @@ const urlSearchParams: FilterParams[] = [
 	{ inputElement: filterManufacturer, resetElement: filterManufacturerReset, paramString: 'system_manufacturer' },
 	{ inputElement: filterModel, resetElement: filterModelReset, paramString: 'system_model' },
 	{ inputElement: filterDomain, resetElement: filterDomainReset, paramString: 'ad_domain' },
-	{ inputElement: filterStatus, resetElement: filterStatusReset, paramString: 'status' },
+	{ inputElement: inventorySearchStatus, resetElement: filterStatusReset, paramString: 'status' },
 	{ inputElement: filterBroken, resetElement: filterBrokenReset, paramString: 'is_broken' },
 	{ inputElement: filterHasImages, resetElement: filterHasImagesReset, paramString: 'has_images' }
 ];
@@ -65,7 +75,7 @@ function initializeSearch() {
 	createFilterResetHandler(filterManufacturer, filterManufacturerReset);
 	createFilterResetHandler(filterModel, filterModelReset);
 	createFilterResetHandler(filterDomain, filterDomainReset);
-	createFilterResetHandler(filterStatus, filterStatusReset);
+	createFilterResetHandler(inventorySearchStatus, filterStatusReset);
 	createFilterResetHandler(filterBroken, filterBrokenReset);
 	createFilterResetHandler(filterHasImages, filterHasImagesReset);
 
@@ -345,12 +355,12 @@ async function fetchDomains(purgeCache: boolean = false): Promise<Array<Domain> 
 	}
 }
 
-async function populateDomainSelect(elem: HTMLSelectElement, purgeCache: boolean = false) {
-	if (!elem) return;
+async function populateDomainSelect(el: HTMLSelectElement, purgeCache: boolean = false) {
+	if (!el) return;
 
-	const initialValue = elem.value;
+	const initialValue = el.value;
 
-	elem.disabled = true;
+	el.disabled = true;
 
 	try {
 		const domainData: Array<Domain> = await fetchDomains(purgeCache);
@@ -362,29 +372,29 @@ async function populateDomainSelect(elem: HTMLSelectElement, purgeCache: boolean
 			return a.domain_sort_order - b.domain_sort_order;
 		});
 
-		resetSelectElement(elem, 'Domain');
+		resetSelectElement(el, 'Domain', false, undefined);
 
 		for (const domain of domainData) {
 			const option = document.createElement('option');
 			option.value = domain.domain_name;
 			option.textContent = domain.domain_name_formatted || domain.domain_name;
-			elem.appendChild(option);
+			el.appendChild(option);
 		}
 
-		elem.value = (initialValue && domainData.some(item => item.domain_name === initialValue)) ? initialValue : '';
+		el.value = (initialValue && domainData.some(item => item.domain_name === initialValue)) ? initialValue : '';
 	} catch (error) {
 		console.error('Error fetching domains:', error);
 	} finally {
-		elem.disabled = false;
+		el.disabled = false;
 	}
 }
 
-async function populateDepartmentSelect(elem: HTMLSelectElement, purgeCache: boolean = false) {
-	if (!elem) return;
+async function populateDepartmentSelect(el: HTMLSelectElement, purgeCache: boolean = false) {
+	if (!el) return;
 
-	const initialValue = elem.value;
+	const initialValue = el.value;
 
-	elem.disabled = true;
+	el.disabled = true;
 
 	try {
 		const departmentsData: Array<Department> = await fetchDepartments(purgeCache);
@@ -396,20 +406,82 @@ async function populateDepartmentSelect(elem: HTMLSelectElement, purgeCache: boo
 			return a.department_sort_order - b.department_sort_order;
 		});
 
-		resetSelectElement(elem, 'Department');
+		resetSelectElement(el, 'Department', false, undefined);
 
 
 		for (const department of departmentsData) {
 			const option = document.createElement('option');
 			option.value = department.department_name;
 			option.textContent = department.department_name_formatted || department.department_name;
-			elem.appendChild(option);
+			el.appendChild(option);
 		}
-		elem.value = (initialValue && departmentsData.some(item => item.department_name === initialValue)) ? initialValue : '';
+		el.value = (initialValue && departmentsData.some(item => item.department_name === initialValue)) ? initialValue : '';
 	} catch (error) {
 		console.error('Error fetching departments:', error);
 	} finally {
-		elem.disabled = false;
+		el.disabled = false;
+	}
+}
+
+async function fetchStatuses(purgeCache: boolean = false): Promise<Array<Status> | []> {
+	const cached = sessionStorage.getItem("uit_statuses");
+
+	try {
+		if (cached && !purgeCache) {
+			const cacheEntry: StatusCache = JSON.parse(cached);
+			if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.statuses)) {
+				console.log("Loaded statuses from cache");
+				return cacheEntry.statuses;
+			}
+		}
+		const data: Array<Status> = await fetchData('/api/all_statuses');
+		if (!data || !Array.isArray(data) || data.length === 0) {
+			throw new Error('No data returned from /api/all_statuses');
+		}
+		const cacheEntry: StatusCache = {
+			timestamp: Date.now(),
+			statuses: data
+		};
+		sessionStorage.setItem("uit_statuses", JSON.stringify(cacheEntry));
+		console.log("Cached statuses data");
+		return data;
+	} catch (error) {
+		console.error('Error fetching statuses:', error);
+		return [];
+	}
+}
+
+async function populateStatusSelect(el: HTMLSelectElement, purgeCache: boolean = false) {
+	if (!el) return;
+
+	const initialValue = el.value;
+
+	el.disabled = true;
+
+	try {
+		const statusData: Array<Status> = await fetchStatuses(purgeCache);
+		if (!statusData || !Array.isArray(statusData) || statusData.length === 0) {
+			throw new Error('No data returned from /api/statuses');
+		}
+
+		statusData.sort((a, b) => {
+			return a.sort_order - b.sort_order;
+		});
+
+		resetSelectElement(el, 'Status', false, undefined);
+
+
+		for (const status of statusData) {
+			const option = document.createElement('option');
+			option.value = status.status;
+			option.textContent = status.status_formatted || status.status;
+			el.appendChild(option);
+		}
+		el.value = (initialValue && statusData.some(item => item.status === initialValue)) ? initialValue : '';
+	} catch (error) {
+		console.error('Error fetching statuses:', error);
+	} finally {
+		el.disabled = false;
 	}
 }
 

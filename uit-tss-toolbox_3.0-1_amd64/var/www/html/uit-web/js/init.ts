@@ -12,6 +12,8 @@ type AuthStatusResponse = {
 	time: string | null;
 };
 
+const inputCSSClasses = ["empty-input", "empty-required-input", "changed-input", "readonly-input"];
+
 async function checkAuthStatus(): Promise<boolean> {
 	// server should auto redirect, but only on page refresh
 	// this function redirects w/o needing a refresh
@@ -97,8 +99,14 @@ document.addEventListener("visibilitychange", async () => {
 	}
 });
 
-function removeCSSClasses(el: HTMLElement) {
+function removeCSSClasses(el: HTMLElement, ...classesToRemove: string[]) {
 	const currentClasses = Array.from(el.classList);
+	if (classesToRemove && classesToRemove.length > 0) {
+		for (const className of classesToRemove) {
+			el.classList.remove(className);
+		}
+		return;
+	}
 	for (const className of currentClasses) {
 		el.classList.remove(className);
 	}
@@ -107,7 +115,7 @@ function removeCSSClasses(el: HTMLElement) {
 function resetSelectElement(selectElement: HTMLSelectElement, defaultText: string, isDisabled: boolean = false, newCSSClass = "") {
 	selectElement.disabled = true;
 	selectElement.innerHTML = "";
-	removeCSSClasses(selectElement);
+	removeCSSClasses(selectElement, ...inputCSSClasses);
 	const defaultOption = document.createElement('option');
 	defaultOption.value = "";
 	defaultOption.textContent = defaultText;
@@ -125,7 +133,7 @@ function resetSelectElement(selectElement: HTMLSelectElement, defaultText: strin
 
 function resetInputElement(inputElement: HTMLInputElement, placeholderText: string, isReadOnly: boolean = false, newCSSClass: string | undefined) {
 	inputElement.disabled = true;
-	removeCSSClasses(inputElement);
+	removeCSSClasses(inputElement, ...inputCSSClasses);
 	inputElement.value = "";
 	inputElement.placeholder = placeholderText;
 	inputElement.readOnly = isReadOnly;

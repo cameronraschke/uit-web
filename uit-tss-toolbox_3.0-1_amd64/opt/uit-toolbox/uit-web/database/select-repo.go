@@ -881,3 +881,29 @@ func (repo *Repo) GetAllLocations(ctx context.Context) ([]AllLocations, error) {
 	}
 	return allLocations, nil
 }
+
+func (repo *Repo) GetAllStatuses(ctx context.Context) ([]ClientStatus, error) {
+	const sqlQuery = `SELECT status, status_formatted, sort_order FROM static_client_statuses ORDER BY sort_order;`
+
+	var allStatuses []ClientStatus
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var status ClientStatus
+		if err := rows.Scan(
+			&status.Status,
+			&status.StatusFormatted,
+			&status.SortOrder,
+		); err != nil {
+			return nil, err
+		}
+		allStatuses = append(allStatuses, status)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return allStatuses, nil
+}
