@@ -48,6 +48,7 @@ const filterModel = document.getElementById('inventory-search-model') as HTMLSel
 const filterModelReset = document.getElementById('inventory-search-model-reset') as HTMLElement;
 const filterDomain = document.getElementById('inventory-search-domain') as HTMLSelectElement;
 const filterDomainReset = document.getElementById('inventory-search-domain-reset') as HTMLElement;
+const filterStatus = document.getElementById('inventory-search-status') as HTMLSelectElement;
 const filterStatusReset = document.getElementById('inventory-search-status-reset') as HTMLElement;
 const filterBroken = document.getElementById('inventory-search-broken') as HTMLSelectElement;
 const filterBrokenReset = document.getElementById('inventory-search-broken-reset') as HTMLElement;
@@ -60,7 +61,7 @@ const urlSearchParams: FilterParams[] = [
 	{ inputElement: filterManufacturer, resetElement: filterManufacturerReset, paramString: 'system_manufacturer' },
 	{ inputElement: filterModel, resetElement: filterModelReset, paramString: 'system_model' },
 	{ inputElement: filterDomain, resetElement: filterDomainReset, paramString: 'ad_domain' },
-	{ inputElement: inventorySearchStatus, resetElement: filterStatusReset, paramString: 'status' },
+	{ inputElement: filterStatus, resetElement: filterStatusReset, paramString: 'status' },
 	{ inputElement: filterBroken, resetElement: filterBrokenReset, paramString: 'is_broken' },
 	{ inputElement: filterHasImages, resetElement: filterHasImagesReset, paramString: 'has_images' }
 ];
@@ -75,7 +76,7 @@ function initializeSearch() {
 	createFilterResetHandler(filterManufacturer, filterManufacturerReset);
 	createFilterResetHandler(filterModel, filterModelReset);
 	createFilterResetHandler(filterDomain, filterDomainReset);
-	createFilterResetHandler(inventorySearchStatus, filterStatusReset);
+	createFilterResetHandler(filterStatus, filterStatusReset);
 	createFilterResetHandler(filterBroken, filterBrokenReset);
 	createFilterResetHandler(filterHasImages, filterHasImagesReset);
 
