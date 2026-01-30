@@ -89,7 +89,7 @@ func (repo *Repo) GetDomains(ctx context.Context) (*[]Domain, error) {
 	return &domains, nil
 }
 
-func (repo *Repo) GetStatuses(ctx context.Context) (map[string]string, error) {
+func (repo *Repo) GetStatusesMap(ctx context.Context) (map[string]string, error) {
 	const sqlQuery = `SELECT status, status_formatted FROM static_client_statuses ORDER BY sort_order;`
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {

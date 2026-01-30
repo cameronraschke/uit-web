@@ -265,7 +265,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			}
 
 			if slices.Contains(endpointData.Requires, "statuses") {
-				statuses, err := db.GetStatuses(ctx)
+				statuses, err := db.GetStatusesMap(ctx)
 				if err != nil {
 					log.HTTPError(req, "Cannot get status list from database: "+err.Error()+"")
 					middleware.WriteJsonError(w, http.StatusInternalServerError)
