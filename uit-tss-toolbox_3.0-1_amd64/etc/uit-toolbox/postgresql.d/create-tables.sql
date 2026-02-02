@@ -472,6 +472,7 @@ INSERT INTO static_note_info (note_type, note_type_readable, sort_order) VALUES
 
 CREATE TABLE IF NOT EXISTS checkout_log (
 	log_entry_time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP PRIMARY KEY,
+	transaction_uuid UUID DEFAULT NULL,
 	tagnumber INTEGER NOT NULL,
 	customer_name VARCHAR(48) DEFAULT NULL,
 	checkout_bool BOOLEAN DEFAULT FALSE,

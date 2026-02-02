@@ -19,6 +19,7 @@ type InventoryForm = {
 	disk_removed: boolean | null;
 	last_hardware_check: string | null;
 	status: string | null;
+	checkout_bool: boolean | null;
 	checkout_date: string | null;
 	return_date: string | null;
 	note: string | null;

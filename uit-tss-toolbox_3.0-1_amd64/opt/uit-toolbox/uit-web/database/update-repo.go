@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func (repo *Repo) InsertNewNote(ctx context.Context, time time.Time, noteType, note string) error {
@@ -37,8 +39,14 @@ func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, inventoryUpdate
 		}
 	}()
 
+	transactionUUID, err := uuid.NewUUID()
+	if err != nil {
+		return fmt.Errorf("error generating transaction UUID in InsertInventoryUpdateForm: %w", err)
+	}
+
 	const locationsSql = `INSERT INTO locations 
 		(time, 
+		transaction_uuid,
 		tagnumber, 
 		system_serial, 
 		location, 
@@ -55,10 +63,11 @@ func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, inventoryUpdate
 		client_status,
 		note) 
 		VALUES 
-	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`
+	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);`
 
 	var locationsResult sql.Result
 	locationsResult, err = tx.ExecContext(ctx, locationsSql,
+		transactionUUID,
 		toNullInt64(inventoryUpdateForm.Tagnumber),
 		toNullString(inventoryUpdateForm.SystemSerial),
 		toNullString(inventoryUpdateForm.Location),
@@ -86,16 +95,20 @@ func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, inventoryUpdate
 		return fmt.Errorf("During locations update, %d rows were affected on insert (InsertInventoryUpdateForm)", locationRowsAffected)
 	}
 
+	var hardwareDataResult sql.Result
 	const hardwareDataSql = `INSERT INTO hardware_data
-		(time, system_manufacturer, system_model) 
-		VALUES (CURRENT_TIMESTAMP, $1, $2)
+		(time, transaction_uuid, tagnumber, system_manufacturer, system_model) 
+		VALUES (CURRENT_TIMESTAMP, $1, $2, $3, $4)
 		ON CONFLICT (tagnumber)
 		DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
-			system_manufacturer = $1,
-			system_model = $2;`
-	var hardwareDataResult sql.Result
+			transaction_uuid = $1,
+			tagnumber = $2,
+			system_manufacturer = $3,
+			system_model = $4;`
 	hardwareDataResult, err = tx.ExecContext(ctx, hardwareDataSql,
+		transactionUUID,
+		toNullInt64(inventoryUpdateForm.Tagnumber),
 		toNullString(inventoryUpdateForm.SystemManufacturer),
 		toNullString(inventoryUpdateForm.SystemModel),
 	)
@@ -108,6 +121,30 @@ func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, inventoryUpdate
 	}
 	if hardwareDataRowsAffected != 1 {
 		return fmt.Errorf("During locations update, %d rows were affected on insert (InsertInventoryUpdateForm)", hardwareDataRowsAffected)
+	}
+
+	var checkoutLogResult sql.Result
+	const checkoutSql = `INSERT INTO checkout_log
+		(time, transaction_uuid, tagnumber, checkout_date, return_date, checkout_bool)
+		VALUES (CURRENT_TIMESTAMP, $1, $2, $3, $4, $5);`
+
+	checkoutLogResult, err = tx.ExecContext(ctx, checkoutSql,
+		transactionUUID,
+		toNullInt64(inventoryUpdateForm.Tagnumber),
+		toNullBool(inventoryUpdateForm.CheckoutBool),
+		toNullTime(inventoryUpdateForm.CheckoutDate),
+		toNullTime(inventoryUpdateForm.ReturnDate),
+	)
+	if err != nil {
+		return err
+	}
+
+	checkoutLogRowsAffected, rowsAffectedErr := checkoutLogResult.RowsAffected()
+	if rowsAffectedErr != nil {
+		return fmt.Errorf("Error getting number of rows affected on checkout_log table insert (InsertInventoryUpdateForm): %s", err.Error())
+	}
+	if checkoutLogRowsAffected != 1 {
+		return fmt.Errorf("During checkout_log update, %d rows were affected on insert (InsertInventoryUpdateForm)", checkoutLogRowsAffected)
 	}
 
 	return nil

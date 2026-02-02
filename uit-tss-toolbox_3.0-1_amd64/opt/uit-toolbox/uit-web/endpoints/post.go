@@ -326,88 +326,39 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 	*inventoryUpdate.Location = strings.TrimSpace(*inventoryUpdate.Location)
 
-	// Broken (required, bool)
-	if inventoryUpdate.Broken == nil {
-		log.HTTPInfo(req, "No broken bool value provided for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-
-	// Disk removed (optional, bool)
-	if inventoryUpdate.DiskRemoved == nil {
-		log.HTTPInfo(req, "No disk removed bool value provided for inventory update")
-	}
-
-	// Department (required, min 1 char, max 64 chars, printable ASCII only)
-	if inventoryUpdate.Department == nil {
-		log.HTTPWarning(req, "No department provided for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Department)) < 1 || utf8.RuneCountInString(*inventoryUpdate.Department) > 64 {
-		log.HTTPWarning(req, "Invalid department length for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.Department) {
-		log.HTTPWarning(req, "Non-printable ASCII characters in department field for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	*inventoryUpdate.Department = strings.TrimSpace(*inventoryUpdate.Department)
-
-	// Domain (required, min 1 char, max 64 chars)
-	if inventoryUpdate.Domain == nil {
-		log.HTTPWarning(req, "No domain provided for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Domain)) < 1 || utf8.RuneCountInString(*inventoryUpdate.Domain) > 64 {
-		log.HTTPWarning(req, "Invalid domain length for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.Domain) {
-		log.HTTPWarning(req, "Non-printable ASCII characters in domain field for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	*inventoryUpdate.Domain = strings.TrimSpace(*inventoryUpdate.Domain)
-
-	// Note (optional, min 1, max 512 UTF-8 chars)
-	if inventoryUpdate.Note != nil && utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Note)) > 1 {
-		if utf8.RuneCountInString(*inventoryUpdate.Note) > 512 {
-			log.HTTPWarning(req, "Invalid note length for inventory update")
+	// Building (optional, min 1 char, max 64 Unicode chars)
+	if inventoryUpdate.Building != nil {
+		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Building)) < 1 || utf8.RuneCountInString(*inventoryUpdate.Building) > 64 {
+			log.HTTPWarning(req, "Invalid building length for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
-		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.Note) {
-			log.HTTPWarning(req, "Non-printable characters in note field for inventory update")
+		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.Building) {
+			log.HTTPWarning(req, "Invalid UTF-8 in building field for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
-		*inventoryUpdate.Note = strings.TrimSpace(*inventoryUpdate.Note)
+		*inventoryUpdate.Building = strings.TrimSpace(*inventoryUpdate.Building)
 	} else {
-		log.HTTPInfo(req, "No note provided for inventory update")
+		log.HTTPInfo(req, "No building provided for inventory update")
 	}
 
-	// Status (required, min 1, max 24, ASCII printable chars only)
-	if inventoryUpdate.ClientStatus == nil {
-		log.HTTPWarning(req, "No status provided for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
+	// Room (optional, min 1 char, max 64 Unicode chars)
+	if inventoryUpdate.Room != nil {
+		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Room)) < 1 || utf8.RuneCountInString(*inventoryUpdate.Room) > 64 {
+			log.HTTPWarning(req, "Invalid room length for inventory update")
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.Room) {
+			log.HTTPWarning(req, "Invalid UTF-8 in room field for inventory update")
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		*inventoryUpdate.Room = strings.TrimSpace(*inventoryUpdate.Room)
+	} else {
+		log.HTTPInfo(req, "No room provided for inventory update")
 	}
-	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.ClientStatus)) < 1 || utf8.RuneCountInString(*inventoryUpdate.ClientStatus) > 24 {
-		log.HTTPWarning(req, "Invalid status length for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.ClientStatus) {
-		log.HTTPWarning(req, "Non-printable ASCII characters in status field for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	*inventoryUpdate.ClientStatus = strings.TrimSpace(*inventoryUpdate.ClientStatus)
 
 	// System manufacturer (optional, min 1 char, max 24, Unicode chars)
 	if inventoryUpdate.SystemManufacturer != nil {
@@ -443,12 +394,163 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		log.HTTPInfo(req, "No system model provided for inventory update")
 	}
 
-	// acquired date, optional, process as UTC
+	// Organization (required, min 1 char, max 64 chars, printable ASCII only)
+	if inventoryUpdate.Organization == nil {
+		log.HTTPWarning(req, "No organization_name provided for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Organization)) < 1 || utf8.RuneCountInString(*inventoryUpdate.Organization) > 64 {
+		log.HTTPWarning(req, "Invalid organization_name length for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.Organization) {
+		log.HTTPWarning(req, "Non-printable ASCII characters in organization_name field for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	*inventoryUpdate.Organization = strings.TrimSpace(*inventoryUpdate.Organization)
+
+	// Department (required, min 1 char, max 64 chars, printable ASCII only)
+	if inventoryUpdate.Department == nil {
+		log.HTTPWarning(req, "No department_name provided for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Department)) < 1 || utf8.RuneCountInString(*inventoryUpdate.Department) > 64 {
+		log.HTTPWarning(req, "Invalid department_name length for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.Department) {
+		log.HTTPWarning(req, "Non-printable ASCII characters in department_name field for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	*inventoryUpdate.Department = strings.TrimSpace(*inventoryUpdate.Department)
+
+	// Domain (required, min 1 char, max 64 chars)
+	if inventoryUpdate.Domain == nil {
+		log.HTTPWarning(req, "No domain provided for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Domain)) < 1 || utf8.RuneCountInString(*inventoryUpdate.Domain) > 64 {
+		log.HTTPWarning(req, "Invalid domain length for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.Domain) {
+		log.HTTPWarning(req, "Non-printable ASCII characters in domain field for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	*inventoryUpdate.Domain = strings.TrimSpace(*inventoryUpdate.Domain)
+
+	// Property custodian (optional, min 1 char, max 64 Unicode chars)
+	if inventoryUpdate.PropertyCustodian != nil {
+		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.PropertyCustodian)) < 1 || utf8.RuneCountInString(*inventoryUpdate.PropertyCustodian) > 64 {
+			log.HTTPWarning(req, "Invalid property custodian length for inventory update")
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.PropertyCustodian) {
+			log.HTTPWarning(req, "Non-printable Unicode characters in property custodian field for inventory update")
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		*inventoryUpdate.PropertyCustodian = strings.TrimSpace(*inventoryUpdate.PropertyCustodian)
+	}
+
+	// Acquired date, optional, process as UTC
 	if inventoryUpdate.AcquiredDate != nil {
 		acquiredDateUTC := inventoryUpdate.AcquiredDate.UTC()
 		inventoryUpdate.AcquiredDate = &acquiredDateUTC
 	} else {
 		log.HTTPInfo(req, "No acquired date provided for inventory update")
+	}
+
+	// Retired date, optional, process as UTC
+	if inventoryUpdate.RetiredDate != nil {
+		retiredDateUTC := inventoryUpdate.RetiredDate.UTC()
+		inventoryUpdate.RetiredDate = &retiredDateUTC
+	} else {
+		log.HTTPInfo(req, "No retired date provided for inventory update")
+	}
+
+	// Broken (optional, bool)
+	if inventoryUpdate.Broken == nil {
+		log.HTTPInfo(req, "No is_broken bool value provided for inventory update")
+	}
+
+	// Disk removed (optional, bool)
+	if inventoryUpdate.DiskRemoved == nil {
+		log.HTTPInfo(req, "No disk_removed bool value provided for inventory update")
+	}
+
+	// Last hardware check (optional, process as UTC)
+	if inventoryUpdate.LastHardwareCheck != nil {
+		lastHardwareCheckUTC := inventoryUpdate.LastHardwareCheck.UTC()
+		inventoryUpdate.LastHardwareCheck = &lastHardwareCheckUTC
+	} else {
+		log.HTTPInfo(req, "No last_hardware_check date provided for inventory update")
+	}
+
+	// Status (required, min 1, max 24, ASCII printable chars only)
+	if inventoryUpdate.ClientStatus == nil {
+		log.HTTPWarning(req, "No status provided for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.ClientStatus)) < 1 || utf8.RuneCountInString(*inventoryUpdate.ClientStatus) > 24 {
+		log.HTTPWarning(req, "Invalid status length for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.ClientStatus) {
+		log.HTTPWarning(req, "Non-printable ASCII characters in status field for inventory update")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	*inventoryUpdate.ClientStatus = strings.TrimSpace(*inventoryUpdate.ClientStatus)
+
+	// Checkout bool (optional, bool)
+	if inventoryUpdate.CheckoutBool == nil {
+		log.HTTPInfo(req, "No is_checked_out bool value provided for inventory update")
+	}
+
+	// Checkout date (optional, process as UTC)
+	if inventoryUpdate.CheckoutDate != nil {
+		checkoutDateUTC := inventoryUpdate.CheckoutDate.UTC()
+		inventoryUpdate.CheckoutDate = &checkoutDateUTC
+	} else {
+		log.HTTPInfo(req, "No checkout_date provided for inventory update")
+	}
+
+	// Return date (optional, process as UTC)
+	if inventoryUpdate.ReturnDate != nil {
+		returnDateUTC := inventoryUpdate.ReturnDate.UTC()
+		inventoryUpdate.ReturnDate = &returnDateUTC
+	} else {
+		log.HTTPInfo(req, "No return_date provided for inventory update")
+	}
+
+	// Note (optional, min 1, max 512 UTF-8 chars)
+	if inventoryUpdate.Note != nil && utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Note)) > 1 {
+		if utf8.RuneCountInString(*inventoryUpdate.Note) > 512 {
+			log.HTTPWarning(req, "Invalid note length for inventory update")
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.Note) {
+			log.HTTPWarning(req, "Non-printable characters in note field for inventory update")
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		*inventoryUpdate.Note = strings.TrimSpace(*inventoryUpdate.Note)
+	} else {
+		log.HTTPInfo(req, "No note provided for inventory update")
 	}
 
 	// Other part of form:

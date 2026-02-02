@@ -86,6 +86,7 @@ type InventoryUpdateForm struct {
 	DiskRemoved        *bool      `json:"disk_removed"`
 	LastHardwareCheck  *time.Time `json:"last_hardware_check"`
 	ClientStatus       *string    `json:"status"`
+	CheckoutBool       *bool      `json:"checkout_bool"`
 	CheckoutDate       *time.Time `json:"checkout_date"`
 	ReturnDate         *time.Time `json:"return_date"`
 	Note               *string    `json:"note"`
