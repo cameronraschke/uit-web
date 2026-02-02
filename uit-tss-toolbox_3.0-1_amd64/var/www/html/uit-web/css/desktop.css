@@ -72,8 +72,8 @@ img {
 label {
   display: inline-block;
   text-align: left;
-  margin-bottom: 0.5rem;
   margin-top: 0.7rem;
+	font-size: medium;
 }
 
 button {
@@ -259,7 +259,7 @@ td {
   justify-content: space-evenly;
 	align-items: center;
   align-content: space-between;
-	gap: 1rem;
+	gap: 0px;
 	margin: auto;
   overflow-x: auto;
   overflow-y: auto;
@@ -290,7 +290,10 @@ td {
 }
 
 .flex-container.horizontal small, .flex-container.horizontal a, .flex-container.horizontal input, .flex-container.horizontal select, .flex-container.horizontal button {
-	margin: var(--horizontal-element-margin);
+	margin-top: var(--horizontal-element-margin);
+	margin-bottom: var(--horizontal-element-margin);
+	margin-right: var(--horizontal-element-margin);
+	margin-left: 0px;
 }
 
 .flex-container.form-buttons {
@@ -325,7 +328,7 @@ td {
 	top:0;
 	z-index: 1000;
 	box-shadow: 0 4px 6px var(--shadow-color);
-	gap: 0rem;
+	gap: 0px;
 	border: 1px solid var(--shadow-color);
 	border-radius: var(--border-radius);
 	background-color: var(--bg-color);
@@ -419,7 +422,7 @@ td {
 }
 
 .required-field::after {
-  content: " *";
+  content: "*";
   color: var(--error-color);
 }
 
@@ -427,8 +430,7 @@ td {
   display: grid;
   word-wrap: break-word;
   border-collapse: collapse;
-  row-gap: 0px;
-  column-gap: 0px;
+  gap: 0px;
   justify-content: start;
 	align-content: center;
 }

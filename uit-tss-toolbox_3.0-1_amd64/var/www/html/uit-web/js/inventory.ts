@@ -63,6 +63,7 @@ const inventorySearchDomainSelect = document.getElementById('inventory-search-do
 const inventorySearchStatus = document.getElementById('inventory-search-status') as HTMLSelectElement;
 const csvDownloadButton = document.getElementById('inventory-search-download-button') as HTMLButtonElement;
 const printCheckoutAnchor = document.getElementById('print-checkout-link') as HTMLElement;
+const printCheckoutContainer = document.getElementById('print-checkout-container') as HTMLElement;
 
 // Inventory update form elements
 const inventoryUpdateForm = document.getElementById('inventory-update-form') as HTMLFormElement;
@@ -296,13 +297,15 @@ async function submitInventoryLookup() {
 
 async function updateCheckoutStatus() {
 	if (statusesThatIndicateCheckout.includes(clientStatus.value)) {
+		printCheckoutContainer.style.display = 'inline-block';
 		printCheckoutAnchor.setAttribute('href', `/checkout-form?tagnumber=${encodeURIComponent(inventoryLookupTagInput.value)}`);
 		printCheckoutAnchor.setAttribute('target', '_blank');
 		printCheckoutAnchor.textContent = 'Print Checkout Form';
 	} else {
-		if (printCheckoutAnchor) {
-			printCheckoutAnchor.innerHTML = '';
-		}
+		printCheckoutContainer.style.display = 'none';
+		printCheckoutAnchor.removeAttribute('href');
+		printCheckoutAnchor.removeAttribute('target');
+		printCheckoutAnchor.textContent = '';
 	}
 }
 

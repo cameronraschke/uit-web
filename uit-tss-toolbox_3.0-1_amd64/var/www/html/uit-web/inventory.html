@@ -61,31 +61,32 @@
 						<input type="hidden" id="csrf-token" value="" />
 						<div id="inventory-form-container" class="grid-container inventory inventory-update-form">
 							<div class="flex-container vertical separated">
-								<div class="flex-container horizontal">
-									<p class="required-field">Location/Building/Room:</p>
-								</div>
-								<datalist id="location-suggestions"></datalist>
-								<div class="flex-container horizontal">
+								<div class="flex-container horizontal"><p>Location</p></div>
+								<div class="flex-container vertical">
+									<label class="required-field" for="location">Location: </label>
+									<datalist id="location-suggestions"></datalist>
 									<input type="text" id="location" name="location"
-										placeholder="Location" 
+										placeholder="Location"
 										maxlength="128"
 										autocomplete="off"
 										autocorrect="off"
-										autocapitalize="on" 
+										autocapitalize="on"
 										list="location-suggestions" />
 								</div>
-								<div class="flex-container horizontal">
+								<div class="flex-container vertical">
+									<label for="building">Building: </label>
 									<input type="text" id="building" name="building"
-										placeholder="Building" 
-										maxlength="64" 
+										placeholder="Building"
+										maxlength="64"
 										autocomplete="off"
 										autocorrect="off"
 										autocapitalize="on" />
 								</div>
-								<div class="flex-container horizontal">
+								<div class="flex-container vertical">
+									<label for="room">Room: </label>
 									<input type="text" id="room" name="room"
-										placeholder="Room" 
-										maxlength="64" 
+										placeholder="Room"
+										maxlength="64"
 										autocomplete="off"
 										autocorrect="off"
 										autocapitalize="on" />
@@ -93,8 +94,9 @@
 							</div>
 
 							<div class="flex-container vertical separated">
-								<div class="flex-container horizontal"><p class="required-field">Manufacturer/Model:</p></div>
-								<div class="flex-container horizontal">
+								<div class="flex-container horizontal"><p>Hardware Data: </p></div>
+								<div class="flex-container vertical">
+									<label for="manufacturer">Manufacturer: </label>
 									<input type="text" id="system_manufacturer" name="system_manufacturer"
 										placeholder="Manufacturer" 
 										maxlength="128" 
@@ -102,7 +104,8 @@
 										autocorrect="off"
 										autocapitalize="on" />
 								</div>
-								<div class="flex-container horizontal">
+								<div class="flex-container vertical">
+									<label for="system_model">Model No.: </label>
 									<input type="text" id="system_model" name="system_model"
 										placeholder="Model" 
 										maxlength="128" 
@@ -113,20 +116,25 @@
 							</div>
 
 							<div class="flex-container vertical separated">
-								<div class="flex-container horizontal"><p class="required-field">Department/AD Domain:</p></div>
-								<div class="flex-container horizontal">
-									<select id="department_name" name="department_name">
-										<option value="" disabled selected>Select Department</option>
-									</select>
+								<div class="flex-container horizontal"><p>Group Ownership:</p></div>
+								<div class="flex-container vertical">
+									<label class="required-field" for="organization">Organization/College: </label>
+									<select id="organization" name="organization"></select>
 								</div>
-								<div class="flex-container horizontal">
+								<div class="flex-container vertical">
+									<label class="required-field" for="department_name">Department: </label>
+									<select id="department_name" name="department_name"></select>
+								</div>
+								<div class="flex-container vertical">
+									<label for="ad_domain" class="required-field">AD Domain: </label>
 									<select id="ad_domain" name="ad_domain"></select>
 								</div>
 							</div>
 
 							<div class="flex-container vertical separated">
-								<div class="flex-container horizontal"><p>Property Custodian/Date Acquired:</p></div>
-								<div class="flex-container horizontal">
+								<div class="flex-container horizontal"><p>Property Info:</p></div>
+								<div class="flex-container vertical">
+									<label for="property_custodian">Property Custodian</label>
 									<input type="text" id="property_custodian" name="property_custodian"
 										placeholder="Property Custodian" 
 										maxlength="64" 
@@ -134,15 +142,21 @@
 										autocorrect="off"
 										autocapitalize="words" />
 								</div>
-								<div class="flex-container horizontal">
+								<div class="flex-container vertical">
+									<label for="acquired_date">Acquired Date</label>
 									<input type="date" id="acquired_date" name="acquired_date" />
+								</div>
+								<div class="flex-container vertical">
+									<label for="retired_date">Retired Date</label>
+									<input type="date" id="retired_date" name="retired_date" />
 								</div>
 							</div>
 
 
 							<div class="flex-container vertical separated">
-								<div class="flex-container horizontal"><p>Is it Broken?/Disk Removed?</p></div>
-								<div class="flex-container horizontal">
+								<div class="flex-container horizontal"><p>Client Health</p></div>
+								<div class="flex-container vertical">
+									<label class="required-field" for="is_broken">Is it broken?</label>
 									<select id="is_broken" name="is_broken">
 										<option value="" disabled selected>Is it Broken?</option>
 										<option value="true">Yes, it is broken</option>
@@ -150,23 +164,32 @@
 										<option value="unknown">Unknown</option>
 									</select>
 								</div>
-								<div class="flex-container horizontal">
+								<div class="flex-container vertical">
+									<label for="disk_removed">Is the Disk Removed?</label>
 									<select id="disk_removed" name="disk_removed"></select>
+								</div>
+								<div class="flex-container vertical">
+									<label for="last_hardware_check">Last Hardware Check</label>
+									<input type="datetime-local" id="last_hardware_check" name="last_hardware_check" />
 								</div>
 							</div>
 
 							<div class="flex-container vertical separated">
-								<div class="flex-container horizontal"><p class="required-field">Status:</p></div>
-								<div class="flex-container horizontal">
+								<div class="flex-container horizontal"><p>Client Status:</p></div>
+								<div class="flex-container vertical">
+									<label for="status">Overall Status: </label>
 									<select id="status" name="status">
 										<option value="" disabled selected>Select Status</option>
-										{{ range $status, $statusReadable := .Statuses }}
-										<option value="{{ $status }}">{{ $statusReadable }}</option>
-										{{ end }}
 									</select>
 								</div>
-								<div class="flex-container horizontal">
-									<a id="print-checkout-link"></a>
+								<div id="print-checkout-container" class="flex-container horizontal"><a id="print-checkout-link"></a></div>
+								<div class="flex-container vertical">
+									<label for="checkout_date">Checkout Date: </label>
+									<input type="date" id="checkout_date" name="checkout_date" value="" />
+								</div>
+								<div class="flex-container vertical">
+									<label for="return_date">Return Date: </label>
+									<input type="date" id="return_date" name="return_date" value="" />
 								</div>
 							</div>
 
