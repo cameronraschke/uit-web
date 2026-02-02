@@ -1,4 +1,4 @@
--- Tables with tagnmbers: clientstats, jobstats, locations, client_health, job_queue, system_data, bitlocker, checkout
+-- Tables with tagnmbers: clientstats, jobstats, locations, client_health, job_queue, hardware_data, bitlocker, checkout
 DROP TABLE IF EXISTS serverstats;
 CREATE TABLE serverstats (
     date DATE UNIQUE NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS jobstats (
 	etheraddress VARCHAR(17) DEFAULT NULL,
 	date DATE DEFAULT NULL,
 	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
-	system_serial VARCHAR(64) DEFAULT NULL,
+	system_serial VARCHAR(128) DEFAULT NULL,
 	disk VARCHAR(8) DEFAULT NULL,
 	disk_model VARCHAR(36) DEFAULT NULL,
 	disk_type VARCHAR(4) DEFAULT NULL,
@@ -68,8 +68,9 @@ CREATE TABLE IF NOT EXISTS locations (
 	tagnumber INTEGER NOT NULL,
 	system_serial VARCHAR(128) DEFAULT NULL,
 	location VARCHAR(128) DEFAULT NULL,
-	is_broken BOOLEAN DEFAULT FALSE,
+	is_broken BOOLEAN DEFAULT NULL,
 	disk_removed BOOLEAN DEFAULT NULL,
+	organization_name VARCHAR(64) REFERENCES static_organizations(organization_name) DEFAULT NULL,
 	department_name VARCHAR(64) REFERENCES static_department_info(department_name) DEFAULT NULL,
 	ad_domain VARCHAR(64) REFERENCES static_ad_domains(domain_name) DEFAULT NULL,
 	note VARCHAR(512) DEFAULT NULL,
@@ -77,7 +78,8 @@ CREATE TABLE IF NOT EXISTS locations (
 	building VARCHAR(64) DEFAULT NULL,
 	room VARCHAR(64) DEFAULT NULL,
 	property_custodian VARCHAR(64) DEFAULT NULL,
-	acquired_date TIMESTAMP WITH TIME ZONE DEFAULT NULL
+	acquired_date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+	retired_date TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 
 
@@ -209,8 +211,9 @@ INSERT INTO static_bios_stats
 
 
 CREATE TABLE IF NOT EXISTS client_health (
+    time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL DEFAULT NULL,
     tagnumber INTEGER UNIQUE NOT NULL,
-    system_serial VARCHAR(64) DEFAULT NULL,
+    system_serial VARCHAR(128) DEFAULT NULL,
     tpm_version VARCHAR(24) DEFAULT NULL,
     bios_version VARCHAR(24) DEFAULT NULL,
     bios_updated BOOLEAN DEFAULT NULL,
@@ -223,7 +226,7 @@ CREATE TABLE IF NOT EXISTS client_health (
     avg_clone_time SMALLINT DEFAULT NULL, 
     last_imaged_time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL DEFAULT NULL,
     all_jobs SMALLINT DEFAULT NULL,
-    time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL DEFAULT NULL
+		last_hardware_check TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS job_queue (
@@ -263,7 +266,7 @@ CREATE TABLE IF NOT EXISTS logins (
 );
 
 
-CREATE TABLE IF NOT EXISTS system_data (
+CREATE TABLE IF NOT EXISTS hardware_data (
     tagnumber INTEGER UNIQUE NOT NULL,
     etheraddress VARCHAR(17) DEFAULT NULL,
     wifi_mac VARCHAR(17) DEFAULT NULL,
@@ -366,9 +369,15 @@ CREATE TABLE IF NOT EXISTS client_images (
 -- CREATE OR REPLACE FUNCTION live_images_function
 -- CREATE OR REPLACE TRIGGER live_images_trigger AFTER UPDATE OF screenshot ON live_images FOR EACH ROW EXECUTE FUNCTION live_images_function();
 CREATE TABLE IF NOT EXISTS live_images (
-    tagnumber INTEGER UNIQUE NOT NULL,
-    time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
-    screenshot TEXT DEFAULT NULL
+	tagnumber INTEGER UNIQUE NOT NULL,
+	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
+	screenshot TEXT DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS static_organizations (
+	organization_name VARCHAR(64) PRIMARY KEY,
+	organization_name_formatted VARCHAR(64) NOT NULL,
+	organization_sort_order SMALLINT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS static_department_info (

@@ -84,7 +84,7 @@ func StartWebServer(ctx context.Context) error {
 
 	// API POST endpoints
 	httpsRouter.Handle("POST /api/notes", httpsFullAPIChain.ThenFunc(endpoints.InsertNewNote))
-	httpsRouter.Handle("POST /api/update_inventory", httpsFullAPIChain.ThenFunc(endpoints.UpdateInventory))
+	httpsRouter.Handle("POST /api/update_inventory", httpsFullAPIChain.ThenFunc(endpoints.InsertInventoryUpdateForm))
 	httpsRouter.Handle("POST /api/images/toggle_pin", httpsFullAPIChain.ThenFunc(endpoints.TogglePinImage))
 	httpsRouter.Handle("POST /api/client/health/battery", httpsFullAPIChain.ThenFunc(endpoints.SetClientBatteryHealth))
 	httpsRouter.Handle("POST /api/job_queue/update_all_online_clients", httpsFullAPIChain.ThenFunc(endpoints.SetAllJobs))

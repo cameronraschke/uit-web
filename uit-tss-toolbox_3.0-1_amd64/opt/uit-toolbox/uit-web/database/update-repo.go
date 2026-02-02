@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -19,7 +20,7 @@ func (repo *Repo) InsertNewNote(ctx context.Context, time time.Time, noteType, n
 	return err
 }
 
-func (repo *Repo) InsertInventory(ctx context.Context, inventoryUpdateFormInput *InventoryUpdateFormInput) error {
+func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, inventoryUpdateForm *InventoryUpdateForm) error {
 	if repo.DB == nil {
 		return fmt.Errorf("database connection is nil in InsertInventory")
 	}
@@ -36,33 +37,84 @@ func (repo *Repo) InsertInventory(ctx context.Context, inventoryUpdateFormInput 
 		}
 	}()
 
-	sqlCode := `INSERT INTO locations (time, tagnumber, system_serial, location, building, room, is_broken, disk_removed, department_name, property_custodian, ad_domain, note, client_status, acquired_date) 
+	const locationsSql = `INSERT INTO locations 
+		(time, 
+		tagnumber, 
+		system_serial, 
+		location, 
+		building, 
+		room, 
+		organization_name,
+		department_name, 
+		ad_domain, 
+		property_custodian,  
+		acquired_date,
+		retired_date,
+		is_broken, 
+		disk_removed, 
+		client_status,
+		note) 
 		VALUES 
-	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
+	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`
 
-	_, err = tx.ExecContext(ctx, sqlCode,
-		toNullInt64(inventoryUpdateFormInput.Tagnumber),
-		toNullString(inventoryUpdateFormInput.SystemSerial),
-		toNullString(inventoryUpdateFormInput.Location),
-		toNullString(inventoryUpdateFormInput.Building),
-		toNullString(inventoryUpdateFormInput.Room),
-		toNullBool(inventoryUpdateFormInput.Broken),
-		toNullBool(inventoryUpdateFormInput.DiskRemoved),
-		toNullString(inventoryUpdateFormInput.Department),
-		toNullString(inventoryUpdateFormInput.PropertyCustodian),
-		toNullString(inventoryUpdateFormInput.Domain),
-		toNullString(inventoryUpdateFormInput.Note),
-		toNullString(inventoryUpdateFormInput.Status),
-		toNullTime(inventoryUpdateFormInput.AcquiredDate),
+	var locationsResult sql.Result
+	locationsResult, err = tx.ExecContext(ctx, locationsSql,
+		toNullInt64(inventoryUpdateForm.Tagnumber),
+		toNullString(inventoryUpdateForm.SystemSerial),
+		toNullString(inventoryUpdateForm.Location),
+		toNullString(inventoryUpdateForm.Building),
+		toNullString(inventoryUpdateForm.Room),
+		toNullString(inventoryUpdateForm.Organization),
+		toNullString(inventoryUpdateForm.Department),
+		toNullString(inventoryUpdateForm.Domain),
+		toNullString(inventoryUpdateForm.PropertyCustodian),
+		toNullTime(inventoryUpdateForm.AcquiredDate),
+		toNullTime(inventoryUpdateForm.RetiredDate),
+		toNullBool(inventoryUpdateForm.Broken),
+		toNullBool(inventoryUpdateForm.DiskRemoved),
+		toNullString(inventoryUpdateForm.ClientStatus),
+		toNullString(inventoryUpdateForm.Note),
 	)
 	if err != nil {
 		return err
 	}
+	locationRowsAffected, rowsAffectedErr := locationsResult.RowsAffected()
+	if rowsAffectedErr != nil {
+		return fmt.Errorf("Error getting number of rows affected on locations table insert (InsertInventoryUpdateForm): %s", err.Error())
+	}
+	if locationRowsAffected != 1 {
+		return fmt.Errorf("During locations update, %d rows were affected on insert (InsertInventoryUpdateForm)", locationRowsAffected)
+	}
+
+	const hardwareDataSql = `INSERT INTO hardware_data
+		(time, system_manufacturer, system_model) 
+		VALUES (CURRENT_TIMESTAMP, $1, $2)
+		ON CONFLICT (tagnumber)
+		DO UPDATE SET
+			time = CURRENT_TIMESTAMP,
+			system_manufacturer = $1,
+			system_model = $2;`
+	var hardwareDataResult sql.Result
+	hardwareDataResult, err = tx.ExecContext(ctx, hardwareDataSql,
+		toNullString(inventoryUpdateForm.SystemManufacturer),
+		toNullString(inventoryUpdateForm.SystemModel),
+	)
+	if err != nil {
+		return err
+	}
+	hardwareDataRowsAffected, rowsAffectedErr := hardwareDataResult.RowsAffected()
+	if rowsAffectedErr != nil {
+		return fmt.Errorf("Error getting number of rows affected on hardware_data table insert (InsertInventoryUpdateForm): %s", err.Error())
+	}
+	if hardwareDataRowsAffected != 1 {
+		return fmt.Errorf("During locations update, %d rows were affected on insert (InsertInventoryUpdateForm)", hardwareDataRowsAffected)
+	}
+
 	return nil
 }
 
 func (repo *Repo) UpdateSystemData(ctx context.Context, tagnumber int64, systemManufacturer *string, systemModel *string) error {
-	sqlCode := `INSERT INTO system_data (tagnumber, system_manufacturer, system_model) 
+	sqlCode := `INSERT INTO hardware_data (tagnumber, system_manufacturer, system_model) 
 			VALUES ($1, $2, $3)
 			ON CONFLICT (tagnumber) DO 
 			UPDATE SET 

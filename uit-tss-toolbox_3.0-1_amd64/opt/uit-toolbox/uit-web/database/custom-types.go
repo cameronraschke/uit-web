@@ -67,42 +67,28 @@ type AllTags struct {
 	Tagnumber int64 `json:"tagnumber"`
 }
 
-type InventoryFormAutofill struct {
-	Time               *time.Time `json:"last_update_time"`
-	Tagnumber          *int       `json:"tagnumber"`
-	SystemSerial       *string    `json:"system_serial"`
-	Location           *string    `json:"location"`
-	Building           *string    `json:"building"`
-	Room               *string    `json:"room"`
-	SystemManufacturer *string    `json:"system_manufacturer"`
-	SystemModel        *string    `json:"system_model"`
-	Status             *string    `json:"status"`
-	Broken             *bool      `json:"is_broken"`
-	DiskRemoved        *bool      `json:"disk_removed"`
-	Department         *string    `json:"department_name"`
-	PropertyCustodian  *string    `json:"property_custodian"`
-	Domain             *string    `json:"ad_domain"`
-	Note               *string    `json:"note"`
-	AcquiredDate       *time.Time `json:"acquired_date"`
-}
-
-type InventoryUpdateFormInput struct {
+type InventoryUpdateForm struct {
 	Time               *time.Time `json:"time"`
 	Tagnumber          *int64     `json:"tagnumber"`
 	SystemSerial       *string    `json:"system_serial"`
 	Location           *string    `json:"location"`
-	Broken             *bool      `json:"is_broken"`
-	DiskRemoved        *bool      `json:"disk_removed"`
-	Department         *string    `json:"department_name"`
-	Domain             *string    `json:"ad_domain"`
-	Note               *string    `json:"note"`
-	Status             *string    `json:"status"`
-	SystemManufacturer *string    `json:"system_manufacturer"`
-	SystemModel        *string    `json:"system_model"`
 	Building           *string    `json:"building"`
 	Room               *string    `json:"room"`
+	SystemManufacturer *string    `json:"system_manufacturer"`
+	SystemModel        *string    `json:"system_model"`
+	Organization       *string    `json:"organization_name"`
+	Department         *string    `json:"department_name"`
+	Domain             *string    `json:"ad_domain"`
 	PropertyCustodian  *string    `json:"property_custodian"`
 	AcquiredDate       *time.Time `json:"acquired_date"`
+	RetiredDate        *time.Time `json:"retired_date"`
+	Broken             *bool      `json:"is_broken"`
+	DiskRemoved        *bool      `json:"disk_removed"`
+	LastHardwareCheck  *time.Time `json:"last_hardware_check"`
+	ClientStatus       *string    `json:"status"`
+	CheckoutDate       *time.Time `json:"checkout_date"`
+	ReturnDate         *time.Time `json:"return_date"`
+	Note               *string    `json:"note"`
 }
 
 type ImageManifest struct {

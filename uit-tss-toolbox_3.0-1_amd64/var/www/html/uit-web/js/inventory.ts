@@ -9,13 +9,18 @@ type InventoryForm = {
 	room: string | null;
 	system_manufacturer: string | null;
 	system_model: string | null;
-	property_custodian: string | null;
+	organization_name: string | null;
 	department_name: string | null;
 	ad_domain: string | null;
+	property_custodian: string | null;
+	acquired_date: string | null;
+	retired_date: string | null;
 	is_broken: boolean | null;
 	disk_removed: boolean | null;
+	last_hardware_check: string | null;
 	status: string | null;
-	acquired_date: string | null;
+	checkout_date: string | null;
+	return_date: string | null;
 	note: string | null;
 };
 

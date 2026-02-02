@@ -138,7 +138,7 @@ func (repo *Repo) GetLocations(ctx context.Context) (map[string]string, error) {
 
 func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]ManufacturersAndModels, error) {
 	const sqlQuery = `SELECT system_model, system_manufacturer
-		FROM system_data 
+		FROM hardware_data 
 		WHERE system_manufacturer IS NOT NULL 
 			AND system_model IS NOT NULL
 		GROUP BY system_manufacturer, system_model 
@@ -186,12 +186,12 @@ func (repo *Repo) ClientLookupBySerial(ctx context.Context, serial string) (*Cli
 }
 
 func (repo *Repo) GetHardwareIdentifiers(ctx context.Context, tag int64) (*HardwareData, error) {
-	const sqlQuery = `SELECT locations.tagnumber, locations.system_serial, jobstats.etheraddress, system_data.wifi_mac,
-	system_data.system_model, system_data.system_uuid, system_data.system_sku, system_data.chassis_type, 
-	system_data.motherboard_manufacturer, system_data.motherboard_serial, system_data.system_manufacturer
+	const sqlQuery = `SELECT locations.tagnumber, locations.system_serial, jobstats.etheraddress, hardware_data.wifi_mac,
+	hardware_data.system_model, hardware_data.system_uuid, hardware_data.system_sku, hardware_data.chassis_type, 
+	hardware_data.motherboard_manufacturer, hardware_data.motherboard_serial, hardware_data.system_manufacturer
 	FROM locations
 	LEFT JOIN jobstats ON locations.tagnumber = jobstats.tagnumber AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
-	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
+	LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 	AND locations.tagnumber = $1;`
 
@@ -345,9 +345,9 @@ func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]Dashboard
 		ORDER BY checkout_log.tagnumber, checkout_log.log_entry_time DESC
 	),
 	systems AS (
-		SELECT system_data.tagnumber, system_data.system_model
-		FROM system_data
-		WHERE system_data.system_model IS NOT NULL
+		SELECT hardware_data.tagnumber, hardware_data.system_model
+		FROM hardware_data
+		WHERE hardware_data.system_model IS NOT NULL
 	),
 	joined AS (
 		SELECT systems.system_model,
@@ -392,18 +392,40 @@ func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]Dashboard
 	return dashboardInventorySummary, nil
 }
 
-func (repo *Repo) GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*InventoryFormAutofill, error) {
-	const sqlQuery = `SELECT locations.time, locations.tagnumber, locations.system_serial, locations.location, locations.building, locations.room, system_data.system_manufacturer, system_data.system_model,
-	locations.department_name, locations.property_custodian, locations.ad_domain, locations.is_broken, locations.client_status, locations.disk_removed, locations.note, locations.acquired_date
+func (repo *Repo) GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*InventoryUpdateForm, error) {
+	const sqlQuery = `SELECT 
+		locations.time, 
+		locations.tagnumber, 
+		locations.system_serial, 
+		locations.location, 
+		locations.building, 
+		locations.room, 
+		hardware_data.system_manufacturer, 
+		hardware_data.system_model,
+		locations.organization_name,
+		locations.department_name, 
+		locations.ad_domain,
+		locations.property_custodian, 
+		locations.acquired_date,
+		locations.retired_date,
+		locations.is_broken, 
+		locations.disk_removed, 
+		client_health.last_hardware_check,
+		locations.client_status, 
+		checkout_log.checkout_date,
+		checkout_log.return_date,
+		locations.note
 	FROM locations
-	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
+	LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber
+	LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
+	LEFT JOIN checkout_log ON locations.tagnumber = checkout_log.tagnumber AND checkout_log.log_entry_time IN (SELECT MAX(log_entry_time) FROM checkout_log WHERE log_entry_time IS NOT NULL GROUP BY tagnumber)
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 	AND (locations.tagnumber = $1 OR locations.system_serial = $2)
 	ORDER BY locations.time DESC NULLS LAST
 	LIMIT 1;`
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, toNullInt64(tag), toNullString(serial))
 
-	inventoryUpdateForm := &InventoryFormAutofill{}
+	inventoryUpdateForm := &InventoryUpdateForm{}
 	if err := row.Scan(
 		&inventoryUpdateForm.Time,
 		&inventoryUpdateForm.Tagnumber,
@@ -413,14 +435,19 @@ func (repo *Repo) GetLocationFormData(ctx context.Context, tag *int64, serial *s
 		&inventoryUpdateForm.Room,
 		&inventoryUpdateForm.SystemManufacturer,
 		&inventoryUpdateForm.SystemModel,
+		&inventoryUpdateForm.Organization,
 		&inventoryUpdateForm.Department,
-		&inventoryUpdateForm.PropertyCustodian,
 		&inventoryUpdateForm.Domain,
-		&inventoryUpdateForm.Broken,
-		&inventoryUpdateForm.Status,
-		&inventoryUpdateForm.DiskRemoved,
-		&inventoryUpdateForm.Note,
+		&inventoryUpdateForm.PropertyCustodian,
 		&inventoryUpdateForm.AcquiredDate,
+		&inventoryUpdateForm.RetiredDate,
+		&inventoryUpdateForm.Broken,
+		&inventoryUpdateForm.DiskRemoved,
+		&inventoryUpdateForm.LastHardwareCheck,
+		&inventoryUpdateForm.ClientStatus,
+		&inventoryUpdateForm.CheckoutDate,
+		&inventoryUpdateForm.ReturnDate,
+		&inventoryUpdateForm.Note,
 	); err != nil {
 		return nil, err
 	}
@@ -486,11 +513,11 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *Inve
 
 	const sqlQuery = `SELECT locations.tagnumber, locations.system_serial, locations.location, 
 		locationFormatting(locations.location) AS location_formatted,
-		system_data.system_manufacturer, system_data.system_model, locations.department_name, static_department_info.department_name_formatted,
+		hardware_data.system_manufacturer, hardware_data.system_model, locations.department_name, static_department_info.department_name_formatted,
 		locations.ad_domain, static_ad_domains.domain_name_formatted, client_health.os_installed, client_health.os_name, static_client_statuses.status_formatted,
 		locations.is_broken, locations.note, locations.time AS last_updated
 		FROM locations
-		LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
+		LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber
 		LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
 		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 		LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
@@ -499,8 +526,8 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *Inve
 		AND ($1::bigint IS NULL OR locations.tagnumber = $1)
 		AND ($2::text IS NULL OR locations.system_serial = $2)
 		AND ($3::text IS NULL OR locations.location = $3)
-		AND ($4::text IS NULL OR system_data.system_manufacturer = $4)
-		AND ($5::text IS NULL OR system_data.system_model = $5)
+		AND ($4::text IS NULL OR hardware_data.system_manufacturer = $4)
+		AND ($5::text IS NULL OR hardware_data.system_model = $5)
 		AND ($6::text IS NULL OR locations.department_name = $6)
 		AND ($7::text IS NULL OR locations.ad_domain = $7)
 		AND ($8::text IS NULL OR locations.client_status = $8)
@@ -617,8 +644,8 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 	SELECT
 		latest_locations.tagnumber,
 		latest_locations.system_serial,
-		system_data.system_manufacturer,
-		system_data.system_model,
+		hardware_data.system_manufacturer,
+		hardware_data.system_model,
 		latest_locations.location_formatted AS "location",
 		latest_locations.department_name,
 		latest_locations.client_status,
@@ -691,13 +718,13 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 		job_queue.watts_now AS "power_usage"
 	FROM locations
 	LEFT JOIN job_queue ON locations.tagnumber = job_queue.tagnumber
-	LEFT JOIN system_data ON locations.tagnumber = system_data.tagnumber
+	LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber
 	LEFT JOIN latest_locations ON locations.tagnumber = latest_locations.tagnumber
 	LEFT JOIN latest_jobstats ON locations.tagnumber = latest_jobstats.tagnumber
 	LEFT JOIN latest_job ON locations.tagnumber = latest_job.tagnumber
 	LEFT JOIN static_image_names ON latest_job.clone_image = static_image_names.image_name
 	LEFT JOIN static_job_names ON job_queue.job_queued = static_job_names.job_name
-	LEFT JOIN static_bios_stats ON system_data.system_model = static_bios_stats.system_model
+	LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
 	LEFT JOIN static_disk_stats ON latest_jobstats.disk_model = static_disk_stats.disk_model
 	LEFT JOIN static_ad_domains ON latest_locations.ad_domain = static_ad_domains.domain_name
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
