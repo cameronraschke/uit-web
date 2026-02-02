@@ -14,6 +14,74 @@ type AuthStatusResponse = {
 
 const inputCSSClasses = ["empty-input", "empty-required-input", "changed-input", "readonly-input"];
 
+function getInputStringValue(inputEl: HTMLInputElement | HTMLSelectElement): string | null {
+	if (!inputEl) {
+		throw new Error("Input element not found in DOM");
+	}
+	const value = inputEl.value ? inputEl.value.trim() : null;
+	if (inputEl.required && (!value || value.length === 0)) {
+		throw new Error(`${inputEl.id} field cannot be empty`);
+	}
+	return value;
+}
+
+function getInputNumberValue(inputEl: HTMLInputElement | HTMLSelectElement): number | null {
+	if (!inputEl) {
+		throw new Error("Input element not found in DOM");
+	}
+	const value = inputEl.value ? inputEl.value.trim() : null;
+	if (inputEl.required && (!value || value.length === 0)) {
+		throw new Error(`${inputEl.id} field cannot be empty`);
+	}
+	const numValue = Number(value);
+	if (isNaN(numValue)) {
+		throw new Error(`${inputEl.id} field must be a valid number`);
+	}
+	return numValue;
+}
+
+function getInputBooleanValue(inputEl: HTMLInputElement | HTMLSelectElement): boolean | null {
+	if (!inputEl) {
+		throw new Error("Input element not found in DOM");
+	}
+	const value = inputEl.value ? inputEl.value.trim() : null;
+	if (value === "true") return true;
+	else if (value === "false") return false;
+	else if (!inputEl.required) return null;
+	else throw new Error(`${inputEl.id} field must be true or false`);
+}
+
+function getInputDateValue(inputEl: HTMLInputElement | HTMLSelectElement): Date | null {
+	if (!inputEl) {
+		throw new Error("Input element not found in DOM");
+	}
+	const value = inputEl.value ? inputEl.value.trim() : null;
+	if (inputEl.required && (!value || value.length === 0)) {
+		throw new Error(`${inputEl.id} field cannot be empty`);
+	}
+
+	const dateObj = new Date(value + "T00:00:00");
+	if (isNaN(dateObj.getTime())) {
+		throw new Error(`${inputEl.id} field must be a valid date`);
+	}
+	return dateObj;
+}
+function getInputTimeValue(inputEl: HTMLInputElement | HTMLSelectElement): Date | null {
+	if (!inputEl) {
+		throw new Error("Input element not found in DOM");
+	}
+	const value = inputEl.value ? inputEl.value.trim() : null;
+	if (inputEl.required && (!value || value.length === 0)) {
+		throw new Error(`${inputEl.id} field cannot be empty`);
+	}
+
+	const timeObj = new Date(value as string);
+	if (isNaN(timeObj.getTime())) {
+		throw new Error(`${inputEl.id} field must be a valid datetime`);
+	}
+	return timeObj;
+}
+
 async function checkAuthStatus(): Promise<boolean> {
 	// server should auto redirect, but only on page refresh
 	// this function redirects w/o needing a refresh

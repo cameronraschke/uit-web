@@ -13,15 +13,15 @@ type InventoryForm = {
 	department_name: string | null;
 	ad_domain: string | null;
 	property_custodian: string | null;
-	acquired_date: string | null;
-	retired_date: string | null;
+	acquired_date: Date | null;
+	retired_date: Date | null;
 	is_broken: boolean | null;
 	disk_removed: boolean | null;
-	last_hardware_check: string | null;
+	last_hardware_check: Date | null;
 	status: string | null;
 	checkout_bool: boolean | null;
-	checkout_date: string | null;
-	return_date: string | null;
+	checkout_date: Date | null;
+	return_date: Date | null;
 	note: string | null;
 };
 
@@ -53,43 +53,49 @@ type AllLocationsCache = {
 };
 
 // Inventory lookup form elements
-const inventoryFormContainer = document.getElementById('inventory-form-container') as HTMLElement;
-const inventoryLookupWarningMessage = document.getElementById('existing-inventory-message') as HTMLElement;
-const inventoryLookupForm = document.getElementById('inventory-lookup-form') as HTMLFormElement;
-const inventoryLookupTagInput = document.getElementById('inventory-tag-lookup') as HTMLInputElement;
-const inventoryLookupSystemSerialInput = document.getElementById('inventory-serial-lookup') as HTMLInputElement;
-const inventoryLookupFormSubmitButton = document.getElementById('inventory-lookup-submit-button') as HTMLButtonElement;
-const inventoryLookupFormResetButton = document.getElementById('inventory-lookup-reset-button') as HTMLButtonElement;
-const inventoryLookupMoreDetailsButton = document.getElementById('inventory-lookup-more-details') as HTMLButtonElement;
+const updateFormContainer = document.getElementById('inventory-form-container') as HTMLElement;
+const clientLookupWarningMessage = document.getElementById('existing-inventory-message') as HTMLElement;
+const clientLookupForm = document.getElementById('inventory-lookup-form') as HTMLFormElement;
+const clientLookupTagInput = document.getElementById('inventory-tag-lookup') as HTMLInputElement;
+const clientLookupSerial = document.getElementById('inventory-serial-lookup') as HTMLInputElement;
+const clientLookupSubmitButton = document.getElementById('inventory-lookup-submit-button') as HTMLButtonElement;
+const clientLookupReset = document.getElementById('inventory-lookup-reset-button') as HTMLButtonElement;
+const clientMoreDetails = document.getElementById('inventory-lookup-more-details') as HTMLButtonElement;
 const allTagsDatalist = document.getElementById('inventory-tag-suggestions') as HTMLDataListElement;
 const clientImagesLink = document.getElementById('client_images_link') as HTMLAnchorElement;
-const selectElement = document.getElementById('ad_domain') as HTMLSelectElement;
-const inventorySearchDepartmentSelect = document.getElementById('inventory-search-department') as HTMLSelectElement;
-const inventorySearchDomainSelect = document.getElementById('inventory-search-domain') as HTMLSelectElement;
-const inventorySearchStatus = document.getElementById('inventory-search-status') as HTMLSelectElement;
+const advSearchDepartment = document.getElementById('inventory-search-department') as HTMLSelectElement;
+const advSearchDomain = document.getElementById('inventory-search-domain') as HTMLSelectElement;
+const advSearchStatus = document.getElementById('inventory-search-status') as HTMLSelectElement;
 const csvDownloadButton = document.getElementById('inventory-search-download-button') as HTMLButtonElement;
-const printCheckoutAnchor = document.getElementById('print-checkout-link') as HTMLElement;
+const printCheckoutLink = document.getElementById('print-checkout-link') as HTMLElement;
 const printCheckoutContainer = document.getElementById('print-checkout-container') as HTMLElement;
 
 // Inventory update form elements
-const inventoryUpdateForm = document.getElementById('inventory-update-form') as HTMLFormElement;
-const inventoryUpdateFormSection = document.getElementById('inventory-update-section') as HTMLElement;
-const lastUpdateTimeMessage = document.getElementById('last-update-time-message') as HTMLElement;
-const inventoryUpdateLocationInput = document.getElementById('location') as HTMLInputElement;
-const inventoryUpdateDepartmentSelect = document.getElementById('department_name') as HTMLSelectElement;
-const inventoryUpdateFormSubmitButton = document.getElementById('inventory-update-submit-button') as HTMLButtonElement;
-const inventoryUpdateFormCancelButton = document.getElementById('inventory-update-cancel-button') as HTMLButtonElement;
-const building = inventoryUpdateForm.querySelector("#building") as HTMLInputElement;
-const room = inventoryUpdateForm.querySelector("#room") as HTMLInputElement;
-const systemManufacturer = inventoryUpdateForm.querySelector("#system_manufacturer") as HTMLInputElement;
-const systemModel = inventoryUpdateForm.querySelector("#system_model") as HTMLInputElement;
-const propertyCustodian = inventoryUpdateForm.querySelector("#property_custodian") as HTMLInputElement;
-const acquiredDateInput = inventoryUpdateForm.querySelector("#acquired_date") as HTMLInputElement;
-const isBroken = inventoryUpdateForm.querySelector("#is_broken") as HTMLSelectElement;
-const diskRemoved = inventoryUpdateForm.querySelector("#disk_removed") as HTMLSelectElement;
-const clientStatus = inventoryUpdateForm.querySelector("#status") as HTMLSelectElement;
-const noteInput = inventoryUpdateForm.querySelector("#note") as HTMLInputElement;
-const fileInput = inventoryUpdateForm.querySelector("#inventory-file-input") as HTMLInputElement;
+const updateFormSection = document.getElementById('inventory-update-section') as HTMLElement;
+const updateForm = document.getElementById('inventory-update-form') as HTMLFormElement;
+const lastUpdateTime = document.getElementById('last-update-time-message') as HTMLElement;
+const locationEl = document.getElementById('location') as HTMLInputElement;
+const buildingUpdate = updateForm.querySelector("#building") as HTMLInputElement;
+const roomUpdate = updateForm.querySelector("#room") as HTMLInputElement;
+const manufacturerUpdate = updateForm.querySelector("#system_manufacturer") as HTMLInputElement;
+const modelUpdate = updateForm.querySelector("#system_model") as HTMLInputElement;
+const organizationUpdate = updateForm.querySelector("#organization_name") as HTMLSelectElement;
+const departmentEl = document.getElementById('department_name') as HTMLSelectElement;
+const domainNameUpdate = updateForm.querySelector("#ad_domain") as HTMLSelectElement;
+const propertyCustodianUpdate = updateForm.querySelector("#property_custodian") as HTMLInputElement;
+const acquiredDateUpdate = updateForm.querySelector("#acquired_date") as HTMLInputElement;
+const retiredDateUpdate = updateForm.querySelector("#retired_date") as HTMLInputElement;
+const isBrokenUpdate = updateForm.querySelector("#is_broken") as HTMLSelectElement;
+const diskRemovedUpdate = updateForm.querySelector("#disk_removed") as HTMLSelectElement;
+const lastHardwareCheckUpdate = updateForm.querySelector("#last_hardware_check") as HTMLInputElement;
+const clientStatusUpdate = updateForm.querySelector("#status") as HTMLSelectElement;
+const checkoutBoolUpdate = updateForm.querySelector("#checkout_bool") as HTMLSelectElement;
+const checkoutDateUpdate = updateForm.querySelector("#checkout_date") as HTMLInputElement;
+const returnDateUpdate = updateForm.querySelector("#return_date") as HTMLInputElement;
+const noteUpdate = updateForm.querySelector("#note") as HTMLInputElement;
+const fileInputUpdate = updateForm.querySelector("#inventory-file-input") as HTMLInputElement;
+const submitUpdate = document.getElementById('inventory-update-submit-button') as HTMLButtonElement;
+const cancelUpdate = document.getElementById('inventory-update-cancel-button') as HTMLButtonElement;
 
 const allowedFileNameRegex = /^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$/; // file name + extension
 const allowedFileExtensions = [".jpg", ".jpeg", ".jfif", ".png"];
@@ -98,31 +104,37 @@ const statusesThatIndicateBroken = ["needs-repair"];
 const statusesThatIndicateCheckout = ["checked-out", "reserved-for-checkout"];
 
 const allInventoryUpdateFields = [
-	inventoryLookupTagInput,
-	inventoryLookupSystemSerialInput,
-	inventoryUpdateLocationInput,
-	building,
-	room,
-	systemManufacturer,
-	systemModel,
-	inventoryUpdateDepartmentSelect,
-	selectElement,
-	propertyCustodian,
-	acquiredDateInput,
-	isBroken,
-	diskRemoved,
-	clientStatus,
-	fileInput,
-	noteInput,
+	clientLookupTagInput,
+	clientLookupSerial,
+	locationEl,
+	buildingUpdate,
+	roomUpdate,
+	manufacturerUpdate,
+	modelUpdate,
+	organizationUpdate,
+	departmentEl,
+	domainNameUpdate,
+	propertyCustodianUpdate,
+	acquiredDateUpdate,
+	retiredDateUpdate,
+	isBrokenUpdate,
+	diskRemovedUpdate,
+	lastHardwareCheckUpdate,
+	clientStatusUpdate,
+	checkoutBoolUpdate,
+	checkoutDateUpdate,
+	returnDateUpdate,
+	noteUpdate,
+	fileInputUpdate,
 ];
 
 const requiredInventoryUpdateFields = [
-	inventoryLookupTagInput,
-	inventoryLookupSystemSerialInput,
-	inventoryUpdateLocationInput,
-	inventoryUpdateDepartmentSelect,
-	selectElement,
-	clientStatus
+	clientLookupTagInput,
+	clientLookupSerial,
+	locationEl,
+	departmentEl,
+	domainNameUpdate,
+	clientStatusUpdate
 ];
 
 
@@ -215,36 +227,36 @@ async function lookupTagOrSerial(tagnumber: number | null, serial: string | null
 async function submitInventoryLookup() {
 	updateURLFromFilters();
 	const searchParams: URLSearchParams = new URLSearchParams(window.location.search);
-	const lookupTag: number | null = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : (searchParams.get('tagnumber') ? Number(searchParams.get('tagnumber')) : null);
-  const lookupSerial: string | null = inventoryLookupSystemSerialInput.value || searchParams.get('system_serial') || null;
+	const lookupTag: number | null = clientLookupTagInput.value ? Number(clientLookupTagInput.value) : (searchParams.get('tagnumber') ? Number(searchParams.get('tagnumber')) : null);
+  const lookupSerial: string | null = clientLookupSerial.value || searchParams.get('system_serial') || null;
 
-	inventoryLookupTagInput.dataset.initialValue = inventoryLookupTagInput.value;
-	inventoryLookupSystemSerialInput.dataset.initialValue = inventoryLookupSystemSerialInput.value;
+	clientLookupTagInput.dataset.initialValue = clientLookupTagInput.value;
+	clientLookupSerial.dataset.initialValue = clientLookupSerial.value;
 
   if (!lookupTag && !lookupSerial) {
-    inventoryLookupWarningMessage.style.display = "block";
-    inventoryLookupWarningMessage.textContent = "Please provide a tag number or serial number to look up.";
+    clientLookupWarningMessage.style.display = "block";
+    clientLookupWarningMessage.textContent = "Please provide a tag number or serial number to look up.";
     return;
   }
   if (lookupTag && isNaN(Number(lookupTag))) {
-    inventoryLookupWarningMessage.style.display = "block";
-    inventoryLookupWarningMessage.textContent = "Tag number must be numeric.";
+    clientLookupWarningMessage.style.display = "block";
+    clientLookupWarningMessage.textContent = "Tag number must be numeric.";
     return;
   }
   if (lookupSerial && (lookupSerial.length < 4 || lookupSerial.length > 20)) {
-    inventoryLookupWarningMessage.style.display = "block";
-    inventoryLookupWarningMessage.textContent = "Serial number must be between 4 and 20 characters long.";
+    clientLookupWarningMessage.style.display = "block";
+    clientLookupWarningMessage.textContent = "Serial number must be between 4 and 20 characters long.";
     return;
   }
   if (lookupTag && lookupTag.toString().length != 6) {
-    inventoryLookupWarningMessage.style.display = "block";
-    inventoryLookupWarningMessage.textContent = "Tag number must be exactly 6 digits long.";
+    clientLookupWarningMessage.style.display = "block";
+    clientLookupWarningMessage.textContent = "Tag number must be exactly 6 digits long.";
     return;
   }
 
-	inventoryLookupFormResetButton.style.display = "inline-block";
-	inventoryLookupMoreDetailsButton.style.display = "inline-block";
-	inventoryLookupMoreDetailsButton.disabled = false;
+	clientLookupReset.style.display = "inline-block";
+	clientMoreDetails.style.display = "inline-block";
+	clientMoreDetails.disabled = false;
 
 
 	try {
@@ -253,47 +265,47 @@ async function submitInventoryLookup() {
 		if (lookupResult) {
 			if (lookupResult.tagnumber && !isNaN(Number(lookupResult.tagnumber))) {
 				searchParams.set("tagnumber", lookupResult.tagnumber ? lookupResult.tagnumber.toString() : '');
-				inventoryLookupTagInput.value = Number(lookupResult.tagnumber).toString();
-				inventoryLookupTagInput.dataset.initialValue = lookupResult.tagnumber ? lookupResult.tagnumber.toString() : "";
-				inventoryLookupTagInput.readOnly = true;
+				clientLookupTagInput.value = Number(lookupResult.tagnumber).toString();
+				clientLookupTagInput.dataset.initialValue = lookupResult.tagnumber ? lookupResult.tagnumber.toString() : "";
+				clientLookupTagInput.readOnly = true;
 				clientImagesLink.href = `/client_images?tagnumber=${lookupResult.tagnumber}`;
 				clientImagesLink.target = "_blank";
 				clientImagesLink.style.display = "inline";
 			}
 			if (lookupResult.system_serial && lookupResult.system_serial && lookupResult.system_serial.trim().length > 0) {
 				searchParams.set("system_serial", lookupResult.system_serial ? lookupResult.system_serial.trim() : '');
-				inventoryLookupSystemSerialInput.value = lookupResult.system_serial.trim();
-				inventoryLookupSystemSerialInput.dataset.initialValue = lookupResult.system_serial ? lookupResult.system_serial : "";
-				inventoryLookupSystemSerialInput.readOnly = true;
+				clientLookupSerial.value = lookupResult.system_serial.trim();
+				clientLookupSerial.dataset.initialValue = lookupResult.system_serial ? lookupResult.system_serial : "";
+				clientLookupSerial.readOnly = true;
 			}
 
-			inventoryLookupFormSubmitButton.disabled = true;
-			inventoryLookupFormSubmitButton.style.cursor = "not-allowed";
-			inventoryLookupFormSubmitButton.style.border = "1px solid gray";
-			inventoryLookupMoreDetailsButton.style.display = "inline-block";
+			clientLookupSubmitButton.disabled = true;
+			clientLookupSubmitButton.style.cursor = "not-allowed";
+			clientLookupSubmitButton.style.border = "1px solid gray";
+			clientMoreDetails.style.display = "inline-block";
 
-			inventoryLookupMoreDetailsButton.disabled = false;
-			inventoryLookupMoreDetailsButton.style.cursor = "pointer";
+			clientMoreDetails.disabled = false;
+			clientMoreDetails.style.cursor = "pointer";
 
 			if (lookupResult.tagnumber || lookupResult.system_serial) {
 				await populateLocationForm(lookupResult.tagnumber ? lookupResult.tagnumber : undefined, lookupResult.system_serial ? lookupResult.system_serial : undefined);
 			}
 		} else {
-			inventoryLookupWarningMessage.style.display = "block";
-			inventoryLookupWarningMessage.textContent = "No inventory entry was found for the provided tag number or serial number. A new entry can be created.";
+			clientLookupWarningMessage.style.display = "block";
+			clientLookupWarningMessage.textContent = "No inventory entry was found for the provided tag number or serial number. A new entry can be created.";
 
-			inventoryLookupMoreDetailsButton.disabled = true;
-			inventoryLookupMoreDetailsButton.style.cursor = "not-allowed";
-			const tagNum = inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : '';
-			const serialNum = inventoryLookupSystemSerialInput.value ? inventoryLookupSystemSerialInput.value : '';
+			clientMoreDetails.disabled = true;
+			clientMoreDetails.style.cursor = "not-allowed";
+			const tagNum = clientLookupTagInput.value ? Number(clientLookupTagInput.value) : '';
+			const serialNum = clientLookupSerial.value ? clientLookupSerial.value : '';
 			searchParams.set("tagnumber", tagNum.toString());
 			searchParams.set("system_serial", serialNum);
 			await populateLocationForm(tagNum ? tagNum : undefined, serialNum ? serialNum : undefined);
 		}
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
-		inventoryLookupWarningMessage.style.display = "block";
-		inventoryLookupWarningMessage.textContent = "Error looking up inventory entry: " + errorMessage;
+		clientLookupWarningMessage.style.display = "block";
+		clientLookupWarningMessage.textContent = "Error looking up inventory entry: " + errorMessage;
 	} finally {
 		// Set 'update' parameter in URL
 		searchParams.set('update', 'true');
@@ -302,22 +314,22 @@ async function submitInventoryLookup() {
 }
 
 async function updateCheckoutStatus() {
-	if (statusesThatIndicateCheckout.includes(clientStatus.value)) {
+	if (statusesThatIndicateCheckout.includes(clientStatusUpdate.value)) {
 		printCheckoutContainer.style.display = 'inline-block';
-		printCheckoutAnchor.setAttribute('href', `/checkout-form?tagnumber=${encodeURIComponent(inventoryLookupTagInput.value)}`);
-		printCheckoutAnchor.setAttribute('target', '_blank');
-		printCheckoutAnchor.textContent = 'Print Checkout Form';
+		printCheckoutLink.setAttribute('href', `/checkout-form?tagnumber=${encodeURIComponent(clientLookupTagInput.value)}`);
+		printCheckoutLink.setAttribute('target', '_blank');
+		printCheckoutLink.textContent = 'Print Checkout Form';
 	} else {
 		printCheckoutContainer.style.display = 'none';
-		printCheckoutAnchor.removeAttribute('href');
-		printCheckoutAnchor.removeAttribute('target');
-		printCheckoutAnchor.textContent = '';
+		printCheckoutLink.removeAttribute('href');
+		printCheckoutLink.removeAttribute('target');
+		printCheckoutLink.textContent = '';
 	}
 }
 
 function resetInventoryLookupAndUpdateForm() {
-	inventoryLookupForm.reset();
-	inventoryUpdateForm.reset();
+	clientLookupForm.reset();
+	updateForm.reset();
 	for (const el of allInventoryUpdateFields) {
 		if (el instanceof HTMLInputElement) {
 			resetInputElement(el, "", false, undefined);
@@ -326,21 +338,21 @@ function resetInventoryLookupAndUpdateForm() {
 			resetSelectElement(el, "", false, undefined);
 		}
 	}
-	inventoryLookupTagInput.placeholder = "Enter Tag Number";
-	inventoryLookupSystemSerialInput.placeholder = "Enter System Serial";
-	inventoryLookupFormSubmitButton.style.cursor = "pointer";
+	clientLookupTagInput.placeholder = "Enter Tag Number";
+	clientLookupSerial.placeholder = "Enter System Serial";
+	clientLookupSubmitButton.style.cursor = "pointer";
 
-	inventoryLookupFormSubmitButton.style.border = "1px solid black";
-	inventoryLookupFormSubmitButton.disabled = false;
-	inventoryLookupFormResetButton.style.display = "none";
-	inventoryLookupMoreDetailsButton.style.display = "none";
-	inventoryLookupMoreDetailsButton.disabled = false;
-	inventoryLookupMoreDetailsButton.style.cursor = "pointer";
-	inventoryUpdateFormSection.style.display = "none";
-	inventoryLookupWarningMessage.style.display = "none";
-	inventoryLookupWarningMessage.textContent = "";
-	lastUpdateTimeMessage.textContent = "";
-	inventoryLookupTagInput.focus();
+	clientLookupSubmitButton.style.border = "1px solid black";
+	clientLookupSubmitButton.disabled = false;
+	clientLookupReset.style.display = "none";
+	clientMoreDetails.style.display = "none";
+	clientMoreDetails.disabled = false;
+	clientMoreDetails.style.cursor = "pointer";
+	updateFormSection.style.display = "none";
+	clientLookupWarningMessage.style.display = "none";
+	clientLookupWarningMessage.textContent = "";
+	lastUpdateTime.textContent = "";
+	clientLookupTagInput.focus();
 }
 
 function resetInventorySearchQuery() {
@@ -370,8 +382,8 @@ function renderTagOptions(tags: number[]): void {
 }
 
 async function getLocationFormData(tag?: number, serial?: string): Promise<InventoryForm | null> {
-	const tagNum = tag ? tag : inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : null;
-	const serialNum = serial ? serial : inventoryLookupSystemSerialInput.value ? String(inventoryLookupSystemSerialInput.value) : null;
+	const tagNum = tag ? tag : clientLookupTagInput.value ? Number(clientLookupTagInput.value) : null;
+	const serialNum = serial ? serial : clientLookupSerial.value ? String(clientLookupSerial.value) : null;
 	const url = new URL('/api/client/location_form_data', window.location.origin);
 	url.searchParams.set('tagnumber', tagNum !== null ? tagNum.toString() : '');
 	url.searchParams.set('system_serial', serialNum !== null ? serialNum : '');
@@ -390,7 +402,7 @@ async function getLocationFormData(tag?: number, serial?: string): Promise<Inven
 }
 
 function showInventoryUpdateChanges(): void {
-	const inputs = inventoryUpdateForm.querySelectorAll("input, select, textarea");
+	const inputs = updateForm.querySelectorAll("input, select, textarea");
 
 	inputs.forEach((el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
 		el.dataset.initialValue = el.value;
@@ -398,9 +410,11 @@ function showInventoryUpdateChanges(): void {
 		const handleInputUpdate = () => {
 			if (updatingInventory) return;
 
-			// Check if value matches the initial value
-			if (el.dataset.initialValue === el.value) {
-				el.classList.remove("changed-input");
+			// Check if value matches the initial value, unless it's required + blank
+			if (el.dataset.initialValue === el.value && !(el.required && el.value.trim() === "")) {
+				for (const cssClass of inputCSSClasses) {
+					el.classList.remove(cssClass);
+				}
 				return;
 			}
 
@@ -408,7 +422,13 @@ function showInventoryUpdateChanges(): void {
 			for (const cssClass of inputCSSClasses) {
 				el.classList.remove(cssClass);
 			}
-			el.classList.add("changed-input");
+
+			// If required and blank
+			if (el.required && el.value.trim() === "") {
+				el.classList.add("empty-required-input");
+			} else {
+				el.classList.add("changed-input");
+			}
 		};
 
 		el.oninput = handleInputUpdate;
@@ -417,65 +437,77 @@ function showInventoryUpdateChanges(): void {
 }
 
 async function populateLocationForm(tag?: number, serial?: string): Promise<void> {
-	for (const el of requiredInventoryUpdateFields) {
-		el.required = true;
-	}
-
 	// reset/zero/clear out all fields before processing new data
-	resetInputElement(inventoryLookupTagInput, "Enter Tag Number", false, undefined);
-	inventoryLookupTagInput.value = inventoryLookupTagInput.dataset.initialValue || "";
-	if (inventoryLookupTagInput.value) {
-		inventoryLookupTagInput.readOnly = true;
-		inventoryLookupTagInput.value = inventoryLookupTagInput.value.toString().trim();
-		inventoryLookupTagInput.classList.add("readonly-input");
+	resetInputElement(clientLookupTagInput, "Enter Tag Number", false, undefined);
+	clientLookupTagInput.value = clientLookupTagInput.dataset.initialValue || "";
+	if (clientLookupTagInput.value) {
+		clientLookupTagInput.readOnly = true;
+		clientLookupTagInput.value = clientLookupTagInput.value.toString().trim();
+		clientLookupTagInput.classList.add("readonly-input");
 	} else {
-		inventoryLookupTagInput.classList.add("empty-required-input");
+		clientLookupTagInput.classList.add("empty-required-input");
 	}
 
-	resetInputElement(inventoryLookupSystemSerialInput, "Enter System Serial", false, undefined);
-	inventoryLookupSystemSerialInput.value = inventoryLookupSystemSerialInput.dataset.initialValue || "";
-	if (inventoryLookupSystemSerialInput.value) {
-		inventoryLookupSystemSerialInput.readOnly = true;
-		inventoryLookupSystemSerialInput.value = inventoryLookupSystemSerialInput.value.trim();
-		inventoryLookupSystemSerialInput.classList.add("readonly-input");
+	resetInputElement(clientLookupSerial, "Enter System Serial", false, undefined);
+	clientLookupSerial.value = clientLookupSerial.dataset.initialValue || "";
+	if (clientLookupSerial.value) {
+		clientLookupSerial.readOnly = true;
+		clientLookupSerial.value = clientLookupSerial.value.trim();
+		clientLookupSerial.classList.add("readonly-input");
 	} else {
-		inventoryLookupSystemSerialInput.classList.add("empty-required-input");
+		clientLookupSerial.classList.add("empty-required-input");
 	}
 
-	resetInputElement(inventoryUpdateLocationInput, "Enter Location", false, "empty-required-input");
+	resetInputElement(locationEl, "Enter Location", false, "empty-required-input");
 
-	resetInputElement(building, "Building", false, "empty-input");
+	resetInputElement(buildingUpdate, "Building", false, "empty-input");
 
-	resetInputElement(room, "Room", false, "empty-input");
+	resetInputElement(roomUpdate, "Room", false, "empty-input");
 
-	resetInputElement(systemManufacturer, "System Manufacturer", false, "empty-input");
+	resetInputElement(manufacturerUpdate, "System Manufacturer", false, "empty-input");
 
-	resetInputElement(systemModel, "System Model", false, "empty-input");
+	resetInputElement(modelUpdate, "System Model", false, "empty-input");
 
-	resetSelectElement(inventoryUpdateDepartmentSelect, "Select Department", false, "empty-required-input");
+	resetSelectElement(organizationUpdate, "Select Organization", false, "empty-required-input");
+	if (organizationUpdate) {
+		const op1 = document.createElement("option");
+		op1.value = "test1";
+		op1.textContent = "test1"
+
+		const op2 = document.createElement("option");
+		op2.value = "test2";
+		op2.textContent = "test2";
+
+		isBrokenUpdate.append(op1);
+		isBrokenUpdate.append(op2);
+	}
+
+	resetSelectElement(departmentEl, "Select Department", false, "empty-required-input");
 	try { 
-		await populateDepartmentSelect(inventoryUpdateDepartmentSelect)
-		inventoryUpdateDepartmentSelect.classList.add("empty-required-input");
+		await populateDepartmentSelect(departmentEl)
+		departmentEl.classList.add("empty-required-input");
 	} catch(e) {
 		const errorMessage = e instanceof Error ? e.message : String(e);
 		console.error(`Could not fetch all departments: ${errorMessage}`)
 	}
 
-	resetSelectElement(selectElement, "Select Domain", false, "empty-required-input");
+	resetSelectElement(domainNameUpdate, "Select Domain", false, "empty-required-input");
 	try { 
-		await populateDomainSelect(selectElement);
-		selectElement.classList.add("empty-required-input");
+		await populateDomainSelect(domainNameUpdate);
+		domainNameUpdate.classList.add("empty-required-input");
 	} catch(e) {
 		const errorMessage = e instanceof Error ? e.message : String(e);
 		console.error(`Could not fetch all domains: ${errorMessage}`)
 	}
 
-	resetInputElement(propertyCustodian, "Property Custodian", false, "empty-input");
+	resetInputElement(propertyCustodianUpdate, "Property Custodian", false, "empty-input");
 
-	resetInputElement(acquiredDateInput, "Acquired Date", false, "empty-input");
+	resetInputElement(acquiredDateUpdate, "Acquired Date", false, "empty-input");
 
-	resetSelectElement(isBroken, "Is Broken?", false, "empty-required-input");
-		if (isBroken) {
+	resetInputElement(retiredDateUpdate, "Retired Date", false, "empty-input");
+
+	resetSelectElement(isBrokenUpdate, "Is Broken?", false, "empty-required-input");
+		if (isBrokenUpdate) {
 		const op1 = document.createElement("option");
 		op1.value = "true";
 		op1.textContent = "Is broken"
@@ -488,13 +520,13 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		op3.value = "unknown";
 		op3.textContent = "Unknown";
 
-		isBroken.append(op1);
-		isBroken.append(op2);
-		isBroken.append(op3);
+		isBrokenUpdate.append(op1);
+		isBrokenUpdate.append(op2);
+		isBrokenUpdate.append(op3);
 	}
 
-	resetSelectElement(diskRemoved, "Disk Removed?", false, "empty-input");
-	if (diskRemoved) {
+	resetSelectElement(diskRemovedUpdate, "Disk Removed?", false, "empty-input");
+	if (diskRemovedUpdate) {
 		const op1 = document.createElement("option");
 		op1.value = "true";
 		op1.textContent = "Yes, disk removed"
@@ -507,114 +539,126 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		op3.value = "unknown";
 		op3.textContent = "Unknown";
 
-		diskRemoved.append(op1);
-		diskRemoved.append(op2);
-		diskRemoved.append(op3);
+		diskRemovedUpdate.append(op1);
+		diskRemovedUpdate.append(op2);
+		diskRemovedUpdate.append(op3);
 	}
 
-	resetSelectElement(clientStatus, "Select Client Status", false, "empty-required-input");
+	resetInputElement(lastHardwareCheckUpdate, "Last Hardware Check", false, "empty-input");
+
+	resetSelectElement(clientStatusUpdate, "Select Client Status", false, "empty-required-input");
 	try { 
-		await populateStatusSelect(clientStatus);
-		clientStatus.classList.add("empty-required-input");
+		await populateStatusSelect(clientStatusUpdate);
+		clientStatusUpdate.classList.add("empty-required-input");
 	} catch(e) {
 		const errorMessage = e instanceof Error ? e.message : String(e);
 		console.error(`Could not fetch all statuses: ${errorMessage}`)
 	}
 
-	resetInputElement(fileInput, "", false, undefined);
+	// Checkout date omitted - included during form submit
+	
+	resetInputElement(checkoutDateUpdate, "Checkout Date", false, "empty-required-input");
 
-	resetInputElement(noteInput, "Enter Note", false, "empty-input");
+	resetInputElement(returnDateUpdate, "Return Date", false, "empty-input");
 
-	lastUpdateTimeMessage.style.display = "none";
+	resetInputElement(fileInputUpdate, "", false, undefined);
+
+	resetInputElement(noteUpdate, "Enter Note", false, "empty-input");
+
+	for (const el of requiredInventoryUpdateFields) {
+		el.required = true;
+	}
+
+	lastUpdateTime.style.display = "none";
 	try {
 		const locationFormData = await getLocationFormData(tag, serial);
 		if (locationFormData) {
 			if (locationFormData.last_update_time) {
 				const lastUpdate = new Date(locationFormData.last_update_time);
 				if (isNaN(lastUpdate.getTime())) {
-					lastUpdateTimeMessage.textContent = 'Unknown timestamp of last update';
+					lastUpdateTime.textContent = 'Unknown timestamp of last update';
 				} else {
-					lastUpdateTimeMessage.textContent = `Last updated: ${lastUpdate.toLocaleString()}` || '';
+					lastUpdateTime.textContent = `Last updated: ${lastUpdate.toLocaleString()}` || '';
 				}
-				lastUpdateTimeMessage.style.display = "block";
+				lastUpdateTime.style.display = "block";
 			}
 		
 			if (locationFormData.tagnumber) {
-				inventoryLookupTagInput.value = locationFormData.tagnumber.toString();
-				inventoryLookupTagInput.classList.remove("empty-required-input");
-				inventoryLookupTagInput.classList.add("readonly-input");
-				inventoryLookupTagInput.readOnly = true;
+				clientLookupTagInput.value = locationFormData.tagnumber.toString();
+				clientLookupTagInput.classList.remove("empty-required-input");
+				clientLookupTagInput.classList.add("readonly-input");
+				clientLookupTagInput.readOnly = true;
 			} else {
-				inventoryLookupTagInput.classList.add("empty-required-input");
+				clientLookupTagInput.classList.add("empty-required-input");
 			}
 
 			if (locationFormData.system_serial) {
-				inventoryLookupSystemSerialInput.value = locationFormData.system_serial.trim();
-				inventoryLookupSystemSerialInput.classList.remove("empty-required-input");
-				inventoryLookupSystemSerialInput.classList.add("readonly-input");
-				inventoryLookupSystemSerialInput.readOnly = true;
+				clientLookupSerial.value = locationFormData.system_serial.trim();
+				clientLookupSerial.classList.remove("empty-required-input");
+				clientLookupSerial.classList.add("readonly-input");
+				clientLookupSerial.readOnly = true;
 			} else {
-				inventoryLookupSystemSerialInput.classList.add("empty-required-input");
+				clientLookupSerial.classList.add("empty-required-input");
 			}
 
 			if (locationFormData.location ) {
-				inventoryUpdateLocationInput.value = locationFormData.location.trim();
-				inventoryUpdateLocationInput.classList.remove("empty-required-input");
+				locationEl.value = locationFormData.location.trim();
+				locationEl.classList.remove("empty-required-input");
 			} else {
-				inventoryUpdateLocationInput.classList.add("empty-required-input");
+				locationEl.classList.add("empty-required-input");
 			}
 
 			if (locationFormData.building) {
-				building.value = locationFormData.building.trim();
-				building.classList.remove("empty-input");
+				buildingUpdate.value = locationFormData.building.trim();
+				buildingUpdate.classList.remove("empty-input");
 			} else {
-				building.classList.add("empty-input");
+				buildingUpdate.classList.add("empty-input");
 			}
 
 			if (locationFormData.room) {
-				room.value = locationFormData.room.trim();
-				room.classList.remove("empty-input");
+				roomUpdate.value = locationFormData.room.trim();
+				roomUpdate.classList.remove("empty-input");
 			} else {
-				room.classList.add("empty-input");
+				roomUpdate.classList.add("empty-input");
 			}
 
 			if (locationFormData.system_manufacturer) {
-				systemManufacturer.readOnly = true;
-				systemManufacturer.value = locationFormData.system_manufacturer.trim();
-				systemManufacturer.classList.remove("empty-input");
-				systemManufacturer.classList.add("readonly-input");
+				manufacturerUpdate.readOnly = true;
+				manufacturerUpdate.value = locationFormData.system_manufacturer.trim();
+				manufacturerUpdate.classList.remove("empty-input");
+				manufacturerUpdate.classList.add("readonly-input");
 			} else {
-				systemManufacturer.classList.add("empty-input");
+				manufacturerUpdate.classList.add("empty-input");
 			}
 
 			if (locationFormData.system_model) {
-				systemModel.readOnly = true;
-				systemModel.value = locationFormData.system_model.trim();
-				systemModel.classList.remove("empty-input");
-				systemModel.classList.add("readonly-input");
+				modelUpdate.readOnly = true;
+				modelUpdate.value = locationFormData.system_model.trim();
+				modelUpdate.classList.remove("empty-input");
+				modelUpdate.classList.add("readonly-input");
 			} else {
-				systemModel.classList.add("empty-input");
+				modelUpdate.classList.add("empty-input");
 			}
 
 			if (locationFormData.department_name) {
-				inventoryUpdateDepartmentSelect.value = locationFormData.department_name.trim();
-				inventoryUpdateDepartmentSelect.classList.remove("empty-required-input");
+				departmentEl.value = locationFormData.department_name.trim();
+				departmentEl.classList.remove("empty-required-input");
 			} else {
-				inventoryUpdateDepartmentSelect.classList.add("empty-required-input");
+				departmentEl.classList.add("empty-required-input");
 			}
 
 			if (locationFormData.ad_domain) {
-				selectElement.value = locationFormData.ad_domain.trim();
-				selectElement.classList.remove("empty-required-input");
+				domainNameUpdate.value = locationFormData.ad_domain.trim();
+				domainNameUpdate.classList.remove("empty-required-input");
 			} else {
-				selectElement.classList.add("empty-required-input");
+				domainNameUpdate.classList.add("empty-required-input");
 			}
 
 			if (locationFormData.property_custodian) {
-				propertyCustodian.value = locationFormData.property_custodian.trim();
-				propertyCustodian.classList.remove("empty-input");
+				propertyCustodianUpdate.value = locationFormData.property_custodian.trim();
+				propertyCustodianUpdate.classList.remove("empty-input");
 			} else {
-				propertyCustodian.classList.add("empty-input");
+				propertyCustodianUpdate.classList.add("empty-input");
 			}
 
 			if (locationFormData.acquired_date) {
@@ -625,50 +669,50 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 					const month = String(acquiredDateValue.getMonth() + 1).padStart(2, '0');
 					const day = String(acquiredDateValue.getDate()).padStart(2, '0');
 					const acquiredDateFormatted = `${year}-${month}-${day}`;
-					acquiredDateInput.value = acquiredDateFormatted;
-					acquiredDateInput.classList.remove("empty-input");
+					acquiredDateUpdate.value = acquiredDateFormatted;
+					acquiredDateUpdate.classList.remove("empty-input");
 				}
 			} else {
-				acquiredDateInput.classList.add("empty-input");
+				acquiredDateUpdate.classList.add("empty-input");
 			}
 			
 			if (locationFormData.is_broken === true) {
-				isBroken.value = "true";
-				isBroken.classList.remove("empty-required-input");
+				isBrokenUpdate.value = "true";
+				isBrokenUpdate.classList.remove("empty-required-input");
 			} else if (locationFormData.is_broken === false) {
-				isBroken.value = "false";
-				isBroken.classList.remove("empty-required-input");
+				isBrokenUpdate.value = "false";
+				isBrokenUpdate.classList.remove("empty-required-input");
 			} else {
-				isBroken.classList.add("empty-required-input");
+				isBrokenUpdate.classList.add("empty-required-input");
 			}
 
 			if (locationFormData.disk_removed === true) {
-				diskRemoved.value = "true";
-				diskRemoved.classList.remove("empty-input");
+				diskRemovedUpdate.value = "true";
+				diskRemovedUpdate.classList.remove("empty-input");
 			} else if (locationFormData.disk_removed === false) {
-				diskRemoved.value = "false";
-				diskRemoved.classList.remove("empty-input");
+				diskRemovedUpdate.value = "false";
+				diskRemovedUpdate.classList.remove("empty-input");
 			} else {
-				diskRemoved.classList.add("empty-input");
+				diskRemovedUpdate.classList.add("empty-input");
 			}
 
 			if (locationFormData.status) {
-				clientStatus.value = locationFormData.status.trim();
-				clientStatus.classList.remove("empty-required-input");
+				clientStatusUpdate.value = locationFormData.status.trim();
+				clientStatusUpdate.classList.remove("empty-required-input");
 			} else {
-				clientStatus.classList.add("empty-required-input");
+				clientStatusUpdate.classList.add("empty-required-input");
 			}
 
 			if (locationFormData.note) {
-				noteInput.value = locationFormData.note.trim();
-				noteInput.classList.remove("empty-input");
+				noteUpdate.value = locationFormData.note.trim();
+				noteUpdate.classList.remove("empty-input");
 			} else {
-				noteInput.classList.add("empty-input");
+				noteUpdate.classList.add("empty-input");
 			}
 		} else {
 			console.warn("No location form data returned from server");
-			inventoryLookupTagInput.dataset.initialValue = inventoryLookupTagInput.value;
-			inventoryLookupSystemSerialInput.dataset.initialValue = inventoryLookupSystemSerialInput.value;
+			clientLookupTagInput.dataset.initialValue = clientLookupTagInput.value;
+			clientLookupSerial.dataset.initialValue = clientLookupSerial.value;
 		}
 		await updateCheckoutStatus();
 	} catch (error) {
@@ -676,10 +720,10 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		console.error("Error populating location form:", errorMessage);
 	} finally {
 		showInventoryUpdateChanges();
-		inventoryUpdateFormSection.style.display = "block";
-		if (!inventoryLookupTagInput.value) inventoryLookupTagInput.focus();
-		else if (!inventoryLookupSystemSerialInput.value) inventoryLookupSystemSerialInput.focus();
-		else inventoryUpdateLocationInput.focus();
+		updateFormSection.style.display = "block";
+		if (!clientLookupTagInput.value) clientLookupTagInput.focus();
+		else if (!clientLookupSerial.value) clientLookupSerial.focus();
+		else locationEl.focus();
 	}
 }
 
@@ -718,9 +762,9 @@ async function initializeInventoryPage() {
 		const tasks = [
 			populateManufacturerSelect(true),
 			populateModelSelect(true),
-			populateDomainSelect(inventorySearchDomainSelect, true),
-			populateDepartmentSelect(inventorySearchDepartmentSelect, true),
-			populateStatusSelect(inventorySearchStatus),
+			populateDomainSelect(advSearchDomain, true),
+			populateDepartmentSelect(advSearchDepartment, true),
+			populateStatusSelect(advSearchStatus),
 			fetchFilteredInventoryData()
 		];
 		await Promise.all(tasks);
@@ -730,7 +774,7 @@ async function initializeInventoryPage() {
 		const updateParam: string | null = urlParams.get('update');
 		const tagnumberParam: string | null = urlParams.get('tagnumber');
 		if (tagnumberParam && updateParam === 'true') {
-			inventoryLookupTagInput.value = tagnumberParam;
+			clientLookupTagInput.value = tagnumberParam;
 			await submitInventoryLookup();
 		}
 	} catch (e) {
@@ -739,14 +783,14 @@ async function initializeInventoryPage() {
 	}
 }
 
-inventoryUpdateFormCancelButton.addEventListener("click", (event) => {
+cancelUpdate.addEventListener("click", (event) => {
   event.preventDefault();
 	history.replaceState(null, '', window.location.pathname);
   resetInventoryLookupAndUpdateForm();
 	setURLParameter(null, null);
 });
 
-inventoryLookupTagInput.addEventListener("keyup", (event: KeyboardEvent) => {
+clientLookupTagInput.addEventListener("keyup", (event: KeyboardEvent) => {
   const searchTerm = ((event.target as HTMLInputElement).value || '').trim().toLowerCase();
   const allTags = Array.isArray(window.allTags) ? window.allTags : [];
   const filteredTags = searchTerm
@@ -759,70 +803,48 @@ inventoryLookupTagInput.addEventListener("keyup", (event: KeyboardEvent) => {
   }
 });
 
-inventoryUpdateForm.addEventListener("submit", async (event) => {
+updateForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  inventoryUpdateFormSubmitButton.disabled = true;
+  submitUpdate.disabled = true;
   if (updatingInventory) return;
   updatingInventory = true;
 
 	updateURLFromFilters();
 
   try {
-		const jsonObject = {} as InventoryForm;
-    jsonObject.tagnumber = inventoryLookupTagInput && inventoryLookupTagInput.value ? Number(inventoryLookupTagInput.value) : null;
-    jsonObject.system_serial = inventoryLookupSystemSerialInput && inventoryLookupSystemSerialInput.value ? String(inventoryLookupSystemSerialInput.value) : null;
-    if (!inventoryLookupTagInput && !inventoryLookupSystemSerialInput) {
+		const formObj = {} as InventoryForm;
+		if (!clientLookupTagInput && !clientLookupSerial) {
       throw new Error("No tag or serial input fields found in DOM");
     }
-    const getInputValue = (documentID: string): string | null => {
-      const input = inventoryUpdateForm.querySelector(documentID) as HTMLInputElement | null;
-      return input && input.value ? String(input.value) : null;
-    };
-		const locationValue = getInputValue("#location");
-		if (!locationValue || locationValue.trim().length === 0) {
-			throw new Error("Location field cannot be empty");
-		}
-    jsonObject.location = locationValue;
-		
-		jsonObject.building = getInputValue("#building");
-		jsonObject.room = getInputValue("#room");
-    jsonObject.system_manufacturer = getInputValue("#system_manufacturer");
-    jsonObject.system_model = getInputValue("#system_model");
-		jsonObject.property_custodian = getInputValue("#property_custodian");
-
-		const departmentValue = getInputValue("#department_name");
-		if (!departmentValue || departmentValue.trim().length === 0) {
-			throw new Error("Department field cannot be empty");
-		}
-    jsonObject.department_name = departmentValue;
-
-    jsonObject.ad_domain = getInputValue("#ad_domain");
-    const brokenBool = getInputValue("#is_broken");
-      if (brokenBool === "true") jsonObject.is_broken = true;
-      else if (brokenBool === "false") jsonObject.is_broken = false;
-      else jsonObject.is_broken = null;
-		const diskRemovedBool = getInputValue("#disk_removed");
-			if (diskRemovedBool === "true") jsonObject.disk_removed = true;
-			else if (diskRemovedBool === "false") jsonObject.disk_removed = false;
-			else jsonObject.disk_removed = null;
-
-		const statusValue = getInputValue("#status");
-		if (!statusValue || statusValue.trim().length === 0) {
-			throw new Error("Status field cannot be empty");
-		}
-    jsonObject.status = statusValue;
-		if (getInputValue("#acquired_date")) {
-			jsonObject.acquired_date = new Date((getInputValue("#acquired_date") as string) + "T00:00:00").toISOString() || null;
-		}
-    jsonObject.note = getInputValue("#note");
-    // const jsonBase64 = jsonToBase64(JSON.stringify(jsonObject));
+    formObj.tagnumber = getInputNumberValue(clientLookupTagInput);
+    formObj.system_serial = getInputStringValue(clientLookupSerial);
+		formObj.location = getInputStringValue(locationEl);
+		formObj.building = getInputStringValue(buildingUpdate);
+		formObj.room = getInputStringValue(roomUpdate);
+    formObj.system_manufacturer = getInputStringValue(manufacturerUpdate);
+    formObj.system_model = getInputStringValue(modelUpdate);
+		formObj.organization_name = getInputStringValue(organizationUpdate);
+    formObj.department_name = getInputStringValue(departmentEl);
+    formObj.ad_domain = getInputStringValue(domainNameUpdate);
+		formObj.property_custodian = getInputStringValue(propertyCustodianUpdate);
+		formObj.acquired_date = getInputDateValue(acquiredDateUpdate);
+		formObj.retired_date = getInputDateValue(retiredDateUpdate);
+    formObj.is_broken = getInputBooleanValue(isBrokenUpdate);
+		formObj.disk_removed = getInputBooleanValue(diskRemovedUpdate);
+		formObj.last_hardware_check = getInputTimeValue(lastHardwareCheckUpdate);
+    formObj.status = getInputStringValue(clientStatusUpdate);
+		formObj.checkout_bool = formObj.status && statusesThatIndicateCheckout.includes(formObj.status) ? true : false;
+		formObj.checkout_date = getInputDateValue(checkoutDateUpdate);
+		formObj.return_date = getInputDateValue(returnDateUpdate);
+    formObj.note = getInputStringValue(noteUpdate);
+    // const jsonBase64 = jsonToBase64(JSON.stringify(formObj));
     // const jsonPayload = new Blob([jsonBase64], { type: "application/json" });
 
     const formData = new FormData();
-    formData.append("json", new Blob([JSON.stringify(jsonObject)], { type: "application/json" }), "inventory.json");
+    formData.append("json", new Blob([JSON.stringify(formObj)], { type: "application/json" }), "inventory.json");
 
-    if (fileInput && fileInput.files && fileInput.files.length > 0) {
-			const fileList = Array.from(fileInput.files);
+    if (fileInputUpdate && fileInputUpdate.files && fileInputUpdate.files.length > 0) {
+			const fileList = Array.from(fileInputUpdate.files);
       for (const file of fileList) {
         if (!file) continue;
 				let fileName: string = file.name || '';
@@ -862,9 +884,9 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
 		if (!returnedJson || !returnedJson.tagnumber) {
 			throw new Error("Invalid response from server after inventory update");
 		}
-		if (fileInput) fileInput.value = "";
-		inventoryLookupWarningMessage.style.display = "none";
-		lastUpdateTimeMessage.textContent = "";
+		if (fileInputUpdate) fileInputUpdate.value = "";
+		clientLookupWarningMessage.style.display = "none";
+		lastUpdateTime.textContent = "";
     await populateLocationForm(returnedJson.tagnumber, undefined);
     await fetchFilteredInventoryData();
   } catch (error) {
@@ -873,7 +895,7 @@ inventoryUpdateForm.addEventListener("submit", async (event) => {
 		alert("Error updating inventory: " + errorMessage);
   } finally {
     updatingInventory = false;
-    inventoryUpdateFormSubmitButton.disabled = false;
+    submitUpdate.disabled = false;
 		showInventoryUpdateChanges();
   }
 });
@@ -891,16 +913,16 @@ csvDownloadButton.addEventListener('click', async (event) => {
   }
 });
 
-inventoryLookupFormResetButton.addEventListener("click", (event) => {
+clientLookupReset.addEventListener("click", (event) => {
   event.preventDefault();
 	history.replaceState(null, '', window.location.pathname);
   resetInventoryLookupAndUpdateForm();
 	setURLParameter(null, null);
 });
 
-inventoryLookupMoreDetailsButton.addEventListener("click", (event) => {
+clientMoreDetails.addEventListener("click", (event) => {
   event.preventDefault();
-  const tag = inventoryLookupTagInput.value;
+  const tag = clientLookupTagInput.value;
   if (tag) {
     // const url = `/client?tagnumber=${encodeURIComponent(tag)}`;
 		const url = new URL(window.location.origin + '/client_images');
@@ -909,11 +931,11 @@ inventoryLookupMoreDetailsButton.addEventListener("click", (event) => {
   }
 });
 
-clientStatus.addEventListener("change", async () => {
+clientStatusUpdate.addEventListener("change", async () => {
 	await updateCheckoutStatus();
 });
 
-inventoryLookupForm.addEventListener("submit", async (event) => {
+clientLookupForm.addEventListener("submit", async (event) => {
 	event.preventDefault();
 	await submitInventoryLookup();
 	await updateCheckoutStatus();
@@ -936,9 +958,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 	});
 });
 
-inventoryUpdateLocationInput.addEventListener("keyup", async () => {
+locationEl.addEventListener("keyup", async () => {
 	const allLocations = await fetchAllLocations();
-	const searchResults = getLocationSearchResults(inventoryUpdateLocationInput, allLocations);
+	const searchResults = getLocationSearchResults(locationEl, allLocations);
 	const dataListElement = document.getElementById('location-suggestions') as HTMLDataListElement;
 	dataListElement.innerHTML = '';
 	searchResults.forEach(item => {
@@ -953,10 +975,10 @@ inventoryUpdateLocationInput.addEventListener("keyup", async () => {
 
 function updateFormContainerDisplay() {
 	if (window.matchMedia("(max-width: 768px)").matches) {
-		inventoryFormContainer.classList.remove("grid-container", "inventory", "inventory-update-form");
-		inventoryFormContainer.classList.add("flex-container", "horizontal");
+		updateFormContainer.classList.remove("grid-container", "inventory", "inventory-update-form");
+		updateFormContainer.classList.add("flex-container", "horizontal");
 	} else {
-		inventoryFormContainer.classList.remove("flex-container", "horizontal");
-		inventoryFormContainer.classList.add("grid-container", "inventory", "inventory-update-form");
+		updateFormContainer.classList.remove("flex-container", "horizontal");
+		updateFormContainer.classList.add("grid-container", "inventory", "inventory-update-form");
 	}
 }
