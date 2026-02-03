@@ -70,7 +70,6 @@ CREATE TABLE IF NOT EXISTS locations (
 	location VARCHAR(128) DEFAULT NULL,
 	is_broken BOOLEAN DEFAULT NULL,
 	disk_removed BOOLEAN DEFAULT NULL,
-	organization_name VARCHAR(64) REFERENCES static_organizations(organization_name) DEFAULT NULL,
 	department_name VARCHAR(64) REFERENCES static_department_info(department_name) DEFAULT NULL,
 	ad_domain VARCHAR(64) REFERENCES static_ad_domains(domain_name) DEFAULT NULL,
 	note VARCHAR(512) DEFAULT NULL,
@@ -384,7 +383,8 @@ CREATE TABLE IF NOT EXISTS static_department_info (
   department_name VARCHAR(64) PRIMARY KEY,
   department_name_formatted VARCHAR(64) NOT NULL,
 	department_sort_order  SMALLINT NOT NULL DEFAULT 0,
-  department_owner VARCHAR(64) DEFAULT NULL
+  department_owner VARCHAR(64) DEFAULT NULL,
+	organization_name VARCHAR(64) REFERENCES static_organizations(organization_name) DEFAULT NULL
 );
 
 DROP TABLE IF EXISTS static_job_names;

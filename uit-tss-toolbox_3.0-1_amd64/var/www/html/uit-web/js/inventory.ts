@@ -29,6 +29,9 @@ type Department = {
 	department_name: string;
 	department_name_formatted: string;
 	department_sort_order: number;
+	organization_name: string;
+	organization_name_formatted: string;
+	organization_sort_order: number;
 };
 
 type DepartmentsCache = {
@@ -282,9 +285,9 @@ async function submitInventoryLookup() {
 			clientLookupSubmitButton.disabled = true;
 			clientLookupSubmitButton.style.cursor = "not-allowed";
 			clientLookupSubmitButton.style.border = "1px solid gray";
-			clientMoreDetails.style.display = "inline-block";
 
 			clientMoreDetails.disabled = false;
+			clientMoreDetails.style.display = "inline-block";
 			clientMoreDetails.style.cursor = "pointer";
 
 			if (lookupResult.tagnumber || lookupResult.system_serial) {
@@ -304,8 +307,9 @@ async function submitInventoryLookup() {
 		}
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
+		console.error("Error during inventory lookup: " + errorMessage);
 		clientLookupWarningMessage.style.display = "block";
-		clientLookupWarningMessage.textContent = "Error looking up inventory entry: " + errorMessage;
+		clientLookupWarningMessage.textContent = "Error looking up inventory entry. Check console.";
 	} finally {
 		// Set 'update' parameter in URL
 		searchParams.set('update', 'true');
@@ -557,7 +561,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 
 	// Checkout date omitted - included during form submit
 	
-	resetInputElement(checkoutDateUpdate, "Checkout Date", false, "empty-required-input");
+	resetInputElement(checkoutDateUpdate, "Checkout Date", false, "empty-input");
 
 	resetInputElement(returnDateUpdate, "Return Date", false, "empty-input");
 

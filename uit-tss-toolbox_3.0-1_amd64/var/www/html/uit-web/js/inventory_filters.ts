@@ -404,11 +404,20 @@ async function populateDepartmentSelect(el: HTMLSelectElement, purgeCache: boole
 		}
 
 		departmentsData.sort((a, b) => {
+			return a.organization_sort_order - b.organization_sort_order;
+		});
+
+		departmentsData.sort((a, b) => {
 			return a.department_sort_order - b.department_sort_order;
 		});
 
 		resetSelectElement(el, 'Department', false, undefined);
 
+		for (const department of new Set(departmentsData.map(dep => dep.organization_name))) {
+			const orgEl = document.createElement('optgroup');
+			orgEl.label = department;
+			el.appendChild(orgEl);
+		}
 
 		for (const department of departmentsData) {
 			const option = document.createElement('option');
