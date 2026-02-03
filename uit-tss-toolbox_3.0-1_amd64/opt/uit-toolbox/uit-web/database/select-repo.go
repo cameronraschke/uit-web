@@ -63,7 +63,14 @@ func (repo *Repo) GetDepartments(ctx context.Context) (*[]Department, error) {
 	var departments []Department
 	for rows.Next() {
 		var dept Department
-		if err := rows.Scan(&dept.DepartmentName, &dept.DepartmentNameFormatted, &dept.DepartmentSortOrder); err != nil {
+		if err := rows.Scan(
+			&dept.DepartmentName,
+			&dept.DepartmentNameFormatted,
+			&dept.DepartmentSortOrder,
+			&dept.OrganizationName,
+			&dept.OrganizationNameFormatted,
+			&dept.OrganizationSortOrder,
+		); err != nil {
 			return nil, err
 		}
 		departments = append(departments, dept)
