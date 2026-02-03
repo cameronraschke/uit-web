@@ -407,10 +407,6 @@ async function populateDepartmentSelect(el: HTMLSelectElement, purgeCache: boole
 			return a.organization_sort_order - b.organization_sort_order;
 		});
 
-		departmentsData.sort((a, b) => {
-			return a.department_sort_order - b.department_sort_order;
-		});
-
 		resetSelectElement(el, 'Department', false, undefined);
 
 		for (const department of new Set(departmentsData.map(dep => dep.organization_name_formatted || dep.organization_name))) {
@@ -418,6 +414,11 @@ async function populateDepartmentSelect(el: HTMLSelectElement, purgeCache: boole
 			orgEl.label = department ? department.trim() : 'N/A';
 			el.appendChild(orgEl);
 		}
+
+		departmentsData.sort((a, b) => {
+			return a.department_name_formatted.localeCompare(b.department_name_formatted);
+			// return b.department_sort_order - a.department_sort_order;
+		});
 
 		for (const department of departmentsData) {
 			const option = document.createElement('option');

@@ -51,7 +51,7 @@ function getInputBooleanValue(inputEl: HTMLInputElement | HTMLSelectElement): bo
 	else throw new Error(`${inputEl.id} field must be true or false`);
 }
 
-function getInputDateValue(inputEl: HTMLInputElement | HTMLSelectElement): Date | null {
+function getInputDateValue(inputEl: HTMLInputElement | HTMLSelectElement, isNull: boolean = false): Date | null {
 	if (!inputEl) {
 		throw new Error("Input element not found in DOM");
 	}
@@ -61,8 +61,12 @@ function getInputDateValue(inputEl: HTMLInputElement | HTMLSelectElement): Date 
 	}
 
 	const dateObj = new Date(value + "T00:00:00");
-	if (isNaN(dateObj.getTime())) {
+	if (isNaN(dateObj.getTime()) && !(isNull && (!value || value.length === 0))) {
 		throw new Error(`${inputEl.id} field must be a valid date`);
+	}
+
+	if (isNull && (!value || value.length === 0)) {
+		return null;
 	}
 	return dateObj;
 }
