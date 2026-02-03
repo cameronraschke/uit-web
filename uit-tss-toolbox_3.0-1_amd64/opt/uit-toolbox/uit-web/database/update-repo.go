@@ -123,7 +123,7 @@ func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, inventoryUpdate
 
 	var checkoutLogResult sql.Result
 	const checkoutSql = `INSERT INTO checkout_log
-		(time, transaction_uuid, tagnumber, checkout_date, return_date, checkout_bool)
+		(log_entry_time, transaction_uuid, tagnumber, checkout_date, return_date, checkout_bool)
 		VALUES (CURRENT_TIMESTAMP, $1, $2, $3, $4, $5);`
 
 	checkoutLogResult, err = tx.ExecContext(ctx, checkoutSql,
