@@ -44,7 +44,16 @@ func (repo *Repo) GetAllTags(ctx context.Context) ([]int64, error) {
 }
 
 func (repo *Repo) GetDepartments(ctx context.Context) (*[]Department, error) {
-	const sqlQuery = `SELECT department_name, department_name_formatted, department_sort_order FROM static_department_info ORDER BY department_sort_order DESC;`
+	const sqlQuery = `SELECT 
+			static_department_info.department_name, 
+			static_department_info.department_name_formatted, 
+			static_department_info.department_sort_order,
+			static_organizations.organization_name,
+			static_organizations.organization_name_formatted,
+			static_organizations.organization_sort_order
+		FROM static_department_info 
+		LEFT JOIN static_organizations ON static_organizations.organization_name = static_department_info.organization_name
+		ORDER BY static_organizations.organization_sort_order, static_department_info.department_sort_order;`
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, err

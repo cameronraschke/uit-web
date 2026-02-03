@@ -156,9 +156,12 @@ type Domain struct {
 }
 
 type Department struct {
-	DepartmentName          string `json:"department_name"`
-	DepartmentNameFormatted string `json:"department_name_formatted"`
-	DepartmentSortOrder     int64  `json:"department_sort_order"`
+	DepartmentName            string `json:"department_name"`
+	DepartmentNameFormatted   string `json:"department_name_formatted"`
+	DepartmentSortOrder       int64  `json:"department_sort_order"`
+	OrganizationName          string `json:"organization_name"`
+	OrganizationNameFormatted string `json:"organization_name_formatted"`
+	OrganizationSortOrder     int64  `json:"organization_sort_order"`
 }
 
 type JobQueueHeader struct {
