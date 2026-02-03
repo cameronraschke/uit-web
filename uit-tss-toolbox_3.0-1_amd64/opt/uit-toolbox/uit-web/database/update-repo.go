@@ -52,7 +52,6 @@ func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, inventoryUpdate
 		location, 
 		building, 
 		room, 
-		organization_name,
 		department_name, 
 		ad_domain, 
 		property_custodian,  
@@ -63,7 +62,7 @@ func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, inventoryUpdate
 		client_status,
 		note) 
 		VALUES 
-	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);`
+	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`
 
 	var locationsResult sql.Result
 	locationsResult, err = tx.ExecContext(ctx, locationsSql,
@@ -73,7 +72,6 @@ func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, inventoryUpdate
 		toNullString(inventoryUpdateForm.Location),
 		toNullString(inventoryUpdateForm.Building),
 		toNullString(inventoryUpdateForm.Room),
-		toNullString(inventoryUpdateForm.Organization),
 		toNullString(inventoryUpdateForm.Department),
 		toNullString(inventoryUpdateForm.Domain),
 		toNullString(inventoryUpdateForm.PropertyCustodian),

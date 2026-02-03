@@ -394,24 +394,6 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		log.HTTPInfo(req, "No system model provided for inventory update")
 	}
 
-	// Organization (required, min 1 char, max 64 chars, printable ASCII only)
-	if inventoryUpdate.Organization == nil {
-		log.HTTPWarning(req, "No organization_name provided for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Organization)) < 1 || utf8.RuneCountInString(*inventoryUpdate.Organization) > 64 {
-		log.HTTPWarning(req, "Invalid organization_name length for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.Organization) {
-		log.HTTPWarning(req, "Non-printable ASCII characters in organization_name field for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	*inventoryUpdate.Organization = strings.TrimSpace(*inventoryUpdate.Organization)
-
 	// Department (required, min 1 char, max 64 chars, printable ASCII only)
 	if inventoryUpdate.Department == nil {
 		log.HTTPWarning(req, "No department_name provided for inventory update")

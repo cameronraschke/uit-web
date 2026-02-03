@@ -43,14 +43,14 @@ func (repo *Repo) GetAllTags(ctx context.Context) ([]int64, error) {
 	return allTagsSlice, nil
 }
 
-func (repo *Repo) GetDepartments(ctx context.Context) (*[]Department, error) {
+func (repo *Repo) GetDepartments(ctx context.Context) ([]Department, error) {
 	const sqlQuery = `SELECT 
 			static_department_info.department_name, 
 			static_department_info.department_name_formatted, 
 			static_department_info.department_sort_order,
-			static_organizations.organization_name,
-			static_organizations.organization_name_formatted,
-			static_organizations.organization_sort_order
+			COALESCE(static_organizations.organization_name, ''),
+			COALESCE(static_organizations.organization_name_formatted, ''),
+			COALESCE(static_organizations.organization_sort_order, 101)
 		FROM static_department_info 
 		LEFT JOIN static_organizations ON static_organizations.organization_name = static_department_info.organization_name
 		ORDER BY static_organizations.organization_sort_order, static_department_info.department_sort_order;`
@@ -64,12 +64,12 @@ func (repo *Repo) GetDepartments(ctx context.Context) (*[]Department, error) {
 	for rows.Next() {
 		var dept Department
 		if err := rows.Scan(
-			toNullString(&dept.DepartmentName),
-			toNullString(&dept.DepartmentNameFormatted),
-			toNullInt64(&dept.DepartmentSortOrder),
-			toNullString(&dept.OrganizationName),
-			toNullString(&dept.OrganizationNameFormatted),
-			toNullInt64(&dept.OrganizationSortOrder),
+			&dept.DepartmentName,
+			&dept.DepartmentNameFormatted,
+			&dept.DepartmentSortOrder,
+			&dept.OrganizationName,
+			&dept.OrganizationNameFormatted,
+			&dept.OrganizationSortOrder,
 		); err != nil {
 			return nil, err
 		}
@@ -79,7 +79,7 @@ func (repo *Repo) GetDepartments(ctx context.Context) (*[]Department, error) {
 		return nil, err
 	}
 
-	return &departments, nil
+	return departments, nil
 }
 
 func (repo *Repo) GetDomains(ctx context.Context) (*[]Domain, error) {
@@ -418,7 +418,6 @@ func (repo *Repo) GetLocationFormData(ctx context.Context, tag *int64, serial *s
 		locations.room, 
 		hardware_data.system_manufacturer, 
 		hardware_data.system_model,
-		static_department_info.organization_name, 
 		locations.department_name, 
 		locations.ad_domain, 
 		locations.property_custodian, 
@@ -452,7 +451,6 @@ func (repo *Repo) GetLocationFormData(ctx context.Context, tag *int64, serial *s
 		&inventoryUpdateForm.Room,
 		&inventoryUpdateForm.SystemManufacturer,
 		&inventoryUpdateForm.SystemModel,
-		&inventoryUpdateForm.Organization,
 		&inventoryUpdateForm.Department,
 		&inventoryUpdateForm.Domain,
 		&inventoryUpdateForm.PropertyCustodian,

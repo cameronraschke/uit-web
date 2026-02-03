@@ -9,7 +9,6 @@ type InventoryForm = {
 	room: string | null;
 	system_manufacturer: string | null;
 	system_model: string | null;
-	organization_name: string | null;
 	department_name: string | null;
 	ad_domain: string | null;
 	property_custodian: string | null;
@@ -82,7 +81,6 @@ const buildingUpdate = updateForm.querySelector("#building") as HTMLInputElement
 const roomUpdate = updateForm.querySelector("#room") as HTMLInputElement;
 const manufacturerUpdate = updateForm.querySelector("#system_manufacturer") as HTMLInputElement;
 const modelUpdate = updateForm.querySelector("#system_model") as HTMLInputElement;
-const organizationUpdate = updateForm.querySelector("#organization_name") as HTMLSelectElement;
 const departmentEl = document.getElementById('department_name') as HTMLSelectElement;
 const domainNameUpdate = updateForm.querySelector("#ad_domain") as HTMLSelectElement;
 const propertyCustodianUpdate = updateForm.querySelector("#property_custodian") as HTMLInputElement;
@@ -114,7 +112,6 @@ const allInventoryUpdateFields = [
 	roomUpdate,
 	manufacturerUpdate,
 	modelUpdate,
-	organizationUpdate,
 	departmentEl,
 	domainNameUpdate,
 	propertyCustodianUpdate,
@@ -472,20 +469,6 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 
 	resetInputElement(modelUpdate, "System Model", false, "empty-input");
 
-	resetSelectElement(organizationUpdate, "Select Organization", false, "empty-required-input");
-	if (organizationUpdate) {
-		const op1 = document.createElement("option");
-		op1.value = "test1";
-		op1.textContent = "test1"
-
-		const op2 = document.createElement("option");
-		op2.value = "test2";
-		op2.textContent = "test2";
-
-		isBrokenUpdate.append(op1);
-		isBrokenUpdate.append(op2);
-	}
-
 	resetSelectElement(departmentEl, "Select Department", false, "empty-required-input");
 	try { 
 		await populateDepartmentSelect(departmentEl)
@@ -827,7 +810,6 @@ updateForm.addEventListener("submit", async (event) => {
 		formObj.room = getInputStringValue(roomUpdate);
     formObj.system_manufacturer = getInputStringValue(manufacturerUpdate);
     formObj.system_model = getInputStringValue(modelUpdate);
-		formObj.organization_name = getInputStringValue(organizationUpdate);
     formObj.department_name = getInputStringValue(departmentEl);
     formObj.ad_domain = getInputStringValue(domainNameUpdate);
 		formObj.property_custodian = getInputStringValue(propertyCustodianUpdate);

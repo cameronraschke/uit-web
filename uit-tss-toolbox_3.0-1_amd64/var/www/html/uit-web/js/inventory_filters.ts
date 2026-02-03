@@ -413,9 +413,9 @@ async function populateDepartmentSelect(el: HTMLSelectElement, purgeCache: boole
 
 		resetSelectElement(el, 'Department', false, undefined);
 
-		for (const department of new Set(departmentsData.map(dep => dep.organization_name))) {
+		for (const department of new Set(departmentsData.map(dep => dep.organization_name_formatted || dep.organization_name))) {
 			const orgEl = document.createElement('optgroup');
-			orgEl.label = department;
+			orgEl.label = department ? department.trim() : 'N/A';
 			el.appendChild(orgEl);
 		}
 
@@ -423,7 +423,12 @@ async function populateDepartmentSelect(el: HTMLSelectElement, purgeCache: boole
 			const option = document.createElement('option');
 			option.value = department.department_name;
 			option.textContent = department.department_name_formatted || department.department_name;
-			el.appendChild(option);
+			const parentOptGroup = Array.from(el.getElementsByTagName('optgroup')).find(group => group.label === (department.organization_name_formatted ? department.organization_name_formatted : (department.organization_name ? department.organization_name : 'N/A')));
+			if (parentOptGroup) {
+				parentOptGroup.appendChild(option);
+			} else {
+				el.appendChild(option);
+			}
 		}
 		el.value = (initialValue && departmentsData.some(item => item.department_name === initialValue)) ? initialValue : '';
 	} catch (error) {
