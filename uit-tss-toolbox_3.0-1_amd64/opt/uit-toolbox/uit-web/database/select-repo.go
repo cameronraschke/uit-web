@@ -64,12 +64,12 @@ func (repo *Repo) GetDepartments(ctx context.Context) (*[]Department, error) {
 	for rows.Next() {
 		var dept Department
 		if err := rows.Scan(
-			&dept.DepartmentName,
-			&dept.DepartmentNameFormatted,
-			&dept.DepartmentSortOrder,
-			&dept.OrganizationName,
-			&dept.OrganizationNameFormatted,
-			&dept.OrganizationSortOrder,
+			toNullString(&dept.DepartmentName),
+			toNullString(&dept.DepartmentNameFormatted),
+			toNullInt64(&dept.DepartmentSortOrder),
+			toNullString(&dept.OrganizationName),
+			toNullString(&dept.OrganizationNameFormatted),
+			toNullInt64(&dept.OrganizationSortOrder),
 		); err != nil {
 			return nil, err
 		}
