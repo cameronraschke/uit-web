@@ -14,6 +14,83 @@ type AuthStatusResponse = {
 
 const inputCSSClasses = ["empty-input", "empty-required-input", "changed-input", "readonly-input"];
 
+function truncateString(inputStr: string, maxLength: number): { truncatedString: string, isTruncated: boolean } {
+	const str = inputStr ? inputStr.trim() : "";
+	if (str.length <= maxLength) {
+		return { truncatedString: inputStr, isTruncated: false };
+	}
+	const newStr = str.substring(0, maxLength - 3) + "...";
+	return { truncatedString: newStr, isTruncated: true };
+}
+
+function createTextCell(elID: string | undefined, datasetKey: string | undefined, inputStr: string | null, truncateLen: number | undefined, customError: string | undefined) : HTMLTableCellElement {
+	const cell = document.createElement('td');
+
+	if (elID) cell.id = elID;	
+
+	if (inputStr) {
+		if (datasetKey) cell.dataset[`${datasetKey}`] = inputStr || '';
+		if (truncateLen && inputStr.length > truncateLen) {
+			const truncated = truncateString(inputStr, truncateLen);
+			cell.textContent = truncated.truncatedString;
+			cell.title = inputStr;
+			cell.style.cursor = 'pointer';
+			cell.addEventListener('click', () => {
+				cell.textContent = inputStr;
+				if (cell.title) cell.removeAttribute('title');
+				cell.style.cursor = 'default';
+			}, { once: true });
+		} else {
+			cell.textContent = inputStr;
+		}
+	} else {
+		cell.style.fontStyle = 'italic';
+		cell.textContent = customError || 'N/A';
+	}
+	return cell;
+}
+
+// Boolean broken status
+function createBooleanCell(elID: string | undefined, datasetKey: string | undefined, inputBool: boolean | null, trueText: string | undefined, falseText: string | undefined, customError: string | undefined) : HTMLTableCellElement {
+  const cell = document.createElement('td');
+
+	if (elID) cell.id = elID;
+  
+  if (inputBool && typeof inputBool === 'boolean') {
+		if (datasetKey) cell.dataset[`${datasetKey}`] = inputBool !== undefined ? String(inputBool) : '';
+    cell.textContent = inputBool ? trueText || 'true' : falseText || 'false';
+	} else {
+		cell.style.fontStyle = 'italic';
+    cell.textContent = customError || 'N/A';
+  }
+  return cell;
+}
+
+// Date formatting
+function createTimestampCell(elID: string | undefined, datasetKey: string | undefined, inputStr: string | null, customError: string | undefined) : HTMLTableCellElement {
+  const cell = document.createElement('td');
+
+	if (elID) cell.id = elID;
+  
+  if (!inputStr || inputStr.trim().length === 0) {
+		cell.style.fontStyle = 'italic';
+    cell.textContent = customError || 'N/A';
+    return cell;
+  }
+  
+  const date = new Date(inputStr);
+  
+  if (!isNaN(date.getTime())) {
+    const formatted = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    if (datasetKey) cell.dataset[`${datasetKey}`] = formatted;
+    cell.textContent = formatted;
+  } else {
+		cell.style.fontStyle = 'italic';
+		cell.textContent = customError || 'N/A';
+	}
+  return cell;
+}
+
 function getInputStringValue(inputEl: HTMLInputElement | HTMLSelectElement): string | null {
 	if (!inputEl) {
 		throw new Error("Input element not found in DOM");

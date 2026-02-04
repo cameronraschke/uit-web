@@ -24,42 +24,7 @@ const inventorySerialSortInput = document.getElementById('inventory-sort-serial'
 const inventoryTimeSortInput = document.getElementById('inventory-sort-time') as HTMLInputElement;
 const inventorySortByInput = document.getElementById('inventory-sort-by') as HTMLSelectElement;
 
-function createTextCell(value: string, options: { datasetKey?: string; link?: string; onClick?: (event: MouseEvent) => void; truncate?: number } = {}) {
-  const cell = document.createElement('td');
-  
-  if (!value) {
-    cell.textContent = 'N/A';
-    if (options.datasetKey) {
-      cell.dataset[options.datasetKey] = '';
-    }
-    return cell;
-  }
-  
-  if (options.datasetKey) {
-    cell.dataset[options.datasetKey] = value;
-  }
-  
-  if (options.link) {
-    const anchor = document.createElement('a');
-    anchor.href = options.link;
-    anchor.textContent = value;
-    if (options.onClick) {
-      anchor.addEventListener('click', options.onClick);
-    }
-    cell.appendChild(anchor);
-  } else if (options.truncate && value.length > options.truncate) {
-    cell.textContent = value.substring(0, options.truncate) + '...';
-    cell.title = value;
-    cell.style.cursor = 'pointer';
-    cell.addEventListener('click', () => {
-      cell.textContent = value;
-    }, { once: true });
-  } else {
-    cell.textContent = value;
-  }
-  
-  return cell;
-}
+
 
 function createManufacturerModelCell(jsonRow: InventoryRow) {
   const cell = document.createElement('td');
@@ -95,42 +60,7 @@ function createManufacturerModelCell(jsonRow: InventoryRow) {
   return cell;
 }
 
-// Boolean broken status
-function createBooleanCell(isBroken: boolean | null) {
-  const cell = document.createElement('td');
-  
-  if (typeof isBroken === 'boolean') {
-    cell.textContent = isBroken ? 'Broken' : 'Functional';
-    cell.dataset.is_broken = String(isBroken);
-  } else {
-    cell.textContent = 'N/A';
-    cell.dataset.is_broken = 'null';
-  }
-  
-  return cell;
-}
 
-// Date formatting
-function createTimestampCell(dateValue: string | null) {
-  const cell = document.createElement('td');
-  
-  if (!dateValue) {
-    cell.textContent = 'N/A';
-    return cell;
-  }
-  
-  const date = new Date(dateValue);
-  
-  if (isNaN(date.getTime())) {
-    cell.textContent = 'Unknown date';
-  } else {
-    const formatted = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-    cell.dataset.last_updated = formatted;
-    cell.textContent = formatted;
-  }
-  
-  return cell;
-}
 
 // Empty table state
 function renderEmptyTable(tableBody: HTMLElement, message: string) {
@@ -145,7 +75,7 @@ function renderEmptyTable(tableBody: HTMLElement, message: string) {
   tableBody.appendChild(jsonRow);
 }
 
-async function renderInventoryTable(tableData: InventoryRow[] | null) {
+function renderInventoryTable(tableData: InventoryRow[] | null) {
 	if (!tableData) {
 		renderEmptyTable(tableBody, 'No results found.');
 		return;
@@ -181,59 +111,70 @@ async function renderInventoryTable(tableData: InventoryRow[] | null) {
 		tagURL.searchParams.set('update', 'true');
 		tagAnchor.href = tagURL.toString();
 
-		try {
-			await Promise.all([submitInventoryLookup(), fetchFilteredInventoryData()]);
-		} catch (error) {
-			console.error('Error handling tag click:', error);
-		} finally {
-			formAnchor.scrollIntoView({ behavior: 'auto', block: 'start' });
-		}
+		tagAnchor.addEventListener('click', async (event) => {
+			event.preventDefault();
+			try {
+				await Promise.all([submitInventoryLookup(), fetchFilteredInventoryData()]);
+			} catch (error) {
+				console.error('Error handling tag click:', error);
+			} finally {
+				formAnchor.scrollIntoView({ behavior: 'auto', block: 'start' });
+			}
+		});
+
 		tr.appendChild(tagCell);
 
 		// Serial Number with truncation and click to expand
 		const serialCell = document.createElement('td');
 		serialCell.dataset.system_serial = jsonRow.system_serial || '';
 
-		// Location with link
-		tr.appendChild(createTextCell(jsonRow.location_formatted, {
-		datasetKey: 'location_formatted',
-		link: `/inventory?location=${encodeURIComponent(jsonRow.location_formatted || '')}`
-		}));
+		// Location
+		tr.appendChild(createTextCell(undefined, 'location', jsonRow.location_formatted, 40, undefined));
 
 		// Manufacturer and Model combined cell
-		tr.appendChild(createManufacturerModelCell(jsonRow));
+		const manufacturerModelCell = document.createElement('td');
+		manufacturerModelCell.dataset.system_manufacturer = jsonRow.system_manufacturer || '';
+		manufacturerModelCell.dataset.system_model = jsonRow.system_model || '';
+		let manufacturerModelText = 'N/A';
+		if (jsonRow.system_manufacturer && jsonRow.system_model) {
+			manufacturerModelText = `${jsonRow.system_manufacturer}/${jsonRow.system_model}`;
+		} else if (jsonRow.system_manufacturer && !jsonRow.system_model) {
+			manufacturerModelText = `${jsonRow.system_manufacturer}/Unknown Model`;
+		} else if (!jsonRow.system_manufacturer && jsonRow.system_model) {
+			manufacturerModelText = `Unknown Manufacturer/${jsonRow.system_model}`;
+		}
+		if (manufacturerModelText.length > 30) {
+			const arr = manufacturerModelText.split('/');
+			const truncated = `${arr[0].substring(0, 10)}.../${arr[1].substring(0, 17)}...`;
+			manufacturerModelCell.title = manufacturerModelText;
+			manufacturerModelCell.style.cursor = 'pointer';
+			manufacturerModelCell.textContent = truncated;
+		} else {
+			manufacturerModelCell.textContent = manufacturerModelText;
+		}
+		tr.appendChild(manufacturerModelCell);
 
 		// Department
-		tr.appendChild(createTextCell(jsonRow.department_formatted, {
-		datasetKey: 'department_formatted'
-		}));
+		tr.appendChild(createTextCell(undefined, 'department', jsonRow.department_formatted, 20, undefined));
 
 		// Domain
-		tr.appendChild(createTextCell(jsonRow.domain_formatted, {
-		datasetKey: 'domain_formatted'
-		}));
+		tr.appendChild(createTextCell(undefined, 'domain', jsonRow.domain_formatted, 20, undefined));
 
 		// Status
-		tr.appendChild(createTextCell(jsonRow.status, {
-		datasetKey: 'status'
-		}));
+		tr.appendChild(createTextCell(undefined, 'status', jsonRow.status, undefined, undefined));
 
 		// Broken status
-		tr.appendChild(createBooleanCell(jsonRow.is_broken));
+		tr.appendChild(createBooleanCell(undefined, 'is_broken', jsonRow.is_broken, 'Broken', 'Functional', undefined));
 
 		// Note (truncated)
-		tr.appendChild(createTextCell(jsonRow.note, {
-		datasetKey: 'note',
-		truncate: 61
-		}));
+		tr.appendChild(createTextCell(undefined, 'note', jsonRow.note, 60, undefined));
 
 		// Last Updated
-		tr.appendChild(createTimestampCell(jsonRow.last_updated));
+		tr.appendChild(createTimestampCell(undefined, 'last_updated', jsonRow.last_updated, undefined));
 
 		fragment.appendChild(tr);
 	}
-	tableBody.innerHTML = '';
-	tableBody.appendChild(fragment);
+	tableBody.replaceChildren(fragment);
 }
 
 function getInventorySortByParams() {

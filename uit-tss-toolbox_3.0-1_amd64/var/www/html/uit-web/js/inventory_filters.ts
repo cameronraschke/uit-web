@@ -206,7 +206,7 @@ async function fetchFilteredInventoryData(csvDownload = false): Promise<void> {
     if (jsonData && typeof jsonData === 'object' && !Array.isArray(jsonData) && Object.prototype.hasOwnProperty.call(jsonData, 'error')) {
       throw new Error(String(jsonData.error || 'Unknown server error'));
     }
-    await renderInventoryTable(jsonData);
+    renderInventoryTable(jsonData);
   } catch (error) {
     console.error("Error fetching inventory data:", error);
   }
