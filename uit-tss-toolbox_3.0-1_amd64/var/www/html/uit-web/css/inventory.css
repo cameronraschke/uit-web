@@ -6,8 +6,8 @@
   display: none;
 }
 
-#inventory-update-section {
-  display: none;
+#inventory-update-form {
+	display: none;
 }
 
 .grid-container.inventory.inventory-update-form {

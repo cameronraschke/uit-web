@@ -1,7 +1,7 @@
 let updatingInventory = false;
 
 type InventoryForm = {
-	last_update_time: string | null;
+	time: string | null;
 	tagnumber: number | null;
 	system_serial: string | null;
 	location: string | null;
@@ -73,7 +73,6 @@ const printCheckoutLink = document.getElementById('print-checkout-link') as HTML
 const printCheckoutContainer = document.getElementById('print-checkout-container') as HTMLElement;
 
 // Inventory update form elements
-const updateFormSection = document.getElementById('inventory-update-section') as HTMLElement;
 const updateForm = document.getElementById('inventory-update-form') as HTMLFormElement;
 const lastUpdateTime = document.getElementById('last-update-time-message') as HTMLElement;
 const locationEl = document.getElementById('location') as HTMLInputElement;
@@ -352,10 +351,11 @@ function resetInventoryLookupAndUpdateForm() {
 	clientMoreDetails.style.display = "none";
 	clientMoreDetails.disabled = false;
 	clientMoreDetails.style.cursor = "pointer";
-	updateFormSection.style.display = "none";
+	updateForm.style.display = "none";
 	clientLookupWarningMessage.style.display = "none";
 	clientLookupWarningMessage.textContent = "";
 	lastUpdateTime.textContent = "";
+	lastUpdateTime.style.display = "none";
 	clientLookupTagInput.focus();
 }
 
@@ -496,7 +496,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 
 	resetInputElement(retiredDateUpdate, "Retired Date", false, "empty-input");
 
-	resetSelectElement(isBrokenUpdate, "Is Broken?", false, "empty-required-input");
+	resetSelectElement(isBrokenUpdate, "Is Broken?", false, "empty-input");
 		if (isBrokenUpdate) {
 		const op1 = document.createElement("option");
 		op1.value = "true";
@@ -559,16 +559,25 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		el.required = true;
 	}
 
+	lastUpdateTime.textContent = "";
 	lastUpdateTime.style.display = "none";
 	try {
 		const locationFormData = await getLocationFormData(tag, serial);
 		if (locationFormData) {
-			if (locationFormData.last_update_time) {
-				const lastUpdate = new Date(locationFormData.last_update_time);
+			if (locationFormData.time) {
+				const lastUpdate = new Date(locationFormData.time);
+				const timeFormattingOptions : Intl.DateTimeFormatOptions = {
+					hour: "2-digit",
+					minute: "2-digit",
+					weekday: "short",
+					year: "numeric",
+					month: "long",
+					day: "numeric",
+				};
 				if (isNaN(lastUpdate.getTime())) {
-					lastUpdateTime.textContent = 'Unknown timestamp of last update';
+					lastUpdateTime.textContent = 'Unknown timestamp of last entry';
 				} else {
-					lastUpdateTime.textContent = `Last updated: ${lastUpdate.toLocaleString()}` || '';
+					lastUpdateTime.textContent = `Most recent entry: ${lastUpdate.toLocaleString(undefined, timeFormattingOptions)}` || '';
 				}
 				lastUpdateTime.style.display = "block";
 			}
@@ -668,12 +677,12 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			
 			if (locationFormData.is_broken === true) {
 				isBrokenUpdate.value = "true";
-				isBrokenUpdate.classList.remove("empty-required-input");
+				isBrokenUpdate.classList.remove("empty-input");
 			} else if (locationFormData.is_broken === false) {
 				isBrokenUpdate.value = "false";
-				isBrokenUpdate.classList.remove("empty-required-input");
+				isBrokenUpdate.classList.remove("empty-input");
 			} else {
-				isBrokenUpdate.classList.add("empty-required-input");
+				isBrokenUpdate.classList.add("empty-input");
 			}
 
 			if (locationFormData.disk_removed === true) {
@@ -710,7 +719,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		console.error("Error populating location form:", errorMessage);
 	} finally {
 		showInventoryUpdateChanges();
-		updateFormSection.style.display = "block";
+		updateForm.style.display = "block";
 		if (!clientLookupTagInput.value) clientLookupTagInput.focus();
 		else if (!clientLookupSerial.value) clientLookupSerial.focus();
 		else locationEl.focus();

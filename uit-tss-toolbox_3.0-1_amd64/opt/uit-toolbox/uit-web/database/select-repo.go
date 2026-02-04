@@ -153,7 +153,7 @@ func (repo *Repo) GetLocations(ctx context.Context) (map[string]string, error) {
 }
 
 func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]ManufacturersAndModels, error) {
-	const sqlQuery = `SELECT system_model, system_manufacturer
+	const sqlQuery = `SELECT system_manufacturer, system_model, COUNT(*) AS "system_model_count"
 		FROM hardware_data 
 		WHERE system_manufacturer IS NOT NULL 
 			AND system_model IS NOT NULL
@@ -169,13 +169,25 @@ func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]Manufacturer
 
 	for rows.Next() {
 		var row ManufacturersAndModels
-		if err := rows.Scan(&row.SystemModel, &row.SystemManufacturer); err != nil {
+		if err := rows.Scan(
+			&row.SystemManufacturer,
+			&row.SystemModel,
+			&row.SystemModelCount); err != nil {
 			return nil, err
 		}
 		manufacturersAndModels = append(manufacturersAndModels, row)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+
+	manufacturerCounts := make(map[string]int64, len(manufacturersAndModels))
+	for _, row := range manufacturersAndModels {
+		manufacturerCounts[row.SystemManufacturer] += row.SystemModelCount
+	}
+
+	for i := range manufacturersAndModels {
+		manufacturersAndModels[i].SystemManufacturerCount = manufacturerCounts[manufacturersAndModels[i].SystemManufacturer]
 	}
 
 	return manufacturersAndModels, nil

@@ -16,48 +16,48 @@
 		<div class="flex-container title pagetitle"><h2>Update and View Inventory</h2></div>
 
 		<section id="update-and-search-container" class="flex-container horizontal">
-			<form id="inventory-lookup-form">
-				<div class="flex-container vertical outlined">
-					<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
-					<div class="flex-container horizontal"><div class="flex-container title"><h3>Update Client Information</h3></div></div>
+			<div class="flex-container vertical outlined">
+				<form id="inventory-lookup-form">
 					<div class="flex-container vertical">
-						<div class="flex-container horizontal"><p>Tag Number/Serial Number Lookup:</p></div>
-						<input type="number" id="inventory-tag-lookup" list="inventory-tag-suggestions"
-							class="text-search"
-							placeholder="Search Tag Number"
-							minlength="6"
-							maxlength="6"
-							autocomplete="off"
-							autocorrect="off"
-							autocapitalize="off"
-							pattern="[0-9]{6}"
-							autofocus
-						/>
-						<datalist id="inventory-tag-suggestions"></datalist>
-						<input type="text" id="inventory-serial-lookup"
-							class="text-search"
-							placeholder="Search Serial Number"
-							minlength="4"
-							maxlength="64"
-							autocomplete="off"
-							autocorrect="off"
-							autocapitalize="off"
-							pattern="[A-Za-z0-9\-_]{1,64}"
-						/>
-						<div class="flex-container horizontal">
-							<button type="button" id="inventory-lookup-reset-button">Reset Search</button>
-							<button type="button" id="inventory-lookup-more-details">More Details</button>
-							<button type="submit" id="inventory-lookup-submit-button">Search for Client</button>
+						<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
+						<div class="flex-container horizontal"><div class="flex-container title"><h3>Update Client Information</h3></div></div>
+						<div class="flex-container vertical">
+							<div class="flex-container horizontal"><p>Tag Number/Serial Number Lookup:</p></div>
+							<input type="number" id="inventory-tag-lookup" list="inventory-tag-suggestions"
+								class="text-search"
+								placeholder="Search Tag Number"
+								minlength="6"
+								maxlength="6"
+								autocomplete="off"
+								autocorrect="off"
+								autocapitalize="off"
+								pattern="[0-9]{6}"
+								autofocus
+							/>
+							<datalist id="inventory-tag-suggestions"></datalist>
+							<input type="text" id="inventory-serial-lookup"
+								class="text-search"
+								placeholder="Search Serial Number"
+								minlength="4"
+								maxlength="64"
+								autocomplete="off"
+								autocorrect="off"
+								autocapitalize="off"
+								pattern="[A-Za-z0-9\-_]{1,64}"
+							/>
+							<div class="flex-container horizontal">
+								<button type="button" id="inventory-lookup-reset-button">Reset Search</button>
+								<button type="button" id="inventory-lookup-more-details">More Details</button>
+								<button type="submit" id="inventory-lookup-submit-button">Search for Client</button>
+							</div>
 						</div>
 					</div>
 				</form>
 
-				<div class="vertical-spacer"></div>
-
-				<div id="inventory-update-section">
-					<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
-					<div class="message"><p id="last-update-time-message" class="warning-message"></p></div>
-					<form id="inventory-update-form" enctype="multipart/form-data" method="POST" action="/api/update_inventory">
+				<form id="inventory-update-form" enctype="multipart/form-data" method="POST" action="/api/update_inventory">
+					<div class="flex-container vertical">
+						<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
+						<div class="message"><p id="last-update-time-message" class="warning-message"></p></div>
 						<input type="hidden" id="csrf-token" value="" />
 						<div id="inventory-form-container" class="grid-container inventory inventory-update-form">
 							<div class="flex-container vertical separated">
@@ -222,85 +222,83 @@
 								Submit Inventory Update
 							</button>
 						</div>
-					</form>
-				</div>
+					</div>
+				</form>
 			</div>
 
-			<form id="inventory-search-form">
-				<div class="flex-container vertical outlined">
-					<div class="flex-container horizontal">
-						<div><h3>Advanced Search</h3></div>
-					</div>
+			<div class="flex-container vertical outlined">
+				<form id="inventory-search-form">
 					<div class="flex-container vertical">
-						<div class="flex-container horizontal">
+						<div class="flex-container vertical"><h3>Advanced Search</h3></div>
+						<div class="flex-container vertical">
+							<div class="flex-container horizontal">
 								<select id="inventory-search-location" name="location" form="inventory-search-form">
-								<option value="" disabled selected>Location</option>
+									<option value="" disabled selected>Location</option>
 									{{ range $location, $locationReadable := .Locations }}
 										<option value="{{ $location }}">{{ $locationReadable }}</option>
 									{{ end }}
 								</select>
 								<a id="inventory-search-location-reset" class="inventory-search-reset" href="">x</a>
-						</div>
-						<div class="flex-container horizontal">
+							</div>
+							<div class="flex-container horizontal">
 								<select id="inventory-search-department" name="department_name" form="inventory-search-form">
 									<option value="" disabled selected>Department</option>
 								</select>
 								<a id="inventory-search-department-reset" class="inventory-search-reset" href="">x</a>
-						</div>
-						<div class="flex-container horizontal">
+							</div>
+							<div class="flex-container horizontal">
 								<select id="inventory-search-manufacturer" name="manufacturer" form="inventory-search-form">
 									<option value="" disabled selected>Manufacturer</option>
 								</select>
 								<a id="inventory-search-manufacturer-reset" class="inventory-search-reset" href="">x</a>
-						</div>
-						<div class="flex-container horizontal">
+							</div>
+							<div class="flex-container horizontal">
 								<select id="inventory-search-model" name="model" form="inventory-search-form">
 									<option value="" disabled selected>Model</option>
 								</select>
 								<a id="inventory-search-model-reset" class="inventory-search-reset" href="">x</a>
-						</div>
-						<div class="flex-container horizontal">
+							</div>
+							<div class="flex-container horizontal">
 								<select id="inventory-search-domain" name="ad_domain" form="inventory-search-form">
-								<option value="" disabled selected>AD Domain</option>
+									<option value="" disabled selected>AD Domain</option>
 									{{ range $domain, $domainReadable := .Domains }}
 										<option value="{{ $domain }}">{{ $domainReadable }}</option>
 									{{ end }}
 								</select>
 								<a id="inventory-search-domain-reset" class="inventory-search-reset" href="">x</a>
-						</div>
-						<div class="flex-container horizontal">
+							</div>
+							<div class="flex-container horizontal">
 								<select id="inventory-search-status" name="status" form="inventory-search-form">
-								<option value="" disabled selected>Status</option>
+									<option value="" disabled selected>Status</option>
 									{{ range $status, $statusReadable := .Statuses }}
 										<option value="{{ $status }}">{{ $statusReadable }}</option>
 									{{ end }}
 								</select>
 								<a id="inventory-search-status-reset" class="inventory-search-reset" href="">x</a>
-						</div>
-						<div class="flex-container horizontal">
+							</div>
+							<div class="flex-container horizontal">
 								<select id="inventory-search-broken" name="is_broken" form="inventory-search-form">
-								<option value="" disabled selected>Broken?</option>
-								<option value="true">Yes - Is broken</option>
-								<option value="false">No - Is functional</option>
+									<option value="" disabled selected>Broken?</option>
+									<option value="true">Yes - Is broken</option>
+									<option value="false">No - Is functional</option>
 								</select>
 								<a id="inventory-search-broken-reset" class="inventory-search-reset" href="">x</a>
-						</div>
-						<div class="flex-container horizontal">
+							</div>
+							<div class="flex-container horizontal">
 								<select id="inventory-search-has_images" name="has_images" form="inventory-search-form">
 									<option value="" disabled selected>Has Images?</option>
 									<option value="true">Yes - Has images</option>
 									<option value="false">No - Missing images</option>
 								</select>
 								<a id="inventory-search-has_images-reset" class="inventory-search-reset" href="">x</a>
+							</div>
+							<div class="flex-container horizontal form-buttons">
+								<button id="inventory-search-form-reset-button" type="button" class="cancel">Reset Search</button>
+								<button type="submit" class="submit" id="inventory-search-download-button">Download Results</button>
+							</div>
 						</div>
-						</div>
-						</div>
-					<div class="flex-container horizontal form-buttons">
-						<button id="inventory-search-form-reset-button" type="button" class="cancel">Reset Search</button>
-						<button type="submit" class="submit" id="inventory-search-download-button">Download Results</button>
 					</div>
-					</form>
-				</div>
+				</form>
 			</div>
 		</section>
 

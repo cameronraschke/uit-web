@@ -243,7 +243,7 @@ td {
 
 .warning-message {
   display: none;
-  max-width: 70%;
+	max-width: 90%;
   color: var(--warning-color);
   font-weight: bold;
   text-align: center;

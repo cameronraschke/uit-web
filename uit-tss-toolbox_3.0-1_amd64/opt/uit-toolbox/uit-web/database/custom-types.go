@@ -144,8 +144,10 @@ type InventoryFilterOptions struct {
 }
 
 type ManufacturersAndModels struct {
-	SystemModel        string `json:"system_model"`
-	SystemManufacturer string `json:"system_manufacturer"`
+	SystemManufacturer      string `json:"system_manufacturer"`
+	SystemManufacturerCount int64  `json:"system_manufacturer_count"`
+	SystemModel             string `json:"system_model"`
+	SystemModelCount        int64  `json:"system_model_count"`
 }
 
 type Domain struct {
