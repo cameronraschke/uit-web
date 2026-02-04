@@ -10,8 +10,10 @@ type DomainCache = {
 };
 
 type ManufacturersAndModels = {
-	system_model: string;
 	system_manufacturer: string;
+	system_model: string;
+	system_model_count: number;
+	system_manufacturer_count?: number;
 };
 
 type ManufacturerAndModelsCache = {
@@ -97,16 +99,10 @@ function updateFiltersFromURL() {
 		const urlValue = currentParams.get(param.paramString);
 		if (urlValue && urlValue.trim().length > 0) {
 			param.inputElement.value = urlValue;
-			param.inputElement.style.border = "1px solid orange";
-			param.inputElement.style.outline = "1px solid orange;"
-			param.inputElement.style.boxShadow = "0 0 2px orange";
-			param.resetElement.style.display = 'inline-block';
+			param.inputElement.classList.add('changed-input');
 		} else {
 			param.inputElement.value = '';
-			param.inputElement.style.border = "revert-layer";
-			param.inputElement.style.boxShadow = "revert-layer";
-			param.inputElement.style.outline = "revert-layer";
-			param.resetElement.style.display = 'none';
+			param.inputElement.classList.remove('changed-input');
 		}
 	}
 }
@@ -119,9 +115,7 @@ function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton:
 
 	if (filterElement.value && filterElement.value.length > 0) {
 		resetButton.style.display = 'inline-block';
-		filterElement.style.border = "1px solid orange";
-		filterElement.style.outline = "1px solid orange;"
-		filterElement.style.boxShadow = "0 0 2px orange";
+		filterElement.classList.add('changed-input');
 	}
 
 	filterElement.addEventListener("change", () => {
@@ -130,13 +124,10 @@ function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton:
 		setURLParameter(paramString, filterElement.value);
 		if ((filterElement.value && filterElement.value.trim().length >= 0) || typeof filterElement.value === 'boolean') {
 			resetButton.style.display = 'inline-block';
-			filterElement.style.border = "1px solid orange";
-			filterElement.style.outline = "1px solid orange;"
-			filterElement.style.boxShadow = "0 0 2px orange";
+			filterElement.classList.add('changed-input');
 		} else {
 			resetButton.style.display = 'none';
-			filterElement.style.border = "revert-layer";
-			filterElement.style.boxShadow = "revert-layer";
+			filterElement.classList.remove('changed-input');
 		}
 		if (filterElement === filterManufacturerReset || filterElement == filterModelReset) {
 			populateManufacturerSelect().catch((error) => {
@@ -154,23 +145,21 @@ function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton:
 	resetButton.addEventListener("click", (event) => {
 		event.preventDefault();
 		resetButton.style.display = 'none';
-		filterElement.style.border = "revert-layer";
-		filterElement.style.boxShadow = "revert-layer";
-		filterElement.style.outline = "revert-layer";
+		filterElement.classList.remove('changed-input');
 		filterElement.value = '';
+		updateURLFromFilters();
 		if (resetButton === filterManufacturerReset || resetButton == filterModelReset) {
+			if (resetButton === filterManufacturerReset) setURLParameter('system_manufacturer', null);
+			if (resetButton === filterModelReset) setURLParameter('system_model', null);
 			populateManufacturerSelect().catch((error) => {
 				console.error("Error populating manufacturer select:", error);
 			});
+			filterModel.disabled = true;
+			filterModel.value = '';
+			filterModelReset.style.display = 'none';
 			populateModelSelect().catch((error) => {
 				console.error("Error populating model select:", error);
 			});
-		}
-		for (const elem of urlSearchParams) {
-			if (elem.inputElement === filterElement) {
-				setURLParameter(elem.paramString, null);
-				break;
-			}
 		}
 		fetchFilteredInventoryData().catch((error) => {
 			console.error("Error fetching filtered inventory data:", error);
@@ -248,84 +237,100 @@ async function populateManufacturerSelect(purgeCache: boolean = false) {
 
 	filterManufacturer.disabled = true;
 
-  const data: ManufacturersAndModels[] = await fetchAllManufacturersAndModels(purgeCache);
-	if (!data || !Array.isArray(data) || data.length === 0) return;
+	try {
+  	const data: ManufacturersAndModels[] = await fetchAllManufacturersAndModels(purgeCache);
+		if (!data || !Array.isArray(data) || data.length === 0) throw new Error('No data returned from /api/models');
 
-	// Sort manufacturers array - get unique key
-	const uniqueMap = new Map<string, ManufacturersAndModels>();
-	for (const item of data) {
-		if (!item.system_manufacturer) continue;
-		if (!uniqueMap.has(item.system_manufacturer)) {
-			uniqueMap.set(item.system_manufacturer, item);
+		// Sort manufacturers array - get unique key
+		const uniqueMap = new Map<string, ManufacturersAndModels>();
+		for (const item of data) {
+			if (!item.system_manufacturer) continue;
+			if (!uniqueMap.has(item.system_manufacturer)) {
+				uniqueMap.set(item.system_manufacturer, item);
+			}
 		}
-	}
-	const uniqueArray = Array.from(uniqueMap.values());
-	uniqueArray.sort((a, b) => {
-		const manufacturerA = a.system_manufacturer || a.system_manufacturer;
-		const manufacturerB = b.system_manufacturer || b.system_manufacturer;
-		return manufacturerA.localeCompare(manufacturerB);
-	});
+		const uniqueArray = Array.from(uniqueMap.values());
+		uniqueArray.sort((a, b) => {
+			const manufacturerA = a.system_manufacturer;
+			const manufacturerB = b.system_manufacturer;
+			return manufacturerA.localeCompare(manufacturerB);
+		});
 
-  // Clear and rebuild manufacturer select options
-  resetSelectElement(filterManufacturer, 'Manufacturer');
+		// Clear and rebuild manufacturer select options
+		resetSelectElement(filterManufacturer, 'Manufacturer');
 
-  // Sort by formatted name
-  for (const item of uniqueArray) {
-		if (!item.system_manufacturer || !item.system_manufacturer) continue;
-		const option = document.createElement('option');
-		option.value = item.system_manufacturer;
-		option.textContent = item.system_manufacturer || item.system_manufacturer;
-		filterManufacturer.appendChild(option);
-	}
+		// Sort by formatted name
+		for (const item of uniqueArray) {
+			if (!item.system_manufacturer || !item.system_manufacturer) continue;
+			const option = document.createElement('option');
+			option.value = item.system_manufacturer;
+			option.textContent = `${item.system_manufacturer} (${item.system_manufacturer_count || 0})`;
+			filterManufacturer.appendChild(option);
+		}
 
-  filterManufacturer.value = (initialValue && uniqueArray.some(item => item.system_manufacturer === initialValue)) ? initialValue : '';
-	if (filterManufacturer.value !== '') {
-		setURLParameter('system_manufacturer', filterManufacturer.value);
-		filterModel.disabled = false;
-	} else {
-		setURLParameter('system_manufacturer', null);
+		filterManufacturer.value = (initialValue && uniqueArray.some(item => item.system_manufacturer === initialValue)) ? initialValue : '';
+		if (filterManufacturer.value) {
+			setURLParameter('system_manufacturer', filterManufacturer.value);
+			await populateModelSelect();
+		} else {
+			setURLParameter('system_manufacturer', null);
+		}
+	} catch (error) {
+		console.error('Error fetching manufacturers and models:', error);
+		return;
+	} finally {
+		filterManufacturer.disabled = false;
 	}
-	filterManufacturer.disabled = false;
 }
 
 async function populateModelSelect(purgeCache: boolean = false) {
   if (!filterModel) return;
 	
-	const initialValue = filterModel.value;
+	const initialValue = filterModel.value ? filterModel.value : '';
 	
 	filterModel.disabled = true;
 
-	if (!filterManufacturer.value || filterManufacturer.value.trim().length === 0) {
+	if (!filterManufacturer || !filterManufacturer.value || filterManufacturer.value.trim().length === 0) {
+		// Reset model if no manufacturer is selected
 		resetSelectElement(filterModel, 'Model', true);
+		setURLParameter('system_manufacturer', null);
 		setURLParameter('system_model', null);
 		return;
 	}
 
-  const data: ManufacturersAndModels[] = await fetchAllManufacturersAndModels(purgeCache);
-	if (!data || !Array.isArray(data) || data.length === 0) return;
+	try {
+		const data: ManufacturersAndModels[] = await fetchAllManufacturersAndModels(purgeCache);
+		if (!data || !Array.isArray(data) || data.length === 0) return;
 
-	data.sort((a, b) => {
-		const modelA = a.system_model || a.system_model;
-		const modelB = b.system_model || b.system_model;
-		return modelA.localeCompare(modelB);
-	});
+		data.sort((a, b) => {
+			const modelA = a.system_model;
+			const modelB = b.system_model;
+			return modelA.localeCompare(modelB);
+		});
 
-	resetSelectElement(filterModel, 'Model');
+		const filteredData = data.filter(item => item.system_manufacturer === filterManufacturer.value);
 
-	for (const item of data) {
-		if (item.system_manufacturer !== filterManufacturer.value) {
-			console.log("Skipping model for manufacturer:", item.system_model, item.system_manufacturer, filterManufacturer.value);
-			continue;
-		};
-		if (!item.system_model || !item.system_model) continue;
-		const option = document.createElement('option');
-		option.value = item.system_model;
-		option.textContent = item.system_model || item.system_model;
-		filterModel.appendChild(option);
+		resetSelectElement(filterModel, 'Model');
+		filterModelReset.style.display = 'none';
+
+		for (const item of filteredData) {
+			if (!item.system_model) continue;
+			const option = document.createElement('option');
+			option.value = item.system_model;
+			option.textContent = item.system_model + ` (${item.system_model_count || 0})`;
+			filterModel.appendChild(option);
+		}
+
+		const newValue = (initialValue && filteredData.some(item => item.system_model === initialValue)) ? initialValue : null;
+		filterModel.value = newValue || '';
+		setURLParameter('system_model', newValue);
+		filterModel.disabled = false;
+	} catch (error) {
+		console.error('Error fetching manufacturers and models:', error);
+		return;
+	} finally {
+		filterModel.disabled = false;
 	}
-
-	filterModel.value = (initialValue && data.some(item => item.system_model === initialValue)) ? initialValue : '';
-	filterModel.disabled = false;
 }
 
 async function fetchDomains(purgeCache: boolean = false): Promise<Array<Domain> | []> {
@@ -504,6 +509,14 @@ async function populateStatusSelect(el: HTMLSelectElement, purgeCache: boolean =
 inventoryFilterForm.addEventListener("submit", (event) => {
   event.preventDefault();
   fetchFilteredInventoryData();
+});
+
+filterManufacturer.addEventListener("change", async () => {
+	try {
+		await populateModelSelect();
+	} catch (error) {
+		console.error("Error populating model select on manufacturer change:", error);
+	}
 });
 
 inventoryFilterFormResetButton.addEventListener("click", async (event) => {
