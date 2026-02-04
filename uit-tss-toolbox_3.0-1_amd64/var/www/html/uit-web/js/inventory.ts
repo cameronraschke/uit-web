@@ -331,6 +331,9 @@ async function updateCheckoutStatus() {
 function resetInventoryLookupAndUpdateForm() {
 	clientLookupForm.reset();
 	updateForm.reset();
+	setURLParameter('update', null);
+	setURLParameter('tagnumber', 	null);
+	setURLParameter('system_serial', null);
 	for (const el of allInventoryUpdateFields) {
 		if (el instanceof HTMLInputElement) {
 			resetInputElement(el, "", false, undefined);
@@ -760,9 +763,12 @@ async function initializeInventoryPage() {
 		const urlParams = new URLSearchParams(window.location.search);
 		const updateParam: string | null = urlParams.get('update');
 		const tagnumberParam: string | null = urlParams.get('tagnumber');
-		if (tagnumberParam && updateParam === 'true') {
-			clientLookupTagInput.value = tagnumberParam;
+		const systemSerialParam: string | null = urlParams.get('system_serial');
+		if (updateParam === 'true') {
+			clientLookupTagInput.value = tagnumberParam ? tagnumberParam : '';
+			clientLookupSerial.value = systemSerialParam ? systemSerialParam : '';
 			await submitInventoryLookup();
+			formAnchor.scrollIntoView({ behavior: 'auto', block: 'start' });
 		}
 	} catch (e) {
 		const errorMessage = e instanceof Error ? e.message : String(e);
@@ -771,10 +777,9 @@ async function initializeInventoryPage() {
 }
 
 cancelUpdate.addEventListener("click", (event) => {
-  event.preventDefault();
-	history.replaceState(null, '', window.location.pathname);
-  resetInventoryLookupAndUpdateForm();
-	setURLParameter(null, null);
+	event.preventDefault();
+	resetInventoryLookupAndUpdateForm();
+	updateURLFromFilters();
 });
 
 clientLookupTagInput.addEventListener("keyup", (event: KeyboardEvent) => {
@@ -900,10 +905,9 @@ csvDownloadButton.addEventListener('click', async (event) => {
 });
 
 clientLookupReset.addEventListener("click", (event) => {
-  event.preventDefault();
-	history.replaceState(null, '', window.location.pathname);
-  resetInventoryLookupAndUpdateForm();
-	setURLParameter(null, null);
+	event.preventDefault();
+	resetInventoryLookupAndUpdateForm();
+	updateURLFromFilters();
 });
 
 clientMoreDetails.addEventListener("click", (event) => {

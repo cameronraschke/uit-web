@@ -33,7 +33,7 @@ function createTextCell(elID: string | undefined, datasetKey: string | undefined
 		if (truncateLen && inputStr.length > truncateLen) {
 			const truncated = truncateString(inputStr, truncateLen);
 			cell.textContent = truncated.truncatedString;
-			cell.title = inputStr;
+			cell.title = inputStr + " (click to expand)";
 			cell.style.cursor = 'pointer';
 			cell.addEventListener('click', () => {
 				cell.textContent = inputStr;
@@ -45,7 +45,7 @@ function createTextCell(elID: string | undefined, datasetKey: string | undefined
 		}
 	} else {
 		cell.style.fontStyle = 'italic';
-		cell.textContent = customError || 'N/A';
+		cell.textContent = customError !== undefined ? customError : 'N/A';
 	}
 	return cell;
 }
@@ -56,12 +56,12 @@ function createBooleanCell(elID: string | undefined, datasetKey: string | undefi
 
 	if (elID) cell.id = elID;
   
-  if (inputBool && typeof inputBool === 'boolean') {
+  if (typeof inputBool === 'boolean') {
 		if (datasetKey) cell.dataset[`${datasetKey}`] = inputBool !== undefined ? String(inputBool) : '';
     cell.textContent = inputBool ? trueText || 'true' : falseText || 'false';
 	} else {
 		cell.style.fontStyle = 'italic';
-    cell.textContent = customError || 'N/A';
+    cell.textContent = customError !== undefined ? customError : 'N/A';
   }
   return cell;
 }
@@ -74,7 +74,7 @@ function createTimestampCell(elID: string | undefined, datasetKey: string | unde
   
   if (!inputStr || inputStr.trim().length === 0) {
 		cell.style.fontStyle = 'italic';
-    cell.textContent = customError || 'N/A';
+    cell.textContent = customError !== undefined ? customError : 'N/A';
     return cell;
   }
   
@@ -86,7 +86,7 @@ function createTimestampCell(elID: string | undefined, datasetKey: string | unde
     cell.textContent = formatted;
   } else {
 		cell.style.fontStyle = 'italic';
-		cell.textContent = customError || 'N/A';
+		cell.textContent = customError !== undefined ? customError : 'N/A';
 	}
   return cell;
 }

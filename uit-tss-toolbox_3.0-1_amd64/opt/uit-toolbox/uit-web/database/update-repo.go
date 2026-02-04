@@ -129,9 +129,9 @@ func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, inventoryUpdate
 	checkoutLogResult, err = tx.ExecContext(ctx, checkoutSql,
 		transactionUUID,
 		toNullInt64(inventoryUpdateForm.Tagnumber),
-		toNullBool(inventoryUpdateForm.CheckoutBool),
 		toNullTime(inventoryUpdateForm.CheckoutDate),
 		toNullTime(inventoryUpdateForm.ReturnDate),
+		toNullBool(inventoryUpdateForm.CheckoutBool),
 	)
 	if err != nil {
 		return err

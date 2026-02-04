@@ -111,22 +111,10 @@ function renderInventoryTable(tableData: InventoryRow[] | null) {
 		tagURL.searchParams.set('update', 'true');
 		tagAnchor.href = tagURL.toString();
 
-		tagAnchor.addEventListener('click', async (event) => {
-			event.preventDefault();
-			try {
-				await Promise.all([submitInventoryLookup(), fetchFilteredInventoryData()]);
-			} catch (error) {
-				console.error('Error handling tag click:', error);
-			} finally {
-				formAnchor.scrollIntoView({ behavior: 'auto', block: 'start' });
-			}
-		});
-
 		tr.appendChild(tagCell);
 
 		// Serial Number with truncation and click to expand
-		const serialCell = document.createElement('td');
-		serialCell.dataset.system_serial = jsonRow.system_serial || '';
+		tr.appendChild(createTextCell(undefined, 'system_serial', jsonRow.system_serial, 20, undefined));
 
 		// Location
 		tr.appendChild(createTextCell(undefined, 'location', jsonRow.location_formatted, 40, undefined));
@@ -163,11 +151,8 @@ function renderInventoryTable(tableData: InventoryRow[] | null) {
 		// Status
 		tr.appendChild(createTextCell(undefined, 'status', jsonRow.status, undefined, undefined));
 
-		// Broken status
-		tr.appendChild(createBooleanCell(undefined, 'is_broken', jsonRow.is_broken, 'Broken', 'Functional', undefined));
-
 		// Note (truncated)
-		tr.appendChild(createTextCell(undefined, 'note', jsonRow.note, 60, undefined));
+		tr.appendChild(createTextCell(undefined, 'note', jsonRow.note, 60, ''));
 
 		// Last Updated
 		tr.appendChild(createTimestampCell(undefined, 'last_updated', jsonRow.last_updated, undefined));
