@@ -336,6 +336,11 @@ async function fetchData(url: string, returnText = false, fetchOptions: RequestI
       return null;
     }
     if (!response.ok) {
+			if (response.status === 401 || response.status === 403) {
+				console.warn("Unauthorized response from server, redirecting to logout");
+				window.location.href = "/logout";
+				return;
+			}
       throw new Error(`Error fetching data: ${url} ${response.status}`);
     }
     // if (!response.headers || !response.headers.get('Content-Type') || !response.headers.get('Content-Type').includes('application/json')) {

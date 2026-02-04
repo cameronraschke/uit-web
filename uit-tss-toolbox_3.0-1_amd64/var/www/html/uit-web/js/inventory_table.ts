@@ -12,6 +12,11 @@ type InventoryRow = {
 	last_updated: string | "";
 };
 
+// Table elements
+const tableBody = document.getElementById('inventory-table-body') as HTMLElement;
+
+const tagLookupInput = document.getElementById('inventory-tag-lookup') as HTMLInputElement;
+const serialLookupInput = document.getElementById('inventory-serial-lookup') as HTMLInputElement;
 const rowCountElement = document.getElementById('inventory-table-rowcount') as HTMLElement;
 const formAnchor = document.querySelector('#update-and-search-container') as HTMLElement;
 const inventoryTagSortInput = document.getElementById('inventory-sort-tagnumber') as HTMLInputElement;
@@ -141,100 +146,94 @@ function renderEmptyTable(tableBody: HTMLElement, message: string) {
 }
 
 async function renderInventoryTable(tableData: InventoryRow[] | null) {
-  const tableBody = document.getElementById('inventory-table-body') as HTMLElement;
-  try {
-    if (!tableData) {
-      throw new Error('No table data provided.');
-    }
-    if (!tableData || !Array.isArray(tableData) || tableData.length === 0) {
-      throw new Error('Table data is empty or invalid.');
-    }
-   
-		const tableDataSorted = [...tableData].sort((a, b) => 
-      new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
-    );
+	if (!tableData) {
+		renderEmptyTable(tableBody, 'No results found.');
+		return;
+	}
+	if (!tableData || !Array.isArray(tableData) || tableData.length === 0) {
+		renderEmptyTable(tableBody, 'No results found.');
+		return;
+	}
 
-		// Row count
-    rowCountElement.textContent = `${tableDataSorted.length} entries`;
+	const tableDataSorted = [...tableData].sort((a, b) => 
+		new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
+	);
 
-		const fragment = document.createDocumentFragment();
+	// Row count
+	rowCountElement.textContent = `${tableDataSorted.length} entries`;
 
-		// Table body
-    for (const jsonRow of tableDataSorted) {
-      const tr = document.createElement('tr');
-      
-			// Tag Number with link and click handler
-      const tagCell = createTextCell(jsonRow.tagnumber.toString(), {
-        datasetKey: 'tagnumber',
-        link: `/inventory?update=true&tagnumber=${encodeURIComponent(jsonRow.tagnumber.toString() || '')}`,
-        onClick: async (event) => {
-          event.preventDefault();
-          if (event.ctrlKey || event.metaKey) return;
-          
-          const tagLookupInput = document.getElementById('inventory-tag-lookup') as HTMLInputElement;
-          tagLookupInput.value = jsonRow.tagnumber.toString();
-          
-          try {
-            await Promise.all([submitInventoryLookup(), fetchFilteredInventoryData()]);
-          } catch (error) {
-            console.error('Error handling tag click:', error);
-          } finally {
-            formAnchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        }
-      });
-      tr.appendChild(tagCell);
+	// Fragment
+	const fragment = document.createDocumentFragment();
 
-			// Serial Number with truncation and click to expand
-      tr.appendChild(createTextCell(jsonRow.system_serial, {
-        datasetKey: 'system_serial',
-        truncate: 12
-      }));
+	// Table body
+	for (const jsonRow of tableDataSorted) {
+		const tr = document.createElement('tr');
 
-			// Location with link
-      tr.appendChild(createTextCell(jsonRow.location_formatted, {
-        datasetKey: 'location_formatted',
-        link: `/inventory?location=${encodeURIComponent(jsonRow.location_formatted || '')}`
-      }));
+		// Tag Number URL with system serial as well
+		const tagCell = document.createElement('td');
+		tagCell.dataset.tagnumber = jsonRow.tagnumber ? jsonRow.tagnumber.toString() : 'No Tag';
+		tagCell.appendChild(document.createElement('a'));
+		const tagAnchor = tagCell.querySelector('a') as HTMLAnchorElement;
+		tagAnchor.textContent = jsonRow.tagnumber ? jsonRow.tagnumber.toString() : 'No Tag';
+		const tagURL = new URL(window.location.href);
+		tagURL.searchParams.set('tagnumber', jsonRow.tagnumber.toString() || '');
+		tagURL.searchParams.set('system_serial', jsonRow.system_serial || '');
+		tagURL.searchParams.set('update', 'true');
+		tagAnchor.href = tagURL.toString();
 
-			// Manufacturer and Model combined cell
-      tr.appendChild(createManufacturerModelCell(jsonRow));
+		try {
+			await Promise.all([submitInventoryLookup(), fetchFilteredInventoryData()]);
+		} catch (error) {
+			console.error('Error handling tag click:', error);
+		} finally {
+			formAnchor.scrollIntoView({ behavior: 'auto', block: 'start' });
+		}
+		tr.appendChild(tagCell);
 
-			// Department
-      tr.appendChild(createTextCell(jsonRow.department_formatted, {
-        datasetKey: 'department_formatted'
-      }));
+		// Serial Number with truncation and click to expand
+		const serialCell = document.createElement('td');
+		serialCell.dataset.system_serial = jsonRow.system_serial || '';
 
-      // Domain
-      tr.appendChild(createTextCell(jsonRow.domain_formatted, {
-        datasetKey: 'domain_formatted'
-      }));
+		// Location with link
+		tr.appendChild(createTextCell(jsonRow.location_formatted, {
+		datasetKey: 'location_formatted',
+		link: `/inventory?location=${encodeURIComponent(jsonRow.location_formatted || '')}`
+		}));
 
-      // Status
-      tr.appendChild(createTextCell(jsonRow.status, {
-        datasetKey: 'status'
-      }));
+		// Manufacturer and Model combined cell
+		tr.appendChild(createManufacturerModelCell(jsonRow));
 
-      // Broken status
-      tr.appendChild(createBooleanCell(jsonRow.is_broken));
+		// Department
+		tr.appendChild(createTextCell(jsonRow.department_formatted, {
+		datasetKey: 'department_formatted'
+		}));
 
-      // Note (truncated)
-      tr.appendChild(createTextCell(jsonRow.note, {
-        datasetKey: 'note',
-        truncate: 61
-      }));
+		// Domain
+		tr.appendChild(createTextCell(jsonRow.domain_formatted, {
+		datasetKey: 'domain_formatted'
+		}));
 
-      // Last Updated
-      tr.appendChild(createTimestampCell(jsonRow.last_updated));
+		// Status
+		tr.appendChild(createTextCell(jsonRow.status, {
+		datasetKey: 'status'
+		}));
 
-      fragment.appendChild(tr);
-    }
-    tableBody.innerHTML = '';
-    tableBody.appendChild(fragment);
-  } catch (error) {
-		console.error('Error rendering inventory table:', error);
-    renderEmptyTable(tableBody, 'No results found.');
-  }
+		// Broken status
+		tr.appendChild(createBooleanCell(jsonRow.is_broken));
+
+		// Note (truncated)
+		tr.appendChild(createTextCell(jsonRow.note, {
+		datasetKey: 'note',
+		truncate: 61
+		}));
+
+		// Last Updated
+		tr.appendChild(createTimestampCell(jsonRow.last_updated));
+
+		fragment.appendChild(tr);
+	}
+	tableBody.innerHTML = '';
+	tableBody.appendChild(fragment);
 }
 
 function getInventorySortByParams() {
