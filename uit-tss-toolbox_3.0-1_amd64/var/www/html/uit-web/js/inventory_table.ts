@@ -5,7 +5,7 @@ type InventoryRow = {
 	system_manufacturer: string | "";
 	system_model: string | "";
 	department_formatted: string | "";
-	domain_formatted: string | "";
+	ad_domain_formatted: string | "";
 	status: string | "";
 	is_broken: boolean | null;
 	note: string | "";
@@ -122,8 +122,8 @@ async function renderInventoryTable() {
 
 		// Manufacturer and Model combined cell
 		const manufacturerModelCell = document.createElement('td');
-		manufacturerModelCell.dataset.system_manufacturer = jsonRow.system_manufacturer || '';
-		manufacturerModelCell.dataset.system_model = jsonRow.system_model || '';
+		manufacturerModelCell.dataset.systemManufacturer = jsonRow.system_manufacturer || '';
+		manufacturerModelCell.dataset.systemModel = jsonRow.system_model || '';
 		let manufacturerModelText = 'N/A';
 		if (jsonRow.system_manufacturer && jsonRow.system_model) {
 			manufacturerModelText = `${jsonRow.system_manufacturer}/${jsonRow.system_model}`;
@@ -131,13 +131,19 @@ async function renderInventoryTable() {
 			manufacturerModelText = `${jsonRow.system_manufacturer}/Unknown Model`;
 		} else if (!jsonRow.system_manufacturer && jsonRow.system_model) {
 			manufacturerModelText = `Unknown Manufacturer/${jsonRow.system_model}`;
+		} else {
+			manufacturerModelCell.style.fontStyle = 'italic';
 		}
 		if (manufacturerModelText.length > 30) {
 			const arr = manufacturerModelText.split('/');
-			const truncated = `${arr[0].substring(0, 10)}.../${arr[1].substring(0, 17)}...`;
+			const truncated = `${arr[0].substring(0, 11)}.../${arr[1].substring(0, 17)}...`;
 			manufacturerModelCell.title = manufacturerModelText;
 			manufacturerModelCell.style.cursor = 'pointer';
 			manufacturerModelCell.textContent = truncated;
+			manufacturerModelCell.addEventListener('click', () => {
+				manufacturerModelCell.textContent = manufacturerModelText;
+				manufacturerModelCell.style.cursor = 'auto';
+			}, { once: true });
 		} else {
 			manufacturerModelCell.textContent = manufacturerModelText;
 		}
@@ -147,7 +153,7 @@ async function renderInventoryTable() {
 		tr.appendChild(createTextCell(undefined, 'department', jsonRow.department_formatted, 20, undefined));
 
 		// Domain
-		tr.appendChild(createTextCell(undefined, 'domain', jsonRow.domain_formatted, 20, undefined));
+		tr.appendChild(createTextCell(undefined, 'ad_domain', jsonRow.ad_domain_formatted, 20, undefined));
 
 		// Status
 		tr.appendChild(createTextCell(undefined, 'status', jsonRow.status, undefined, undefined));

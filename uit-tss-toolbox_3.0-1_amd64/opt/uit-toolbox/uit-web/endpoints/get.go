@@ -717,7 +717,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		return &v
 	}
 
-	filterOptions := &database.InventoryFilterOptions{
+	filterOptions := &database.InventoryAdvSearchOptions{
 		Tagnumber:          getInt64("tagnumber"),
 		SystemSerial:       getStr("system_serial"),
 		Location:           getStr("location"),

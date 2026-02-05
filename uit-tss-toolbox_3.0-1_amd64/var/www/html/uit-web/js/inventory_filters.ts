@@ -1,6 +1,6 @@
 type Domain = {
-	domain_name: string;
-	domain_name_formatted: string;
+	ad_domain: string;
+	ad_domain_formatted: string;
 	domain_sort_order: number;
 };
 
@@ -38,24 +38,24 @@ type AdvSearchFilterParams = {
 	paramString: string;
 };
 
-const inventoryFilterForm = document.getElementById('inventory-search-form') as HTMLFormElement;
-const inventoryFilterFormResetButton = document.getElementById('inventory-search-form-reset-button') as HTMLElement;
-const filterLocation = document.getElementById('inventory-search-location') as HTMLSelectElement;
-const filterLocationReset = document.getElementById('inventory-search-location-reset') as HTMLElement;
-const filterDepartment = document.getElementById('inventory-search-department') as HTMLSelectElement;
-const filterDepartmentReset = document.getElementById('inventory-search-department-reset') as HTMLElement;
-const filterManufacturer = document.getElementById('inventory-search-manufacturer') as HTMLSelectElement;
-const filterManufacturerReset = document.getElementById('inventory-search-manufacturer-reset') as HTMLElement;
-const filterModel = document.getElementById('inventory-search-model') as HTMLSelectElement;
-const filterModelReset = document.getElementById('inventory-search-model-reset') as HTMLElement;
-const filterDomain = document.getElementById('inventory-search-domain') as HTMLSelectElement;
-const filterDomainReset = document.getElementById('inventory-search-domain-reset') as HTMLElement;
-const filterStatus = document.getElementById('inventory-search-status') as HTMLSelectElement;
-const filterStatusReset = document.getElementById('inventory-search-status-reset') as HTMLElement;
-const filterBroken = document.getElementById('inventory-search-broken') as HTMLSelectElement;
-const filterBrokenReset = document.getElementById('inventory-search-broken-reset') as HTMLElement;
-const filterHasImages = document.getElementById('inventory-search-has_images') as HTMLSelectElement;
-const filterHasImagesReset = document.getElementById('inventory-search-has_images-reset') as HTMLElement;
+const inventoryFilterForm = document.getElementById('adv-search-form') as HTMLFormElement;
+const inventoryFilterFormResetButton = document.getElementById('adv-search-form-reset-button') as HTMLElement;
+const filterLocation = document.getElementById('adv-search-location') as HTMLSelectElement;
+const filterLocationReset = document.getElementById('adv-search-location-reset') as HTMLElement;
+const filterDepartment = document.getElementById('adv-search-department') as HTMLSelectElement;
+const filterDepartmentReset = document.getElementById('adv-search-department-reset') as HTMLElement;
+const filterManufacturer = document.getElementById('adv-search-manufacturer') as HTMLSelectElement;
+const filterManufacturerReset = document.getElementById('adv-search-manufacturer-reset') as HTMLElement;
+const filterModel = document.getElementById('adv-search-model') as HTMLSelectElement;
+const filterModelReset = document.getElementById('adv-search-model-reset') as HTMLElement;
+const filterDomain = document.getElementById('adv-search-ad-domain') as HTMLSelectElement;
+const filterDomainReset = document.getElementById('adv-search-ad-domain-reset') as HTMLElement;
+const filterStatus = document.getElementById('adv-search-status') as HTMLSelectElement;
+const filterStatusReset = document.getElementById('adv-search-status-reset') as HTMLElement;
+const filterBroken = document.getElementById('adv-search-is-broken') as HTMLSelectElement;
+const filterBrokenReset = document.getElementById('adv-search-is-broken-reset') as HTMLElement;
+const filterHasImages = document.getElementById('adv-search-has-images') as HTMLSelectElement;
+const filterHasImagesReset = document.getElementById('adv-search-has-images-reset') as HTMLElement;
 
 const advSearchParams: AdvSearchFilterParams[] = [
 	{ inputElement: filterLocation, resetElement: filterLocationReset, paramString: 'location' },
@@ -128,12 +128,14 @@ function initializeAdvSearchListeners(filterElement: HTMLSelectElement, resetBut
 			resetButton.style.display = 'none';
 			filterElement.classList.remove('changed-input');
 		}
-		if (filterElement === filterManufacturerReset || filterElement == filterModelReset) {
-			try {
+		try {
+			if (filterElement === filterManufacturer || filterElement === filterModel) {
 				await Promise.all([populateManufacturerSelect().then(() => populateModelSelect()), renderInventoryTable()]);
-			} catch (err) {
-				console.error(`Error fetching data from filterElement on change event listener:`, err);
+			} else {
+				await renderInventoryTable();
 			}
+		} catch (err) {
+			console.error(`Error fetching data from filterElement on change event listener:`, err);
 		}
 	});
   
@@ -143,19 +145,21 @@ function initializeAdvSearchListeners(filterElement: HTMLSelectElement, resetBut
 		filterElement.classList.remove('changed-input');
 		filterElement.value = "";
 		updateURLFromFilters();
-		if (resetButton === filterManufacturerReset || resetButton == filterModelReset) {
-			try {
+		try {
+			if (resetButton === filterManufacturerReset || resetButton === filterModelReset) {
 				await Promise.all([populateManufacturerSelect().then(() => populateModelSelect()), renderInventoryTable()]);
-			} catch (err) {
-				console.error(`Error fetching data from filterElement on change event listener:`, err);
+			} else {
+				await renderInventoryTable();
 			}
+		} catch (err) {
+			console.error(`Error fetching data from filterElement on change event listener:`, err);
 		}
 	});
 }
 
 async function fetchFilteredInventoryData(csvDownload = false): Promise<InventoryRow[] | null> {
 	const currentParams = new URLSearchParams(window.location.search);
-	updateURLFromFilters();
+	updateFiltersFromURL();
 
 	const apiQuery = new URLSearchParams(currentParams); // API query parameters
 	if (currentParams.get('update') === "true") {
@@ -300,8 +304,13 @@ async function populateModelSelect(purgeCache: boolean = false) {
 			filterModel.appendChild(option);
 		}
 
-		const newValue = (initialValue && filteredData.some(item => item.system_model === initialValue)) ? initialValue : null;
-		filterModel.value = newValue || '';
+		const newValue = (initialValue && filteredData.some(item => item.system_model === initialValue)) ? initialValue : '';
+		if (newValue !== '') {
+			filterModel.value = newValue || '';
+			filterModelReset.style.display = 'inline-block';
+		} else {
+			filterModelReset.style.display = 'none';
+		}
 		setURLParameter('system_model', newValue);
 		filterModel.disabled = false;
 	} catch (error) {
@@ -361,12 +370,12 @@ async function populateDomainSelect(el: HTMLSelectElement, purgeCache: boolean =
 
 		for (const domain of domainData) {
 			const option = document.createElement('option');
-			option.value = domain.domain_name;
-			option.textContent = domain.domain_name_formatted || domain.domain_name;
+			option.value = domain.ad_domain;
+			option.textContent = domain.ad_domain_formatted || domain.ad_domain;
 			el.appendChild(option);
 		}
 
-		el.value = (initialValue && domainData.some(item => item.domain_name === initialValue)) ? initialValue : '';
+		el.value = (initialValue && domainData.some(item => item.ad_domain === initialValue)) ? initialValue : '';
 	} catch (error) {
 		console.error('Error fetching domains:', error);
 	} finally {
@@ -490,17 +499,9 @@ inventoryFilterForm.addEventListener("submit", (event) => {
   renderInventoryTable();
 });
 
-filterManufacturer.addEventListener("change", async () => {
-	try {
-		await populateModelSelect();
-	} catch (error) {
-		console.error("Error populating model select on manufacturer change:", error);
-	}
-});
-
 inventoryFilterFormResetButton.addEventListener("click", async (event) => {
   event.preventDefault();
-  document.querySelectorAll('#inventory-search-form input').forEach((input: HTMLInputElement) => {
+  document.querySelectorAll('#adv-search-form input').forEach((input: HTMLInputElement) => {
     input.value = '';
 		input.disabled = true;
   });

@@ -29,7 +29,7 @@ type JobQueueTableRow = {
 	os_name: string | null;
 	os_updated: boolean | null;
 	domain_joined: boolean | null;
-	domain_name: string | null;
+	ad_domain: string | null;
 	bios_updated: boolean | null;
 	bios_version: string | null;
 	cpu_usage: number | null;

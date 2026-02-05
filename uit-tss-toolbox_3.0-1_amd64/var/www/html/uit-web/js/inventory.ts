@@ -65,10 +65,10 @@ const clientLookupReset = document.getElementById('inventory-lookup-reset-button
 const clientMoreDetails = document.getElementById('inventory-lookup-more-details') as HTMLButtonElement;
 const allTagsDatalist = document.getElementById('inventory-tag-suggestions') as HTMLDataListElement;
 const clientImagesLink = document.getElementById('client_images_link') as HTMLAnchorElement;
-const advSearchDepartment = document.getElementById('inventory-search-department') as HTMLSelectElement;
-const advSearchDomain = document.getElementById('inventory-search-domain') as HTMLSelectElement;
-const advSearchStatus = document.getElementById('inventory-search-status') as HTMLSelectElement;
-const csvDownloadButton = document.getElementById('inventory-search-download-button') as HTMLButtonElement;
+const advSearchDepartment = document.getElementById('adv-search-department') as HTMLSelectElement;
+const advSearchDomain = document.getElementById('adv-search-ad-domain') as HTMLSelectElement;
+const advSearchStatus = document.getElementById('adv-search-status') as HTMLSelectElement;
+const csvDownloadButton = document.getElementById('adv-search-download-csv') as HTMLButtonElement;
 const printCheckoutLink = document.getElementById('print-checkout-link') as HTMLElement;
 const printCheckoutContainer = document.getElementById('print-checkout-container') as HTMLElement;
 
@@ -81,7 +81,7 @@ const roomUpdate = updateForm.querySelector("#room") as HTMLInputElement;
 const manufacturerUpdate = updateForm.querySelector("#system_manufacturer") as HTMLInputElement;
 const modelUpdate = updateForm.querySelector("#system_model") as HTMLInputElement;
 const departmentEl = document.getElementById('department_name') as HTMLSelectElement;
-const domainNameUpdate = updateForm.querySelector("#ad_domain") as HTMLSelectElement;
+const adDomainUpdate = updateForm.querySelector("#ad_domain") as HTMLSelectElement;
 const propertyCustodianUpdate = updateForm.querySelector("#property_custodian") as HTMLInputElement;
 const acquiredDateUpdate = updateForm.querySelector("#acquired_date") as HTMLInputElement;
 const retiredDateUpdate = updateForm.querySelector("#retired_date") as HTMLInputElement;
@@ -112,7 +112,7 @@ const allInventoryUpdateFields = [
 	manufacturerUpdate,
 	modelUpdate,
 	departmentEl,
-	domainNameUpdate,
+	adDomainUpdate,
 	propertyCustodianUpdate,
 	acquiredDateUpdate,
 	retiredDateUpdate,
@@ -132,7 +132,7 @@ const requiredInventoryUpdateFields = [
 	clientLookupSerial,
 	locationEl,
 	departmentEl,
-	domainNameUpdate,
+	adDomainUpdate,
 	clientStatusUpdate
 ];
 
@@ -481,10 +481,10 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		console.error(`Could not fetch all departments: ${errorMessage}`)
 	}
 
-	resetSelectElement(domainNameUpdate, "Select Domain", false, "empty-required-input");
+	resetSelectElement(adDomainUpdate, "Select Domain", false, "empty-required-input");
 	try { 
-		await populateDomainSelect(domainNameUpdate);
-		domainNameUpdate.classList.add("empty-required-input");
+		await populateDomainSelect(adDomainUpdate);
+		adDomainUpdate.classList.add("empty-required-input");
 	} catch(e) {
 		const errorMessage = e instanceof Error ? e.message : String(e);
 		console.error(`Could not fetch all domains: ${errorMessage}`)
@@ -647,10 +647,10 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			}
 
 			if (locationFormData.ad_domain) {
-				domainNameUpdate.value = locationFormData.ad_domain.trim();
-				domainNameUpdate.classList.remove("empty-required-input");
+				adDomainUpdate.value = locationFormData.ad_domain.trim();
+				adDomainUpdate.classList.remove("empty-required-input");
 			} else {
-				domainNameUpdate.classList.add("empty-required-input");
+				adDomainUpdate.classList.add("empty-required-input");
 			}
 
 			if (locationFormData.property_custodian) {
@@ -823,7 +823,7 @@ updateForm.addEventListener("submit", async (event) => {
     formObj.system_manufacturer = getInputStringValue(manufacturerUpdate);
     formObj.system_model = getInputStringValue(modelUpdate);
     formObj.department_name = getInputStringValue(departmentEl);
-    formObj.ad_domain = getInputStringValue(domainNameUpdate);
+    formObj.ad_domain = getInputStringValue(adDomainUpdate);
 		formObj.property_custodian = getInputStringValue(propertyCustodianUpdate);
 		formObj.acquired_date = getInputDateValue(acquiredDateUpdate, true);
 		formObj.retired_date = getInputDateValue(retiredDateUpdate, true);

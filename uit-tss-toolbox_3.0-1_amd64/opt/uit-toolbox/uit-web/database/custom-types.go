@@ -120,8 +120,8 @@ type InventoryTableData struct {
 	SystemModel         *string    `json:"system_model"`
 	Department          *string    `json:"department_name"`
 	DepartmentFormatted *string    `json:"department_formatted"`
-	Domain              *string    `json:"domain"`
-	DomainFormatted     *string    `json:"domain_formatted"`
+	Domain              *string    `json:"ad_domain"`
+	DomainFormatted     *string    `json:"ad_domain_formatted"`
 	OsInstalled         *bool      `json:"os_installed"`
 	OsName              *string    `json:"os_name"`
 	Status              *string    `json:"status"`
@@ -130,7 +130,7 @@ type InventoryTableData struct {
 	LastUpdated         *time.Time `json:"last_updated"`
 }
 
-type InventoryFilterOptions struct {
+type InventoryAdvSearchOptions struct {
 	Tagnumber          *int64  `json:"tagnumber"`
 	SystemSerial       *string `json:"system_serial"`
 	Location           *string `json:"location"`
@@ -151,8 +151,8 @@ type ManufacturersAndModels struct {
 }
 
 type Domain struct {
-	DomainName          string `json:"domain_name"`
-	DomainNameFormatted string `json:"domain_name_formatted"`
+	DomainName          string `json:"ad_domain"`
+	DomainNameFormatted string `json:"ad_domain_formatted"`
 	DomainSortOrder     int64  `json:"domain_sort_order"`
 }
 
@@ -203,7 +203,7 @@ type JobQueueTableRow struct {
 	OSName               *string        `json:"os_name"`
 	OSUpdated            *bool          `json:"os_updated"`
 	DomainJoined         *bool          `json:"domain_joined"`
-	DomainName           *string        `json:"domain_name"`
+	DomainName           *string        `json:"ad_domain"`
 	BIOSUpdated          *bool          `json:"bios_updated"`
 	BIOSVersion          *string        `json:"bios_version"`
 	CPUUsage             *float64       `json:"cpu_usage"`

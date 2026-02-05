@@ -533,7 +533,7 @@ func (repo *Repo) GetClientImageManifestByTag(ctx context.Context, tagnumber int
 	return imageManifests, nil
 }
 
-func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *InventoryFilterOptions) ([]*InventoryTableData, error) {
+func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *InventoryAdvSearchOptions) ([]*InventoryTableData, error) {
 	if filterOptions == nil {
 		return nil, fmt.Errorf("filterOptions cannot be nil")
 	}

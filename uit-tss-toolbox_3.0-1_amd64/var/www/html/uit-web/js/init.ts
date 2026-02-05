@@ -38,7 +38,7 @@ function createTextCell(elID: string | undefined, datasetKey: string | undefined
 			cell.addEventListener('click', () => {
 				cell.textContent = inputStr;
 				if (cell.title) cell.removeAttribute('title');
-				cell.style.cursor = 'default';
+				cell.style.cursor = 'auto';
 			}, { once: true });
 		} else {
 			cell.textContent = inputStr;
