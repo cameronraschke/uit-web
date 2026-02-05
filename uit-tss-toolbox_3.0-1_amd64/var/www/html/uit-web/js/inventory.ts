@@ -755,18 +755,16 @@ async function fetchDepartments(purgeCache: boolean = false): Promise<Array<Depa
 }
 
 async function initializeInventoryPage() {
-	initializeSearch();
+	initializeAdvSearch();
 
 	try {
-		const tasks = [
-			populateManufacturerSelect(true),
-			populateModelSelect(true),
+		await Promise.all([
+			populateManufacturerSelect().then(() => populateModelSelect()),
 			populateDomainSelect(advSearchDomain, true),
 			populateDepartmentSelect(advSearchDepartment, true),
 			populateStatusSelect(advSearchStatus),
-			fetchFilteredInventoryData()
-		];
-		await Promise.all(tasks);
+			renderInventoryTable()
+		]);
 
 		// Check URL parameters for auto lookup
 		const urlParams = new URLSearchParams(window.location.search);
@@ -888,7 +886,7 @@ updateForm.addEventListener("submit", async (event) => {
 		clientLookupWarningMessage.style.display = "none";
 		lastUpdateTime.textContent = "";
     await populateLocationForm(returnedJson.tagnumber, undefined);
-    await fetchFilteredInventoryData();
+    await renderInventoryTable();
   } catch (error) {
     console.error("Error updating inventory:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -905,7 +903,7 @@ csvDownloadButton.addEventListener('click', async (event) => {
   csvDownloadButton.disabled = true;
   csvDownloadButton.textContent = 'Preparing download...';
   try {
-    await fetchFilteredInventoryData(true);
+    await fetchFilteredInventoryData(true); // true means CSV download
   } finally {
     await initializeInventoryPage();
     csvDownloadButton.disabled = false;

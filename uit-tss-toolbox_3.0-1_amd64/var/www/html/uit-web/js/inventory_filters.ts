@@ -32,7 +32,7 @@ type StatusCache = {
 	statuses: Status[];
 }
 
-type FilterParams = {
+type AdvSearchFilterParams = {
 	inputElement: HTMLSelectElement;
 	resetElement: HTMLElement;
 	paramString: string;
@@ -57,7 +57,7 @@ const filterBrokenReset = document.getElementById('inventory-search-broken-reset
 const filterHasImages = document.getElementById('inventory-search-has_images') as HTMLSelectElement;
 const filterHasImagesReset = document.getElementById('inventory-search-has_images-reset') as HTMLElement;
 
-const urlSearchParams: FilterParams[] = [
+const advSearchParams: AdvSearchFilterParams[] = [
 	{ inputElement: filterLocation, resetElement: filterLocationReset, paramString: 'location' },
 	{ inputElement: filterDepartment, resetElement: filterDepartmentReset, paramString: 'department_name' },
 	{ inputElement: filterManufacturer, resetElement: filterManufacturerReset, paramString: 'system_manufacturer' },
@@ -70,23 +70,17 @@ const urlSearchParams: FilterParams[] = [
 
 let allModelsData: string[] = [];
 
-function initializeSearch() {
-	updateURLFromFilters();
-
-	createFilterResetHandler(filterLocation, filterLocationReset);
-	createFilterResetHandler(filterDepartment, filterDepartmentReset);
-	createFilterResetHandler(filterManufacturer, filterManufacturerReset);
-	createFilterResetHandler(filterModel, filterModelReset);
-	createFilterResetHandler(filterDomain, filterDomainReset);
-	createFilterResetHandler(filterStatus, filterStatusReset);
-	createFilterResetHandler(filterBroken, filterBrokenReset);
-	createFilterResetHandler(filterHasImages, filterHasImagesReset);
-
+function initializeAdvSearch() {
+	updateFiltersFromURL();
+	for (const param of advSearchParams) {
+		if (!param.inputElement || !param.resetElement) continue;
+		initializeAdvSearchListeners(param.inputElement, param.resetElement);
+	}
 	filterModel.disabled = !filterManufacturer.value;
 }
 
-function resetSearchURLParameters() {
-	for (const param of urlSearchParams) {
+function resetAdvSearchURLParameters() {
+	for (const param of advSearchParams) {
 		if (!param.paramString) continue;
 		setURLParameter(param.paramString, null);
 	}
@@ -94,7 +88,7 @@ function resetSearchURLParameters() {
 
 function updateFiltersFromURL() {
 	const currentParams = new URLSearchParams(window.location.search);
-	for (const param of urlSearchParams) {
+	for (const param of advSearchParams) {
 		if (!param.inputElement || !param.paramString) continue;
 		const urlValue = currentParams.get(param.paramString);
 		if (urlValue && urlValue.trim().length > 0) {
@@ -107,73 +101,60 @@ function updateFiltersFromURL() {
 	}
 }
 
-function createFilterResetHandler(filterElement: HTMLSelectElement, resetButton: HTMLElement) {
+function initializeAdvSearchListeners(filterElement: HTMLSelectElement, resetButton: HTMLElement) {
 	if (!filterElement || !resetButton) {
 		console.error("Filter inputElement or reset button not found.");
 		return;
 	}
 
-	if (filterElement.value && filterElement.value.length > 0) {
+	// Testing a string here, otherwise "false" would not show the reset button
+	if (filterElement.value !== '' && filterElement.value.length > 0) {
 		resetButton.style.display = 'inline-block';
 		filterElement.classList.add('changed-input');
+	} else {
+		resetButton.style.display = 'none';
+		filterElement.classList.remove('changed-input');
 	}
 
-	filterElement.addEventListener("change", () => {
+	filterElement.addEventListener("change", async () => {
 		resetButton.style.display = 'inline-block';
 		const paramString = getURLParamName(filterElement);
-		setURLParameter(paramString, filterElement.value);
-		if ((filterElement.value && filterElement.value.trim().length >= 0) || typeof filterElement.value === 'boolean') {
+		if ((filterElement.value !== '' && filterElement.value.trim().length >= 0)) {
+			setURLParameter(paramString, filterElement.value);
 			resetButton.style.display = 'inline-block';
 			filterElement.classList.add('changed-input');
 		} else {
+			setURLParameter(paramString, null);
 			resetButton.style.display = 'none';
 			filterElement.classList.remove('changed-input');
 		}
 		if (filterElement === filterManufacturerReset || filterElement == filterModelReset) {
-			populateManufacturerSelect().catch((error) => {
-				console.error("Error populating manufacturer select:", error);
-			});
-			populateModelSelect().catch((error) => {
-				console.error("Error populating model select:", error);
-			});
+			try {
+				await Promise.all([populateManufacturerSelect().then(() => populateModelSelect()), renderInventoryTable()]);
+			} catch (err) {
+				console.error(`Error fetching data from filterElement on change event listener:`, err);
+			}
 		}
-		fetchFilteredInventoryData().catch((error) => {
-			console.error("Error fetching filtered inventory data:", error);
-		});
 	});
   
-	resetButton.addEventListener("click", (event) => {
+	resetButton.addEventListener("click", async (event) => {
 		event.preventDefault();
 		resetButton.style.display = 'none';
 		filterElement.classList.remove('changed-input');
-		filterElement.value = '';
+		filterElement.value = "";
 		updateURLFromFilters();
 		if (resetButton === filterManufacturerReset || resetButton == filterModelReset) {
-			if (resetButton === filterManufacturerReset) setURLParameter('system_manufacturer', null);
-			if (resetButton === filterModelReset) setURLParameter('system_model', null);
-			populateManufacturerSelect().catch((error) => {
-				console.error("Error populating manufacturer select:", error);
-			});
-			filterModel.disabled = true;
-			filterModel.value = '';
-			filterModelReset.style.display = 'none';
-			populateModelSelect().catch((error) => {
-				console.error("Error populating model select:", error);
-			});
+			try {
+				await Promise.all([populateManufacturerSelect().then(() => populateModelSelect()), renderInventoryTable()]);
+			} catch (err) {
+				console.error(`Error fetching data from filterElement on change event listener:`, err);
+			}
 		}
-		fetchFilteredInventoryData().catch((error) => {
-			console.error("Error fetching filtered inventory data:", error);
-		});
 	});
 }
 
-async function fetchFilteredInventoryData(csvDownload = false): Promise<void> {
+async function fetchFilteredInventoryData(csvDownload = false): Promise<InventoryRow[] | null> {
 	const currentParams = new URLSearchParams(window.location.search);
-
-	setURLParameter('update', currentParams.get('update')?.trim() || null);
-	setURLParameter('tagnumber', currentParams.get('tagnumber')?.trim() || null);
-	setURLParameter('system_serial', currentParams.get('system_serial')?.trim() || null);
-
 	updateURLFromFilters();
 
 	const apiQuery = new URLSearchParams(currentParams); // API query parameters
@@ -185,20 +166,18 @@ async function fetchFilteredInventoryData(csvDownload = false): Promise<void> {
 
 	if (csvDownload) {
 		window.location.href = `/api/inventory?csv=true&${apiQuery.toString()}`;
-		return;
+		return null;
 	}
 
-  try {
-    const response = await fetch(`/api/inventory?${apiQuery.toString()}`);
-    const rawData = await response.text();
-    const jsonData = rawData.trim() ? JSON.parse(rawData) : [];
-    if (jsonData && typeof jsonData === 'object' && !Array.isArray(jsonData) && Object.prototype.hasOwnProperty.call(jsonData, 'error')) {
-      throw new Error(String(jsonData.error || 'Unknown server error'));
-    }
-    renderInventoryTable(jsonData);
-  } catch (error) {
-    console.error("Error fetching inventory data:", error);
-  }
+	try {
+		const jsonResponse: InventoryRow[] = await fetchData(`/api/inventory?${apiQuery.toString()}`, false);
+		if (!jsonResponse) throw new Error("No data returned from /api/inventory");
+		return jsonResponse;
+	} catch (error) {
+		console.error("Error fetching inventory data:", error);
+		return null;
+
+	}
 }
 
 async function fetchAllManufacturersAndModels(purgeCache: boolean = false): Promise<Array<ManufacturersAndModels> | []> {
@@ -292,9 +271,9 @@ async function populateModelSelect(purgeCache: boolean = false) {
 
 	if (!filterManufacturer || !filterManufacturer.value || filterManufacturer.value.trim().length === 0) {
 		// Reset model if no manufacturer is selected
+		filterModelReset.style.display = 'none';
 		resetSelectElement(filterModel, 'Model', true);
-		setURLParameter('system_manufacturer', null);
-		setURLParameter('system_model', null);
+		updateURLFromFilters();
 		return;
 	}
 
@@ -508,7 +487,7 @@ async function populateStatusSelect(el: HTMLSelectElement, purgeCache: boolean =
 
 inventoryFilterForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  fetchFilteredInventoryData();
+  renderInventoryTable();
 });
 
 filterManufacturer.addEventListener("change", async () => {
@@ -526,7 +505,7 @@ inventoryFilterFormResetButton.addEventListener("click", async (event) => {
 		input.disabled = true;
   });
 
-	for (const param of urlSearchParams) {
+	for (const param of advSearchParams) {
 		if (!param.inputElement || !param.paramString) continue;
 		param.inputElement.style.border = "revert-layer";
 		param.inputElement.style.boxShadow = "revert-layer";
@@ -535,13 +514,14 @@ inventoryFilterFormResetButton.addEventListener("click", async (event) => {
 		param.inputElement.value = '';
 	}
 
-	resetSearchURLParameters();
+	resetAdvSearchURLParameters();
 	try{
-		await populateDepartmentSelect(filterDepartment);
-		await populateManufacturerSelect();
-		await populateModelSelect();
-		await populateDomainSelect(filterDomain);
-		await fetchFilteredInventoryData();
+		await Promise.all([
+			populateDepartmentSelect(filterDepartment),
+			populateManufacturerSelect().then(() => populateModelSelect()),
+			populateDomainSelect(filterDomain),
+			renderInventoryTable(),
+		]);
 	} catch (error) {
 		console.error("Error resetting filters and fetching data:", error);
 	}

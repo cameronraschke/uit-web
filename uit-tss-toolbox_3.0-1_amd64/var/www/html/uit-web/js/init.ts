@@ -366,7 +366,7 @@ function base64ToJson(inputStr: string) {
 }
 
 function getURLParamName(filterElement: HTMLSelectElement): string {
-	for (const param of urlSearchParams) {
+	for (const param of advSearchParams) {
 		if (param.inputElement === filterElement) {
 			return param.paramString;
 		}
@@ -375,9 +375,9 @@ function getURLParamName(filterElement: HTMLSelectElement): string {
 }
 
 function updateURLFromFilters(): void {
-	for (const param of urlSearchParams) {
-		if (!param.inputElement.value || !param.paramString) continue;
-		setURLParameter(param.paramString, param.inputElement.value);
+	for (const param of advSearchParams) {
+		if (!param.inputElement || !param.paramString) continue;
+		setURLParameter(param.paramString, param.inputElement.value ? param.inputElement.value : null);
 	}
 }
 

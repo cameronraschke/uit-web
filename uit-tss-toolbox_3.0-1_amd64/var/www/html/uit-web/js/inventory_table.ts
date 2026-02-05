@@ -75,28 +75,29 @@ function renderEmptyTable(tableBody: HTMLElement, message: string) {
   tableBody.appendChild(jsonRow);
 }
 
-function renderInventoryTable(tableData: InventoryRow[] | null) {
-	if (!tableData) {
-		renderEmptyTable(tableBody, 'No results found.');
+async function renderInventoryTable() {
+	const tableData = await fetchFilteredInventoryData();
+	if (tableData === null) {
+		renderEmptyTable(tableBody, 'Error loading inventory data. Please try again.');
 		return;
 	}
-	if (!tableData || !Array.isArray(tableData) || tableData.length === 0) {
+	if (!Array.isArray(tableData) || tableData.length === 0) {
 		renderEmptyTable(tableBody, 'No results found.');
 		return;
 	}
 
-	const tableDataSorted = [...tableData].sort((a, b) => 
+	const sortedData = [...tableData].sort((a, b) => 
 		new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
 	);
 
 	// Row count
-	rowCountElement.textContent = `${tableDataSorted.length} entries`;
+	rowCountElement.textContent = `${sortedData.length} entries`;
 
 	// Fragment
 	const fragment = document.createDocumentFragment();
 
 	// Table body
-	for (const jsonRow of tableDataSorted) {
+	for (const jsonRow of sortedData) {
 		const tr = document.createElement('tr');
 
 		// Tag Number URL with system serial as well
