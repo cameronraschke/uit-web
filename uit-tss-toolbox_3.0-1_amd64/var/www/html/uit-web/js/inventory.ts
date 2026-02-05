@@ -755,16 +755,22 @@ async function fetchDepartments(purgeCache: boolean = false): Promise<Array<Depa
 }
 
 async function initializeInventoryPage() {
-	initializeAdvSearch();
+	for (const param of advSearchParams) {
+		if (!param.inputElement || !param.resetElement) continue;
+		initializeAdvSearchListeners(param.inputElement, param.resetElement);
+	}
+	filterModel.disabled = !filterManufacturer.value;
 
 	try {
 		await Promise.all([
+			populateDepartmentSelect(advSearchDepartment, true),
 			populateManufacturerSelect().then(() => populateModelSelect()),
 			populateDomainSelect(advSearchDomain, true),
-			populateDepartmentSelect(advSearchDepartment, true),
 			populateStatusSelect(advSearchStatus),
 			renderInventoryTable()
 		]);
+
+		updateFiltersFromURL();
 
 		// Check URL parameters for auto lookup
 		const urlParams = new URLSearchParams(window.location.search);
@@ -943,8 +949,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 	window.addEventListener("resize", () => {
 		updateFormContainerDisplay();
 	});
-  await initializeInventoryPage();
-	updateFiltersFromURL();
+	
+	try {
+  	await initializeInventoryPage();
+	} catch (e) {
+		const errorMessage = e instanceof Error ? e.message : String(e);
+		console.error("Error during inventory page initialization:", errorMessage);
+	}
 	if (Array.isArray(window.allTags)) {
 		renderTagOptions(window.allTags);
 	}

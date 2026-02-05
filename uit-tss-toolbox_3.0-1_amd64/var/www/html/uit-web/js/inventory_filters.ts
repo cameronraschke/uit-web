@@ -70,15 +70,6 @@ const advSearchParams: AdvSearchFilterParams[] = [
 
 let allModelsData: string[] = [];
 
-function initializeAdvSearch() {
-	updateFiltersFromURL();
-	for (const param of advSearchParams) {
-		if (!param.inputElement || !param.resetElement) continue;
-		initializeAdvSearchListeners(param.inputElement, param.resetElement);
-	}
-	filterModel.disabled = !filterManufacturer.value;
-}
-
 function resetAdvSearchURLParameters() {
 	for (const param of advSearchParams) {
 		if (!param.paramString) continue;
@@ -178,9 +169,8 @@ async function fetchFilteredInventoryData(csvDownload = false): Promise<Inventor
 		if (!jsonResponse) throw new Error("No data returned from /api/inventory");
 		return jsonResponse;
 	} catch (error) {
-		console.error("Error fetching inventory data:", error);
+		console.warn("Error fetching inventory data:", error);
 		return null;
-
 	}
 }
 
@@ -216,7 +206,16 @@ async function fetchAllManufacturersAndModels(purgeCache: boolean = false): Prom
 async function populateManufacturerSelect(purgeCache: boolean = false) {
   if (!filterManufacturer) return;
 
-	const initialValue = filterManufacturer.value;
+	const initialValue = filterManufacturer.value ? filterManufacturer.value : (new URLSearchParams(window.location.search).get('system_manufacturer') || '');
+	if (initialValue && initialValue.trim().length > 0) {
+		filterModel.disabled = false;
+		filterManufacturerReset.style.display = 'inline-block';
+	} else {
+		filterModelReset.style.display = 'none';
+		resetSelectElement(filterModel, 'Model', true);
+		updateURLFromFilters();
+		return;
+	}
 
 	filterManufacturer.disabled = true;
 
@@ -269,7 +268,7 @@ async function populateManufacturerSelect(purgeCache: boolean = false) {
 async function populateModelSelect(purgeCache: boolean = false) {
   if (!filterModel) return;
 	
-	const initialValue = filterModel.value ? filterModel.value : '';
+	const initialValue = filterModel.value ? filterModel.value : (new URLSearchParams(window.location.search)).get('system_model') || '';
 	
 	filterModel.disabled = true;
 
@@ -400,8 +399,6 @@ async function populateDepartmentSelect(el: HTMLSelectElement, purgeCache: boole
 			return a.organization_sort_order - b.organization_sort_order;
 		});
 
-		resetSelectElement(el, 'Department', false, undefined);
-
 		for (const department of new Set(departmentsData.map(dep => dep.organization_name_formatted || dep.organization_name))) {
 			const orgEl = document.createElement('optgroup');
 			orgEl.label = department ? department.trim() : 'N/A';
@@ -412,6 +409,8 @@ async function populateDepartmentSelect(el: HTMLSelectElement, purgeCache: boole
 			return a.department_name_formatted.localeCompare(b.department_name_formatted);
 			// return b.department_sort_order - a.department_sort_order;
 		});
+
+		resetSelectElement(el, 'Department', false, undefined);
 
 		for (const department of departmentsData) {
 			const option = document.createElement('option');
@@ -424,7 +423,7 @@ async function populateDepartmentSelect(el: HTMLSelectElement, purgeCache: boole
 				el.appendChild(option);
 			}
 		}
-		el.value = (initialValue && departmentsData.some(item => item.department_name === initialValue)) ? initialValue : '';
+		el.value = (initialValue && departmentsData.some(item => initialValue === item.department_name || initialValue === item.department_name_formatted)) ? initialValue : '';
 	} catch (error) {
 		console.error('Error fetching departments:', error);
 	} finally {
@@ -486,7 +485,7 @@ async function populateStatusSelect(el: HTMLSelectElement, purgeCache: boolean =
 			option.textContent = status.status_formatted || status.status;
 			el.appendChild(option);
 		}
-		el.value = (initialValue && statusData.some(item => item.status === initialValue)) ? initialValue : '';
+		el.value = (initialValue && statusData.some(item => initialValue === item.status || initialValue === item.status_formatted)) ? initialValue : '';
 	} catch (error) {
 		console.error('Error fetching statuses:', error);
 	} finally {
