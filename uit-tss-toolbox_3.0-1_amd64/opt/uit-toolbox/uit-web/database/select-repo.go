@@ -903,12 +903,14 @@ func (repo *Repo) GetAllJobs(ctx context.Context) ([]AllJobs, error) {
 
 func (repo *Repo) GetAllLocations(ctx context.Context) ([]AllLocations, error) {
 	const sqlQuery = `WITH latest_locations AS (
-		SELECT DISTINCT ON (tagnumber) location, time
+		SELECT DISTINCT ON (tagnumber) location, time, COUNT(location) OVER (PARTITION BY location) AS location_count
 		FROM locations
-		WHERE location IS NOT NULL AND location != ''
+		WHERE location IS NOT NULL 
+			AND location != ''
+			AND time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 		ORDER BY tagnumber, time DESC
 	)
-	SELECT location, MAX(time) as time
+	SELECT location, MAX(time) as time, MAX(location_count) as location_count
 	FROM latest_locations
 	GROUP BY location
 	ORDER BY location ASC;`
@@ -925,6 +927,7 @@ func (repo *Repo) GetAllLocations(ctx context.Context) ([]AllLocations, error) {
 		if err := rows.Scan(
 			&location.Location,
 			&location.Timestamp,
+			&location.LocationCount,
 		); err != nil {
 			return nil, err
 		}

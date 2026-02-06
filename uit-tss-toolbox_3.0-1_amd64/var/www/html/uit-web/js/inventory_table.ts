@@ -76,97 +76,103 @@ function renderEmptyTable(tableBody: HTMLElement, message: string) {
 }
 
 async function renderInventoryTable() {
-	const tableData = await fetchFilteredInventoryData();
-	if (tableData === null) {
-		renderEmptyTable(tableBody, 'Error loading inventory data. Please try again.');
-		return;
-	}
-	if (!Array.isArray(tableData) || tableData.length === 0) {
-		renderEmptyTable(tableBody, 'No results found.');
-		return;
-	}
-
-	const sortedData = [...tableData].sort((a, b) => 
-		new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
-	);
-
-	// Row count
-	rowCountElement.textContent = `${sortedData.length} entries`;
-
-	// Fragment
-	const fragment = document.createDocumentFragment();
-
-	// Table body
-	for (const jsonRow of sortedData) {
-		const tr = document.createElement('tr');
-
-		// Tag Number URL with system serial as well
-		const tagCell = document.createElement('td');
-		tagCell.dataset.tagnumber = jsonRow.tagnumber ? jsonRow.tagnumber.toString() : 'No Tag';
-		tagCell.appendChild(document.createElement('a'));
-		const tagAnchor = tagCell.querySelector('a') as HTMLAnchorElement;
-		tagAnchor.textContent = jsonRow.tagnumber ? jsonRow.tagnumber.toString() : 'No Tag';
-		const tagURL = new URL(window.location.href);
-		tagURL.searchParams.set('tagnumber', jsonRow.tagnumber.toString() || '');
-		tagURL.searchParams.set('system_serial', jsonRow.system_serial || '');
-		tagURL.searchParams.set('update', 'true');
-		tagAnchor.href = tagURL.toString();
-
-		tr.appendChild(tagCell);
-
-		// Serial Number with truncation and click to expand
-		tr.appendChild(createTextCell(undefined, 'system_serial', jsonRow.system_serial, 20, undefined));
-
-		// Location
-		tr.appendChild(createTextCell(undefined, 'location', jsonRow.location_formatted, 40, undefined));
-
-		// Manufacturer and Model combined cell
-		const manufacturerModelCell = document.createElement('td');
-		manufacturerModelCell.dataset.systemManufacturer = jsonRow.system_manufacturer || '';
-		manufacturerModelCell.dataset.systemModel = jsonRow.system_model || '';
-		let manufacturerModelText = 'N/A';
-		if (jsonRow.system_manufacturer && jsonRow.system_model) {
-			manufacturerModelText = `${jsonRow.system_manufacturer}/${jsonRow.system_model}`;
-		} else if (jsonRow.system_manufacturer && !jsonRow.system_model) {
-			manufacturerModelText = `${jsonRow.system_manufacturer}/Unknown Model`;
-		} else if (!jsonRow.system_manufacturer && jsonRow.system_model) {
-			manufacturerModelText = `Unknown Manufacturer/${jsonRow.system_model}`;
-		} else {
-			manufacturerModelCell.style.fontStyle = 'italic';
+	updateURLFromFilters(); // necessary, fetchFilteredInventoryData relies on URL parameters
+	try {
+		const tableData = await fetchFilteredInventoryData();
+		if (tableData === null) {
+			renderEmptyTable(tableBody, 'Error loading inventory data. Please try again.');
+			return;
 		}
-		if (manufacturerModelText.length > 30) {
-			const arr = manufacturerModelText.split('/');
-			const truncated = `${arr[0].substring(0, 11)}.../${arr[1].substring(0, 17)}...`;
-			manufacturerModelCell.title = manufacturerModelText;
-			manufacturerModelCell.style.cursor = 'pointer';
-			manufacturerModelCell.textContent = truncated;
-			manufacturerModelCell.addEventListener('click', () => {
+		if (!Array.isArray(tableData) || tableData.length === 0) {
+			renderEmptyTable(tableBody, 'No results found.');
+			return;
+		}
+
+		const sortedData = [...tableData].sort((a, b) => 
+			new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
+		);
+
+		// Row count
+		rowCountElement.textContent = `${sortedData.length} entries`;
+
+		// Fragment
+		const fragment = document.createDocumentFragment();
+
+		// Table body
+		for (const jsonRow of sortedData) {
+			const tr = document.createElement('tr');
+
+			// Tag Number URL with system serial as well
+			const tagCell = document.createElement('td');
+			tagCell.dataset.tagnumber = jsonRow.tagnumber ? jsonRow.tagnumber.toString() : 'No Tag';
+			tagCell.appendChild(document.createElement('a'));
+			const tagAnchor = tagCell.querySelector('a') as HTMLAnchorElement;
+			tagAnchor.textContent = jsonRow.tagnumber ? jsonRow.tagnumber.toString() : 'No Tag';
+			const tagURL = new URL(window.location.href);
+			tagURL.searchParams.set('tagnumber', jsonRow.tagnumber.toString() || '');
+			tagURL.searchParams.set('system_serial', jsonRow.system_serial || '');
+			tagURL.searchParams.set('update', 'true');
+			tagAnchor.href = tagURL.toString();
+
+			tr.appendChild(tagCell);
+
+			// Serial Number with truncation and click to expand
+			tr.appendChild(createTextCell(undefined, 'system_serial', jsonRow.system_serial, 20, undefined));
+
+			// Location
+			tr.appendChild(createTextCell(undefined, 'location', jsonRow.location_formatted, 40, undefined));
+
+			// Manufacturer and Model combined cell
+			const manufacturerModelCell = document.createElement('td');
+			manufacturerModelCell.dataset.systemManufacturer = jsonRow.system_manufacturer || '';
+			manufacturerModelCell.dataset.systemModel = jsonRow.system_model || '';
+			let manufacturerModelText = 'N/A';
+			if (jsonRow.system_manufacturer && jsonRow.system_model) {
+				manufacturerModelText = `${jsonRow.system_manufacturer}/${jsonRow.system_model}`;
+			} else if (jsonRow.system_manufacturer && !jsonRow.system_model) {
+				manufacturerModelText = `${jsonRow.system_manufacturer}/Unknown Model`;
+			} else if (!jsonRow.system_manufacturer && jsonRow.system_model) {
+				manufacturerModelText = `Unknown Manufacturer/${jsonRow.system_model}`;
+			} else {
+				manufacturerModelCell.style.fontStyle = 'italic';
+			}
+			if (manufacturerModelText.length > 30) {
+				const arr = manufacturerModelText.split('/');
+				const truncated = `${arr[0].substring(0, 11)}.../${arr[1].substring(0, 17)}...`;
+				manufacturerModelCell.title = manufacturerModelText;
+				manufacturerModelCell.style.cursor = 'pointer';
+				manufacturerModelCell.textContent = truncated;
+				manufacturerModelCell.addEventListener('click', () => {
+					manufacturerModelCell.textContent = manufacturerModelText;
+					manufacturerModelCell.style.cursor = 'auto';
+				}, { once: true });
+			} else {
 				manufacturerModelCell.textContent = manufacturerModelText;
-				manufacturerModelCell.style.cursor = 'auto';
-			}, { once: true });
-		} else {
-			manufacturerModelCell.textContent = manufacturerModelText;
+			}
+			tr.appendChild(manufacturerModelCell);
+
+			// Department
+			tr.appendChild(createTextCell(undefined, 'department', jsonRow.department_formatted, 20, undefined));
+
+			// Domain
+			tr.appendChild(createTextCell(undefined, 'ad_domain', jsonRow.ad_domain_formatted, 20, undefined));
+
+			// Status
+			tr.appendChild(createTextCell(undefined, 'status', jsonRow.status, undefined, undefined));
+
+			// Note (truncated)
+			tr.appendChild(createTextCell(undefined, 'note', jsonRow.note, 60, ''));
+
+			// Last Updated
+			tr.appendChild(createTimestampCell(undefined, 'last_updated', jsonRow.last_updated, undefined));
+
+			fragment.appendChild(tr);
 		}
-		tr.appendChild(manufacturerModelCell);
-
-		// Department
-		tr.appendChild(createTextCell(undefined, 'department', jsonRow.department_formatted, 20, undefined));
-
-		// Domain
-		tr.appendChild(createTextCell(undefined, 'ad_domain', jsonRow.ad_domain_formatted, 20, undefined));
-
-		// Status
-		tr.appendChild(createTextCell(undefined, 'status', jsonRow.status, undefined, undefined));
-
-		// Note (truncated)
-		tr.appendChild(createTextCell(undefined, 'note', jsonRow.note, 60, ''));
-
-		// Last Updated
-		tr.appendChild(createTimestampCell(undefined, 'last_updated', jsonRow.last_updated, undefined));
-
-		fragment.appendChild(tr);
+		tableBody.replaceChildren(fragment);
+	} catch (error) {
+		console.error('Error rendering inventory table:', error);
+		renderEmptyTable(tableBody, 'Error loading inventory data. Please try again.');
 	}
-	tableBody.replaceChildren(fragment);
 }
 
 function getInventorySortByParams() {

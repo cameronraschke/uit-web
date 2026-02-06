@@ -232,12 +232,7 @@
 						<div class="flex-container vertical"><h3>Advanced Search</h3></div>
 						<div class="flex-container vertical">
 							<div class="flex-container horizontal">
-								<select id="adv-search-location" name="location" form="adv-search-form">
-									<option value="" disabled selected>Location</option>
-									{{ range $location, $locationReadable := .Locations }}
-										<option value="{{ $location }}">{{ $locationReadable }}</option>
-									{{ end }}
-								</select>
+								<select id="adv-search-location" name="location" form="adv-search-form"></select>
 								<a id="adv-search-location-reset" class="inventory-search-reset" href="">x</a>
 							</div>
 							<div class="flex-container horizontal">

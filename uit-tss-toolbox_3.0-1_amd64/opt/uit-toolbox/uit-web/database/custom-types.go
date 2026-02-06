@@ -253,6 +253,7 @@ type AllLocations struct {
 	Timestamp         *time.Time `json:"timestamp"`
 	Location          *string    `json:"location"`
 	LocationFormatted *string    `json:"location_formatted"`
+	LocationCount     *int64     `json:"location_count"`
 }
 
 type ClientStatus struct {

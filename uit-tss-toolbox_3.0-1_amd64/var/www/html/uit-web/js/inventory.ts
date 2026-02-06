@@ -47,6 +47,7 @@ type AllLocations = {
 	timestamp: Date | null;
 	location: string | null;
 	location_formatted: string | null;
+	location_count: number | null;
 };
 
 type AllLocationsCache = {
@@ -755,25 +756,31 @@ async function fetchDepartments(purgeCache: boolean = false): Promise<Array<Depa
 }
 
 async function initializeInventoryPage() {
+	const urlParams = new URLSearchParams(window.location.search);
+
 	for (const param of advSearchParams) {
-		if (!param.inputElement || !param.resetElement) continue;
+		if (!param.inputElement || !param.paramString) continue;
 		initializeAdvSearchListeners(param.inputElement, param.resetElement);
+		param.inputElement.dataset.initialValue = urlParams.get(param.paramString) || "";
 	}
 	filterModel.disabled = !filterManufacturer.value;
 
 	try {
 		await Promise.all([
+			populateLocationSelect(advSearchLocation, true),
 			populateDepartmentSelect(advSearchDepartment, true),
-			populateManufacturerSelect(filterManufacturer, filterManufacturerReset).then(() => populateModelSelect()),
+			populateManufacturerSelect(filterManufacturer, filterManufacturerReset, true).then(() => populateModelSelect(filterModel, filterModelReset, true)),
 			populateDomainSelect(advSearchDomain, true),
-			populateStatusSelect(advSearchStatus),
-			renderInventoryTable()
+			populateStatusSelect(advSearchStatus)
 		]);
 
-		updateFiltersFromURL();
+		for (const param of advSearchParams) {
+			if (!param.inputElement || !param.paramString) continue;
+			param.inputElement.value = param.inputElement.dataset.initialValue || "";
+			handleAdvSearchInputChange(param.inputElement, param.resetElement);
+		}
 
 		// Check URL parameters for auto lookup
-		const urlParams = new URLSearchParams(window.location.search);
 		const updateParam: string | null = urlParams.get('update');
 		const tagnumberParam: string | null = urlParams.get('tagnumber');
 		const systemSerialParam: string | null = urlParams.get('system_serial');
@@ -783,6 +790,7 @@ async function initializeInventoryPage() {
 			await submitInventoryLookup();
 			formAnchor.scrollIntoView({ behavior: 'auto', block: 'start' });
 		}
+		await renderInventoryTable(); // after all URL param handling is complete - lookup, update form, and advanced filters
 	} catch (e) {
 		const errorMessage = e instanceof Error ? e.message : String(e);
 		console.error("Error initializing inventory page:", errorMessage);
@@ -910,8 +918,10 @@ csvDownloadButton.addEventListener('click', async (event) => {
   csvDownloadButton.textContent = 'Preparing download...';
   try {
     await fetchFilteredInventoryData(true); // true means CSV download
-  } finally {
     await initializeInventoryPage();
+  } catch (error) {
+    console.error("Error downloading CSV:", error);
+  } finally {
     csvDownloadButton.disabled = false;
     csvDownloadButton.textContent = 'Download Results';
   }
@@ -951,7 +961,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	});
 	
 	try {
-  	await initializeInventoryPage();
+		await initializeInventoryPage();
 	} catch (e) {
 		const errorMessage = e instanceof Error ? e.message : String(e);
 		console.error("Error during inventory page initialization:", errorMessage);
