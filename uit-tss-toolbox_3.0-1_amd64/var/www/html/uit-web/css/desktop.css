@@ -25,7 +25,8 @@
 	--svg-padding-left: 2.1rem;
 	--input-padding: 0.5rem;
 	--container-padding: 2rem;
-	--horizontal-element-margin: 0.5rem;
+	--select-element-margin: 0.5rem;
+	--select-element-extended-margin: 1.5rem;
 	--empty-input-color: aliceblue;
 	--empty-input-border-color: lightgray;
 	--empty-required-input-color:  mistyrose;
@@ -210,6 +211,7 @@ td {
 	background-repeat: no-repeat;
 	background-size: 1.5rem;
 	background-position: 0.5rem center;
+	transition: background-image 0.3s ease, background-color 0.3s ease;
 }
 
 .svg-button.photo-album {
@@ -240,7 +242,6 @@ td {
 .svg-button.cancel.subtle {
 	background-color: var(--bg-color);
 	background-image: url(/icons/general/close_small.svg);
-	
 }
 
 .svg-button.cancel.subtle:hover {
@@ -254,10 +255,17 @@ td {
 }
 
 .svg-select {
+	margin-right: 2rem;
+	background-color: var(--fg-color);
 	padding-left: var(--svg-padding-left);
 	background-repeat: no-repeat;
 	background-size: 1.5rem;
 	background-position: 0.5rem center;
+	transition: background-color 0.1s ease;
+}
+
+.svg-select:hover {
+	background-color: var(--bg-color-darker);
 }
 
 .svg-select.image-search {
@@ -369,9 +377,9 @@ td {
 }
 
 .flex-container.horizontal small, .flex-container.horizontal a, .flex-container.horizontal input, .flex-container.horizontal select, .flex-container.horizontal button {
-	margin-top: var(--horizontal-element-margin);
-	margin-bottom: var(--horizontal-element-margin);
-	margin-right: var(--horizontal-element-margin);
+	margin-top: var(--select-element-margin);
+	margin-bottom: var(--select-element-margin);
+	margin-right: var(--select-element-margin);
 	margin-left: 0px;
 }
 
