@@ -495,7 +495,8 @@ async function populateLocationSelect(el: HTMLSelectElement, purgeCache: boolean
 		for (const location of locationData) {
 			const option = document.createElement('option');
 			option.value = location.location || '';
-			option.textContent = location.location_formatted || location.location || 'N/A' + (location.location_count !== null ? ` (${location.location_count})` : '');
+			option.textContent = (location.location_formatted || location.location || 'N/A') + 
+				(location.location_count !== null ? ` (${location.location_count})` : '');
 			el.appendChild(option);
 		}
 
@@ -525,7 +526,7 @@ advSearchFormReset.addEventListener("click", async (event) => {
 	try{
 		await Promise.all([
 			populateDepartmentSelect(filterDepartment),
-			populateLocationSelect(filterStatus),
+			populateLocationSelect(advSearchLocation),
 			populateManufacturerSelect(filterManufacturer, filterManufacturerReset).then(() => populateModelSelect(filterModel, filterModelReset)),
 			populateDomainSelect(filterDomain),
 			renderInventoryTable(),

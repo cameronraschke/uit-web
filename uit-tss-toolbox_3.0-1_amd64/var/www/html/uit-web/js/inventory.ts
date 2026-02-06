@@ -64,8 +64,9 @@ const clientLookupSerial = document.getElementById('inventory-serial-lookup') as
 const clientLookupSubmitButton = document.getElementById('inventory-lookup-submit-button') as HTMLButtonElement;
 const clientLookupReset = document.getElementById('inventory-lookup-reset-button') as HTMLButtonElement;
 const clientMoreDetails = document.getElementById('inventory-lookup-more-details') as HTMLButtonElement;
+const clientViewPhotos = document.getElementById('inventory-lookup-photo-album') as HTMLButtonElement;
+const clientAddPhotos = document.getElementById('inventory-lookup-add-photos') as HTMLButtonElement;
 const allTagsDatalist = document.getElementById('inventory-tag-suggestions') as HTMLDataListElement;
-const clientImagesLink = document.getElementById('client_images_link') as HTMLAnchorElement;
 const advSearchDepartment = document.getElementById('adv-search-department') as HTMLSelectElement;
 const advSearchDomain = document.getElementById('adv-search-ad-domain') as HTMLSelectElement;
 const advSearchStatus = document.getElementById('adv-search-status') as HTMLSelectElement;
@@ -137,6 +138,11 @@ const requiredInventoryUpdateFields = [
 	clientStatusUpdate
 ];
 
+const buttonsVisibleWhenUpdating = [
+	clientMoreDetails,
+	clientViewPhotos,
+	clientAddPhotos,
+];
 
 async function fetchAllLocations(purgeCache: boolean = false): Promise<AllLocations[] | []> {
 	const cached = sessionStorage.getItem("uit_all_locations");
@@ -255,9 +261,10 @@ async function submitInventoryLookup() {
   }
 
 	clientLookupReset.style.display = "inline-block";
-	clientMoreDetails.style.display = "inline-block";
-	clientMoreDetails.disabled = false;
-
+	for (const btn of buttonsVisibleWhenUpdating) {
+		btn.style.display = "inline-block";
+		btn.disabled = false;
+	}
 
 	try {
 		const lookupResult: ClientLookupResult | null = await lookupTagOrSerial(lookupTag, lookupSerial);
@@ -268,9 +275,6 @@ async function submitInventoryLookup() {
 				clientLookupTagInput.value = Number(lookupResult.tagnumber).toString();
 				clientLookupTagInput.dataset.initialValue = lookupResult.tagnumber ? lookupResult.tagnumber.toString() : "";
 				clientLookupTagInput.readOnly = true;
-				clientImagesLink.href = `/client_images?tagnumber=${lookupResult.tagnumber}`;
-				clientImagesLink.target = "_blank";
-				clientImagesLink.style.display = "inline";
 			}
 			if (lookupResult.system_serial && lookupResult.system_serial && lookupResult.system_serial.trim().length > 0) {
 				searchParams.set("system_serial", lookupResult.system_serial ? lookupResult.system_serial.trim() : '');
@@ -282,10 +286,14 @@ async function submitInventoryLookup() {
 			clientLookupSubmitButton.disabled = true;
 			clientLookupSubmitButton.style.cursor = "not-allowed";
 			clientLookupSubmitButton.style.border = "1px solid gray";
+			clientLookupSubmitButton.style.backgroundColor = "lightgray";
+			clientLookupSubmitButton.style.display = "none";
 
-			clientMoreDetails.disabled = false;
-			clientMoreDetails.style.display = "inline-block";
-			clientMoreDetails.style.cursor = "pointer";
+			for (const btn of buttonsVisibleWhenUpdating) {
+				btn.disabled = false;
+				btn.style.display = "inline-block";
+				btn.style.cursor = "pointer";
+			}
 
 			if (lookupResult.tagnumber || lookupResult.system_serial) {
 				await populateLocationForm(lookupResult.tagnumber ? lookupResult.tagnumber : undefined, lookupResult.system_serial ? lookupResult.system_serial : undefined);
@@ -294,8 +302,10 @@ async function submitInventoryLookup() {
 			clientLookupWarningMessage.style.display = "block";
 			clientLookupWarningMessage.textContent = "No inventory entry was found for the provided tag number or serial number. A new entry can be created.";
 
-			clientMoreDetails.disabled = true;
-			clientMoreDetails.style.cursor = "not-allowed";
+			for (const btn of buttonsVisibleWhenUpdating) {
+				btn.disabled = true;
+				btn.style.cursor = "not-allowed";
+			}
 			const tagNum = clientLookupTagInput.value ? Number(clientLookupTagInput.value) : '';
 			const serialNum = clientLookupSerial.value ? clientLookupSerial.value : '';
 			searchParams.set("tagnumber", tagNum.toString());
@@ -344,14 +354,20 @@ function resetInventoryLookupAndUpdateForm() {
 	}
 	clientLookupTagInput.placeholder = "Enter Tag Number";
 	clientLookupSerial.placeholder = "Enter System Serial";
-	clientLookupSubmitButton.style.cursor = "pointer";
 
-	clientLookupSubmitButton.style.border = "1px solid black";
 	clientLookupSubmitButton.disabled = false;
+	clientLookupSubmitButton.style.cursor = "pointer";
+	clientLookupSubmitButton.style.border = "1px solid black";
+	clientLookupSubmitButton.style.backgroundColor = "";
+	clientLookupSubmitButton.style.display = "inline-block";
+
 	clientLookupReset.style.display = "none";
-	clientMoreDetails.style.display = "none";
-	clientMoreDetails.disabled = false;
-	clientMoreDetails.style.cursor = "pointer";
+
+	for (const btn of buttonsVisibleWhenUpdating) {
+		btn.style.display = "none";
+		btn.disabled = false;
+		btn.style.cursor = "pointer";
+	}
 	updateForm.style.display = "none";
 	clientLookupWarningMessage.style.display = "none";
 	clientLookupWarningMessage.textContent = "";
@@ -937,11 +953,26 @@ clientMoreDetails.addEventListener("click", (event) => {
   event.preventDefault();
   const tag = clientLookupTagInput.value;
   if (tag) {
-    // const url = `/client?tagnumber=${encodeURIComponent(tag)}`;
-		const url = new URL(window.location.origin + '/client_images');
+    const url = new URL(window.location.origin + '/client');
+		// const url = new URL(window.location.origin + '/client_images');
 		url.searchParams.set('tagnumber', tag);
 		window.open(url, '_blank');
   }
+});
+
+clientViewPhotos.addEventListener("click", (event) => {
+	event.preventDefault();
+	const tag = clientLookupTagInput.value;
+	if (tag) {
+		const url = new URL(window.location.origin + '/client_images');
+		url.searchParams.set('tagnumber', tag);
+		window.open(url, '_blank');
+	}
+});
+
+clientAddPhotos.addEventListener("click", (event) => {
+	event.preventDefault();
+	fileInputUpdate.click();
 });
 
 clientStatusUpdate.addEventListener("change", async () => {

@@ -6,8 +6,24 @@
   display: none;
 }
 
+#inventory-lookup-photo-album {
+  display: none;
+}
+
+#inventory-lookup-add-photos {
+	display: none;
+}
+
+#inventory-file-input {
+	display: none;
+}
+
 #inventory-update-form {
 	display: none;
+}
+
+#adv-search-form div.flex-container.horizontal > select {
+	width: 10rem;
 }
 
 .grid-container.inventory.inventory-update-form {
@@ -24,6 +40,6 @@
 	height: 100%;
 }
 
-.inventory-search-reset {
+.adv-search-reset {
   display: none;
 }

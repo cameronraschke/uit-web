@@ -1,5 +1,5 @@
 {
-		"/favicon.png": {
+	"/favicon.png": {
 		"file_path": "/var/www/html/uit-web/favicon.ico",
 		"auth_required": false,
 		"endpoint_type": "web_content",
@@ -17,8 +17,104 @@
 		"endpoint_type": "web_content",
 		"content_type": "image/svg+xml"
 	},
-		"/icons/navigation/home.svg": {
+	"/icons/navigation/home.svg": {
 		"file_path": "/var/www/html/uit-web/icons/navigation/home.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	}, 
+	"/icons/media/photo_album.svg": {
+		"file_path": "/var/www/html/uit-web/icons/media/photo_album.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/media/add_photo.svg": {
+		"file_path": "/var/www/html/uit-web/icons/media/add_photo.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/general/info.svg": {
+		"file_path": "/var/www/html/uit-web/icons/general/info.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/search/filter_search.svg": {
+		"file_path": "/var/www/html/uit-web/icons/search/filter_search.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/general/save.svg": {
+		"file_path": "/var/www/html/uit-web/icons/general/save.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/general/cancel.svg": {
+		"file_path": "/var/www/html/uit-web/icons/general/cancel.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/general/close_small.svg": {
+		"file_path": "/var/www/html/uit-web/icons/general/close_small.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/general/location_on.svg": {
+		"file_path": "/var/www/html/uit-web/icons/general/location_on.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/general/activity.svg": {
+		"file_path": "/var/www/html/uit-web/icons/general/activity.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/accounts/groups.svg": {
+		"file_path": "/var/www/html/uit-web/icons/accounts/groups.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/search/image_search.svg": {
+		"file_path": "/var/www/html/uit-web/icons/search/image_search.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/general/factory.svg": {
+		"file_path": "/var/www/html/uit-web/icons/general/factory.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/hardware/heart_broken.svg": {
+		"file_path": "/var/www/html/uit-web/icons/hardware/heart_broken.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/accounts/domain.svg": {
+		"file_path": "/var/www/html/uit-web/icons/accounts/domain.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/general/apartment.svg": {
+		"file_path": "/var/www/html/uit-web/icons/general/apartment.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/hardware/devices_other.svg": {
+		"file_path": "/var/www/html/uit-web/icons/hardware/devices_other.svg",
 		"auth_required": true,
 		"endpoint_type": "web_content",
 		"content_type": "image/svg+xml"

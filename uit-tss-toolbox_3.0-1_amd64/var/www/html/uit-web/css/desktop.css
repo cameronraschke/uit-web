@@ -7,15 +7,11 @@
 	--fg-color: oklch(0.99 0 0);
 	--highlight-color: oklch(1 0 0);
 	--shadow-color: oklch(0.94 0 0);
-	--lighter-accent-color: oklch(0.6 0.2074 22.32);
-	--light-accent-color: oklch(0.55 0.2074 22.32);
-	--accent-color: oklch(0.5304 0.2074 22.32);
-	--dark-accent-color: oklch(0.4301 0.1663 21.86);
-	--darker-accent-color: oklch(0.3301 0.1263 21.86);
-	--lighter-submit-color: oklch(0.8 0.106381 172.7396);
-	--light-submit-color: oklch(0.7 0.106381 172.7396);
-	--submit-color: oklch(0.5526 0.106381 172.7396);
-	--dark-submit-color: oklch(0.4526 0.106381 172.7396);
+	--light-accent-color: oklch(0.5849 0.2065 23.43);
+	--accent-color: oklch(0.5449 0.2065 23.43);
+	--dark-accent-color: oklch(0.5149 0.2065 23.43);
+	--light-submit-color: oklch(0.8 0.106381 172.7396);
+	--submit-color: oklch(0.7 0.106381 172.7396);
 	--warning-color: oklch(0.829 0.1695 87.07);
 	--error-color: red;
 	--default-border-color: black;
@@ -26,7 +22,7 @@
 	--border-radius: 1rem;
 	--border-radius-text: 0.5rem;
 	--border-radius-button: 0.5rem;
-	--svg-padding-left: 2.5rem;
+	--svg-padding-left: 2.1rem;
 	--input-padding: 0.5rem;
 	--container-padding: 2rem;
 	--horizontal-element-margin: 0.5rem;
@@ -97,19 +93,11 @@ button:hover {
 }
 
 button.submit {
-	background-color: var(--lighter-submit-color);
-}
-
-button.submit:hover {
 	background-color: var(--light-submit-color);
 }
 
-button.cancel {
-  background-color: var(--lighter-accent-color);
-}
-
-button.cancel:hover {
-	background-color: var(--light-accent-color);
+button.submit:hover {
+	background-color: var(--submit-color);
 }
 
 input[type="file"] {
@@ -215,6 +203,97 @@ td {
 
 .bold {
   font-weight: bold;
+}
+
+.svg-button {
+	padding-left: var(--svg-padding-left);
+	background-repeat: no-repeat;
+	background-size: 1.5rem;
+	background-position: 0.5rem center;
+}
+
+.svg-button.photo-album {
+	background-image: url(/icons/media/photo_album.svg);
+}
+
+.svg-button.add-photo {
+	background-image: url(/icons/media/add_photo.svg);
+}
+
+.svg-button.info {
+	background-image: url(/icons/general/info.svg);
+}
+
+.svg-button.filter-search {
+	background-image: url(/icons/search/filter_search.svg);
+}
+
+.svg-button.download {
+	background-image: url(/icons/general/save.svg);
+}
+
+.svg-button.cancel {
+  background-color: var(--light-accent-color);
+	background-image: url(/icons/general/close_small.svg);
+}
+
+.svg-button.cancel.subtle {
+	background-color: var(--bg-color);
+	background-image: url(/icons/general/close_small.svg);
+	
+}
+
+.svg-button.cancel.subtle:hover {
+	background-color: var(--bg-color-darker);
+	background-image: url(/icons/general/cancel.svg);
+}
+
+.svg-button.cancel:hover {
+	background-color: var(--dark-accent-color);
+	background-image: url(/icons/general/cancel.svg);
+}
+
+.svg-select {
+	padding-left: var(--svg-padding-left);
+	background-repeat: no-repeat;
+	background-size: 1.5rem;
+	background-position: 0.5rem center;
+}
+
+.svg-select.image-search {
+	background-image: url(/icons/search/image_search.svg);
+}
+
+.svg-select.manufacturer {
+	background-image: url(/icons/general/factory.svg);
+}
+
+.svg-select.is-broken {
+	background-image: url(/icons/hardware/heart_broken.svg);
+}
+
+.svg-select.domain {
+	background-image: url(/icons/accounts/domain.svg);
+}
+
+.svg-select.building {
+	background-image: url(/icons/general/apartment.svg);
+}
+
+.svg-select.status {
+	background-image: url(/icons/general/activity.svg);
+}
+
+.svg-select.department {
+	background-image: url(/icons/accounts/groups.svg);
+}
+
+.svg-select.location {
+	background-image: url(/icons/general/location_on.svg);
+}
+
+.svg-select.device-type {
+	background-image: url(/icons/hardware/devices_other.svg);
 }
 
 .text-search {

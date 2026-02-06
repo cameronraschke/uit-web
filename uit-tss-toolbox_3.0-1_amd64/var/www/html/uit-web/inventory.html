@@ -47,8 +47,10 @@
 							/>
 							<div class="flex-container horizontal">
 								<button type="button" id="inventory-lookup-reset-button">Reset Search</button>
-								<button type="button" id="inventory-lookup-more-details">More Details</button>
-								<button type="submit" id="inventory-lookup-submit-button">Search for Client</button>
+								<button type="button" id="inventory-lookup-more-details" class="svg-button info">More Details</button>
+								<button type="button" id="inventory-lookup-photo-album" class="svg-button photo-album">View Photos</button>
+								<button type="button" id="inventory-lookup-add-photos" class="svg-button add-photo">Add Photos</button>
+								<button type="submit" id="inventory-lookup-submit-button" class="svg-button filter-search">Search for Client</button>
 							</div>
 						</div>
 					</div>
@@ -59,6 +61,9 @@
 						<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
 						<div class="message"><p id="last-update-time-message" class="warning-message"></p></div>
 						<input type="hidden" id="csrf-token" value="" />
+						<input type="file" id="inventory-file-input" name="inventory-file-input" 
+							accept="image/jpeg,image/jpg,image/png" 
+							multiple />
 						<div id="inventory-form-container" class="grid-container inventory inventory-update-form">
 							<div class="flex-container vertical separated">
 								<div class="flex-container horizontal"><p>Location</p></div>
@@ -188,19 +193,6 @@
 									<input type="date" id="return_date" name="return_date" value="" />
 								</div>
 							</div>
-
-							<div class="flex-container vertical separated">
-								<div class="flex-container horizontal"><p>Upload Inventory Image(s):</p></div>
-								<div class="flex-container horizontal">
-									<input type="file" id="inventory-file-input" name="inventory-file-input" 
-										accept="image/jpeg,image/jpg,image/png,video/mp4" 
-										multiple />
-								</div>
-								<div class="flex-container horizontal">
-									<a id="client_images_link" href="">View Client Images</a>
-								</div>
-							</div>
-
 						<!-- Close grid -->
 						</div> 
 
@@ -213,7 +205,7 @@
 						<div class="flex-container horizontal form-buttons" id="inventory-update-form-buttons">
 							<button id="inventory-update-cancel-button" name="inventory-update-cancel-button"
 								type="button"
-								class="cancel">
+								class="svg-button cancel">
 								Cancel
 							</button>
 							<button id="inventory-update-submit-button" name="inventory-update-submit-button" 
@@ -232,64 +224,48 @@
 						<div class="flex-container vertical"><h3>Advanced Search</h3></div>
 						<div class="flex-container vertical">
 							<div class="flex-container horizontal">
-								<select id="adv-search-location" name="location" form="adv-search-form"></select>
-								<a id="adv-search-location-reset" class="inventory-search-reset" href="">x</a>
-							</div>
-							<div class="flex-container horizontal">
-								<select id="adv-search-department" name="department_name" form="adv-search-form">
-									<option value="" disabled selected>Department</option>
+								<select id="adv-search-location" name="location" form="adv-search-form" class="svg-select location"></select>
+								<a id="adv-search-location-reset" class="adv-search-reset" href="">x</a>
+								<select id="adv-search-building" name="building" form="adv-search-form" class="svg-select building">
+									<option value="" disabled selected>Building (Placeholder)</option>
 								</select>
-								<a id="adv-search-department-reset" class="inventory-search-reset" href="">x</a>
+								<a id="adv-search-building-reset" class="adv-search-reset" href="">x</a>
 							</div>
 							<div class="flex-container horizontal">
-								<select id="adv-search-manufacturer" name="manufacturer" form="adv-search-form">
-									<option value="" disabled selected>Manufacturer</option>
-								</select>
-								<a id="adv-search-manufacturer-reset" class="inventory-search-reset" href="">x</a>
+								<select id="adv-search-manufacturer" name="manufacturer" form="adv-search-form" class="svg-select manufacturer"></select>
+								<a id="adv-search-manufacturer-reset" class="adv-search-reset" href="">x</a>
+								<select id="adv-search-model" name="model" form="adv-search-form"></select>
+								<a id="adv-search-model-reset" class="adv-search-reset" href="">x</a>
 							</div>
 							<div class="flex-container horizontal">
-								<select id="adv-search-model" name="model" form="adv-search-form">
-									<option value="" disabled selected>Model</option>
-								</select>
-								<a id="adv-search-model-reset" class="inventory-search-reset" href="">x</a>
+								<select id="adv-search-department" name="department_name" form="adv-search-form" class="svg-select department"></select>
+								<a id="adv-search-department-reset" class="adv-search-reset" href="">x</a>
+								<select id="adv-search-ad-domain" name="ad_domain" form="adv-search-form" class="svg-select domain"></select>
+								<a id="adv-search-ad-domain-reset" class="adv-search-reset" href="">x</a>
 							</div>
 							<div class="flex-container horizontal">
-								<select id="adv-search-ad-domain" name="ad_domain" form="adv-search-form">
-									<option value="" disabled selected>AD Domain</option>
-									{{ range $domain, $domainReadable := .Domains }}
-										<option value="{{ $domain }}">{{ $domainReadable }}</option>
-									{{ end }}
-								</select>
-								<a id="adv-search-ad-domain-reset" class="inventory-search-reset" href="">x</a>
-							</div>
-							<div class="flex-container horizontal">
-								<select id="adv-search-status" name="status" form="adv-search-form">
-									<option value="" disabled selected>Status</option>
-									{{ range $status, $statusReadable := .Statuses }}
-										<option value="{{ $status }}">{{ $statusReadable }}</option>
-									{{ end }}
-								</select>
-								<a id="adv-search-status-reset" class="inventory-search-reset" href="">x</a>
-							</div>
-							<div class="flex-container horizontal">
-								<select id="adv-search-is-broken" name="is_broken" form="adv-search-form">
+								<select id="adv-search-status" name="status" form="adv-search-form" class="svg-select status"></select>
+								<a id="adv-search-status-reset" class="adv-search-reset" href="">x</a>
+								<select id="adv-search-is-broken" name="is_broken" form="adv-search-form" class="svg-select is-broken">
 									<option value="" disabled selected>Broken?</option>
 									<option value="true">Yes - Is broken</option>
 									<option value="false">No - Is functional</option>
 								</select>
-								<a id="adv-search-is-broken-reset" class="inventory-search-reset" href="">x</a>
+								<a id="adv-search-is-broken-reset" class="adv-search-reset" href="">x</a>
 							</div>
 							<div class="flex-container horizontal">
-								<select id="adv-search-has-images" name="has_images" form="adv-search-form">
+								<select id="adv-search-has-images" name="has_images" form="adv-search-form" class="svg-select image-search">
 									<option value="" disabled selected>Has Images?</option>
 									<option value="true">Yes - Has images</option>
 									<option value="false">No - Missing images</option>
 								</select>
-								<a id="adv-search-has-images-reset" class="inventory-search-reset" href="">x</a>
+								<a id="adv-search-has-images-reset" class="adv-search-reset" href="">x</a>
+								<select id="adv-search-device-type" name="device_type" form="adv-search-form" class="svg-select device-type"></select>
+								<a id="adv-search-device-type-reset" class="adv-search-reset" href="">x</a>
 							</div>
 							<div class="flex-container horizontal form-buttons">
-								<button id="adv-search-form-reset-button" type="button" class="cancel">Reset Search</button>
-								<button type="submit" class="submit" id="adv-search-download-csv">Download Results</button>
+								<button id="adv-search-form-reset-button" type="button" class="svg-button cancel subtle">Reset Search</button>
+								<button type="submit" class="svg-button download submit" id="adv-search-download-csv">Download Results</button>
 							</div>
 						</div>
 					</div>
