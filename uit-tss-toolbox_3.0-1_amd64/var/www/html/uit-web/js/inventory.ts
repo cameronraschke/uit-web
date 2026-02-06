@@ -161,7 +161,7 @@ async function fetchAllLocations(purgeCache: boolean = false): Promise<AllLocati
 	}
 }
 
-function getLocationSearchResults(inputElement: HTMLInputElement, data: Array<AllLocations>): Array<{ location: string, location_formatted: string | null }> {
+function getSortedLocations(inputElement: HTMLInputElement, data: Array<AllLocations>): Array<{ location: string, location_formatted: string | null }> {
 	if (!inputElement || !data || data.length === 0) {
 		return [];
 	}
@@ -764,7 +764,7 @@ async function initializeInventoryPage() {
 	try {
 		await Promise.all([
 			populateDepartmentSelect(advSearchDepartment, true),
-			populateManufacturerSelect().then(() => populateModelSelect()),
+			populateManufacturerSelect(filterManufacturer, filterManufacturerReset).then(() => populateModelSelect()),
 			populateDomainSelect(advSearchDomain, true),
 			populateStatusSelect(advSearchStatus),
 			renderInventoryTable()
@@ -968,7 +968,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 locationEl.addEventListener("keyup", async () => {
 	const allLocations = await fetchAllLocations();
-	const searchResults = getLocationSearchResults(locationEl, allLocations);
+	const searchResults = getSortedLocations(locationEl, allLocations);
 	const dataListElement = document.getElementById('location-suggestions') as HTMLDataListElement;
 	dataListElement.innerHTML = '';
 	searchResults.forEach(item => {

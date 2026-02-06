@@ -92,58 +92,50 @@ function updateFiltersFromURL() {
 	}
 }
 
-function initializeAdvSearchListeners(filterElement: HTMLSelectElement, resetButton: HTMLElement) {
-	if (!filterElement || !resetButton) {
-		console.error("Filter inputElement or reset button not found.");
+function handleAdvSearchInputChange(filterEl: HTMLSelectElement, resetEl: HTMLElement) {
+	if (!filterEl || !resetEl) {
+		console.warn("Filter inputElement or reset button not found.");
 		return;
 	}
-
+	const paramString = getURLParamName(filterEl);
 	// Testing a string here, otherwise "false" would not show the reset button
-	if (filterElement.value !== '' && filterElement.value.length > 0) {
-		resetButton.style.display = 'inline-block';
-		filterElement.classList.add('changed-input');
+	if (filterEl.value !== '' && filterEl.value.trim().length > 0) {
+		setURLParameter(paramString, filterEl.value);
+		resetEl.style.display = 'inline-block';
+		filterEl.classList.add('changed-input');
 	} else {
-		resetButton.style.display = 'none';
-		filterElement.classList.remove('changed-input');
+		setURLParameter(paramString, null);
+		resetEl.style.display = 'none';
+		filterEl.classList.remove('changed-input');
 	}
+}
 
-	filterElement.addEventListener("change", async () => {
-		resetButton.style.display = 'inline-block';
-		const paramString = getURLParamName(filterElement);
-		if ((filterElement.value !== '' && filterElement.value.trim().length >= 0)) {
-			setURLParameter(paramString, filterElement.value);
-			resetButton.style.display = 'inline-block';
-			filterElement.classList.add('changed-input');
-		} else {
-			setURLParameter(paramString, null);
-			resetButton.style.display = 'none';
-			filterElement.classList.remove('changed-input');
-		}
+function initializeAdvSearchListeners(filterEl: HTMLSelectElement, resetEl: HTMLElement) {
+	handleAdvSearchInputChange(filterEl, resetEl);
+	filterEl.addEventListener("change", async () => {
 		try {
-			if (filterElement === filterManufacturer || filterElement === filterModel) {
-				await Promise.all([populateManufacturerSelect().then(() => populateModelSelect()), renderInventoryTable()]);
+			if (filterEl === filterManufacturer || filterEl === filterModel) {
+				await Promise.all([populateManufacturerSelect(filterEl, resetEl).then(() => populateModelSelect()), renderInventoryTable()]);
 			} else {
 				await renderInventoryTable();
 			}
 		} catch (err) {
-			console.error(`Error fetching data from filterElement on change event listener:`, err);
+			console.error(`Error fetching data from filterEl on change event listener:`, err);
 		}
 	});
   
-	resetButton.addEventListener("click", async (event) => {
+	resetEl.addEventListener("click", async (event) => {
 		event.preventDefault();
-		resetButton.style.display = 'none';
-		filterElement.classList.remove('changed-input');
-		filterElement.value = "";
-		updateURLFromFilters();
+		filterEl.value = "";
+		handleAdvSearchInputChange(filterEl, resetEl);
 		try {
-			if (resetButton === filterManufacturerReset || resetButton === filterModelReset) {
-				await Promise.all([populateManufacturerSelect().then(() => populateModelSelect()), renderInventoryTable()]);
+			if (filterEl === filterManufacturer || filterEl === filterModel) {
+				await Promise.all([populateManufacturerSelect(filterEl, resetEl).then(() => populateModelSelect()), renderInventoryTable()]);
 			} else {
 				await renderInventoryTable();
 			}
 		} catch (err) {
-			console.error(`Error fetching data from filterElement on change event listener:`, err);
+			console.error(`Error fetching data from filterEl on change event listener:`, err);
 		}
 	});
 }
@@ -166,7 +158,7 @@ async function fetchFilteredInventoryData(csvDownload = false): Promise<Inventor
 
 	try {
 		const jsonResponse: InventoryRow[] = await fetchData(`/api/inventory?${apiQuery.toString()}`, false);
-		if (!jsonResponse) throw new Error("No data returned from /api/inventory");
+		if (!jsonResponse) console.warn("No data returned from /api/inventory");
 		return jsonResponse;
 	} catch (error) {
 		console.warn("Error fetching inventory data:", error);
@@ -203,65 +195,64 @@ async function fetchAllManufacturersAndModels(purgeCache: boolean = false): Prom
   }
 }
 
-async function populateManufacturerSelect(purgeCache: boolean = false) {
-  if (!filterManufacturer) return;
+async function populateManufacturerSelect(selectEl: HTMLSelectElement, resetEl: HTMLElement, purgeCache: boolean = false) {
+  if (!selectEl || !resetEl) return;
 
-	const initialValue = filterManufacturer.value ? filterManufacturer.value : (new URLSearchParams(window.location.search).get('system_manufacturer') || '');
+	const initialValue = selectEl.value ? selectEl.value : (new URLSearchParams(window.location.search).get('system_manufacturer') || '');
 	if (initialValue && initialValue.trim().length > 0) {
 		filterModel.disabled = false;
-		filterManufacturerReset.style.display = 'inline-block';
+		handleAdvSearchInputChange(selectEl, resetEl);
 	} else {
-		filterModelReset.style.display = 'none';
+		handleAdvSearchInputChange(selectEl, resetEl);
 		resetSelectElement(filterModel, 'Model', true);
-		updateURLFromFilters();
 		return;
 	}
 
-	filterManufacturer.disabled = true;
+	selectEl.disabled = true;
 
 	try {
   	const data: ManufacturersAndModels[] = await fetchAllManufacturersAndModels(purgeCache);
 		if (!data || !Array.isArray(data) || data.length === 0) throw new Error('No data returned from /api/models');
 
 		// Sort manufacturers array - get unique key
-		const uniqueMap = new Map<string, ManufacturersAndModels>();
+		const manufacturerMap = new Map<string, ManufacturersAndModels>();
 		for (const item of data) {
 			if (!item.system_manufacturer) continue;
-			if (!uniqueMap.has(item.system_manufacturer)) {
-				uniqueMap.set(item.system_manufacturer, item);
+			if (!manufacturerMap.has(item.system_manufacturer)) {
+				manufacturerMap.set(item.system_manufacturer, item);
 			}
 		}
-		const uniqueArray = Array.from(uniqueMap.values());
-		uniqueArray.sort((a, b) => {
+		const uniqueManufacturerArr: ManufacturersAndModels[] = Array.from(manufacturerMap.values());
+		uniqueManufacturerArr.sort((a, b) => {
 			const manufacturerA = a.system_manufacturer;
 			const manufacturerB = b.system_manufacturer;
 			return manufacturerA.localeCompare(manufacturerB);
 		});
 
 		// Clear and rebuild manufacturer select options
-		resetSelectElement(filterManufacturer, 'Manufacturer');
+		resetSelectElement(selectEl, 'Manufacturer');
 
 		// Sort by formatted name
-		for (const item of uniqueArray) {
-			if (!item.system_manufacturer || !item.system_manufacturer) continue;
+		for (const item of uniqueManufacturerArr) {
+			if (!item.system_manufacturer) console.warn("Missing system_manufacturer in uniqueManufacturerArr:", item);
 			const option = document.createElement('option');
 			option.value = item.system_manufacturer;
 			option.textContent = `${item.system_manufacturer} (${item.system_manufacturer_count || 0})`;
-			filterManufacturer.appendChild(option);
+			selectEl.appendChild(option);
 		}
 
-		filterManufacturer.value = (initialValue && uniqueArray.some(item => item.system_manufacturer === initialValue)) ? initialValue : '';
-		if (filterManufacturer.value) {
-			setURLParameter('system_manufacturer', filterManufacturer.value);
-			await populateModelSelect();
+		const newValue = (initialValue && uniqueManufacturerArr.some(item => item.system_manufacturer === initialValue)) ? initialValue : '';
+		selectEl.value = newValue;
+
+		if (newValue) {
+			setURLParameter('system_manufacturer', selectEl.value);
 		} else {
 			setURLParameter('system_manufacturer', null);
 		}
 	} catch (error) {
 		console.error('Error fetching manufacturers and models:', error);
-		return;
 	} finally {
-		filterManufacturer.disabled = false;
+		selectEl.disabled = false;
 	}
 }
 
@@ -296,7 +287,7 @@ async function populateModelSelect(purgeCache: boolean = false) {
 		filterModelReset.style.display = 'none';
 
 		for (const item of filteredData) {
-			if (!item.system_model) continue;
+			if (!item.system_model) console.warn("Missing system_model in filteredData:", item);
 			const option = document.createElement('option');
 			option.value = item.system_model;
 			option.textContent = item.system_model + ` (${item.system_model_count || 0})`;
@@ -518,7 +509,7 @@ inventoryFilterFormResetButton.addEventListener("click", async (event) => {
 	try{
 		await Promise.all([
 			populateDepartmentSelect(filterDepartment),
-			populateManufacturerSelect().then(() => populateModelSelect()),
+			populateManufacturerSelect(filterManufacturer, filterManufacturerReset).then(() => populateModelSelect()),
 			populateDomainSelect(filterDomain),
 			renderInventoryTable(),
 		]);
