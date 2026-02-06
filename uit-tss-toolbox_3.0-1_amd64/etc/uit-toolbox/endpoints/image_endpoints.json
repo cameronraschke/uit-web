@@ -118,5 +118,11 @@
 		"auth_required": true,
 		"endpoint_type": "web_content",
 		"content_type": "image/svg+xml"
+	},
+	"/icons/general/close.svg": {
+		"file_path": "/var/www/html/uit-web/icons/general/close.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
 	}
 }
