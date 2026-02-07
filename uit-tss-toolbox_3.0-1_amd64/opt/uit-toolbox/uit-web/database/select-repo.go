@@ -37,7 +37,9 @@ func (repo *Repo) GetAllTags(ctx context.Context) ([]int64, error) {
 
 	allTagsSlice := make([]int64, len(allTags))
 	for i := range allTags {
-		allTagsSlice[i] = allTags[i].Tagnumber
+		if allTags[i].Tagnumber != nil {
+			allTagsSlice[i] = *allTags[i].Tagnumber
+		}
 	}
 
 	return allTagsSlice, nil
@@ -451,7 +453,10 @@ func (repo *Repo) GetLocationFormData(ctx context.Context, tag *int64, serial *s
 	AND (locations.tagnumber = $1 OR locations.system_serial = $2)
 	ORDER BY locations.time DESC NULLS LAST
 	LIMIT 1;`
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, toNullInt64(tag), toNullString(serial))
+	row := repo.DB.QueryRowContext(ctx, sqlQuery,
+		toNullInt64(tag),
+		toNullString(serial),
+	)
 
 	inventoryUpdateForm := &InventoryUpdateForm{}
 	if err := row.Scan(

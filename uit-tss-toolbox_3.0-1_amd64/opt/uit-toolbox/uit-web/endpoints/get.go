@@ -48,11 +48,11 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// No consequence for missing tag, acceptable if lookup by serial
-	var tagnumber, tagErr = ConvertTagnumber(strings.TrimSpace(urlQueries.Get("tagnumber")))
+	var tagnumber, tagErr = ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	var systemSerial = strings.TrimSpace(urlQueries.Get("system_serial"))
 
 	if tagErr != nil && systemSerial == "" {
-		log.HTTPWarning(req, "No tagnumber or system_serial provided in client lookup request")
+		log.HTTPWarning(req, "No tagnumber or system_serial provided in GetClientLookup")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -72,8 +72,8 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	repo := database.NewRepo(db)
 
 	var hardwareData *database.ClientLookup
-	if tagnumber != 0 {
-		hardwareData, err = repo.ClientLookupByTag(ctx, tagnumber)
+	if tagnumber != nil {
+		hardwareData, err = repo.ClientLookupByTag(ctx, *tagnumber)
 	} else if systemSerial != "" {
 		hardwareData, err = repo.ClientLookupBySerial(ctx, systemSerial)
 	}
@@ -125,7 +125,7 @@ func GetHardwareIdentifiers(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	tagnumber, err := ConvertTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
 		log.HTTPWarning(req, "Invalid tagnumber provided in GetHardwareIdentifiers: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -139,7 +139,7 @@ func GetHardwareIdentifiers(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	repo := database.NewRepo(db)
-	hardwareData, err := repo.GetHardwareIdentifiers(ctx, tagnumber)
+	hardwareData, err := repo.GetHardwareIdentifiers(ctx, *tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPInfo(req, "Query error in GetHardwareIdentifiers: "+err.Error())
@@ -159,7 +159,7 @@ func GetBiosData(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	tagnumber, err := ConvertTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
 		log.HTTPWarning(req, "Invalid tagnumber provided in GetBiosData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -174,7 +174,7 @@ func GetBiosData(w http.ResponseWriter, req *http.Request) {
 	}
 	repo := database.NewRepo(db)
 
-	biosData, err := repo.GetBiosData(ctx, tagnumber)
+	biosData, err := repo.GetBiosData(ctx, *tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetBiosData: "+err.Error())
@@ -195,7 +195,7 @@ func GetOSData(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	tagnumber, err := ConvertTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
 		log.HTTPWarning(req, "Invalid tagnumber provided in GetOSData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -210,7 +210,7 @@ func GetOSData(w http.ResponseWriter, req *http.Request) {
 	}
 	repo := database.NewRepo(db)
 
-	osData, err := repo.GetOsData(ctx, tagnumber)
+	osData, err := repo.GetOsData(ctx, *tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.Info("Query error in GetOSData: " + err.Error())
@@ -231,7 +231,7 @@ func GetClientQueuedJobs(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	tagnumber, err := ConvertTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
 		log.HTTPWarning(req, "Invalid tagnumber provided in GetClientQueuedJobs: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -246,7 +246,7 @@ func GetClientQueuedJobs(w http.ResponseWriter, req *http.Request) {
 	}
 	repo := database.NewRepo(db)
 
-	activeJobs, err := repo.GetActiveJobs(ctx, tagnumber)
+	activeJobs, err := repo.GetActiveJobs(ctx, *tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetClientQueuedJobs: "+err.Error())
@@ -267,7 +267,7 @@ func GetClientAvailableJobs(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	tagnumber, err := ConvertTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
 		log.HTTPWarning(req, "Invalid tagnumber provided in GetClientAvailableJobs: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -282,7 +282,7 @@ func GetClientAvailableJobs(w http.ResponseWriter, req *http.Request) {
 	}
 	repo := database.NewRepo(db)
 
-	availableJobs, err := repo.GetAvailableJobs(ctx, tagnumber)
+	availableJobs, err := repo.GetAvailableJobs(ctx, *tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetClientAvailableJobs: "+err.Error())
@@ -339,7 +339,7 @@ func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 	}
 
 	serial := strings.TrimSpace(requestQueries.Get("system_serial"))
-	tagnumber, tagErr := ConvertTagnumber(requestQueries.Get("tagnumber"))
+	tagnumber, tagErr := ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
 	if tagErr != nil {
 		if serial == "" {
 			log.HTTPWarning(req, "No or invalid tagnumber and no system_serial provided in GetLocationFormData")
@@ -355,7 +355,7 @@ func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	repo := database.NewRepo(db)
-	locationData, err := repo.GetLocationFormData(ctx, &tagnumber, &serial)
+	locationData, err := repo.GetLocationFormData(ctx, tagnumber, &serial)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetLocationFormData: "+err.Error())
@@ -375,7 +375,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	tagnumber, err := ConvertTagnumber(requestQueries.Get("tagnumber"))
+	tagnumber, err := ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
 	if err != nil {
 		log.HTTPWarning(req, "No or invalid tagnumber provided in request to GetClientImagesManifest: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -390,14 +390,14 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 	}
 	repo := database.NewRepo(db)
 
-	imageManifests, err := repo.GetClientImageManifestByTag(ctx, tagnumber)
+	imageManifests, err := repo.GetClientImageManifestByTag(ctx, *tagnumber)
 	if err != nil && err != sql.ErrNoRows {
 		log.HTTPWarning(req, "Query error in GetClientImagesManifest: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	if len(imageManifests) == 0 {
-		log.HTTPWarning(req, "No image manifest data for client: "+fmt.Sprintf("%d", tagnumber))
+		log.HTTPWarning(req, "No image manifest data for client: "+fmt.Sprintf("%d", *tagnumber))
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
@@ -842,7 +842,7 @@ func GetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	tagnumber, err := ConvertTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
 		log.HTTPWarning(req, "Invalid tagnumber provided in GetClientBatteryHealth: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -856,7 +856,7 @@ func GetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 	}
 	repo := database.NewRepo(db)
 
-	batteryHealthData, err := repo.GetClientBatteryHealth(ctx, tagnumber)
+	batteryHealthData, err := repo.GetClientBatteryHealth(ctx, *tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetClientBatteryHealth: "+err.Error())

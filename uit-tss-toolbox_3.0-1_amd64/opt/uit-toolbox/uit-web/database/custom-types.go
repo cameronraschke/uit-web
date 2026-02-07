@@ -3,68 +3,70 @@ package database
 import "time"
 
 type ClientLookup struct {
-	Tagnumber    int64  `json:"tagnumber"`
-	SystemSerial string `json:"system_serial"`
+	Tagnumber    *int64  `json:"tagnumber"`
+	SystemSerial *string `json:"system_serial"`
 }
 
 type HardwareData struct {
-	Tagnumber               int    `json:"tagnumber"`
-	SystemSerial            string `json:"system_serial"`
-	EthernetMAC             string `json:"ethernet_mac"`
-	WifiMac                 string `json:"wifi_mac"`
-	SystemModel             string `json:"system_model"`
-	SystemUUID              string `json:"system_uuid"`
-	SystemSKU               string `json:"system_sku"`
-	ChassisType             string `json:"chassis_type"`
-	MotherboardManufacturer string `json:"motherboard_manufacturer"`
-	MotherboardSerial       string `json:"motherboard_serial"`
-	SystemManufacturer      string `json:"system_manufacturer"`
+	Tagnumber               *int64  `json:"tagnumber"`
+	SystemSerial            *string `json:"system_serial"`
+	EthernetMAC             *string `json:"ethernet_mac"`
+	WifiMac                 *string `json:"wifi_mac"`
+	SystemModel             *string `json:"system_model"`
+	SystemUUID              *string `json:"system_uuid"`
+	SystemSKU               *string `json:"system_sku"`
+	ChassisType             *string `json:"chassis_type"`
+	MotherboardManufacturer *string `json:"motherboard_manufacturer"`
+	MotherboardSerial       *string `json:"motherboard_serial"`
+	SystemManufacturer      *string `json:"system_manufacturer"`
 }
 
 type BiosData struct {
-	Tagnumber   int    `json:"tagnumber"`
-	BiosVersion string `json:"bios_version"`
-	BiosUpdated bool   `json:"bios_updated"`
-	BiosDate    string `json:"bios_date"`
-	TpmVersion  string `json:"tpm_version"`
+	Tagnumber   *int64  `json:"tagnumber"`
+	BiosVersion *string `json:"bios_version"`
+	BiosUpdated *bool   `json:"bios_updated"`
+	BiosDate    *string `json:"bios_date"`
+	TpmVersion  *string `json:"tpm_version"`
 }
 
 type OsData struct {
-	Tagnumber       int           `json:"tagnumber"`
-	OsInstalled     bool          `json:"os_installed"`
-	OsName          string        `json:"os_name"`
-	OsInstalledTime time.Time     `json:"os_installed_time"`
-	TPMversion      string        `json:"tpm_version"`
-	BootTime        time.Duration `json:"boot_time"`
+	Tagnumber       *int64         `json:"tagnumber"`
+	OsInstalled     *bool          `json:"os_installed"`
+	OsName          *string        `json:"os_name"`
+	OsInstalledTime *time.Time     `json:"os_installed_time"`
+	TPMversion      *string        `json:"tpm_version"`
+	BootTime        *time.Duration `json:"boot_time"`
 }
 
 type ActiveJobs struct {
-	Tagnumber     int    `json:"tagnumber"`
-	QueuedJob     string `json:"job_queued"`
-	JobActive     bool   `json:"job_active"`
-	QueuePosition int    `json:"queue_position"`
+	Tagnumber     *int64  `json:"tagnumber"`
+	QueuedJob     *string `json:"job_queued"`
+	JobActive     *bool   `json:"job_active"`
+	QueuePosition *int64  `json:"queue_position"`
 }
 
 type AvailableJobs struct {
-	Tagnumber    int  `json:"tagnumber"`
-	JobAvailable bool `json:"job_available"`
+	Tagnumber    *int64 `json:"tagnumber"`
+	JobAvailable *bool  `json:"job_available"`
 }
 
 type JobQueueOverview struct {
-	TotalQueuedJobs         int `json:"total_queued_jobs"`
-	TotalActiveJobs         int `json:"total_active_jobs"`
-	TotalActiveBlockingJobs int `json:"total_active_blocking_jobs"`
+	TotalQueuedJobs         *int64 `json:"total_queued_jobs"`
+	TotalActiveJobs         *int64 `json:"total_active_jobs"`
+	TotalActiveBlockingJobs *int64 `json:"total_active_blocking_jobs"`
 }
 
 type DashboardInventorySummary struct {
-	SystemModel          string `json:"system_model"`
-	SystemModelCount     int    `json:"system_model_count"`
-	TotalCheckedOut      int    `json:"total_checked_out"`
-	AvailableForCheckout int    `json:"available_for_checkout"`
+	SystemModel          *string `json:"system_model"`
+	SystemModelCount     *int64  `json:"system_model_count"`
+	TotalCheckedOut      *int64  `json:"total_checked_out"`
+	AvailableForCheckout *int64  `json:"available_for_checkout"`
 }
 
 type AllTags struct {
-	Tagnumber int64 `json:"tagnumber"`
+	Tagnumber          *int64     `json:"tagnumber"`
+	LastInventoryEntry *time.Time `json:"last_inventory_entry"`
+	LastSeen           *time.Time `json:"last_seen"`
 }
 
 type InventoryUpdateForm struct {
@@ -144,16 +146,16 @@ type InventoryAdvSearchOptions struct {
 }
 
 type ManufacturersAndModels struct {
-	SystemManufacturer      string `json:"system_manufacturer"`
-	SystemManufacturerCount int64  `json:"system_manufacturer_count"`
-	SystemModel             string `json:"system_model"`
-	SystemModelCount        int64  `json:"system_model_count"`
+	SystemManufacturer      *string `json:"system_manufacturer"`
+	SystemManufacturerCount *int64  `json:"system_manufacturer_count"`
+	SystemModel             *string `json:"system_model"`
+	SystemModelCount        *int64  `json:"system_model_count"`
 }
 
 type Domain struct {
-	DomainName          string `json:"ad_domain"`
-	DomainNameFormatted string `json:"ad_domain_formatted"`
-	DomainSortOrder     int64  `json:"domain_sort_order"`
+	DomainName          *string `json:"ad_domain"`
+	DomainNameFormatted *string `json:"ad_domain_formatted"`
+	DomainSortOrder     *int64  `json:"domain_sort_order"`
 }
 
 type Department struct {
@@ -243,10 +245,10 @@ type ClientReport struct {
 }
 
 type AllJobs struct {
-	JobName         string `json:"job_name"`
-	JobNameReadable string `json:"job_name_readable"`
-	JobSortOrder    int    `json:"job_sort_order"`
-	JobHidden       bool   `json:"job_hidden"`
+	JobName         *string `json:"job_name"`
+	JobNameReadable *string `json:"job_name_readable"`
+	JobSortOrder    *int64  `json:"job_sort_order"`
+	JobHidden       *bool   `json:"job_hidden"`
 }
 
 type AllLocations struct {

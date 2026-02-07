@@ -263,15 +263,8 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	// Only trim spaces on minimum length check, max length takes spaces into account.
 
 	// Tag number (required, 6 numeric digits, 100000-999999)
-	if inventoryUpdate.Tagnumber == nil || *inventoryUpdate.Tagnumber == 0 {
-		log.HTTPWarning(req, "No tag number provided for InsertInventoryUpdateForm")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-
-	tagValid, err := IsTagnumberValid([]byte(strconv.FormatInt(*inventoryUpdate.Tagnumber, 10)))
-	if !tagValid || err != nil {
-		log.HTTPWarning(req, "Invalid tag number provided for InsertInventoryUpdateForm")
+	if err := IsTagnumberInt64Valid(inventoryUpdate.Tagnumber); err != nil {
+		log.HTTPWarning(req, "Invalid tag number provided for InsertInventoryUpdateForm: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -695,7 +688,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		manifest.SHA256Hash = &fileHashString
 
 		// Create directories if not existing
-		imageDirectoryPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber))
+		imageDirectoryPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", *inventoryUpdate.Tagnumber))
 		err = os.MkdirAll(imageDirectoryPath, 0755)
 		if err != nil {
 			_ = file.Close()
@@ -726,7 +719,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 		var fullThumbnailPath string
 		if strings.HasPrefix(mimeType, "image/") {
-			fullThumbnailPath = filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber), "thumbnail-"+baseFileName+".jpeg")
+			fullThumbnailPath = filepath.Join("./inventory-images", fmt.Sprintf("%06d", *inventoryUpdate.Tagnumber), "thumbnail-"+baseFileName+".jpeg")
 			thumbnailFile, err := os.Create(fullThumbnailPath)
 			if err != nil {
 				log.HTTPError(req, "Failed to create thumbnail file for InsertInventoryUpdateForm: "+err.Error()+" ("+fileHeader.Filename+")")
@@ -747,7 +740,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		manifest.ThumbnailFilePath = &fullThumbnailPath
 
 		// Insert image metadata into database
-		manifest.Tagnumber = &tagnumber
+		manifest.Tagnumber = inventoryUpdate.Tagnumber
 		manifest.Hidden = new(bool)
 		*manifest.Hidden = false
 		manifest.PrimaryImage = new(bool)
@@ -777,7 +770,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		Tagnumber int64  `json:"tagnumber"`
 		Message   string `json:"message"`
 	}{
-		Tagnumber: tagnumber,
+		Tagnumber: *inventoryUpdate.Tagnumber,
 		Message:   "update successful",
 	}
 

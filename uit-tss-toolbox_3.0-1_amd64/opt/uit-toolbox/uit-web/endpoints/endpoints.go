@@ -29,49 +29,45 @@ type ServerTime struct {
 	Time string `json:"server_time"`
 }
 
-func IsTagnumberInt64Valid(i *int64) (bool, error) {
+func IsTagnumberInt64Valid(i *int64) error {
 	if i == nil {
-		return false, fmt.Errorf("tagnumber is required")
+		return fmt.Errorf("tagnumber is nil")
 	}
 	if *i < 100000 || *i > 999999 {
-		return false, fmt.Errorf("tagnumber is out of valid range")
+		return fmt.Errorf("tagnumber is out of valid numeric range")
 	}
-	return true, nil
+	return nil
 }
 
-func IsTagnumberStringValid(b []byte) (bool, error) {
-	if b == nil {
-		return false, fmt.Errorf("tagnumber is required")
+func IsTagnumberStringValid(b []byte) error {
+	if len(b) == 0 {
+		return fmt.Errorf("tagnumber is nil")
 	}
 	if !middleware.IsNumericAscii(b) {
-		return false, fmt.Errorf("tagnumber contains non-digit characters")
+		return fmt.Errorf("tagnumber contains non-numeric ASCII characters")
 	}
 	if utf8.RuneCount(b) != 6 {
-		return false, fmt.Errorf("tagnumber is not 6 digits")
+		return fmt.Errorf("tagnumber does not contain exactly 6 characters")
 	}
-	tag, err := ConvertTagnumber(string(b))
-	if err != nil {
-		return false, fmt.Errorf("cannot parse tagnumber: %v", err)
-	}
-	if tag == nil {
-		return false, fmt.Errorf("tagnumber is required")
-	}
-
-	return true, nil
+	return nil
 }
 
-func ConvertTagnumber(tagStr string) (*int64, error) {
-	tagStr = strings.TrimSpace(tagStr)
-	if tagStr == "" {
+func ConvertAndVerifyTagnumber(tagStr string) (*int64, error) {
+	trimmedTagStr := strings.TrimSpace(tagStr)
+	if trimmedTagStr == "" {
 		return nil, fmt.Errorf("tagnumber string is empty")
 	}
-	tag, err := strconv.ParseInt(tagStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("cannot parse tag: %v", err)
+	validStringErr := IsTagnumberStringValid([]byte(trimmedTagStr))
+	if validStringErr != nil {
+		return nil, fmt.Errorf("invalid tagnumber string: %v", validStringErr)
 	}
-	intValid, err := IsTagnumberInt64Valid(&tag)
-	if !intValid || err != nil {
-		return nil, fmt.Errorf("invalid int64: %v", err)
+	tag, err := strconv.ParseInt(trimmedTagStr, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse tagnumber: %v", err)
+	}
+	validInt64Err := IsTagnumberInt64Valid(&tag)
+	if validInt64Err != nil {
+		return nil, fmt.Errorf("invalid tagnumber: %v", validInt64Err)
 	}
 	return &tag, nil
 }
@@ -286,7 +282,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 
 			if slices.Contains(endpointData.Requires, "client_tag") {
 				urlTag := req.URL.Query().Get("tagnumber")
-				tagnumber, err := ConvertTagnumber(urlTag)
+				tagnumber, err := ConvertAndVerifyTagnumber(urlTag)
 				if err != nil {
 					log.HTTPWarning(req, "Invalid tagnumber in URL: "+urlTag+" ("+err.Error()+")")
 					middleware.WriteJsonError(w, http.StatusBadRequest)

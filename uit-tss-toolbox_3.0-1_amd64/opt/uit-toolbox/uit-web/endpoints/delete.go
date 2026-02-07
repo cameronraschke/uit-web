@@ -33,7 +33,7 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	tag, err := ConvertTagnumber(requestQueries.Get("tagnumber"))
+	tag, err := ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
 	if err != nil {
 		log.HTTPWarning(req, "Error parsing tagnumber query parameter for DeleteImage: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
