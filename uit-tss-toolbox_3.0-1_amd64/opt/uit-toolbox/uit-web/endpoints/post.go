@@ -268,24 +268,10 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !middleware.IsNumericAscii([]byte(strconv.FormatInt(*inventoryUpdate.Tagnumber, 10))) {
-		log.HTTPWarning(req, "Non-digit characters in tag number field for InsertInventoryUpdateForm")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if utf8.RuneCountInString(strconv.FormatInt(*inventoryUpdate.Tagnumber, 10)) != 6 {
-		log.HTTPWarning(req, "Tag number is not 6 digits for InsertInventoryUpdateForm")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	tagnumber, err := strconv.ParseInt(strconv.FormatInt(*inventoryUpdate.Tagnumber, 10), 10, 64)
-	if err != nil {
-		log.HTTPWarning(req, "Cannot parse tag number in InsertInventoryUpdateForm")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if tagnumber < 100000 || tagnumber > 999999 {
-		log.HTTPWarning(req, "Invalid range for tag number provided in InsertInventoryUpdateForm")
+
+	tagValid, err := IsTagnumberValid([]byte(strconv.FormatInt(*inventoryUpdate.Tagnumber, 10)))
+	if !tagValid || err != nil {
+		log.HTTPWarning(req, "Invalid tag number provided for InsertInventoryUpdateForm")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}

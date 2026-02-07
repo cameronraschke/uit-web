@@ -48,23 +48,19 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// No consequence for missing tag, acceptable if lookup by serial
-	var tagStr = strings.TrimSpace(urlQueries.Get("tagnumber"))
+	var tagnumber, tagErr = ConvertTagnumber(strings.TrimSpace(urlQueries.Get("tagnumber")))
 	var systemSerial = strings.TrimSpace(urlQueries.Get("system_serial"))
-	var tagnumber int64
 
-	if tagStr == "" && systemSerial == "" {
+	if tagErr != nil && systemSerial == "" {
 		log.HTTPWarning(req, "No tagnumber or system_serial provided in client lookup request")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	if tagStr != "" {
-		tagnumber, err = ConvertTagnumber(urlQueries.Get("tagnumber"))
-		if err != nil {
-			log.HTTPWarning(req, "Cannot convert tagnumber to int64 in GetClientLookup: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
+	if tagErr != nil {
+		log.HTTPWarning(req, "Cannot convert tagnumber to int64 in GetClientLookup: "+tagErr.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
 	}
 
 	db := config.GetDatabaseConn()

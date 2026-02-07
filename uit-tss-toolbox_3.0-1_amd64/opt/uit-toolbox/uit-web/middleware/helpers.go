@@ -116,12 +116,14 @@ func generateNonce(n int) (string, error) {
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
+
 func withNonce(ctx context.Context, nonce string) (context.Context, error) {
 	if strings.TrimSpace(nonce) == "" {
 		return ctx, errors.New("empty nonce")
 	}
 	return context.WithValue(ctx, nonceKey, nonce), nil
 }
+
 func GetNonceFromContext(ctx context.Context) (nonce string, ok bool) {
 	nonce, ok = ctx.Value(nonceKey).(string)
 	return nonce, ok
@@ -136,6 +138,7 @@ func withWebEndpointConfig(ctx context.Context, endpoint *config.WebEndpointConf
 	}
 	return context.WithValue(ctx, requestEndpointKey, *endpoint), nil
 }
+
 func GetWebEndpointConfigFromContext(ctx context.Context) (endpoint config.WebEndpointConfig, ok bool) {
 	endpoint, ok = ctx.Value(requestEndpointKey).(config.WebEndpointConfig)
 	return endpoint, ok
@@ -145,6 +148,7 @@ func withClientIP(ctx context.Context, ip netip.Addr) (context.Context, error) {
 	// Use validated IP address here from checkValidIP
 	return context.WithValue(ctx, clientIPKey, ip), nil
 }
+
 func GetRequestIPFromContext(ctx context.Context) (ipAddr netip.Addr, err error) {
 	ip, ok := ctx.Value(clientIPKey).(netip.Addr)
 	if !ok {
@@ -164,6 +168,7 @@ func withRequestPath(ctx context.Context, reqPath string) (context.Context, erro
 	}
 	return context.WithValue(ctx, pathRequestKey, reqPath), nil
 }
+
 func GetRequestPathFromContext(ctx context.Context) (reqPath string, err error) {
 	p, ok := ctx.Value(pathRequestKey).(string)
 	if !ok {
@@ -183,6 +188,7 @@ func withRequestQuery(ctx context.Context, query *url.Values) (context.Context, 
 	}
 	return context.WithValue(ctx, queryRequestKey, query), nil
 }
+
 func GetRequestQueryFromContext(ctx context.Context) (query *url.Values, err error) {
 	q, ok := ctx.Value(queryRequestKey).(*url.Values)
 	if !ok {
@@ -202,6 +208,7 @@ func withRequestFile(ctx context.Context, file string) (context.Context, error) 
 	// }
 	return context.WithValue(ctx, fileRequestKey, file), nil
 }
+
 func GetRequestFileFromContext(ctx context.Context) (file string, ok bool) {
 	file, ok = ctx.Value(fileRequestKey).(string)
 	return file, ok
@@ -224,6 +231,7 @@ func withLogger(ctx context.Context, logger logger.Logger) (context.Context, err
 	}
 	return context.WithValue(ctx, loggerKey, logger), nil
 }
+
 func GetLoggerFromContext(ctx context.Context) logger.Logger {
 	var log logger.Logger
 	log, ok := ctx.Value(loggerKey).(logger.Logger)
@@ -374,6 +382,12 @@ func IsPrintableUnicodeString(s string) bool {
 }
 
 func IsNumericAscii(b []byte) bool {
+	if len(b) == 0 {
+		return false
+	}
+	if !utf8.Valid(b) {
+		return false
+	}
 	for i := range b {
 		char := b[i]
 		if char < '0' || char > '9' {

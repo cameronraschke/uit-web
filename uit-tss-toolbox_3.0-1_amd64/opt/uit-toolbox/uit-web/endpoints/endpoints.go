@@ -5,24 +5,21 @@ import (
 	"html/template"
 	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 	config "uit-toolbox/config"
-	database "uit-toolbox/database"
 	middleware "uit-toolbox/middleware"
+	"unicode/utf8"
 )
 
 type HttpTemplateResponseData struct {
 	JsNonce        string
 	WebmasterName  string
 	WebmasterEmail string
-	Departments    map[string]string
-	Domains        map[string]string
 	ClientTag      string
-	Statuses       map[string]string
-	Locations      map[string]string
 	CheckoutDate   string
 	ReturnDate     string
 	CustomerName   string
@@ -32,19 +29,51 @@ type ServerTime struct {
 	Time string `json:"server_time"`
 }
 
-func ConvertTagnumber(tagStr string) (int64, error) {
+func IsTagnumberInt64Valid(i *int64) (bool, error) {
+	if i == nil {
+		return false, fmt.Errorf("tagnumber is required")
+	}
+	if *i < 100000 || *i > 999999 {
+		return false, fmt.Errorf("tagnumber is out of valid range")
+	}
+	return true, nil
+}
+
+func IsTagnumberStringValid(b []byte) (bool, error) {
+	if b == nil {
+		return false, fmt.Errorf("tagnumber is required")
+	}
+	if !middleware.IsNumericAscii(b) {
+		return false, fmt.Errorf("tagnumber contains non-digit characters")
+	}
+	if utf8.RuneCount(b) != 6 {
+		return false, fmt.Errorf("tagnumber is not 6 digits")
+	}
+	tag, err := ConvertTagnumber(string(b))
+	if err != nil {
+		return false, fmt.Errorf("cannot parse tagnumber: %v", err)
+	}
+	if tag == nil {
+		return false, fmt.Errorf("tagnumber is required")
+	}
+
+	return true, nil
+}
+
+func ConvertTagnumber(tagStr string) (*int64, error) {
 	tagStr = strings.TrimSpace(tagStr)
 	if tagStr == "" {
-		return 0, fmt.Errorf("tagnumber is empty")
+		return nil, fmt.Errorf("tagnumber string is empty")
 	}
 	tag, err := strconv.ParseInt(tagStr, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("error parsing tag: %v", err)
+		return nil, fmt.Errorf("cannot parse tag: %v", err)
 	}
-	if tag < 1 || tag > 999999 {
-		return 0, fmt.Errorf("invalid tag: out of range")
+	intValid, err := IsTagnumberInt64Valid(&tag)
+	if !intValid || err != nil {
+		return nil, fmt.Errorf("invalid int64: %v", err)
 	}
-	return tag, nil
+	return &tag, nil
 }
 
 func FileServerHandler(w http.ResponseWriter, req *http.Request) {
@@ -97,21 +126,22 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Get file info for headers
-	if strings.HasSuffix(resolvedPath, ".deb") {
+	switch filepath.Ext(resolvedPath) {
+	case ".deb":
 		w.Header().Set("Content-Type", "application/vnd.debian.binary-package")
-	} else if strings.HasSuffix(resolvedPath, ".gz") {
+	case ".gz":
 		w.Header().Set("Content-Type", "application/gzip")
-	} else if strings.HasSuffix(resolvedPath, ".img") {
+	case ".img":
 		w.Header().Set("Content-Type", "application/vnd.efi.img")
-	} else if strings.HasSuffix(resolvedPath, ".iso") {
+	case ".iso":
 		w.Header().Set("Content-Type", "application/vnd.efi.iso")
-	} else if strings.HasSuffix(resolvedPath, ".squashfs") {
+	case ".squashfs":
 		w.Header().Set("Content-Type", "application/octet-stream")
-	} else if strings.HasSuffix(resolvedPath, ".crt") {
+	case ".crt":
 		w.Header().Set("Content-Type", "application/x-x509-ca-cert")
-	} else if strings.HasSuffix(resolvedPath, ".pem") {
+	case ".pem":
 		w.Header().Set("Content-Type", "application/pem-certificate-chain")
-	} else {
+	default:
 		w.Header().Set("Content-Type", "application/octet-stream")
 	}
 
@@ -153,18 +183,13 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	requestQueries, _ := middleware.GetRequestQueryFromContext(ctx)
 
 	nonce, nonceExists := middleware.GetNonceFromContext(ctx)
-	if !nonceExists {
+	if !nonceExists || strings.TrimSpace(nonce) == "" {
 		log.Error("Error retrieving CSP nonce from context")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	if nonce == "" {
-		log.Error("CSP nonce is empty")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
 
-	log.HTTPDebug(req, "File request from "+requestIP.String()+" for "+requestedPath)
+	log.HTTPDebug(req, "Web request from "+requestIP.String()+" for "+requestedPath)
 
 	// Get endpoint config
 	endpointData, err := config.GetWebEndpointConfig(requestedPath)
@@ -222,32 +247,27 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", metadata.Size()))
+	w.Header().Set("Content-Disposition", "inline; filename=\""+metadata.Name()+"\"")
+	w.Header().Set("Last-Modified", metadata.ModTime().UTC().Format(http.TimeFormat))
+	w.Header().Set("ETag", fmt.Sprintf(`"%x-%x"`, metadata.ModTime().Unix(), metadata.Size()))
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 
-	var parsedHTMLTemplate *template.Template
-	if strings.HasSuffix(filePath, ".html") {
+	if ctx.Err() != nil {
+		log.HTTPWarning(req, "Context cancelled while serving path: "+requestedPath+": "+ctx.Err().Error())
+		return
+	}
 
-		parsedHTMLTemplate, err = template.ParseFiles(filePath)
+	if filepath.Ext(filePath) == ".html" {
+		parsedHTMLTemplate, err := template.ParseFiles(filePath)
 		if err != nil {
 			log.HTTPWarning(req, "Cannot parse template file ("+filePath+"): "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
-		db := database.NewRepo(config.GetDatabaseConn())
-		if db == nil {
-			log.HTTPWarning(req, "Cannot get database connection for template endpoint: "+requestedPath)
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
-		var httpTemplateResponseData = &HttpTemplateResponseData{
-			Departments: make(map[string]string), // Empty maps to avoid nil map errors in templates
-			Domains:     make(map[string]string),
-			Statuses:    make(map[string]string),
-			Locations:   make(map[string]string),
-		}
+		var httpTemplateResponseData = &HttpTemplateResponseData{}
 		if endpointData.Requires != nil {
-
 			// Generate nonce
 			if slices.Contains(endpointData.Requires, "nonce") {
 				httpTemplateResponseData.JsNonce = nonce
@@ -264,26 +284,6 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 				httpTemplateResponseData.WebmasterEmail = webmasterEmail
 			}
 
-			if slices.Contains(endpointData.Requires, "statuses") {
-				statuses, err := db.GetStatusesMap(ctx)
-				if err != nil {
-					log.HTTPError(req, "Cannot get status list from database: "+err.Error()+"")
-					middleware.WriteJsonError(w, http.StatusInternalServerError)
-					return
-				}
-				httpTemplateResponseData.Statuses = statuses
-			}
-
-			if slices.Contains(endpointData.Requires, "locations") {
-				locations, err := db.GetLocations(ctx)
-				if err != nil {
-					log.HTTPError(req, "Cannot get location list from database: "+err.Error()+"")
-					middleware.WriteJsonError(w, http.StatusInternalServerError)
-					return
-				}
-				httpTemplateResponseData.Locations = locations
-			}
-
 			if slices.Contains(endpointData.Requires, "client_tag") {
 				urlTag := req.URL.Query().Get("tagnumber")
 				tagnumber, err := ConvertTagnumber(urlTag)
@@ -292,7 +292,12 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 					middleware.WriteJsonError(w, http.StatusBadRequest)
 					return
 				}
-				httpTemplateResponseData.ClientTag = strconv.FormatInt(tagnumber, 10)
+				if tagnumber == nil {
+					log.HTTPWarning(req, "No tagnumber provided in URL for endpoint that requires client_tag")
+					middleware.WriteJsonError(w, http.StatusBadRequest)
+					return
+				}
+				httpTemplateResponseData.ClientTag = strconv.FormatInt(*tagnumber, 10)
 			}
 
 			if slices.Contains(endpointData.Requires, "checkout_date") ||
@@ -308,24 +313,11 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		}
 
 		// Execute the template
-		err = parsedHTMLTemplate.Execute(w, httpTemplateResponseData)
-		if err != nil {
+		if err := parsedHTMLTemplate.Execute(w, httpTemplateResponseData); err != nil {
 			log.HTTPError(req, "Error executing template for "+filePath+": "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		return
-	}
-
-	// Set headers
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", metadata.Size()))
-	w.Header().Set("Content-Disposition", "inline; filename=\""+metadata.Name()+"\"")
-	w.Header().Set("Last-Modified", metadata.ModTime().UTC().Format(http.TimeFormat))
-	w.Header().Set("ETag", fmt.Sprintf(`"%x-%x"`, metadata.ModTime().Unix(), metadata.Size()))
-	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-
-	if ctx.Err() != nil {
-		log.HTTPWarning(req, "Context cancelled while serving path: "+requestedPath+": "+ctx.Err().Error())
 		return
 	}
 
