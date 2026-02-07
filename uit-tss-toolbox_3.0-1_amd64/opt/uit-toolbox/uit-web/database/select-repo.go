@@ -449,8 +449,7 @@ func (repo *Repo) GetLocationFormData(ctx context.Context, tag *int64, serial *s
 	LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
 	LEFT JOIN checkout_log ON locations.tagnumber = checkout_log.tagnumber AND checkout_log.log_entry_time IN (SELECT MAX(log_entry_time) FROM checkout_log WHERE log_entry_time IS NOT NULL GROUP BY tagnumber)
 	LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
-	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-	AND (locations.tagnumber = $1 OR locations.system_serial = $2)
+	WHERE (locations.tagnumber = $1 OR locations.system_serial = $2)
 	ORDER BY locations.time DESC NULLS LAST
 	LIMIT 1;`
 	row := repo.DB.QueryRowContext(ctx, sqlQuery,
