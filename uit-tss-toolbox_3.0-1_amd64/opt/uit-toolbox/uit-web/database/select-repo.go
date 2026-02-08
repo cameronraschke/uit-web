@@ -183,13 +183,21 @@ func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]Manufacturer
 		return nil, err
 	}
 
-	manufacturerCounts := make(map[string]int64, len(manufacturersAndModels))
+	manufacturerCountMap := make(map[string]int64, len(manufacturersAndModels))
 	for _, row := range manufacturersAndModels {
-		manufacturerCounts[row.SystemManufacturer] += row.SystemModelCount
+		if row.SystemManufacturer == nil || row.SystemModelCount == nil {
+			continue
+		}
+		manufacturerCountMap[*row.SystemManufacturer] += *row.SystemModelCount
 	}
 
 	for i := range manufacturersAndModels {
-		manufacturersAndModels[i].SystemManufacturerCount = manufacturerCounts[manufacturersAndModels[i].SystemManufacturer]
+		if manufacturersAndModels[i].SystemManufacturer == nil {
+			manufacturersAndModels[i].SystemManufacturerCount = nil
+			continue
+		}
+		count := manufacturerCountMap[*manufacturersAndModels[i].SystemManufacturer]
+		manufacturersAndModels[i].SystemManufacturerCount = &count
 	}
 
 	return manufacturersAndModels, nil
