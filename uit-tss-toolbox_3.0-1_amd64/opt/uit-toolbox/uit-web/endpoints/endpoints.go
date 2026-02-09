@@ -315,6 +315,9 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		return
+	} else {
+		// Set headers for non-HTML content
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", metadata.Size()))
 	}
 
 	// Serve the file

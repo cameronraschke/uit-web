@@ -54,7 +54,7 @@
   },
   "/inventory": {
     "file_path": "/var/www/html/uit-web/inventory.html",
-		"requires": ["nonce", "statuses", "locations"],
+		"requires": ["nonce"],
     "endpoint_type": "web_content",
     "content_type": "text/html; charset=utf-8"
   },
