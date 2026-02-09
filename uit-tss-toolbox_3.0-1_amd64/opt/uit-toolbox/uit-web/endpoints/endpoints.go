@@ -243,7 +243,6 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", contentType)
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", metadata.Size()))
 	w.Header().Set("Content-Disposition", "inline; filename=\""+metadata.Name()+"\"")
 	w.Header().Set("Last-Modified", metadata.ModTime().UTC().Format(http.TimeFormat))
 	w.Header().Set("ETag", fmt.Sprintf(`"%x-%x"`, metadata.ModTime().Unix(), metadata.Size()))
