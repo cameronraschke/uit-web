@@ -529,3 +529,41 @@ td {
 .active {
 	text-decoration: underline;
 }
+
+ .pulse-container {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	justify-content: space-between;
+	width: 100%;
+	height: 100%;
+	background-color: var(--bg-color-darker);
+		border-radius: var(--border-radius);
+	> div {
+		content-visibility: hidden;
+		margin: auto 0.25rem;
+		background-color: gray;
+		border-radius: var(--border-radius);
+		width: 30%;
+		height: 100%;
+		/* background-color: var(--highlight-color) */
+		background: radial-gradient(circle at center, var(--highlight-color), transparent) 0% 100%;
+		animation: pulse 2s linear 0s infinite running;
+	}
+}
+
+@keyframes pulse {
+	0% {
+		transform: translateX(0%);
+	}
+	25% {
+	}
+	50% {
+		transform: translateX(230%);
+	}
+	75% {
+	}
+	100% {
+		transform: translateX(0%);
+	}
+}
