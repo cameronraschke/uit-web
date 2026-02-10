@@ -263,3 +263,8 @@ type ClientStatus struct {
 	StatusFormatted *string `json:"status_formatted"`
 	SortOrder       *int64  `json:"status_sort_order"`
 }
+
+type Note struct {
+	NoteType string `json:"note_type"`
+	Content  string `json:"note"`
+}

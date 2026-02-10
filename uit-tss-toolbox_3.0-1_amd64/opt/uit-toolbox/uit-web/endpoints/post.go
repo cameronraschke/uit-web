@@ -1,5 +1,7 @@
 package endpoints
 
+// For form sanitization, only trim spaces on minimum length check, max length takes spaces into account.
+
 import (
 	"bytes"
 	"crypto"
@@ -27,9 +29,13 @@ import (
 	"github.com/google/uuid"
 )
 
+const maxLoginFormSizeBytes = 512 // 512 bytes
+
 const maxInventoryFileSizeBytes = 64 << 20  // 64 MB
 const minInventoryFileSizeBytes = 512       // 512 bytes
 const maxInventoryFormSizeBytes = 128 << 20 // 128 MB
+
+const maxNoteContentRunes = 8192
 
 const allowedFileNameRegex = `^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$` // file name + extension
 var allowedFileExtensions = []string{".jpg", ".jpeg", ".jfif", ".png"}
@@ -72,14 +78,15 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Sanitize login POST request
-	if req.Method != http.MethodPost || !strings.HasSuffix(requestPath, "/login") {
+	// Check method and URL path
+	if req.Method != http.MethodPost || requestPath != "/login" {
 		log.HTTPWarning(req, "Invalid method or URL for auth form sanitization")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	body, err := io.ReadAll(req.Body)
+	reader := io.LimitReader(req.Body, maxLoginFormSizeBytes)
+	body, err := io.ReadAll(reader)
 	if err != nil {
 		log.HTTPWarning(req, "Cannot read request body: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -126,7 +133,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	// Authenticate with bcrypt
 	authenticated, err := middleware.CheckAuthCredentials(ctx, clientFormAuthData.Username, clientFormAuthData.Password)
 	if err != nil || !authenticated {
-		log.HTTPInfo(req, "Authentication failed for "+requestIP.String()+": "+err.Error())
+		log.HTTPInfo(req, "Authentication failed: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusUnauthorized)
 		return
 	}
@@ -139,7 +146,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 
 	sessionCount := config.GetAuthSessionCount()
-	log.HTTPInfo(req, "New auth session created: "+requestIP.String()+" (Sessions: "+strconv.Itoa(int(sessionCount))+")")
+	log.HTTPInfo(req, "New auth session created. Total sessions: "+strconv.Itoa(int(sessionCount)))
 
 	sessionIDCookie, basicTokenCookie, bearerTokenCookie, csrfTokenCookie := middleware.GetAuthCookiesForResponse(sessionID, basicToken, bearerToken, csrfToken, 20*time.Minute)
 
@@ -163,20 +170,16 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestMethod := req.Method
 
-	// Sanitize POST request
-	if requestMethod != http.MethodPost || !(strings.HasSuffix(requestPath, "/notes")) {
+	// Check POST request
+	if req.Method != http.MethodPost || !(strings.HasSuffix(requestPath, "/notes")) {
 		log.HTTPWarning(req, "Invalid method or URL for InsertNewNote")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	// Parse and validate note data
-	var newNote struct {
-		NoteType string `json:"note_type"`
-		Content  string `json:"note"`
-	}
+	var newNote database.Note
 	err = json.NewDecoder(req.Body).Decode(&newNote)
 	if err != nil {
 		log.HTTPWarning(req, "Cannot decode note JSON: "+err.Error())
@@ -185,25 +188,16 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	}
 	defer req.Body.Close()
 
-	newNote.NoteType = strings.TrimSpace(newNote.NoteType)
-	if len(newNote.NoteType) > 64 {
-		log.HTTPWarning(req, "Note type too long, not inserting new note")
+	noteTypeTrimmed := strings.TrimSpace(newNote.NoteType)
+	if utf8.RuneCountInString(noteTypeTrimmed) <= 1 || utf8.RuneCountInString(newNote.NoteType) > 64 {
+		log.HTTPWarning(req, "Note type outside of valid length range, not inserting new note")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if strings.TrimSpace(newNote.NoteType) == "" {
-		log.HTTPWarning(req, "Note type unspecified, not inserting new note")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	newNote.Content = strings.TrimSpace(newNote.Content)
-	if len(newNote.Content) > 32768 { // 8192 runes * 4 bytes per rune (4 bytes includes emojis)
+
+	noteContentTrimmed := strings.TrimSpace(newNote.Content)
+	if utf8.RuneCountInString(newNote.Content) > maxNoteContentRunes {
 		log.HTTPWarning(req, "Note content too long, not inserting new note")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if utf8.RuneCountInString(newNote.Content) > 8192 {
-		log.HTTPWarning(req, "Note content exceeds rune count limit, not inserting new note")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -212,7 +206,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	dbConn := config.GetDatabaseConn()
 	insertRepo := database.NewRepo(dbConn)
 	curTime := time.Now()
-	err = insertRepo.InsertNewNote(ctx, &curTime, &newNote.NoteType, &newNote.Content)
+	err = insertRepo.InsertNewNote(ctx, &curTime, &noteTypeTrimmed, &noteContentTrimmed)
 	if err != nil {
 		log.HTTPError(req, "Failed to insert new note: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -229,10 +223,9 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestMethod := req.Method
 
 	// Check for POST method and correct URL
-	if requestMethod != http.MethodPost || !(strings.HasSuffix(requestPath, "/update_inventory")) {
+	if req.Method != http.MethodPost || requestPath != "/update_inventory" {
 		log.HTTPWarning(req, "Invalid method or URL for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -245,6 +238,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// json part
 	jsonFile, _, err := req.FormFile("json")
 	if err != nil {
 		log.HTTPWarning(req, "Error retrieving JSON data provided in form: "+err.Error())
@@ -261,7 +255,6 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Validate and sanitize input data
-	// Only trim spaces on minimum length check, max length takes spaces into account.
 
 	// Tag number (required, 6 numeric digits, 100000-999999)
 	if err := IsTagnumberInt64Valid(inventoryUpdate.Tagnumber); err != nil {
@@ -533,6 +526,19 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 	updateRepo := database.NewRepo(dbConn)
 
+	// Generate transaction UUID for inventory update and associated file uploads
+	transactionUUID, err := uuid.NewUUID()
+	if err != nil {
+		log.HTTPError(req, "error generation a transaction UUID for InsertInventoryUpdateForm")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if transactionUUID == uuid.Nil {
+		log.HTTPError(req, "transaction UUID in InsertInventoryUpdateForm is nil")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
 	// Process uploaded files
 	for _, fileHeader := range files {
 		var manifest database.ImageManifest
@@ -747,7 +753,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		manifest.PrimaryImage = new(bool)
 		*manifest.PrimaryImage = false
 
-		err = updateRepo.UpdateClientImages(ctx, manifest)
+		err = updateRepo.UpdateClientImages(ctx, transactionUUID, manifest)
 		if err != nil {
 			log.HTTPError(req, "Failed to update inventory image data: "+err.Error()+" ("+fileHeader.Filename+")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -760,7 +766,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 	// No pointers here, pointers in repo
 	// tagnumber and broken bool are converted above
-	err = updateRepo.InsertInventoryUpdateForm(ctx, &inventoryUpdate)
+	err = updateRepo.InsertInventoryUpdateForm(ctx, transactionUUID, &inventoryUpdate)
 	if err != nil {
 		log.HTTPError(req, "Failed to update inventory data: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)

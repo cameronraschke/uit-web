@@ -11,15 +11,12 @@ import (
 	"github.com/google/uuid"
 )
 
-func (repo *Repo) InsertNewNote(ctx context.Context, time *time.Time, noteType, note *string) error {
+func (repo *Repo) InsertNewNote(ctx context.Context, time *time.Time, noteType *string, note *string) (err error) {
 	if time == nil {
 		return errors.New("time is required in InsertNewNote")
 	}
 	if noteType == nil || strings.TrimSpace(*noteType) == "" {
 		return errors.New("note type is required in InsertNewNote")
-	}
-	if note == nil || strings.TrimSpace(*note) == "" {
-		return errors.New("note content is required in InsertNewNote")
 	}
 
 	if ctx.Err() != nil {
@@ -57,7 +54,10 @@ func (repo *Repo) InsertNewNote(ctx context.Context, time *time.Time, noteType, 
 	return err
 }
 
-func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, inventoryUpdateForm *InventoryUpdateForm) (err error) {
+func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdateForm *InventoryUpdateForm) (err error) {
+	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
+		return fmt.Errorf("generated transaction UUID is nil in InsertInventoryUpdateForm")
+	}
 	if inventoryUpdateForm == nil {
 		return fmt.Errorf("inventoryUpdateForm is nil in InsertInventoryUpdateForm")
 	}
@@ -83,15 +83,6 @@ func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, inventoryUpdate
 			err = tx.Commit()
 		}
 	}()
-
-	// Generate a new UUID for this transaction, spans multiple tables
-	transactionUUID, err := uuid.NewUUID()
-	if err != nil {
-		return fmt.Errorf("error generating transaction UUID in InsertInventoryUpdateForm: %w", err)
-	}
-	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
-		return fmt.Errorf("generated transaction UUID is nil in InsertInventoryUpdateForm")
-	}
 
 	// Update locations table
 	if ctx.Err() != nil {
@@ -157,10 +148,10 @@ func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, inventoryUpdate
 		ON CONFLICT (tagnumber)
 		DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
-			transaction_uuid = $1,
-			tagnumber = $2,
-			system_manufacturer = $3,
-			system_model = $4;`
+			transaction_uuid = EXCLUDED.transaction_uuid,
+			tagnumber = EXCLUDED.tagnumber,
+			system_manufacturer = EXCLUDED.system_manufacturer,
+			system_model = EXCLUDED.system_model;`
 	hardwareDataResult, err = tx.ExecContext(ctx, hardwareDataSql,
 		transactionUUID,
 		ToNullInt64(inventoryUpdateForm.Tagnumber),
@@ -178,11 +169,42 @@ func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, inventoryUpdate
 		return fmt.Errorf("during hardware_data update, %d rows were affected on insert (InsertInventoryUpdateForm)", hardwareDataRowsAffected)
 	}
 
+	// Insert/update into client_health table
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error in InsertInventoryUpdateForm: %w", ctx.Err())
+	}
+	var clientHealthResult sql.Result
+	const clientHealthSql = `INSERT INTO client_health
+		(time, tagnumber, last_hardware_check, transaction_uuid) VALUES
+		(CURRENT_TIMESTAMP, $1, $2, $3)
+		ON CONFLICT (tagnumber)
+		DO UPDATE SET
+			time = CURRENT_TIMESTAMP,
+			tagnumber = EXCLUDED.tagnumber,
+			last_hardware_check = EXCLUDED.last_hardware_check,
+			transaction_uuid = EXCLUDED.transaction_uuid;`
+
+	clientHealthResult, err = tx.ExecContext(ctx, clientHealthSql,
+		ToNullInt64(inventoryUpdateForm.Tagnumber),
+		ToNullTime(inventoryUpdateForm.LastHardwareCheck),
+		transactionUUID,
+	)
+	if err != nil {
+		return fmt.Errorf("error inserting/updating client health data in InsertInventoryUpdateForm: %w", err)
+	}
+	clientHealthRowsAffected, rowsAffectedErr := clientHealthResult.RowsAffected()
+	if rowsAffectedErr != nil {
+		return fmt.Errorf("error getting number of rows affected on client_health table insert/update (InsertInventoryUpdateForm): %w", rowsAffectedErr)
+	}
+	if clientHealthRowsAffected != 1 {
+		return fmt.Errorf("during client_health update, %d rows were affected on insert/update (InsertInventoryUpdateForm)", clientHealthRowsAffected)
+	}
+
 	// Insert into checkout_log table
 	if ctx.Err() != nil {
 		return fmt.Errorf("context error in InsertInventoryUpdateForm: %w", ctx.Err())
 	}
-	if inventoryUpdateForm.CheckoutDate != nil || inventoryUpdateForm.ReturnDate != nil || inventoryUpdateForm.CheckoutBool != nil {
+	if inventoryUpdateForm.CheckoutDate != nil || inventoryUpdateForm.ReturnDate != nil || (inventoryUpdateForm.CheckoutBool != nil && *inventoryUpdateForm.CheckoutBool) {
 		var checkoutLogResult sql.Result
 		const checkoutSql = `INSERT INTO checkout_log
 			(log_entry_time, transaction_uuid, tagnumber, checkout_date, return_date, checkout_bool)
@@ -255,7 +277,7 @@ func (repo *Repo) UpdateHardwareData(ctx context.Context, tagnumber *int64, syst
 	return nil
 }
 
-func (repo *Repo) UpdateClientImages(ctx context.Context, manifest ImageManifest) (err error) {
+func (repo *Repo) UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest ImageManifest) (err error) {
 	if ctx.Err() != nil {
 		return fmt.Errorf("context error in UpdateClientImages: %w", ctx.Err())
 	}
