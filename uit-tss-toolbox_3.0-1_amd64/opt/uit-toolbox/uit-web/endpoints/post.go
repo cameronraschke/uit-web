@@ -211,7 +211,8 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	// Insert note into database
 	dbConn := config.GetDatabaseConn()
 	insertRepo := database.NewRepo(dbConn)
-	err = insertRepo.InsertNewNote(ctx, time.Now(), newNote.NoteType, newNote.Content)
+	curTime := time.Now()
+	err = insertRepo.InsertNewNote(ctx, &curTime, &newNote.NoteType, &newNote.Content)
 	if err != nil {
 		log.HTTPError(req, "Failed to insert new note: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -822,7 +823,7 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	repo := database.NewRepo(db)
-	err := repo.TogglePinImage(ctx, uuid, tagnumber)
+	err := repo.TogglePinImage(ctx, &tagnumber, &uuid)
 	if err != nil {
 		log.HTTPError(req, "Failed to toggle pin image: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -872,7 +873,7 @@ func SetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	repo := database.NewRepo(db)
-	err = repo.SetClientBatteryHealth(ctx, uuid, &body.BatteryHealth)
+	err = repo.SetClientBatteryHealth(ctx, &uuid, &body.BatteryHealth)
 	if err != nil {
 		log.HTTPError(req, "Failed to set client battery health: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)

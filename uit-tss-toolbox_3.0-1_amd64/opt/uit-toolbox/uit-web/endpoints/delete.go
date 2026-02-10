@@ -67,7 +67,7 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	err = repo.HideClientImageByUUID(ctx, *tag, requestedImageUUID)
+	err = repo.HideClientImageByUUID(ctx, tag, &requestedImageUUID)
 	if err != nil {
 		log.Error("Failed to delete client image with UUID " + requestedImageUUID + " for tagnumber " + fmt.Sprintf("%d", *tag) + ": " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)

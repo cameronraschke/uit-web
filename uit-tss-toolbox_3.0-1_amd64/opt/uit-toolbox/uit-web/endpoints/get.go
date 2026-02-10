@@ -317,7 +317,7 @@ func GetNotes(w http.ResponseWriter, req *http.Request) {
 	}
 	repo := database.NewRepo(db)
 
-	notesData, err := repo.GetNotes(ctx, noteType)
+	notesData, err := repo.GetNotes(ctx, &noteType)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetNotes: "+err.Error())
@@ -856,7 +856,7 @@ func GetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 	}
 	repo := database.NewRepo(db)
 
-	batteryHealthData, err := repo.GetClientBatteryHealth(ctx, *tagnumber)
+	batteryHealthData, err := repo.GetClientBatteryHealth(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetClientBatteryHealth: "+err.Error())

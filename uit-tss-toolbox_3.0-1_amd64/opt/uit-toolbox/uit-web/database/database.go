@@ -17,50 +17,50 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func toStringPtr(v sql.NullString) *string {
+func ToStringPtr(v sql.NullString) *string {
 	if v.Valid {
 		return &v.String
 	}
 	return nil
 }
-func toInt64Ptr(v sql.NullInt64) *int64 {
+func ToInt64Ptr(v sql.NullInt64) *int64 {
 	if v.Valid {
 		return &v.Int64
 	}
 	return nil
 }
-func toBoolPtr(v sql.NullBool) *bool {
+func ToBoolPtr(v sql.NullBool) *bool {
 	if v.Valid {
 		return &v.Bool
 	}
 	return nil
 }
-func toTimePtr(v sql.NullTime) *time.Time {
+func ToTimePtr(v sql.NullTime) *time.Time {
 	if v.Valid {
 		return &v.Time
 	}
 	return nil
 }
 
-func toNullString(p *string) sql.NullString {
+func ToNullString(p *string) sql.NullString {
 	if p == nil {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: *p, Valid: true}
 }
-func toNullInt64(p *int64) sql.NullInt64 {
+func ToNullInt64(p *int64) sql.NullInt64 {
 	if p == nil {
 		return sql.NullInt64{}
 	}
 	return sql.NullInt64{Int64: *p, Valid: true}
 }
-func toNullBool(p *bool) sql.NullBool {
+func ToNullBool(p *bool) sql.NullBool {
 	if p == nil {
 		return sql.NullBool{}
 	}
 	return sql.NullBool{Bool: *p, Valid: true}
 }
-func toNullTime(p *time.Time) sql.NullTime {
+func ToNullTime(p *time.Time) sql.NullTime {
 	if p == nil {
 		return sql.NullTime{}
 	}
