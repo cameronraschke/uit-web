@@ -1,16 +1,13 @@
 package endpoints
 
 import (
-	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"image"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 	"time"
 
@@ -49,9 +46,9 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 
 	// No consequence for missing tag, acceptable if lookup by serial
 	var tagnumber, tagErr = ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
-	var systemSerial = strings.TrimSpace(urlQueries.Get("system_serial"))
+	var systemSerial = middleware.GetStrQuery(urlQueries, "system_serial")
 
-	if tagErr != nil && systemSerial == "" {
+	if tagErr != nil && systemSerial == nil {
 		log.HTTPWarning(req, "No tagnumber or system_serial provided in GetClientLookup")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -63,23 +60,22 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available for GetClientLookup")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetClientLookup: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
 	var hardwareData *database.ClientLookup
 	if tagnumber != nil {
-		hardwareData, err = repo.ClientLookupByTag(ctx, *tagnumber)
-	} else if systemSerial != "" {
-		hardwareData, err = repo.ClientLookupBySerial(ctx, systemSerial)
+		hardwareData, err = db.ClientLookupByTag(ctx, tagnumber)
+	} else if systemSerial != nil {
+		hardwareData, err = db.ClientLookupBySerial(ctx, systemSerial)
 	}
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Client lookup query error: "+err.Error())
+			log.HTTPWarning(req, "error querying client in GetClientLookup: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -91,21 +87,14 @@ func GetAllTags(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available for GetAllTags")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetAllTags: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
-
-	allTags, err := repo.GetAllTags(ctx)
+	allTags, err := db.AllTags(ctx)
 	if err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			log.HTTPInfo(req, "GetAllTags canceled/timeout")
-			middleware.WriteJsonError(w, http.StatusRequestTimeout)
-			return
-		}
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetAllTags: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -126,23 +115,22 @@ func GetHardwareIdentifiers(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
-	if err != nil {
+	if err != nil || tagnumber == nil {
 		log.HTTPWarning(req, "Invalid tagnumber provided in GetHardwareIdentifiers: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available for GetHardwareIdentifiers")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetHardwareIdentifiers: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
-	hardwareData, err := repo.GetHardwareIdentifiers(ctx, *tagnumber)
+	hardwareData, err := db.GetHardwareIdentifiers(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
-			log.HTTPInfo(req, "Query error in GetHardwareIdentifiers: "+err.Error())
+			log.HTTPWarning(req, "Query error in GetHardwareIdentifiers: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -160,21 +148,20 @@ func GetBiosData(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
-	if err != nil {
+	if err != nil || tagnumber == nil {
 		log.HTTPWarning(req, "Invalid tagnumber provided in GetBiosData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available in GetBiosData")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetBiosData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	biosData, err := repo.GetBiosData(ctx, *tagnumber)
+	biosData, err := db.GetBiosData(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetBiosData: "+err.Error())
@@ -202,15 +189,14 @@ func GetOSData(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available in GetOSData")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetBiosData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	osData, err := repo.GetOsData(ctx, *tagnumber)
+	osData, err := db.GetOsData(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.Info("Query error in GetOSData: " + err.Error())
@@ -238,15 +224,14 @@ func GetClientQueuedJobs(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available in GetClientQueuedJobs")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetBiosData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	activeJobs, err := repo.GetActiveJobs(ctx, *tagnumber)
+	activeJobs, err := db.GetActiveJobs(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetClientQueuedJobs: "+err.Error())
@@ -274,15 +259,14 @@ func GetClientAvailableJobs(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available in GetClientAvailableJobs")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetClientAvailableJobs: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	availableJobs, err := repo.GetAvailableJobs(ctx, *tagnumber)
+	availableJobs, err := db.GetAvailableJobs(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetClientAvailableJobs: "+err.Error())
@@ -309,15 +293,14 @@ func GetNotes(w http.ResponseWriter, req *http.Request) {
 		noteType = "general"
 	}
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available in GetNotes")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetNotes: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	notesData, err := repo.GetNotes(ctx, &noteType)
+	notesData, err := db.GetNotes(ctx, &noteType)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetNotes: "+err.Error())
@@ -348,14 +331,13 @@ func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available for GetLocationFormData")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetLocationFormData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
-	locationData, err := repo.GetLocationFormData(ctx, tagnumber, &serial)
+	locationData, err := db.GetLocationFormData(ctx, tagnumber, &serial)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetLocationFormData: "+err.Error())
@@ -382,15 +364,14 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available for GetClientImagesManifest")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetClientImagesManifest: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	imageManifests, err := repo.GetClientImageManifestByTag(ctx, *tagnumber)
+	imageManifests, err := db.GetClientImageManifestByTag(ctx, tagnumber)
 	if err != nil && err != sql.ErrNoRows {
 		log.HTTPWarning(req, "Query error in GetClientImagesManifest: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -528,52 +509,57 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 
 	// local filepath example: inventory-images/{tag}/{date --iso}-{uuid}.{file extension}
 	// incoming request url: /api/images/{tag}/{uuid}.{file extension}
-	requestedImageUUID := strings.TrimSpace(requestedQueries.Get("uuid"))
-	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".jpeg")
-	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".png")
-	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".mp4")
-	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".mov")
-	if requestedImageUUID == "" {
+	uuidInURLQuery := middleware.GetStrQuery(requestedQueries, "uuid")
+	if uuidInURLQuery == nil || strings.TrimSpace(*uuidInURLQuery) == "" {
+		log.HTTPWarning(req, "No image UUID provided in request to GetImage")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	imageUUID := strings.TrimSpace(*uuidInURLQuery)
+	imageUUID = strings.TrimSuffix(imageUUID, ".jpeg")
+	imageUUID = strings.TrimSuffix(imageUUID, ".png")
+	imageUUID = strings.TrimSuffix(imageUUID, ".mp4")
+	imageUUID = strings.TrimSuffix(imageUUID, ".mov")
+	if imageUUID == "" {
 		log.HTTPWarning(req, "No image path provided in request")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.Warning("no database connection available")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetImage: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	log.HTTPDebug(req, "Serving image request for: "+requestedImageUUID)
-	imageManifest, err := repo.GetClientImageFilePathFromUUID(ctx, requestedImageUUID)
+	log.HTTPDebug(req, "Serving image request for: "+imageUUID)
+	imageManifest, err := db.GetClientImageFilePathFromUUID(ctx, &imageUUID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			log.HTTPInfo(req, "Image not found from UUID lookup: "+requestedImageUUID+" "+err.Error())
+			log.HTTPInfo(req, "Image not found from UUID lookup: "+imageUUID+" "+err.Error())
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		log.HTTPInfo(req, "Client image query error: "+requestedImageUUID+" "+err.Error())
+		log.HTTPInfo(req, "Client image query error: "+imageUUID+" "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	if imageManifest == nil {
-		log.HTTPInfo(req, "No image manifest data found for UUID: "+requestedImageUUID)
+		log.HTTPInfo(req, "No image manifest data found for UUID: "+imageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 
 	if imageManifest.Hidden != nil && *imageManifest.Hidden {
-		log.HTTPWarning(req, "Attempt to access hidden image: "+requestedImageUUID)
+		log.HTTPWarning(req, "Attempt to access hidden image: "+imageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 
 	if imageManifest.FilePath == nil || strings.TrimSpace(*imageManifest.FilePath) == "" {
-		log.HTTPWarning(req, "File path for image is nil or empty: "+requestedImageUUID)
+		log.HTTPWarning(req, "File path for image is nil or empty: "+imageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
@@ -581,11 +567,11 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 	imageFile, err := os.Open(*imageManifest.FilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.HTTPWarning(req, "Image not found on disk: "+requestedImageUUID+" "+err.Error())
+			log.HTTPWarning(req, "Image not found on disk: "+imageUUID+" "+err.Error())
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		log.HTTPWarning(req, "Image cannot be opened: "+requestedImageUUID+" "+err.Error())
+		log.HTTPWarning(req, "Image cannot be opened: "+imageUUID+" "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -598,15 +584,15 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 func GetJobQueueTable(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available for GetJobQueueTable")
+
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetBiosData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	jobQueueTable, err := repo.GetJobQueueTable(ctx)
+	jobQueueTable, err := db.GetJobQueueTable(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetJobQueueTable: "+err.Error())
@@ -622,15 +608,14 @@ func GetJobQueueOverview(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available for GetJobQueueOverview")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetBiosData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	jobQueueOverview, err := repo.GetJobQueueOverview(ctx)
+	jobQueueOverview, err := db.GetJobQueueOverview(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetJobQueueOverview: "+err.Error())
@@ -646,15 +631,14 @@ func GetDashboardInventorySummary(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available for GetDashboardInventorySummary")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetBiosData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	inventorySummary, err := repo.GetDashboardInventorySummary(ctx)
+	inventorySummary, err := db.GetDashboardInventorySummary(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetDashboardInventorySummary: "+err.Error())
@@ -677,66 +661,33 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	if requestQueries == nil {
+	if requestQueries == nil || len(*requestQueries) == 0 {
 		requestQueries = &url.Values{}
 	}
 
-	getStr := func(key string) *string {
-		s := strings.TrimSpace(requestQueries.Get(key))
-		if s == "" {
-			return nil
-		}
-		return &s
-	}
-	getInt64 := func(key string) *int64 {
-		raw := strings.TrimSpace(requestQueries.Get(key))
-		if raw == "" {
-			return nil
-		}
-		v, err := strconv.ParseInt(raw, 10, 64)
-		if err != nil {
-			log.HTTPWarning(req, "Invalid '"+key+"' filter provided in GetInventoryTableData: "+err.Error())
-			return nil
-		}
-		return &v
-	}
-	getBool := func(key string) *bool {
-		raw := strings.TrimSpace(requestQueries.Get(key))
-		if raw == "" {
-			return nil
-		}
-		v, err := strconv.ParseBool(raw)
-		if err != nil {
-			log.HTTPWarning(req, "Invalid '"+key+"' filter provided in GetInventoryTableData: "+err.Error())
-			return nil
-		}
-		return &v
-	}
-
 	filterOptions := &database.InventoryAdvSearchOptions{
-		Tagnumber:          getInt64("tagnumber"),
-		SystemSerial:       getStr("system_serial"),
-		Location:           getStr("location"),
-		SystemManufacturer: getStr("system_manufacturer"),
-		SystemModel:        getStr("system_model"),
-		Department:         getStr("department_name"),
-		Domain:             getStr("ad_domain"),
-		Status:             getStr("status"),
-		Broken:             getBool("is_broken"),
-		HasImages:          getBool("has_images"),
+		Tagnumber:          middleware.GetInt64Query(requestQueries, "tagnumber"),
+		SystemSerial:       middleware.GetStrQuery(requestQueries, "system_serial"),
+		Location:           middleware.GetStrQuery(requestQueries, "location"),
+		SystemManufacturer: middleware.GetStrQuery(requestQueries, "system_manufacturer"),
+		SystemModel:        middleware.GetStrQuery(requestQueries, "system_model"),
+		Department:         middleware.GetStrQuery(requestQueries, "department_name"),
+		Domain:             middleware.GetStrQuery(requestQueries, "ad_domain"),
+		Status:             middleware.GetStrQuery(requestQueries, "status"),
+		Broken:             middleware.GetBoolQuery(requestQueries, "is_broken"),
+		HasImages:          middleware.GetBoolQuery(requestQueries, "has_images"),
 	}
 
 	// log.HTTPDebug(req, fmt.Sprintf("Filter options: %+v", filterOptions))
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available for GetInventoryTableData")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetBiosData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	inventoryTableData, err := repo.GetInventoryTableData(ctx, filterOptions)
+	inventoryTableData, err := db.GetInventoryTableData(ctx, filterOptions)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetInventoryTableData: "+err.Error())
@@ -752,14 +703,14 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		if csvData == "" {
+		if csvData == nil || csvData.Len() == 0 {
 			log.HTTPWarning(req, "No CSV data generated in GetInventoryTableData")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 		w.Header().Set("Content-Disposition", "attachment; filename=\"inventory_table_data-"+time.Now().Format("01-02-2006-150405")+".csv\"")
-		if _, err = w.Write([]byte(csvData)); err != nil {
+		if _, err = w.Write(csvData.Bytes()); err != nil {
 			log.HTTPWarning(req, "Error writing CSV data to response: "+err.Error())
 		}
 		return
@@ -814,15 +765,14 @@ func GetManufacturersAndModels(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available for GetManufacturersAndModels")
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetManufacturersAndModels: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	manufacturersAndModels, err := repo.GetManufacturersAndModels(ctx)
+	manufacturersAndModels, err := db.GetManufacturersAndModels(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetManufacturersAndModels: "+err.Error())
@@ -848,15 +798,15 @@ func GetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available in GetClientBatteryHealth")
+
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetClientBatteryHealth: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	batteryHealthData, err := repo.GetClientBatteryHealth(ctx, tagnumber)
+	batteryHealthData, err := db.GetClientBatteryHealth(ctx, tagnumber)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetClientBatteryHealth: "+err.Error())
@@ -871,15 +821,15 @@ func GetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 func GetDomains(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available in GetDomains")
+
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetDomains: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	domains, err := repo.GetDomains(ctx)
+	domains, err := db.GetDomains(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetDomains: "+err.Error())
@@ -893,15 +843,15 @@ func GetDomains(w http.ResponseWriter, req *http.Request) {
 func GetDepartments(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available in GetDepartments")
+
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetDepartments: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	departments, err := repo.GetDepartments(ctx)
+	departments, err := db.GetDepartments(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetDepartments: "+err.Error())
@@ -932,15 +882,15 @@ func CheckAuth(w http.ResponseWriter, req *http.Request) {
 func GetBatteryStandardDeviation(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available in GetBatteryStandardDeviation")
+
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetBatteryStandardDeviation: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	batteryStdDevData, err := repo.GetBatteryStandardDeviation(ctx)
+	batteryStdDevData, err := db.GetBatteryStandardDeviation(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetBatteryStandardDeviation: "+err.Error())
@@ -954,15 +904,15 @@ func GetBatteryStandardDeviation(w http.ResponseWriter, req *http.Request) {
 func GetAllJobs(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available in GetAllJobs")
+
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetAllJobs: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 
-	allJobs, err := repo.GetAllJobs(ctx)
+	allJobs, err := db.GetAllJobs(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetAllJobs: "+err.Error())
@@ -976,16 +926,15 @@ func GetAllJobs(w http.ResponseWriter, req *http.Request) {
 func GetAllLocations(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available in GetAllLocations")
+
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetAllLocations: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
-	repo := database.NewRepo(db)
-
-	allLocations, err := repo.GetAllLocations(ctx)
+	allLocations, err := db.GetAllLocations(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetAllLocations: "+err.Error())
@@ -999,14 +948,14 @@ func GetAllLocations(w http.ResponseWriter, req *http.Request) {
 func GetAllStatuses(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "No database connection available in GetAllStatuses")
+
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetAllStatuses: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
-	allStatuses, err := repo.GetAllStatuses(ctx)
+	allStatuses, err := db.GetAllStatuses(ctx)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetAllStatuses: "+err.Error())

@@ -14,6 +14,7 @@ import (
 	"path"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -194,12 +195,42 @@ func GetRequestQueryFromContext(ctx context.Context) (query *url.Values, err err
 	if !ok {
 		return nil, fmt.Errorf("invalid/empty URL query found in context: type assertion failed")
 	}
-	if q == nil {
+	if q == nil || len(*q) == 0 {
 		return nil, fmt.Errorf("nil URL query found in context")
 	}
 	queries := *q
 
 	return &queries, nil
+}
+
+func GetStrQuery(q *url.Values, key string) *string {
+	s := strings.TrimSpace(q.Get(key))
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+func GetInt64Query(q *url.Values, key string) *int64 {
+	s := GetStrQuery(q, key)
+	if s == nil {
+		return nil
+	}
+	v, err := strconv.ParseInt(*s, 10, 64)
+	if err != nil {
+		return nil
+	}
+	return &v
+}
+func GetBoolQuery(q *url.Values, key string) *bool {
+	s := GetStrQuery(q, key)
+	if s == nil {
+		return nil
+	}
+	v, err := strconv.ParseBool(*s)
+	if err != nil {
+		return nil
+	}
+	return &v
 }
 
 func withRequestFile(ctx context.Context, file string) (context.Context, error) {

@@ -7,11 +7,37 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"uit-toolbox/config"
 
 	"github.com/google/uuid"
 )
 
-func (repo *Repo) InsertNewNote(ctx context.Context, time *time.Time, noteType *string, note *string) (err error) {
+type Update interface {
+	InsertNewNote(ctx context.Context, time *time.Time, noteType *string, note *string) (err error)
+	InsertInventoryUpdateForm(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdateForm *InventoryUpdateForm) (err error)
+	UpdateHardwareData(ctx context.Context, tagnumber *int64, systemManufacturer *string, systemModel *string) (err error)
+	UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest ImageManifest) (err error)
+	HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
+	TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err error)
+	SetClientBatteryHealth(ctx context.Context, uuid *string, healthPcnt *int64) (err error)
+	SetAllOnlineClientJobs(ctx context.Context, allJobs *AllJobs) (err error)
+}
+
+type UpdateRepo struct {
+	DB *sql.DB
+}
+
+func NewUpdateRepo() (Update, error) {
+	db := config.GetDatabaseConn()
+	if db == nil {
+		return nil, fmt.Errorf("db connection is nil in NewUpdateRepo")
+	}
+	return &UpdateRepo{DB: db}, nil
+}
+
+var _ Update = (*UpdateRepo)(nil)
+
+func (updateRepo *UpdateRepo) InsertNewNote(ctx context.Context, time *time.Time, noteType *string, note *string) (err error) {
 	if time == nil {
 		return errors.New("time is required in InsertNewNote")
 	}
@@ -23,15 +49,9 @@ func (repo *Repo) InsertNewNote(ctx context.Context, time *time.Time, noteType *
 		return fmt.Errorf("context error in InsertNewNote: %w", ctx.Err())
 	}
 
-	if repo.DB == nil {
-		return fmt.Errorf("database connection is nil in InsertNewNote")
-	}
-	tx, err := repo.DB.BeginTx(ctx, nil)
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("error beginning transaction in InsertNewNote: %w", err)
-	}
-	if tx == nil {
-		return errors.New("transaction is nil in InsertNewNote")
 	}
 	defer func() {
 		if err != nil {
@@ -54,7 +74,7 @@ func (repo *Repo) InsertNewNote(ctx context.Context, time *time.Time, noteType *
 	return err
 }
 
-func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdateForm *InventoryUpdateForm) (err error) {
+func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdateForm *InventoryUpdateForm) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
 		return fmt.Errorf("generated transaction UUID is nil in InsertInventoryUpdateForm")
 	}
@@ -66,15 +86,9 @@ func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, transactionUUID
 		return fmt.Errorf("context error in InsertInventoryUpdateForm: %w", ctx.Err())
 	}
 
-	if repo.DB == nil {
-		return fmt.Errorf("database connection is nil in InsertInventoryUpdateForm")
-	}
-	tx, err := repo.DB.BeginTx(ctx, nil)
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("error beginning transaction in InsertInventoryUpdateForm: %w", err)
-	}
-	if tx == nil {
-		return fmt.Errorf("transaction is nil in InsertInventoryUpdateForm")
 	}
 	defer func() {
 		if err != nil {
@@ -233,7 +247,7 @@ func (repo *Repo) InsertInventoryUpdateForm(ctx context.Context, transactionUUID
 	return nil
 }
 
-func (repo *Repo) UpdateHardwareData(ctx context.Context, tagnumber *int64, systemManufacturer *string, systemModel *string) (err error) {
+func (updateRepo *UpdateRepo) UpdateHardwareData(ctx context.Context, tagnumber *int64, systemManufacturer *string, systemModel *string) (err error) {
 	if tagnumber == nil {
 		return fmt.Errorf("tagnumber is nil in UpdateHardwareData")
 	}
@@ -242,15 +256,9 @@ func (repo *Repo) UpdateHardwareData(ctx context.Context, tagnumber *int64, syst
 		return fmt.Errorf("context error in UpdateHardwareData: %w", ctx.Err())
 	}
 
-	if repo.DB == nil {
-		return fmt.Errorf("database connection is nil in UpdateHardwareData")
-	}
-	tx, err := repo.DB.BeginTx(ctx, nil)
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("error beginning transaction in UpdateHardwareData: %w", err)
-	}
-	if tx == nil {
-		return fmt.Errorf("transaction is nil in UpdateHardwareData")
 	}
 	defer func() {
 		if err != nil {
@@ -277,20 +285,18 @@ func (repo *Repo) UpdateHardwareData(ctx context.Context, tagnumber *int64, syst
 	return nil
 }
 
-func (repo *Repo) UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest ImageManifest) (err error) {
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error in UpdateClientImages: %w", ctx.Err())
+func (updateRepo *UpdateRepo) UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest ImageManifest) (err error) {
+	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
+		return fmt.Errorf("transaction UUID is nil")
 	}
 
-	if repo.DB == nil {
-		return fmt.Errorf("database connection is nil in UpdateClientImages")
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
 	}
-	tx, err := repo.DB.BeginTx(ctx, nil)
+
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("error beginning transaction in UpdateClientImages: %w", err)
-	}
-	if tx == nil {
-		return fmt.Errorf("transaction is nil in UpdateClientImages")
+		return fmt.Errorf("error beginning transaction: %w", err)
 	}
 	defer func() {
 		if err != nil {
@@ -335,29 +341,23 @@ func (repo *Repo) UpdateClientImages(ctx context.Context, transactionUUID uuid.U
 		ToNullBool(manifest.PrimaryImage),
 	)
 	if err != nil {
-		return fmt.Errorf("error inserting client image in UpdateClientImages: %w", err)
+		return fmt.Errorf("error inserting client image: %w", err)
 	}
 	return nil
 }
 
-func (repo *Repo) HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error) {
+func (updateRepo *UpdateRepo) HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error) {
 	if tagnumber == nil || uuid == nil || strings.TrimSpace(*uuid) == "" {
-		return fmt.Errorf("tagnumber and uuid are required in HideClientImageByUUID")
+		return fmt.Errorf("tagnumber and uuid are both required")
 	}
 
 	if ctx.Err() != nil {
-		return fmt.Errorf("context error in HideClientImageByUUID: %w", ctx.Err())
+		return fmt.Errorf("context error: %w", ctx.Err())
 	}
 
-	if repo.DB == nil {
-		return fmt.Errorf("database connection is nil in HideClientImageByUUID")
-	}
-	tx, err := repo.DB.BeginTx(ctx, nil)
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("error beginning transaction in HideClientImageByUUID: %w", err)
-	}
-	if tx == nil {
-		return fmt.Errorf("transaction is nil in HideClientImageByUUID")
+		return fmt.Errorf("error beginning transaction: %w", err)
 	}
 	defer func() {
 		if err != nil {
@@ -373,29 +373,23 @@ func (repo *Repo) HideClientImageByUUID(ctx context.Context, tagnumber *int64, u
 		ToNullString(uuid),
 	)
 	if err != nil {
-		return fmt.Errorf("error hiding client image in HideClientImageByUUID: %w", err)
+		return fmt.Errorf("error hiding client image: %w", err)
 	}
 	return nil
 }
 
-func (repo *Repo) TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err error) {
+func (updateRepo *UpdateRepo) TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err error) {
 	if tagnumber == nil || uuid == nil || strings.TrimSpace(*uuid) == "" {
-		return fmt.Errorf("tagnumber and uuid are required in TogglePinImage")
+		return fmt.Errorf("tagnumber and uuid are both required")
 	}
 
 	if ctx.Err() != nil {
-		return fmt.Errorf("context error in TogglePinImage: %w", ctx.Err())
+		return fmt.Errorf("context error: %w", ctx.Err())
 	}
 
-	if repo.DB == nil {
-		return fmt.Errorf("database connection is nil in TogglePinImage")
-	}
-	tx, err := repo.DB.BeginTx(ctx, nil)
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("error beginning transaction in TogglePinImage: %w", err)
-	}
-	if tx == nil {
-		return fmt.Errorf("transaction is nil in TogglePinImage")
+		return fmt.Errorf("error beginning transaction: %w", err)
 	}
 	defer func() {
 		if err != nil {
@@ -411,35 +405,26 @@ func (repo *Repo) TogglePinImage(ctx context.Context, tagnumber *int64, uuid *st
 		ToNullInt64(tagnumber),
 	)
 	if err != nil {
-		return fmt.Errorf("error toggling pin on client image in TogglePinImage: %w", err)
+		return fmt.Errorf("error toggling pin on client image: %w", err)
 	}
 	return nil
 }
 
-func (repo *Repo) SetClientBatteryHealth(ctx context.Context, uuid *string, healthPcnt *int64) (err error) {
+func (updateRepo *UpdateRepo) SetClientBatteryHealth(ctx context.Context, uuid *string, healthPcnt *int64) (err error) {
 	if uuid == nil || strings.TrimSpace(*uuid) == "" {
-		return fmt.Errorf("UUID is required in SetClientBatteryHealth")
+		return fmt.Errorf("UUID is required")
 	}
 	if healthPcnt == nil {
-		return fmt.Errorf("health percentage is required in SetClientBatteryHealth")
-	}
-	if *healthPcnt < 0 || *healthPcnt > 100 {
-		return fmt.Errorf("health percentage must be between 0 and 100 in SetClientBatteryHealth")
+		return fmt.Errorf("health percentage is required")
 	}
 
 	if ctx.Err() != nil {
-		return fmt.Errorf("context error in SetClientBatteryHealth: %w", ctx.Err())
+		return fmt.Errorf("context error: %w", ctx.Err())
 	}
 
-	if repo.DB == nil {
-		return fmt.Errorf("database connection is nil in SetClientBatteryHealth")
-	}
-	tx, err := repo.DB.BeginTx(ctx, nil)
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("error beginning transaction in SetClientBatteryHealth: %w", err)
-	}
-	if tx == nil {
-		return fmt.Errorf("transaction is nil in SetClientBatteryHealth")
+		return fmt.Errorf("error beginning transaction: %w", err)
 	}
 	defer func() {
 		if err != nil {
@@ -455,23 +440,28 @@ func (repo *Repo) SetClientBatteryHealth(ctx context.Context, uuid *string, heal
 		ToNullString(uuid),
 	)
 	if err != nil {
-		return fmt.Errorf("error updating jobstats battery health in SetClientBatteryHealth: %w", err)
+		return fmt.Errorf("error updating jobstats battery health: %w", err)
 	}
 
 	return nil
 }
 
-func (repo *Repo) SetAllJobs(ctx context.Context, allJobs AllJobs) (err error) {
-	if repo.DB == nil {
-		return errors.New("database connection is nil in SetAllJobs")
+func (updateRepo *UpdateRepo) SetAllOnlineClientJobs(ctx context.Context, allJobs *AllJobs) (err error) {
+	if allJobs == nil {
+		return fmt.Errorf("allJobs is nil")
 	}
+
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	var job = allJobs.JobName
 
 	sqlCode := `UPDATE job_queue SET job_queued = $1 WHERE NOW() - present < INTERVAL '30 SECONDS';`
 
-	tx, err := repo.DB.BeginTx(ctx, nil)
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("error initializing transaction: %w", err)
 	}
 	defer func() {
 		if err != nil {
@@ -483,8 +473,7 @@ func (repo *Repo) SetAllJobs(ctx context.Context, allJobs AllJobs) (err error) {
 	// Don't check rows affected - could be no clients online
 	_, err = tx.ExecContext(ctx, sqlCode, job)
 	if err != nil {
-		return err
+		return fmt.Errorf("error while updating job queue: %w", err)
 	}
-
 	return nil
 }

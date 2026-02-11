@@ -7,7 +7,7 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"encoding/hex"
-	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -16,6 +16,21 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var csvHeader = []string{
+	"Tagnumber",
+	"System Serial",
+	"Location",
+	"Manufacturer",
+	"Model",
+	"Department",
+	"Domain",
+	"OS Name",
+	"Status",
+	"Broken",
+	"Note",
+	"Last Updated",
+}
 
 func ToStringPtr(v sql.NullString) *string {
 	if v.Valid {
@@ -67,118 +82,6 @@ func ToNullTime(p *time.Time) sql.NullTime {
 	return sql.NullTime{Time: *p, Valid: true}
 }
 
-func CreateAdminUser() error {
-	db := config.GetDatabaseConn()
-	if db == nil {
-		return errors.New("database connection is not initialized")
-	}
-	adminUsername, adminPasswd, err := config.GetAdminCredentials()
-	if err != nil {
-		return errors.New("failed to get admin credentials: " + err.Error())
-	}
-	if adminUsername == nil || adminPasswd == nil {
-		return errors.New("admin credentials are nil")
-	}
-
-	if strings.TrimSpace(*adminUsername) == "" {
-		return errors.New("admin username is empty")
-	}
-	usernameHash := crypto.SHA256.New()
-	usernameHash.Write([]byte(*adminUsername))
-	adminUsernameHash := hex.EncodeToString(usernameHash.Sum(nil))
-
-	if strings.TrimSpace(*adminPasswd) == "" {
-		return errors.New("admin password is empty")
-	}
-	passwordHash := crypto.SHA256.New()
-	passwordHash.Write([]byte(*adminPasswd))
-	adminPasswdHash := hex.EncodeToString(passwordHash.Sum(nil))
-
-	bcryptHashBytes, err := bcrypt.GenerateFromPassword([]byte(adminPasswdHash), bcrypt.DefaultCost)
-	if err != nil {
-		return errors.New("failed to hash admin password: " + err.Error())
-	}
-	bcryptHashString := string(bcryptHashBytes)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	// Delete and recreate admin user in table logins
-	sqlCode := `
-    INSERT INTO logins (username, password, common_name, is_admin, enabled)
-    VALUES ($1, $2, 'admin', TRUE, TRUE)
-    ON CONFLICT (username)
-    DO UPDATE SET password = EXCLUDED.password
-    `
-
-	_, err = db.ExecContext(ctx, sqlCode, adminUsernameHash, bcryptHashString)
-	if err != nil {
-		return errors.New("failed to create admin user: " + err.Error())
-	}
-
-	return nil
-}
-
-func ConvertInventoryTableDataToCSV(ctx context.Context, dbQueryData []*InventoryTableData) (string, error) {
-	if ctx.Err() != nil {
-		return "", errors.New("Context error in ConvertInventoryTableDataToCSV: " + ctx.Err().Error())
-	}
-	if dbQueryData == nil {
-		return "", errors.New("dbQueryData is nil in ConvertInventoryTableDataToCSV")
-	}
-	if len(dbQueryData) == 0 {
-		return "", errors.New("no data available to convert to CSV in ConvertInventoryTableDataToCSV")
-	}
-	writer := new(bytes.Buffer)
-	csvWriter := csv.NewWriter(writer)
-
-	csvHeader := []string{
-		"Tagnumber",
-		"System Serial",
-		"Location",
-		"Manufacturer",
-		"Model",
-		"Department",
-		"Domain",
-		"OS Name",
-		"Status",
-		"Broken",
-		"Note",
-		"Last Updated",
-	}
-	if err := csvWriter.Write(csvHeader); err != nil {
-		return "", errors.New("Error writing CSV header in ConvertInventoryTableDataToCSV: " + err.Error())
-	}
-
-	for _, row := range dbQueryData {
-		record := []string{
-			ptrIntToString(row.Tagnumber),
-			ptrStringToString(row.SystemSerial),
-			ptrStringToString(row.LocationFormatted),
-			ptrStringToString(row.SystemManufacturer),
-			ptrStringToString(row.SystemModel),
-			ptrStringToString(row.DepartmentFormatted),
-			ptrStringToString(row.DomainFormatted),
-			ptrStringToString(row.OsName),
-			ptrStringToString(row.Status),
-			ptrBoolToString(row.Broken),
-			ptrStringToString(row.Note),
-			ptrTimeToString(row.LastUpdated),
-		}
-		if err := csvWriter.Write(record); err != nil {
-			return "", errors.New("Error writing CSV row in ConvertInventoryTableDataToCSV: " + err.Error())
-		}
-	}
-
-	// Flush buffered data to the writer
-	csvWriter.Flush()
-	if err := csvWriter.Error(); err != nil {
-		return "", errors.New("Error flushing CSV writer in ConvertInventoryTableDataToCSV: " + err.Error())
-	}
-
-	return writer.String(), nil
-}
-
 func ptrIntToString(p *int64) string {
 	if p == nil {
 		return ""
@@ -205,4 +108,106 @@ func ptrTimeToString(p *time.Time) string {
 		return ""
 	}
 	return p.Format("2006-01-02 15:04:05")
+}
+
+func CreateAdminUser() error {
+	db := config.GetDatabaseConn()
+	if db == nil {
+		return fmt.Errorf("database connection is not initialized")
+	}
+	adminUsername, adminPasswd, err := config.GetAdminCredentials()
+	if err != nil {
+		return fmt.Errorf("failed to get admin credentials: %w", err)
+	}
+	if adminUsername == nil || adminPasswd == nil {
+		return fmt.Errorf("admin credentials are nil")
+	}
+
+	if strings.TrimSpace(*adminUsername) == "" {
+		return fmt.Errorf("admin username is empty")
+	}
+	usernameHash := crypto.SHA256.New()
+	usernameHash.Write([]byte(*adminUsername))
+	adminUsernameHash := hex.EncodeToString(usernameHash.Sum(nil))
+
+	if strings.TrimSpace(*adminPasswd) == "" {
+		return fmt.Errorf("admin password is empty")
+	}
+	passwordHash := crypto.SHA256.New()
+	passwordHash.Write([]byte(*adminPasswd))
+	adminPasswdHash := hex.EncodeToString(passwordHash.Sum(nil))
+
+	bcryptHashBytes, err := bcrypt.GenerateFromPassword([]byte(adminPasswdHash), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("failed to hash admin password: %w", err)
+	}
+	bcryptHashString := string(bcryptHashBytes)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// Delete and recreate admin user in table logins
+	sqlCode := `
+    INSERT INTO logins (username, password, common_name, is_admin, enabled)
+    VALUES ($1, $2, 'admin', TRUE, TRUE)
+    ON CONFLICT (username)
+    DO UPDATE SET password = EXCLUDED.password
+    `
+
+	_, err = db.ExecContext(ctx, sqlCode, adminUsernameHash, bcryptHashString)
+	if err != nil {
+		return fmt.Errorf("failed to create admin user: %w", err)
+	}
+
+	return nil
+}
+
+func ConvertInventoryTableDataToCSV(ctx context.Context, dbQueryData []InventoryTableData) (*bytes.Buffer, error) {
+	if len(dbQueryData) == 0 {
+		return nil, fmt.Errorf("dbQueryData is nil in ConvertInventoryTableDataToCSV")
+	}
+
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("Context error in ConvertInventoryTableDataToCSV: %w", ctx.Err())
+	}
+
+	var buf bytes.Buffer
+	buf.Grow(len(dbQueryData) * 200) // Grow by 200 bytes before another allocation
+	csvWriter := csv.NewWriter(&buf)
+
+	if err := csvWriter.Write(csvHeader); err != nil {
+		return nil, fmt.Errorf("Error writing CSV header in ConvertInventoryTableDataToCSV: %w", err)
+	}
+	csvWriter.Flush()
+	if err := csvWriter.Error(); err != nil {
+		return nil, fmt.Errorf("Error flushing CSV writer after writing header in ConvertInventoryTableDataToCSV: %w", err)
+	}
+
+	for _, row := range dbQueryData {
+		record := []string{
+			ptrIntToString(row.Tagnumber),
+			ptrStringToString(row.SystemSerial),
+			ptrStringToString(row.LocationFormatted),
+			ptrStringToString(row.SystemManufacturer),
+			ptrStringToString(row.SystemModel),
+			ptrStringToString(row.DepartmentFormatted),
+			ptrStringToString(row.DomainFormatted),
+			ptrStringToString(row.OsName),
+			ptrStringToString(row.Status),
+			ptrBoolToString(row.Broken),
+			ptrStringToString(row.Note),
+			ptrTimeToString(row.LastUpdated),
+		}
+		if err := csvWriter.Write(record); err != nil {
+			return nil, fmt.Errorf("Error writing CSV row in ConvertInventoryTableDataToCSV: %w", err)
+		}
+	}
+
+	// Flush buffered data to the writer
+	csvWriter.Flush()
+	if err := csvWriter.Error(); err != nil {
+		return nil, fmt.Errorf("Error flushing CSV writer in ConvertInventoryTableDataToCSV: %w", err)
+	}
+
+	return &buf, nil
 }

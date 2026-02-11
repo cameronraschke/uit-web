@@ -92,7 +92,7 @@ func (consoleLogger *ConsoleLogger) SetLoggerLevel(logLevel LogLevel) {
 	consoleLogger.Level.Store(int64(logLevel))
 }
 
-func (consoleLogger *ConsoleLogger) logHTTPErr(req *http.Request, logLevel LogLevel, message string) {
+func (consoleLogger *ConsoleLogger) logHTTP(req *http.Request, logLevel LogLevel, message string) {
 	if int64(logLevel) < consoleLogger.Level.Load() {
 		return
 	}
@@ -102,16 +102,24 @@ func (consoleLogger *ConsoleLogger) logHTTPErr(req *http.Request, logLevel LogLe
 	if err != nil {
 		ipAddr = ""
 	}
+
 	requestMethod := req.Method
-	requestURL := req.URL.Path
-	if req.URL.RawQuery != "" {
-		requestURL += "?" + req.URL.RawQuery
+
+	urlString := strings.Builder{}
+	urlString.WriteString(req.URL.Path)
+	for k, v := range req.URL.Query() {
+		fmt.Fprintf(&urlString, "%s=%s&", k, strings.Join(v, ","))
 	}
+	requestURL := urlString.String()
+	requestURL = strings.TrimSuffix(requestURL, "&")
 	if strings.ContainsAny(requestURL, disallowedURLChars) {
 		requestURL = "INVALID URL"
 	}
-	requestInfo := fmt.Sprintf(" (%s %s %s)", ipAddr, requestMethod, requestURL)
-	consoleLogger.log(logLevel, message+requestInfo)
+
+	messageBuilder := strings.Builder{}
+	messageBuilder.WriteString(message)
+	fmt.Fprintf(&messageBuilder, " (%s %s %s)", ipAddr, requestMethod, requestURL)
+	consoleLogger.log(logLevel, messageBuilder.String())
 }
 
 func (consoleLogger *ConsoleLogger) log(logLevel LogLevel, message string) {
@@ -140,19 +148,19 @@ func (consoleLogger *ConsoleLogger) Warning(message string) { consoleLogger.log(
 func (consoleLogger *ConsoleLogger) Error(message string)   { consoleLogger.log(Error, message) }
 
 func (consoleLogger *ConsoleLogger) HTTPAuth(req *http.Request, message string) {
-	consoleLogger.logHTTPErr(req, Auth, message)
+	consoleLogger.logHTTP(req, Auth, message)
 }
 func (consoleLogger *ConsoleLogger) HTTPDebug(req *http.Request, message string) {
-	consoleLogger.logHTTPErr(req, Debug, message)
+	consoleLogger.logHTTP(req, Debug, message)
 }
 func (consoleLogger *ConsoleLogger) HTTPInfo(req *http.Request, message string) {
-	consoleLogger.logHTTPErr(req, Info, message)
+	consoleLogger.logHTTP(req, Info, message)
 }
 func (consoleLogger *ConsoleLogger) HTTPWarning(req *http.Request, message string) {
-	consoleLogger.logHTTPErr(req, Warning, message)
+	consoleLogger.logHTTP(req, Warning, message)
 }
 func (consoleLogger *ConsoleLogger) HTTPError(req *http.Request, message string) {
-	consoleLogger.logHTTPErr(req, Error, message)
+	consoleLogger.logHTTP(req, Error, message)
 }
 
 func CreateLogger(loggerType string, logLevel LogLevel) Logger {

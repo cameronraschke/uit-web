@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	config "uit-toolbox/config"
 	"uit-toolbox/database"
 	middleware "uit-toolbox/middleware"
 )
@@ -57,13 +56,12 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db := config.GetDatabaseConn()
-	if db == nil {
+	repo, err := database.NewUpdateRepo()
+	if err != nil {
 		log.HTTPError(req, "No database connection available")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 

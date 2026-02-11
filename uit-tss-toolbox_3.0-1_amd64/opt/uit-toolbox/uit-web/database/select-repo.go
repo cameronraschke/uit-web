@@ -5,21 +5,61 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"uit-toolbox/config"
 )
 
-type Repo struct {
+type Select interface {
+	AllTags(ctx context.Context) ([]int64, error)
+	GetDepartments(ctx context.Context) ([]Department, error)
+	GetDomains(ctx context.Context) ([]Domain, error)
+	GetManufacturersAndModels(ctx context.Context) ([]ManufacturersAndModels, error)
+	ClientLookupByTag(ctx context.Context, tag *int64) (*ClientLookup, error)
+	ClientLookupBySerial(ctx context.Context, serial *string) (*ClientLookup, error)
+	GetHardwareIdentifiers(ctx context.Context, tag *int64) (*HardwareData, error)
+	GetBiosData(ctx context.Context, tag *int64) (*BiosData, error)
+	GetOsData(ctx context.Context, tag *int64) (*OsData, error)
+	GetActiveJobs(ctx context.Context, tag *int64) (*ActiveJobs, error)
+	GetAvailableJobs(ctx context.Context, tag *int64) (*AvailableJobs, error)
+	GetJobQueueOverview(ctx context.Context) (*JobQueueOverview, error)
+	GetNotes(ctx context.Context, noteType *string) (*NotesTable, error)
+	GetDashboardInventorySummary(ctx context.Context) ([]DashboardInventorySummary, error)
+	GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*InventoryUpdateForm, error)
+	GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*ImageManifest, error)
+	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]ImageManifest, error)
+	GetInventoryTableData(ctx context.Context, filterOptions *InventoryAdvSearchOptions) ([]InventoryTableData, error)
+	GetClientBatteryHealth(ctx context.Context, tagnumber *int64) (*ClientBatteryHealth, error)
+	GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, error)
+	GetBatteryStandardDeviation(ctx context.Context) ([]ClientReport, error)
+	GetAllJobs(ctx context.Context) ([]AllJobs, error)
+	GetAllLocations(ctx context.Context) ([]AllLocations, error)
+	GetAllStatuses(ctx context.Context) ([]ClientStatus, error)
+}
+
+type SelectRepo struct {
 	DB *sql.DB
 }
 
-func NewRepo(db *sql.DB) *Repo { return &Repo{DB: db} }
+func NewSelectRepo() (Select, error) {
+	db := config.GetDatabaseConn()
+	if db == nil {
+		return nil, fmt.Errorf("db connection is nil in NewSelectRepo")
+	}
+	return &SelectRepo{DB: db}, nil
+}
 
-func (repo *Repo) GetAllTags(ctx context.Context) ([]int64, error) {
+var _ Select = (*SelectRepo)(nil)
+
+func (repo *SelectRepo) AllTags(ctx context.Context) ([]int64, error) {
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `SELECT tagnumber FROM (SELECT tagnumber, time, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS
 		row_nums FROM locations WHERE tagnumber IS NOT NULL) t1 WHERE t1.row_nums = 1 ORDER BY t1.time DESC;`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error executing query: %w", err)
 	}
 	defer rows.Close()
 
@@ -27,12 +67,15 @@ func (repo *Repo) GetAllTags(ctx context.Context) ([]int64, error) {
 	for rows.Next() {
 		var tag AllTags
 		if err := rows.Scan(&tag.Tagnumber); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error scanning row: %w", err)
 		}
 		allTags = append(allTags, tag)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error during row iteration: %w", err)
+	}
+	if len(allTags) == 0 {
+		return nil, nil
 	}
 
 	allTagsSlice := make([]int64, len(allTags))
@@ -45,7 +88,11 @@ func (repo *Repo) GetAllTags(ctx context.Context) ([]int64, error) {
 	return allTagsSlice, nil
 }
 
-func (repo *Repo) GetDepartments(ctx context.Context) ([]Department, error) {
+func (repo *SelectRepo) GetDepartments(ctx context.Context) ([]Department, error) {
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `SELECT 
 			static_department_info.department_name, 
 			static_department_info.department_name_formatted, 
@@ -58,7 +105,7 @@ func (repo *Repo) GetDepartments(ctx context.Context) ([]Department, error) {
 		ORDER BY static_organizations.organization_sort_order, static_department_info.department_sort_order;`
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error executing query: %w", err)
 	}
 	defer rows.Close()
 
@@ -73,22 +120,29 @@ func (repo *Repo) GetDepartments(ctx context.Context) ([]Department, error) {
 			&dept.OrganizationNameFormatted,
 			&dept.OrganizationSortOrder,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error during row scan: %w", err)
 		}
 		departments = append(departments, dept)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error during row iteration: %w", err)
+	}
+	if len(departments) == 0 {
+		return nil, nil
 	}
 
 	return departments, nil
 }
 
-func (repo *Repo) GetDomains(ctx context.Context) (*[]Domain, error) {
+func (repo *SelectRepo) GetDomains(ctx context.Context) ([]Domain, error) {
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `SELECT domain_name, domain_name_formatted FROM static_ad_domains ORDER BY domain_sort_order DESC;`
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error executing query: %w", err)
 	}
 	defer rows.Close()
 
@@ -101,60 +155,16 @@ func (repo *Repo) GetDomains(ctx context.Context) (*[]Domain, error) {
 		domains = append(domains, domain)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error during row iteration: %w", err)
+	}
+	if len(domains) == 0 {
+		return nil, nil
 	}
 
-	return &domains, nil
+	return domains, nil
 }
 
-func (repo *Repo) GetStatusesMap(ctx context.Context) (map[string]string, error) {
-	const sqlQuery = `SELECT status, status_formatted FROM static_client_statuses ORDER BY sort_order;`
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var statusMap = make(map[string]string)
-	for rows.Next() {
-		var status, statusFormatted string
-		if err := rows.Scan(&status, &statusFormatted); err != nil {
-			return nil, err
-		}
-		statusMap[status] = statusFormatted
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return statusMap, nil
-}
-
-func (repo *Repo) GetLocations(ctx context.Context) (map[string]string, error) {
-	const sqlQuery = `SELECT location, locationFormatting(location) AS location_formatted FROM locations WHERE time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber) AND location IS NOT NULL GROUP BY location ORDER BY location ASC;`
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var locationMap = make(map[string]string)
-
-	for rows.Next() {
-		var location, locationFormatted string
-		if err := rows.Scan(&location, &locationFormatted); err != nil {
-			return nil, err
-		}
-		locationMap[location] = locationFormatted
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return locationMap, nil
-}
-
-func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]ManufacturersAndModels, error) {
+func (repo *SelectRepo) GetManufacturersAndModels(ctx context.Context) ([]ManufacturersAndModels, error) {
 	const sqlQuery = `SELECT system_manufacturer, system_model, COUNT(*) AS "system_model_count"
 		FROM hardware_data 
 		WHERE system_manufacturer IS NOT NULL 
@@ -165,7 +175,7 @@ func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]Manufacturer
 	var manufacturersAndModels []ManufacturersAndModels
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	defer rows.Close()
 
@@ -175,12 +185,15 @@ func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]Manufacturer
 			&row.SystemManufacturer,
 			&row.SystemModel,
 			&row.SystemModelCount); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error during row scan: %w", err)
 		}
 		manufacturersAndModels = append(manufacturersAndModels, row)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("query error in GetManufacturersAndModels: %w", err)
+		return nil, fmt.Errorf("error during row iteration: %w", err)
+	}
+	if len(manufacturersAndModels) == 0 {
+		return nil, nil
 	}
 
 	manufacturerCountMap := make(map[string]int64, len(manufacturersAndModels))
@@ -203,27 +216,63 @@ func (repo *Repo) GetManufacturersAndModels(ctx context.Context) ([]Manufacturer
 	return manufacturersAndModels, nil
 }
 
-func (repo *Repo) ClientLookupByTag(ctx context.Context, tag int64) (*ClientLookup, error) {
+func (repo *SelectRepo) ClientLookupByTag(ctx context.Context, tag *int64) (*ClientLookup, error) {
+	if tag == nil {
+		return nil, fmt.Errorf("tagnumber is nil")
+	}
+
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	const sqlQuery = `SELECT tagnumber, system_serial 
+		FROM locations 
+		WHERE tagnumber = $1 
+		ORDER BY time DESC NULLS LAST LIMIT 1;`
 	var clientLookup ClientLookup
-	const sqlQuery = `SELECT tagnumber, system_serial FROM locations WHERE tagnumber = $1 ORDER BY time DESC NULLS LAST LIMIT 1;`
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
 	if err := row.Scan(&clientLookup.Tagnumber, &clientLookup.SystemSerial); err != nil {
-		return nil, fmt.Errorf("query error in ClientLookupByTag: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	return &clientLookup, nil
 }
 
-func (repo *Repo) ClientLookupBySerial(ctx context.Context, serial string) (*ClientLookup, error) {
+func (repo *SelectRepo) ClientLookupBySerial(ctx context.Context, serial *string) (*ClientLookup, error) {
+	if serial == nil {
+		return nil, fmt.Errorf("serial is nil")
+	}
+
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	const sqlQuery = `SELECT tagnumber, system_serial 
+		FROM locations 
+		WHERE system_serial = $1 
+		ORDER BY time DESC NULLS LAST LIMIT 1;`
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullString(serial))
 	var clientLookup ClientLookup
-	const sqlQuery = `SELECT tagnumber, system_serial FROM locations WHERE system_serial = $1 ORDER BY time DESC NULLS LAST LIMIT 1;`
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, serial)
 	if err := row.Scan(&clientLookup.Tagnumber, &clientLookup.SystemSerial); err != nil {
-		return nil, fmt.Errorf("query error in ClientLookupBySerial: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	return &clientLookup, nil
 }
 
-func (repo *Repo) GetHardwareIdentifiers(ctx context.Context, tag int64) (*HardwareData, error) {
+func (repo *SelectRepo) GetHardwareIdentifiers(ctx context.Context, tag *int64) (*HardwareData, error) {
+	if tag == nil {
+		return nil, fmt.Errorf("tagnumber is nil")
+	}
+
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `SELECT locations.tagnumber, locations.system_serial, jobstats.etheraddress, hardware_data.wifi_mac,
 	hardware_data.system_model, hardware_data.system_uuid, hardware_data.system_sku, hardware_data.chassis_type, 
 	hardware_data.motherboard_manufacturer, hardware_data.motherboard_serial, hardware_data.system_manufacturer
@@ -234,7 +283,7 @@ func (repo *Repo) GetHardwareIdentifiers(ctx context.Context, tag int64) (*Hardw
 	AND locations.tagnumber = $1;`
 
 	var hardwareData HardwareData
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
 	if err := row.Scan(
 		&hardwareData.Tagnumber,
 		&hardwareData.SystemSerial,
@@ -248,18 +297,29 @@ func (repo *Repo) GetHardwareIdentifiers(ctx context.Context, tag int64) (*Hardw
 		&hardwareData.MotherboardSerial,
 		&hardwareData.SystemManufacturer,
 	); err != nil {
-		return nil, fmt.Errorf("query error in GetHardwareIdentifiers: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	return &hardwareData, nil
 }
 
-func (repo *Repo) GetBiosData(ctx context.Context, tag int64) (*BiosData, error) {
+func (repo *SelectRepo) GetBiosData(ctx context.Context, tag *int64) (*BiosData, error) {
+	if tag == nil {
+		return nil, fmt.Errorf("tagnumber is nil")
+	}
+
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `SELECT client_health.tagnumber, client_health.bios_version, client_health.bios_updated, 
 	client_health.tpm_version 
 	FROM client_health WHERE client_health.tagnumber = $1;`
 
 	var biosData BiosData
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
 	if err := row.Scan(
 		&biosData.Tagnumber,
 		&biosData.BiosVersion,
@@ -267,12 +327,23 @@ func (repo *Repo) GetBiosData(ctx context.Context, tag int64) (*BiosData, error)
 		&biosData.BiosDate,
 		&biosData.TpmVersion,
 	); err != nil {
-		return nil, fmt.Errorf("query error in GetBiosData: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	return &biosData, nil
 }
 
-func (repo *Repo) GetOsData(ctx context.Context, tag int64) (*OsData, error) {
+func (repo *SelectRepo) GetOsData(ctx context.Context, tag *int64) (*OsData, error) {
+	if tag == nil {
+		return nil, fmt.Errorf("tagnumber is nil")
+	}
+
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `SELECT locations.tagnumber, client_health.os_installed, client_health.os_name,
 	client_health.last_imaged_time, client_health.tpm_version, jobstats.boot_time
 	FROM locations
@@ -282,7 +353,7 @@ func (repo *Repo) GetOsData(ctx context.Context, tag int64) (*OsData, error) {
 	AND locations.tagnumber = $1;`
 
 	var osData OsData
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
 	if err := row.Scan(
 		&osData.Tagnumber,
 		&osData.OsInstalled,
@@ -291,12 +362,23 @@ func (repo *Repo) GetOsData(ctx context.Context, tag int64) (*OsData, error) {
 		&osData.TPMversion,
 		&osData.BootTime,
 	); err != nil {
-		return nil, fmt.Errorf("query error in GetOsData: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	return &osData, nil
 }
 
-func (repo *Repo) GetActiveJobs(ctx context.Context, tag int64) (*ActiveJobs, error) {
+func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*ActiveJobs, error) {
+	if tag == nil {
+		return nil, fmt.Errorf("tagnumber is nil")
+	}
+
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `SELECT job_queue.tagnumber, job_queue.job_queued, job_queue.job_active, t1.queue_position
 	FROM job_queue
 	LEFT JOIN (SELECT tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY present DESC) AS queue_position FROM job_queue) AS t1 
@@ -304,19 +386,30 @@ func (repo *Repo) GetActiveJobs(ctx context.Context, tag int64) (*ActiveJobs, er
 	WHERE job_queue.tagnumber = $1;`
 
 	var activeJobs ActiveJobs
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
 	if err := row.Scan(
 		&activeJobs.Tagnumber,
 		&activeJobs.QueuedJob,
 		&activeJobs.JobActive,
 		&activeJobs.QueuePosition,
 	); err != nil {
-		return nil, fmt.Errorf("query error in GetActiveJobs: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	return &activeJobs, nil
 }
 
-func (repo *Repo) GetAvailableJobs(ctx context.Context, tag int64) (*AvailableJobs, error) {
+func (repo *SelectRepo) GetAvailableJobs(ctx context.Context, tag *int64) (*AvailableJobs, error) {
+	if tag == nil {
+		return nil, fmt.Errorf("tagnumber is nil")
+	}
+
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `SELECT 
 	job_queue.tagnumber,
 	(CASE 
@@ -327,17 +420,24 @@ func (repo *Repo) GetAvailableJobs(ctx context.Context, tag int64) (*AvailableJo
 	WHERE job_queue.tagnumber = $1`
 
 	var availableJobs AvailableJobs
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
 	if err := row.Scan(
 		&availableJobs.Tagnumber,
 		&availableJobs.JobAvailable,
 	); err != nil {
-		return nil, fmt.Errorf("query error in GetAvailableJobs: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	return &availableJobs, nil
 }
 
-func (repo *Repo) GetJobQueueOverview(ctx context.Context) (*JobQueueOverview, error) {
+func (repo *SelectRepo) GetJobQueueOverview(ctx context.Context) (*JobQueueOverview, error) {
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `SELECT t1.total_queued_jobs, t2.total_active_jobs, t3.total_active_blocking_jobs
 	FROM 
 	(SELECT COUNT(*) AS total_queued_jobs FROM job_queue WHERE job_queued IS NOT NULL AND (NOW() - present < INTERVAL '30 SECOND')) AS t1,
@@ -351,29 +451,45 @@ func (repo *Repo) GetJobQueueOverview(ctx context.Context) (*JobQueueOverview, e
 		&jobQueueOverview.TotalActiveJobs,
 		&jobQueueOverview.TotalActiveBlockingJobs,
 	); err != nil {
-		return nil, fmt.Errorf("query error in GetJobQueueOverview: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	return &jobQueueOverview, nil
 }
 
-func (repo *Repo) GetNotes(ctx context.Context, noteType *string) (*NotesTable, error) {
+func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*NotesTable, error) {
+	if noteType == nil {
+		return nil, fmt.Errorf("noteType is nil")
+	}
+
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `SELECT time, note_type, note FROM notes WHERE note_type = $1 ORDER BY time DESC NULLS LAST LIMIT 1;`
 
 	var notesTable NotesTable
-	row := repo.DB.QueryRowContext(ctx, sqlQuery,
-		ToNullString(noteType),
-	)
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullString(noteType))
 	if err := row.Scan(
 		&notesTable.Time,
 		&notesTable.NoteType,
 		&notesTable.Note,
 	); err != nil {
-		return nil, fmt.Errorf("query error in GetNotes: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	return &notesTable, nil
 }
 
-func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]DashboardInventorySummary, error) {
+func (repo *SelectRepo) GetDashboardInventorySummary(ctx context.Context) ([]DashboardInventorySummary, error) {
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `WITH latest_locations AS (
 		SELECT DISTINCT ON (locations.tagnumber) locations.tagnumber, locations.department_name
 		FROM locations
@@ -408,14 +524,14 @@ func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]Dashboard
 
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
-		return nil, fmt.Errorf("query error in GetDashboardInventorySummary: %w", err)
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	defer rows.Close()
 
 	var dashboardInventorySummary []DashboardInventorySummary
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error in GetDashboardInventorySummary: %w", ctx.Err())
+			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
 		var summary DashboardInventorySummary
 		if err := rows.Scan(
@@ -424,24 +540,29 @@ func (repo *Repo) GetDashboardInventorySummary(ctx context.Context) ([]Dashboard
 			&summary.TotalCheckedOut,
 			&summary.AvailableForCheckout,
 		); err != nil {
-			return nil, fmt.Errorf("query error in GetDashboardInventorySummary: %w", err)
+			return nil, fmt.Errorf("query error: %w", err)
 		}
 		dashboardInventorySummary = append(dashboardInventorySummary, summary)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("DB read error in GetDashboardInventorySummary: %w", err)
+		return nil, fmt.Errorf("error during row iteration: %w", err)
+	}
+	if len(dashboardInventorySummary) == 0 {
+		return nil, nil
 	}
 
 	return dashboardInventorySummary, nil
 }
 
-func (repo *Repo) GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*InventoryUpdateForm, error) {
+func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*InventoryUpdateForm, error) {
 	if tag == nil && (serial == nil || *serial == "") {
 		return nil, fmt.Errorf("either tag or serial must be provided")
 	}
+
 	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error in GetLocationFormData: %w", ctx.Err())
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
 	}
+
 	const sqlQuery = `SELECT 
 		locations.time, 
 		locations.tagnumber, 
@@ -499,22 +620,26 @@ func (repo *Repo) GetLocationFormData(ctx context.Context, tag *int64, serial *s
 		&inventoryUpdateForm.ReturnDate,
 		&inventoryUpdateForm.Note,
 	); err != nil {
-		return nil, fmt.Errorf("query error in GetLocationFormData: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query error: %w", err)
 	}
-
 	return inventoryUpdateForm, nil
 }
 
-func (repo *Repo) GetClientImageFilePathFromUUID(ctx context.Context, uuid string) (*ImageManifest, error) {
-	if uuid == "" {
-		return nil, fmt.Errorf("uuid cannot be empty")
+func (repo *SelectRepo) GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*ImageManifest, error) {
+	if uuid == nil || *uuid == "" {
+		return nil, fmt.Errorf("uuid cannot be nil or empty")
 	}
+
 	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error in GetClientImageFilePathFromUUID: %w", ctx.Err())
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
 	}
+
 	const sqlQuery = `SELECT tagnumber, filename, filepath, thumbnail_filepath, hidden
 	FROM client_images WHERE uuid = $1;`
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, uuid)
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullString(uuid))
 	var imageManifest ImageManifest
 	if err := row.Scan(
 		&imageManifest.Tagnumber,
@@ -523,14 +648,21 @@ func (repo *Repo) GetClientImageFilePathFromUUID(ctx context.Context, uuid strin
 		&imageManifest.ThumbnailFilePath,
 		&imageManifest.Hidden,
 	); err != nil {
-		return nil, fmt.Errorf("query error in GetClientImageFilePathFromUUID: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	return &imageManifest, nil
 }
 
-func (repo *Repo) GetClientImageManifestByTag(ctx context.Context, tagnumber int64) ([]ImageManifest, error) {
-	if tagnumber < 1 || tagnumber > 999999 {
-		return nil, fmt.Errorf("tagnumber is out of valid range: %d", tagnumber)
+func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]ImageManifest, error) {
+	if tagnumber == nil {
+		return nil, fmt.Errorf("tagnumber is nil")
+	}
+
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
 	}
 
 	const sqlQuery = `SELECT time, tagnumber, uuid, filename, filepath, thumbnail_filepath, hidden, primary_image, note FROM client_images WHERE tagnumber = $1;`
@@ -538,13 +670,13 @@ func (repo *Repo) GetClientImageManifestByTag(ctx context.Context, tagnumber int
 	imageManifests := make([]ImageManifest, 0, 10)
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery, tagnumber)
 	if err != nil {
-		return nil, fmt.Errorf("query error in GetClientImageManifestByTag: %w", err)
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error in GetClientImageManifestByTag: %w", ctx.Err())
+			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
 		var imageManifest ImageManifest
 		if err := rows.Scan(
@@ -558,16 +690,26 @@ func (repo *Repo) GetClientImageManifestByTag(ctx context.Context, tagnumber int
 			&imageManifest.PrimaryImage,
 			&imageManifest.Note,
 		); err != nil {
-			return nil, fmt.Errorf("query error in GetClientImageManifestByTag: %w", err)
+			return nil, fmt.Errorf("query error: %w", err)
 		}
 		imageManifests = append(imageManifests, imageManifest)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during row iteration: %w", err)
+	}
+	if len(imageManifests) == 0 {
+		return nil, nil
 	}
 	return imageManifests, nil
 }
 
-func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *InventoryAdvSearchOptions) ([]*InventoryTableData, error) {
+func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions *InventoryAdvSearchOptions) ([]InventoryTableData, error) {
 	if filterOptions == nil {
 		return nil, fmt.Errorf("filterOptions cannot be nil")
+	}
+
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
 	}
 
 	const sqlQuery = `SELECT locations.tagnumber, locations.system_serial, locations.location, 
@@ -612,16 +754,16 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *Inve
 		ToNullBool(filterOptions.HasImages),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("query error in GetInventoryTableData: %w", err)
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 	defer rows.Close()
 
-	var results []*InventoryTableData
+	var results []InventoryTableData
 	for rows.Next() {
 		if err := ctx.Err(); err != nil {
-			return nil, fmt.Errorf("context error in GetInventoryTableData: %w", err)
+			return nil, fmt.Errorf("context error: %w", err)
 		}
-		row := &InventoryTableData{}
+		row := InventoryTableData{}
 		if err := rows.Scan(
 			&row.Tagnumber,
 			&row.SystemSerial,
@@ -640,23 +782,26 @@ func (repo *Repo) GetInventoryTableData(ctx context.Context, filterOptions *Inve
 			&row.Note,
 			&row.LastUpdated,
 		); err != nil {
-			return nil, fmt.Errorf("query error in GetInventoryTableData: %w", err)
+			return nil, fmt.Errorf("query error: %w", err)
 		}
 		results = append(results, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during row iteration: %w", err)
+	}
+	if len(results) == 0 {
+		return nil, nil
 	}
 	return results, nil
 }
 
-func (repo *Repo) GetClientBatteryHealth(ctx context.Context, tagnumber *int64) (*ClientBatteryHealth, error) {
+func (repo *SelectRepo) GetClientBatteryHealth(ctx context.Context, tagnumber *int64) (*ClientBatteryHealth, error) {
 	if tagnumber == nil {
 		return nil, fmt.Errorf("tagnumber cannot be nil (GetClientBatteryHealth)")
 	}
-	if *tagnumber < 1 || *tagnumber > 999999 {
-		return nil, fmt.Errorf("tagnumber is out of valid range: %d", *tagnumber)
-	}
 
 	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error in GetClientBatteryHealth: %w", ctx.Err())
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
 	}
 
 	const sqlQuery = `SELECT jobstats.time, jobstats.tagnumber, jobstats.battery_health, client_health.battery_health, 
@@ -667,9 +812,7 @@ func (repo *Repo) GetClientBatteryHealth(ctx context.Context, tagnumber *int64) 
 	ORDER BY jobstats.time DESC NULLS LAST LIMIT 1;`
 
 	var batteryHealth ClientBatteryHealth
-	row := repo.DB.QueryRowContext(ctx, sqlQuery,
-		ToNullInt64(tagnumber),
-	)
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tagnumber))
 	if err := row.Scan(
 		&batteryHealth.Time,
 		&batteryHealth.Tagnumber,
@@ -677,13 +820,20 @@ func (repo *Repo) GetClientBatteryHealth(ctx context.Context, tagnumber *int64) 
 		&batteryHealth.ClientHealthBattery,
 		&batteryHealth.BatteryChargeCycles,
 	); err != nil {
-		return nil, fmt.Errorf("query error in GetClientBatteryHealth: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query error: %w", err)
 	}
 
 	return &batteryHealth, nil
 }
 
-func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, error) {
+func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, error) {
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `WITH latest_locations AS (
 		SELECT DISTINCT ON (locations.tagnumber) locations.time, locations.tagnumber, locations.system_serial, locations.location,
 			locationFormatting(locations.location) AS location_formatted, locations.department_name, locations.ad_domain,
@@ -794,7 +944,7 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 	ORDER BY locations.tagnumber;`
 
-	jobQueueRows := make([]JobQueueTableRow, 0, 560) // 560 is the # of clients
+	jobQueueRows := make([]JobQueueTableRow, 0, 560) // 560 is the approximate # of clients
 
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
@@ -804,7 +954,7 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, errors.New("context error in GetJobQueueTable: " + ctx.Err().Error())
+			return nil, errors.New("context error: " + ctx.Err().Error())
 		}
 		var row JobQueueTableRow
 		if err := rows.Scan(
@@ -864,15 +1014,20 @@ func (repo *Repo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, err
 		}
 		jobQueueRows = append(jobQueueRows, row)
 	}
-
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error during row iteration: %w", err)
 	}
-
+	if len(jobQueueRows) == 0 {
+		return nil, nil
+	}
 	return jobQueueRows, nil
 }
 
-func (repo *Repo) GetBatteryStandardDeviation(ctx context.Context) ([]ClientReport, error) {
+func (repo *SelectRepo) GetBatteryStandardDeviation(ctx context.Context) ([]ClientReport, error) {
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `SELECT jobstats.time AS "battery_health_timestamp", jobstats.tagnumber, jobstats.battery_health AS "battery_health_pcnt", 
 		ROUND(jobstats.battery_health - AVG(jobstats.battery_health) OVER (), 2) AS "battery_health_stddev"
 	FROM locations
@@ -891,7 +1046,7 @@ func (repo *Repo) GetBatteryStandardDeviation(ctx context.Context) ([]ClientRepo
 
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, errors.New("context error in GetBatteryStandardDeviation: " + ctx.Err().Error())
+			return nil, errors.New("context error: " + ctx.Err().Error())
 		}
 		var clientReport ClientReport
 		if err := rows.Scan(
@@ -905,13 +1060,19 @@ func (repo *Repo) GetBatteryStandardDeviation(ctx context.Context) ([]ClientRepo
 		clientReports = append(clientReports, clientReport)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error during row iteration: %w", err)
 	}
-
+	if len(clientReports) == 0 {
+		return nil, nil
+	}
 	return clientReports, nil
 }
 
-func (repo *Repo) GetAllJobs(ctx context.Context) ([]AllJobs, error) {
+func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]AllJobs, error) {
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `SELECT static_job_names.job_name, 
 		static_job_names.job_name_readable, 
 		static_job_names.job_sort_order, 
@@ -928,7 +1089,7 @@ func (repo *Repo) GetAllJobs(ctx context.Context) ([]AllJobs, error) {
 
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, errors.New("context error in GetAllJobs: " + ctx.Err().Error())
+			return nil, errors.New("context error: " + ctx.Err().Error())
 		}
 		var job AllJobs
 		if err := rows.Scan(
@@ -937,17 +1098,24 @@ func (repo *Repo) GetAllJobs(ctx context.Context) ([]AllJobs, error) {
 			&job.JobSortOrder,
 			&job.JobHidden,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error during row scan: %w", err)
 		}
 		allJobs = append(allJobs, job)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error during row iteration: %w", err)
+	}
+	if len(allJobs) == 0 {
+		return nil, nil
 	}
 	return allJobs, nil
 }
 
-func (repo *Repo) GetAllLocations(ctx context.Context) ([]AllLocations, error) {
+func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]AllLocations, error) {
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `WITH latest_locations AS (
 		SELECT DISTINCT ON (tagnumber) location, time, COUNT(location) OVER (PARTITION BY location) AS location_count
 		FROM locations
@@ -970,7 +1138,7 @@ func (repo *Repo) GetAllLocations(ctx context.Context) ([]AllLocations, error) {
 
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, errors.New("context error in GetAllLocations: " + ctx.Err().Error())
+			return nil, errors.New("context error: " + ctx.Err().Error())
 		}
 		var location AllLocations
 		if err := rows.Scan(
@@ -978,17 +1146,24 @@ func (repo *Repo) GetAllLocations(ctx context.Context) ([]AllLocations, error) {
 			&location.Timestamp,
 			&location.LocationCount,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error during row scan: %w", err)
 		}
 		allLocations = append(allLocations, location)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error during row iteration: %w", err)
+	}
+	if len(allLocations) == 0 {
+		return nil, nil
 	}
 	return allLocations, nil
 }
 
-func (repo *Repo) GetAllStatuses(ctx context.Context) ([]ClientStatus, error) {
+func (repo *SelectRepo) GetAllStatuses(ctx context.Context) ([]ClientStatus, error) {
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
 	const sqlQuery = `SELECT status, status_formatted, sort_order FROM static_client_statuses ORDER BY sort_order;`
 
 	var allStatuses []ClientStatus
@@ -999,7 +1174,7 @@ func (repo *Repo) GetAllStatuses(ctx context.Context) ([]ClientStatus, error) {
 	defer rows.Close()
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, errors.New("context error in GetAllStatuses: " + ctx.Err().Error())
+			return nil, errors.New("context error: " + ctx.Err().Error())
 		}
 		var status ClientStatus
 		if err := rows.Scan(
@@ -1007,12 +1182,15 @@ func (repo *Repo) GetAllStatuses(ctx context.Context) ([]ClientStatus, error) {
 			&status.StatusFormatted,
 			&status.SortOrder,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error during row scan: %w", err)
 		}
 		allStatuses = append(allStatuses, status)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error during row iteration: %w", err)
+	}
+	if len(allStatuses) == 0 {
+		return nil, nil
 	}
 	return allStatuses, nil
 }

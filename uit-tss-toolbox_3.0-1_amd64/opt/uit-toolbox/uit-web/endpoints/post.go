@@ -203,8 +203,12 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Insert note into database
-	dbConn := config.GetDatabaseConn()
-	insertRepo := database.NewRepo(dbConn)
+	insertRepo, err := database.NewUpdateRepo()
+	if err != nil {
+		log.HTTPError(req, "No database connection available for inserting new note")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
 	curTime := time.Now()
 	err = insertRepo.InsertNewNote(ctx, &curTime, &noteTypeTrimmed, &noteContentTrimmed)
 	if err != nil {
@@ -518,13 +522,12 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Establish DB connection before processing files
-	dbConn := config.GetDatabaseConn()
-	if dbConn == nil {
-		log.HTTPError(req, "No database connection available for InsertInventoryUpdateForm")
+	updateRepo, err := database.NewUpdateRepo()
+	if err != nil {
+		log.HTTPError(req, "No database connection available for inventory update")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	updateRepo := database.NewRepo(dbConn)
 
 	// Generate transaction UUID for inventory update and associated file uploads
 	transactionUUID, err := uuid.NewUUID()
@@ -828,9 +831,13 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
-	err := repo.TogglePinImage(ctx, &tagnumber, &uuid)
+	updateRepo, err := database.NewUpdateRepo()
 	if err != nil {
+		log.HTTPError(req, "No database connection available for TogglePinImage")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if err = updateRepo.TogglePinImage(ctx, &tagnumber, &uuid); err != nil {
 		log.HTTPError(req, "Failed to toggle pin image: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
@@ -878,9 +885,13 @@ func SetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
-	err = repo.SetClientBatteryHealth(ctx, &uuid, &body.BatteryHealth)
+	updateRepo, err := database.NewUpdateRepo()
 	if err != nil {
+		log.HTTPError(req, "No database connection available for SetClientBatteryHealth")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if err = updateRepo.SetClientBatteryHealth(ctx, &uuid, &body.BatteryHealth); err != nil {
 		log.HTTPError(req, "Failed to set client battery health: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
@@ -906,7 +917,6 @@ func SetAllJobs(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var clientJson database.AllJobs
-
 	if err := json.Unmarshal(clientBody, &clientJson); err != nil {
 		log.HTTPWarning(req, "Cannot decode SetAllJobs JSON: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -919,9 +929,13 @@ func SetAllJobs(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	repo := database.NewRepo(db)
-	err = repo.SetAllJobs(ctx, clientJson)
+	updateRepo, err := database.NewUpdateRepo()
 	if err != nil {
+		log.HTTPError(req, "No database connection available for SetAllJobs")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if err = updateRepo.SetAllOnlineClientJobs(ctx, &clientJson); err != nil {
 		log.HTTPError(req, "Failed to set all jobs: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
