@@ -32,6 +32,17 @@ var csvHeader = []string{
 	"Last Updated",
 }
 
+func VerifyRowsAffected(result sql.Result, expectedRowCount int64) error {
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rowsAffected != expectedRowCount {
+		return fmt.Errorf("unexpected number of rows affected: %d, expected exactly %d row(s)", rowsAffected, expectedRowCount)
+	}
+	return nil
+}
+
 func ToStringPtr(v sql.NullString) *string {
 	if v.Valid {
 		return &v.String

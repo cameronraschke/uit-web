@@ -756,18 +756,16 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		manifest.PrimaryImage = new(bool)
 		*manifest.PrimaryImage = false
 
-		err = updateRepo.UpdateClientImages(ctx, transactionUUID, manifest)
+		err = updateRepo.UpdateClientImages(ctx, transactionUUID, &manifest)
 		if err != nil {
 			log.HTTPError(req, "Failed to update inventory image data: "+err.Error()+" ("+fileHeader.Filename+")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		log.HTTPInfo(req, fmt.Sprintf("Uploaded file details - Name: %s, Size: %.2f MB, MIME Type: %s", fileName, float64(*manifest.FileSize)/1024/1024, mimeType)+" ("+fileHeader.Filename+")")
-		file.Close()
+		_ = file.Close()
 	}
 	// Update db
-
-	// No pointers here, pointers in repo
 	// tagnumber and broken bool are converted above
 	err = updateRepo.InsertInventoryUpdateForm(ctx, transactionUUID, &inventoryUpdate)
 	if err != nil {
