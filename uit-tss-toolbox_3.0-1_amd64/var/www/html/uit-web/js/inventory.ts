@@ -922,6 +922,7 @@ updateForm.addEventListener("submit", async (event) => {
 		formObj.room = getInputStringValue(roomUpdate);
     formObj.system_manufacturer = getInputStringValue(manufacturerUpdate);
     formObj.system_model = getInputStringValue(modelUpdate);
+		formObj.device_type = getInputStringValue(deviceTypeUpdate);
     formObj.department_name = getInputStringValue(departmentEl);
     formObj.ad_domain = getInputStringValue(adDomainUpdate);
 		formObj.property_custodian = getInputStringValue(propertyCustodianUpdate);
