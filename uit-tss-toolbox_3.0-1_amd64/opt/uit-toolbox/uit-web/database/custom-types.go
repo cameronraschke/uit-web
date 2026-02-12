@@ -121,6 +121,7 @@ type InventoryTableData struct {
 	LocationFormatted   *string    `json:"location_formatted"`
 	SystemManufacturer  *string    `json:"system_manufacturer"`
 	SystemModel         *string    `json:"system_model"`
+	DeviceType          *string    `json:"device_type"`
 	Department          *string    `json:"department_name"`
 	DepartmentFormatted *string    `json:"department_formatted"`
 	Domain              *string    `json:"ad_domain"`

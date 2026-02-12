@@ -221,19 +221,6 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	requestPath, err := middleware.GetRequestPathFromContext(ctx)
-	if err != nil {
-		log.HTTPWarning(req, "Error retrieving URL path from context for InsertInventoryUpdateForm")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	// Check for POST method and correct URL
-	if req.Method != http.MethodPost || requestPath != "/update_inventory" {
-		log.HTTPWarning(req, "Invalid method or URL for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
 
 	// Parse inventory data
 	if err := req.ParseMultipartForm(maxInventoryFormSizeBytes); err != nil {

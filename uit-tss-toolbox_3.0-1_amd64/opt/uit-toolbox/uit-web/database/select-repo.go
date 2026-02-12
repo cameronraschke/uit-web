@@ -720,7 +720,7 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 
 	const sqlQuery = `SELECT locations.tagnumber, locations.system_serial, locations.location, 
 		locationFormatting(locations.location) AS location_formatted,
-		hardware_data.system_manufacturer, hardware_data.system_model, locations.department_name, static_department_info.department_name_formatted,
+		hardware_data.system_manufacturer, hardware_data.system_model, hardware_data.device_type, locations.department_name, static_department_info.department_name_formatted,
 		locations.ad_domain, static_ad_domains.domain_name_formatted, client_health.os_installed, client_health.os_name, static_client_statuses.status_formatted,
 		locations.is_broken, locations.note, locations.time AS last_updated
 		FROM locations
@@ -735,15 +735,16 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 		AND ($3::text IS NULL OR locations.location = $3)
 		AND ($4::text IS NULL OR hardware_data.system_manufacturer = $4)
 		AND ($5::text IS NULL OR hardware_data.system_model = $5)
-		AND ($6::text IS NULL OR locations.department_name = $6)
-		AND ($7::text IS NULL OR locations.ad_domain = $7)
-		AND ($8::text IS NULL OR locations.client_status = $8)
-		AND ($9::boolean IS NULL OR locations.is_broken = $9)
+		AND ($6::text IS NULL OR hardware_data.device_type = $6)
+		AND ($7::text IS NULL OR locations.department_name = $7)
+		AND ($8::text IS NULL OR locations.ad_domain = $8)
+		AND ($9::text IS NULL OR locations.client_status = $9)
+		AND ($10::boolean IS NULL OR locations.is_broken = $10)
 		AND (
-			$10::boolean IS NULL OR 
+			$11::boolean IS NULL OR 
 			(
-				($10 = TRUE AND EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber))
-				OR ($10 = FALSE AND NOT EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber)))
+				($11 = TRUE AND EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber))
+				OR ($11 = FALSE AND NOT EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber)))
 			)
 		ORDER BY locations.time DESC;`
 
@@ -753,6 +754,7 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 		ToNullString(filterOptions.Location),
 		ToNullString(filterOptions.SystemManufacturer),
 		ToNullString(filterOptions.SystemModel),
+		ToNullString(filterOptions.DeviceType),
 		ToNullString(filterOptions.Department),
 		ToNullString(filterOptions.Domain),
 		ToNullString(filterOptions.Status),
@@ -777,6 +779,7 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 			&row.LocationFormatted,
 			&row.SystemManufacturer,
 			&row.SystemModel,
+			&row.DeviceType,
 			&row.Department,
 			&row.DepartmentFormatted,
 			&row.Domain,
