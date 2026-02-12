@@ -824,15 +824,7 @@ async function populateDeviceTypeSelect(selectEl: HTMLSelectElement, purgeCache:
 		if (!deviceTypes || !Array.isArray(deviceTypes)) {
 			throw new Error("Invalid device types data");
 		}
-		const defaultOption = document.createElement("option");
-		defaultOption.value = "";
-		defaultOption.textContent = "Device Type";
-		defaultOption.selected = true;
-		defaultOption.disabled = true;
-		selectEl.appendChild(defaultOption);
-		selectEl.addEventListener('click', () => {
-			defaultOption.disabled = true;
-		});
+		resetSelectElement(selectEl, "Device Type", false, undefined);
 		for (const deviceType of deviceTypes) {
 			if (!deviceType.device_type || !deviceType.device_type_formatted) {
 				console.warn("Skipping invalid device type entry:", deviceType);

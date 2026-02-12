@@ -195,7 +195,7 @@ func GetRequestQueryFromContext(ctx context.Context) (query *url.Values, err err
 	if !ok {
 		return nil, fmt.Errorf("invalid/empty URL query found in context: type assertion failed")
 	}
-	if q == nil || len(*q) == 0 {
+	if q == nil {
 		return nil, fmt.Errorf("nil URL query found in context")
 	}
 	queries := *q
