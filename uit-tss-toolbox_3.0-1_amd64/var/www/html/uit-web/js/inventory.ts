@@ -825,15 +825,39 @@ async function populateDeviceTypeSelect(selectEl: HTMLSelectElement, purgeCache:
 			throw new Error("Invalid device types data");
 		}
 		resetSelectElement(selectEl, "Device Type", false, undefined);
-		for (const deviceType of deviceTypes) {
+		const uniqueMetaCategores = new Set(deviceTypes.map(dev => dev.device_meta_category));
+		const sortedUniqueMetaCategories = [...uniqueMetaCategores].sort((a, b) => {
+			const aVal = a ? a.trim().toLowerCase() : '';
+			const bVal = b ? b.trim().toLowerCase() : '';
+			return aVal.localeCompare(bVal);
+		});
+		for (const device of sortedUniqueMetaCategories) {
+			const orgEl = document.createElement('optgroup');
+			orgEl.label = device ? device.trim() : 'N/A';
+			selectEl.appendChild(orgEl);
+		}
+
+		const sortedDeviceTypes = [...deviceTypes].sort((a, b) => {
+			const aVal = (a.device_type_formatted || "").trim().toLowerCase();
+			const bVal = (b.device_type_formatted || "").trim().toLowerCase();
+			return aVal.localeCompare(bVal);
+		});
+		for (const deviceType of sortedDeviceTypes) {
 			if (!deviceType.device_type || !deviceType.device_type_formatted) {
 				console.warn("Skipping invalid device type entry:", deviceType);
 				continue;
 			}
-			const option = document.createElement("option");
-			option.value = deviceType.device_type;
-			option.textContent = deviceType.device_type_formatted;
-			selectEl.appendChild(option);
+			const optionEl = document.createElement('option');
+			optionEl.value = deviceType.device_type.trim();
+			optionEl.textContent = deviceType.device_type_formatted.trim();
+			const parentOptGroup = Array.from(selectEl.children).find(child => {
+				return child instanceof HTMLOptGroupElement && child.label === (deviceType.device_meta_category ? deviceType.device_meta_category.trim() : 'N/A');
+			}) as HTMLOptGroupElement | undefined;
+			if (parentOptGroup) {
+				parentOptGroup.appendChild(optionEl);
+			} else {
+				selectEl.appendChild(optionEl);
+			}
 		}
 	} catch (error) {
 		console.error("Error populating device type select:", error);
