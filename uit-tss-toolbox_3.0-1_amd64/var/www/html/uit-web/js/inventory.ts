@@ -9,6 +9,7 @@ type InventoryForm = {
 	room: string | null;
 	system_manufacturer: string | null;
 	system_model: string | null;
+	device_type: string | null;
 	department_name: string | null;
 	ad_domain: string | null;
 	property_custodian: string | null;
@@ -70,6 +71,7 @@ const allTagsDatalist = document.getElementById('inventory-tag-suggestions') as 
 const advSearchDepartment = document.getElementById('adv-search-department') as HTMLSelectElement;
 const advSearchDomain = document.getElementById('adv-search-ad-domain') as HTMLSelectElement;
 const advSearchStatus = document.getElementById('adv-search-status') as HTMLSelectElement;
+const advSearchDeviceType = document.getElementById('adv-search-device-type') as HTMLSelectElement;
 const csvDownloadButton = document.getElementById('adv-search-download-csv') as HTMLButtonElement;
 const printCheckoutLink = document.getElementById('print-checkout-link') as HTMLElement;
 const printCheckoutContainer = document.getElementById('print-checkout-container') as HTMLElement;
@@ -82,6 +84,7 @@ const buildingUpdate = updateForm.querySelector("#building") as HTMLInputElement
 const roomUpdate = updateForm.querySelector("#room") as HTMLInputElement;
 const manufacturerUpdate = updateForm.querySelector("#system_manufacturer") as HTMLInputElement;
 const modelUpdate = updateForm.querySelector("#system_model") as HTMLInputElement;
+const deviceTypeUpdate = updateForm.querySelector("#device_type") as HTMLSelectElement;
 const departmentEl = document.getElementById('department_name') as HTMLSelectElement;
 const adDomainUpdate = updateForm.querySelector("#ad_domain") as HTMLSelectElement;
 const propertyCustodianUpdate = updateForm.querySelector("#property_custodian") as HTMLInputElement;
@@ -113,6 +116,7 @@ const allInventoryUpdateFields = [
 	roomUpdate,
 	manufacturerUpdate,
 	modelUpdate,
+	deviceTypeUpdate,
 	departmentEl,
 	adDomainUpdate,
 	propertyCustodianUpdate,
@@ -489,6 +493,15 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 
 	resetInputElement(modelUpdate, "System Model", false, "empty-input");
 
+	resetSelectElement(deviceTypeUpdate, "Device Type", false, "empty-input");
+	try {
+		await populateDeviceTypeSelect(deviceTypeUpdate);
+		deviceTypeUpdate.classList.add("empty-input");
+	} catch(e) {
+		const errorMessage = e instanceof Error ? e.message : String(e);
+		console.error(`Could not fetch all device types: ${errorMessage}`)
+	}
+
 	resetSelectElement(departmentEl, "Select Department", false, "empty-required-input");
 	try { 
 		await populateDepartmentSelect(departmentEl)
@@ -656,6 +669,13 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				modelUpdate.classList.add("empty-input");
 			}
 
+			if (locationFormData.device_type) {
+				deviceTypeUpdate.value = locationFormData.device_type.trim();
+				deviceTypeUpdate.classList.remove("empty-input");
+			} else {
+				deviceTypeUpdate.classList.add("empty-input");
+			}
+
 			if (locationFormData.department_name) {
 				departmentEl.value = locationFormData.department_name.trim();
 				departmentEl.classList.remove("empty-required-input");
@@ -771,6 +791,63 @@ async function fetchDepartments(purgeCache: boolean = false): Promise<Array<Depa
 	}
 }
 
+async function fetchAllDeviceTypes(purgeCache: boolean = false): Promise<DeviceType[] | []> {
+	const cached = sessionStorage.getItem("uit_device_types_cache");
+
+	try {
+		if (cached && !purgeCache) {
+			const cacheEntry: DeviceTypeCache = JSON.parse(cached);
+			if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.deviceTypes)) {
+				console.log("Loaded device types from cache");
+				return cacheEntry.deviceTypes;
+			}
+		}
+		const allDeviceTypes: DeviceType[] = await fetchData(`/api/all_device_types`, false);
+		if (!Array.isArray(allDeviceTypes)) {
+			throw new Error("returned data is not an array.");
+		}
+		const cacheEntry: DeviceTypeCache = {
+			deviceTypes: allDeviceTypes,
+			timestamp: Date.now()
+		};
+		sessionStorage.setItem("uit_device_types_cache", JSON.stringify(cacheEntry));
+		return allDeviceTypes;
+	} catch(e) {
+		console.error(`Error fetching all device types: ${e}`);
+		return [];
+	}
+}
+
+async function populateDeviceTypeSelect(selectEl: HTMLSelectElement, purgeCache: boolean = false): Promise<void> {
+	try {
+		const deviceTypes = await fetchAllDeviceTypes(purgeCache);
+		if (!deviceTypes || !Array.isArray(deviceTypes)) {
+			throw new Error("Invalid device types data");
+		}
+		const defaultOption = document.createElement("option");
+		defaultOption.value = "";
+		defaultOption.textContent = "Device Type";
+		defaultOption.selected = true;
+		defaultOption.disabled = true;
+		selectEl.appendChild(defaultOption);
+		selectEl.addEventListener('click', () => {
+			defaultOption.disabled = true;
+		});
+		for (const deviceType of deviceTypes) {
+			if (!deviceType.device_type || !deviceType.device_type_formatted) {
+				console.warn("Skipping invalid device type entry:", deviceType);
+				continue;
+			}
+			const option = document.createElement("option");
+			option.value = deviceType.device_type;
+			option.textContent = deviceType.device_type_formatted;
+			selectEl.appendChild(option);
+		}
+	} catch (error) {
+		console.error("Error populating device type select:", error);
+	}
+}
+
 async function initializeInventoryPage() {
 	const urlParams = new URLSearchParams(window.location.search);
 
@@ -787,7 +864,8 @@ async function initializeInventoryPage() {
 			populateDepartmentSelect(advSearchDepartment, true),
 			populateManufacturerSelect(filterManufacturer, filterManufacturerReset, true).then(() => populateModelSelect(filterModel, filterModelReset, true)),
 			populateDomainSelect(advSearchDomain, true),
-			populateStatusSelect(advSearchStatus)
+			populateStatusSelect(advSearchStatus),
+			populateDeviceTypeSelect(advSearchDeviceType, true)
 		]);
 
 		for (const param of advSearchParams) {

@@ -56,6 +56,8 @@ const filterBroken = document.getElementById('adv-search-is-broken') as HTMLSele
 const filterBrokenReset = document.getElementById('adv-search-is-broken-reset') as HTMLElement;
 const filterHasImages = document.getElementById('adv-search-has-images') as HTMLSelectElement;
 const filterHasImagesReset = document.getElementById('adv-search-has-images-reset') as HTMLElement;
+const filterDeviceType = document.getElementById('adv-search-device-type') as HTMLSelectElement;
+const filterDeviceTypeReset = document.getElementById('adv-search-device-type-reset') as HTMLElement;
 
 const advSearchParams: AdvSearchFilterParams[] = [
 	{ inputElement: advSearchLocation, resetElement: advSearchLocationReset, paramString: 'location' },
@@ -65,7 +67,8 @@ const advSearchParams: AdvSearchFilterParams[] = [
 	{ inputElement: filterDomain, resetElement: filterDomainReset, paramString: 'ad_domain' },
 	{ inputElement: filterStatus, resetElement: filterStatusReset, paramString: 'status' },
 	{ inputElement: filterBroken, resetElement: filterBrokenReset, paramString: 'is_broken' },
-	{ inputElement: filterHasImages, resetElement: filterHasImagesReset, paramString: 'has_images' }
+	{ inputElement: filterHasImages, resetElement: filterHasImagesReset, paramString: 'has_images' },
+	{ inputElement: filterDeviceType, resetElement: filterDeviceTypeReset, paramString: 'device_type' }
 ];
 
 let allModelsData: string[] = [];

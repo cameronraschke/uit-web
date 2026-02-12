@@ -148,15 +148,16 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, tra
 
 	// Insert/update hardware_data table
 	const hardwareDataSql = `INSERT INTO hardware_data
-		(time, transaction_uuid, tagnumber, system_manufacturer, system_model) 
-		VALUES (CURRENT_TIMESTAMP, $1, $2, $3, $4)
+		(time, transaction_uuid, tagnumber, system_manufacturer, system_model, device_type) 
+		VALUES (CURRENT_TIMESTAMP, $1, $2, $3, $4, $5)
 		ON CONFLICT (tagnumber)
 		DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
 			transaction_uuid = EXCLUDED.transaction_uuid,
 			tagnumber = EXCLUDED.tagnumber,
 			system_manufacturer = EXCLUDED.system_manufacturer,
-			system_model = EXCLUDED.system_model;`
+			system_model = EXCLUDED.system_model,
+			device_type = EXCLUDED.device_type;`
 
 	var hardwareDataResult sql.Result
 	hardwareDataResult, err = tx.ExecContext(ctx, hardwareDataSql,
@@ -164,6 +165,7 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, tra
 		ToNullInt64(inventoryUpdateForm.Tagnumber),
 		ToNullString(inventoryUpdateForm.SystemManufacturer),
 		ToNullString(inventoryUpdateForm.SystemModel),
+		ToNullString(inventoryUpdateForm.DeviceType),
 	)
 	if err != nil {
 		return fmt.Errorf("error inserting/updating hardware data: %w", err)

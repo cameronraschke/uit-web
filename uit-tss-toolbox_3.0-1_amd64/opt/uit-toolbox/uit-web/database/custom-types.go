@@ -78,6 +78,7 @@ type InventoryUpdateForm struct {
 	Room               *string    `json:"room"`
 	SystemManufacturer *string    `json:"system_manufacturer"`
 	SystemModel        *string    `json:"system_model"`
+	DeviceType         *string    `json:"device_type"`
 	Department         *string    `json:"department_name"`
 	Domain             *string    `json:"ad_domain"`
 	PropertyCustodian  *string    `json:"property_custodian"`
