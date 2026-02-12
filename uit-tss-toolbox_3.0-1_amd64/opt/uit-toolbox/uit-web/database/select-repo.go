@@ -34,6 +34,7 @@ type Select interface {
 	GetAllJobs(ctx context.Context) ([]AllJobs, error)
 	GetAllLocations(ctx context.Context) ([]AllLocations, error)
 	GetAllStatuses(ctx context.Context) ([]ClientStatus, error)
+	GetAllDeviceTypes(ctx context.Context) ([]DeviceType, error)
 }
 
 type SelectRepo struct {
@@ -1177,4 +1178,37 @@ func (repo *SelectRepo) GetAllStatuses(ctx context.Context) ([]ClientStatus, err
 		return nil, nil
 	}
 	return allStatuses, nil
+}
+
+func (repo *SelectRepo) GetAllDeviceTypes(ctx context.Context) ([]DeviceType, error) {
+	const sqlQuery = `SELECT device_type, device_type_formatted, device_meta_category, sort_order FROM static_device_types ORDER BY sort_order;`
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
+	if err != nil {
+		return nil, fmt.Errorf("error during query execution: %w", err)
+	}
+	defer rows.Close()
+
+	var allDeviceTypes []DeviceType
+	for rows.Next() {
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("context error: %w", ctx.Err())
+		}
+		var deviceType DeviceType
+		if err := rows.Scan(
+			&deviceType.DeviceType,
+			&deviceType.DeviceTypeFormatted,
+			&deviceType.DeviceMetaCategory,
+			&deviceType.SortOrder,
+		); err != nil {
+			return nil, fmt.Errorf("error during row scan: %w", err)
+		}
+		allDeviceTypes = append(allDeviceTypes, deviceType)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during row iteration: %w", err)
+	}
+	if len(allDeviceTypes) == 0 {
+		return nil, nil
+	}
+	return allDeviceTypes, nil
 }

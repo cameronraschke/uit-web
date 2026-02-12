@@ -12,6 +12,18 @@ type AuthStatusResponse = {
 	time: string | null;
 };
 
+type DeviceType = {
+	device_type: string | null;
+	device_type_formatted: string | null;
+	device_meta_category: string | null;
+	sort_order: string | null;
+};
+
+type DeviceTypeCache = {
+	deviceTypes: DeviceType[] | [];
+	timestamp: number;
+};
+
 const inputCSSClasses = ["empty-input", "empty-required-input", "changed-input", "readonly-input"];
 
 function truncateString(inputStr: string, maxLength: number): { truncatedString: string, isTruncated: boolean } {
@@ -378,6 +390,54 @@ function updateURLFromFilters(): void {
 	for (const param of advSearchParams) {
 		if (!param.inputElement || !param.paramString) continue;
 		setURLParameter(param.paramString, param.inputElement.value ? param.inputElement.value : null);
+	}
+}
+
+async function fetchAllDeviceTypes(purgeCache: boolean = false): Promise<DeviceType[] | []> {
+	const cached = sessionStorage.getItem("uit_device_types_cache");
+
+	try {
+		if (cached && !purgeCache) {
+			const cacheEntry: DeviceTypeCache = JSON.parse(cached);
+			if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.deviceTypes)) {
+				console.log("Loaded device types from cache");
+				return cacheEntry.deviceTypes;
+			}
+		}
+		const allDeviceTypes: DeviceType[] = await fetchData(`/api/all_device_types`, false);
+		if (!Array.isArray(allDeviceTypes)) {
+			throw new Error("returned data is not an array.");
+		}
+		const cacheEntry: DeviceTypeCache = {
+			deviceTypes: allDeviceTypes,
+			timestamp: Date.now()
+		};
+		sessionStorage.setItem("uit_device_types_cache", JSON.stringify(cacheEntry));
+		return allDeviceTypes;
+	} catch(e) {
+		console.error(`Error fetching all device types: ${e}`);
+		return [];
+	}
+}
+
+async function populateDeviceTypeSelect(selectEl: HTMLSelectElement, purgeCache: boolean = false): Promise<void> {
+	try {
+		const deviceTypes = await fetchAllDeviceTypes(purgeCache);
+		if (!deviceTypes || !Array.isArray(deviceTypes)) {
+			throw new Error("Invalid device types data");
+		}
+		for (const deviceType of deviceTypes) {
+			if (!deviceType.device_type || !deviceType.device_type_formatted) {
+				console.warn("Skipping invalid device type entry:", deviceType);
+				continue;
+			}
+			const option = document.createElement("option");
+			option.value = deviceType.device_type;
+			option.textContent = deviceType.device_type_formatted;
+			selectEl.appendChild(option);
+		}
+	} catch (error) {
+		console.error("Error populating device type select:", error);
 	}
 }
 

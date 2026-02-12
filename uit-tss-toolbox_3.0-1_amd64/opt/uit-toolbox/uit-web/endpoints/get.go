@@ -965,3 +965,23 @@ func GetAllStatuses(w http.ResponseWriter, req *http.Request) {
 	}
 	middleware.WriteJson(w, http.StatusOK, allStatuses)
 }
+
+func GetAllDeviceTypes(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx)
+
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.HTTPWarning(req, "Error creating select repository in GetAllDeviceTypes: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	allDeviceTypes, err := db.GetAllDeviceTypes(ctx)
+	if err != nil {
+		log.HTTPWarning(req, "Query error in GetAllDeviceTypes: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, allDeviceTypes)
+}
