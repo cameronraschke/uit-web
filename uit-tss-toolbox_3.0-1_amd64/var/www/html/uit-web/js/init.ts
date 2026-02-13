@@ -16,7 +16,7 @@ type DeviceType = {
 	device_type: string | null;
 	device_type_formatted: string | null;
 	device_meta_category: string | null;
-	sort_order: string | null;
+	device_type_count: number | null;
 };
 
 type DeviceTypeCache = {

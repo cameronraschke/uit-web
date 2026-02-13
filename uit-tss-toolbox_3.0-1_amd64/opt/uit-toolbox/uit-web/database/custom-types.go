@@ -279,5 +279,6 @@ type DeviceType struct {
 	DeviceType          *string `json:"device_type"`
 	DeviceTypeFormatted *string `json:"device_type_formatted"`
 	DeviceMetaCategory  *string `json:"device_meta_category"`
+	DeviceTypeCount     *int64  `json:"device_type_count"`
 	SortOrder           *int64  `json:"sort_order"`
 }

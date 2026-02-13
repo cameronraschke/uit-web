@@ -1191,7 +1191,16 @@ func (repo *SelectRepo) GetAllStatuses(ctx context.Context) ([]ClientStatus, err
 }
 
 func (repo *SelectRepo) GetAllDeviceTypes(ctx context.Context) ([]DeviceType, error) {
-	const sqlQuery = `SELECT device_type, device_type_formatted, device_meta_category, sort_order FROM static_device_types ORDER BY sort_order;`
+	const sqlQuery = `SELECT static_device_types.device_type, 
+			static_device_types.device_type_formatted, 
+			static_device_types.device_meta_category, 
+			COUNT(hardware_data.device_type) AS "device_type_count"
+		FROM static_device_types 
+		LEFT JOIN hardware_data ON static_device_types.device_type = hardware_data.device_type
+		GROUP BY static_device_types.device_type, 
+			static_device_types.device_type_formatted, 
+			static_device_types.device_meta_category, 
+			static_device_types.sort_order;`
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error during query execution: %w", err)
@@ -1208,7 +1217,7 @@ func (repo *SelectRepo) GetAllDeviceTypes(ctx context.Context) ([]DeviceType, er
 			&deviceType.DeviceType,
 			&deviceType.DeviceTypeFormatted,
 			&deviceType.DeviceMetaCategory,
-			&deviceType.SortOrder,
+			&deviceType.DeviceTypeCount,
 		); err != nil {
 			return nil, fmt.Errorf("error during row scan: %w", err)
 		}

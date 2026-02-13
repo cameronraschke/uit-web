@@ -565,7 +565,9 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		diskRemovedUpdate.append(op3);
 	}
 
-	resetInputElement(lastHardwareCheckUpdate, "Last Hardware Check", false, "empty-input");
+	removeCSSClasses(lastHardwareCheckUpdate);
+	lastHardwareCheckUpdate.classList.add("empty-input");
+	lastHardwareCheckUpdate.value = "";
 
 	resetSelectElement(clientStatusUpdate, "Select Client Status", false, "empty-required-input");
 	try { 
@@ -885,7 +887,7 @@ async function populateDeviceTypeSelect(selectEl: HTMLSelectElement, purgeCache:
 			}
 			const optionEl = document.createElement('option');
 			optionEl.value = deviceType.device_type.trim();
-			optionEl.textContent = deviceType.device_type_formatted.trim();
+			optionEl.textContent = (deviceType.device_type_formatted.trim()) + (deviceType.device_type_count !== null ? ` (${deviceType.device_type_count})` : '');
 			const parentOptGroup = Array.from(selectEl.children).find(child => {
 				return child instanceof HTMLOptGroupElement && child.label === (deviceType.device_meta_category ? deviceType.device_meta_category.trim() : 'N/A');
 			}) as HTMLOptGroupElement | undefined;
