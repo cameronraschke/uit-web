@@ -2,12 +2,15 @@ package endpoints
 
 import (
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -126,9 +129,9 @@ func GetHardwareIdentifiers(w http.ResponseWriter, req *http.Request) {
 	}
 	hardwareData, err := db.GetHardwareIdentifiers(ctx, tagnumber)
 	if err != nil {
-			log.HTTPWarning(req, "Query error in GetHardwareIdentifiers: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
+		log.HTTPWarning(req, "Query error in GetHardwareIdentifiers: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 	middleware.WriteJson(w, http.StatusOK, hardwareData)
 }
@@ -158,13 +161,10 @@ func GetBiosData(w http.ResponseWriter, req *http.Request) {
 
 	biosData, err := db.GetBiosData(ctx, tagnumber)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetBiosData: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetBiosData: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
-
 	middleware.WriteJson(w, http.StatusOK, biosData)
 }
 
@@ -186,20 +186,17 @@ func GetOSData(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.HTTPWarning(req, "Error creating select repository in GetBiosData: "+err.Error())
+		log.HTTPWarning(req, "Error creating select repository in GetOSData: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	osData, err := db.GetOsData(ctx, tagnumber)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.Info("Query error in GetOSData: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetOSData: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
-
 	middleware.WriteJson(w, http.StatusOK, osData)
 }
 
@@ -221,18 +218,16 @@ func GetClientQueuedJobs(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.HTTPWarning(req, "Error creating select repository in GetBiosData: "+err.Error())
+		log.HTTPWarning(req, "Error creating select repository in GetClientQueuedJobs: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	activeJobs, err := db.GetActiveJobs(ctx, tagnumber)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetClientQueuedJobs: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetClientQueuedJobs: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 
 	middleware.WriteJson(w, http.StatusOK, activeJobs)
@@ -263,13 +258,10 @@ func GetClientAvailableJobs(w http.ResponseWriter, req *http.Request) {
 
 	availableJobs, err := db.GetAvailableJobs(ctx, tagnumber)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetClientAvailableJobs: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetClientAvailableJobs: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
-
 	middleware.WriteJson(w, http.StatusOK, availableJobs)
 }
 
@@ -297,11 +289,9 @@ func GetNotes(w http.ResponseWriter, req *http.Request) {
 
 	notesData, err := db.GetNotes(ctx, &noteType)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetNotes: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetNotes: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 	middleware.WriteJson(w, http.StatusOK, notesData)
 }
@@ -334,11 +324,9 @@ func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 	}
 	locationData, err := db.GetLocationFormData(ctx, tagnumber, &serial)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetLocationFormData: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetLocationFormData: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 	middleware.WriteJson(w, http.StatusOK, locationData)
 }
@@ -355,6 +343,11 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 	tagnumber, err := ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
 	if err != nil {
 		log.HTTPWarning(req, "No or invalid tagnumber provided in request to GetClientImagesManifest: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if tagnumber == nil {
+		log.HTTPWarning(req, "No tagnumber provided in request to GetClientImagesManifest")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -510,11 +503,17 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	imageUUID := strings.TrimSpace(*uuidInURLQuery)
-	imageUUID = strings.TrimSuffix(imageUUID, ".jpeg")
-	imageUUID = strings.TrimSuffix(imageUUID, ".png")
-	imageUUID = strings.TrimSuffix(imageUUID, ".mp4")
-	imageUUID = strings.TrimSuffix(imageUUID, ".mov")
+	imageUUID := strings.TrimSpace(strings.ToLower(*uuidInURLQuery))
+	for ext := range acceptedImageExtensionsAndMimeTypes {
+		if filepath.Ext(imageUUID) == ext {
+			imageUUID = strings.TrimSuffix(imageUUID, ext)
+		}
+	}
+	for ext := range acceptedVideoExtensionsAndMimeTypes {
+		if filepath.Ext(imageUUID) == ext {
+			imageUUID = strings.TrimSuffix(imageUUID, ext)
+		}
+	}
 	if imageUUID == "" {
 		log.HTTPWarning(req, "No image path provided in request")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -531,7 +530,7 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 	log.HTTPDebug(req, "Serving image request for: "+imageUUID)
 	imageManifest, err := db.GetClientImageFilePathFromUUID(ctx, &imageUUID)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			log.HTTPInfo(req, "Image not found from UUID lookup: "+imageUUID+" "+err.Error())
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
@@ -589,11 +588,9 @@ func GetJobQueueTable(w http.ResponseWriter, req *http.Request) {
 
 	jobQueueTable, err := db.GetJobQueueTable(ctx)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetJobQueueTable: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetJobQueueTable: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 
 	middleware.WriteJson(w, http.StatusOK, jobQueueTable)
@@ -612,11 +609,9 @@ func GetJobQueueOverview(w http.ResponseWriter, req *http.Request) {
 
 	jobQueueOverview, err := db.GetJobQueueOverview(ctx)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetJobQueueOverview: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetJobQueueOverview: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 
 	middleware.WriteJson(w, http.StatusOK, jobQueueOverview)
@@ -635,11 +630,9 @@ func GetDashboardInventorySummary(w http.ResponseWriter, req *http.Request) {
 
 	inventorySummary, err := db.GetDashboardInventorySummary(ctx)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetDashboardInventorySummary: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetDashboardInventorySummary: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 	middleware.WriteJson(w, http.StatusOK, inventorySummary)
 }
@@ -657,7 +650,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if requestQueries == nil || len(*requestQueries) == 0 {
-		requestQueries = &url.Values{}
+		requestQueries = new(url.Values)
 	}
 
 	filterOptions := &database.InventoryAdvSearchOptions{
@@ -685,28 +678,26 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 
 	inventoryTableData, err := db.GetInventoryTableData(ctx, filterOptions)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetInventoryTableData: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetInventoryTableData: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 	if requestQueries.Get("csv") == "true" {
 		log.HTTPDebug(req, "CSV file requested in GetInventoryTableData")
-		csvData, err := database.ConvertInventoryTableDataToCSV(ctx, inventoryTableData)
+		csvBytes, err := database.ConvertInventoryTableDataToCSV(ctx, inventoryTableData)
 		if err != nil {
 			log.HTTPWarning(req, "Error converting inventory table data to CSV in GetInventoryTableData: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		if csvData == nil || csvData.Len() == 0 {
+		if csvBytes == nil || csvBytes.Len() == 0 {
 			log.HTTPWarning(req, "No CSV data generated in GetInventoryTableData")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
-		w.Header().Set("Content-Disposition", "attachment; filename=\"inventory_table_data-"+time.Now().Format("01-02-2006-150405")+".csv\"")
-		if _, err = w.Write(csvData.Bytes()); err != nil {
+		w.Header().Set("Content-Disposition", "attachment; filename=\"inventory_table_data-"+time.Now().Format("01-02-2006-150405-MST")+".csv\"")
+		if _, err = w.Write(csvBytes.Bytes()); err != nil {
 			log.HTTPWarning(req, "Error writing CSV data to response: "+err.Error())
 		}
 		return
@@ -731,30 +722,12 @@ func GetClientConfig(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	clientConfigMap := map[string]string{
-		"UIT_CLIENT_DB_USER":   clientConfig.UIT_CLIENT_DB_USER,
-		"UIT_CLIENT_DB_PASSWD": clientConfig.UIT_CLIENT_DB_PASSWD,
-		"UIT_CLIENT_DB_NAME":   clientConfig.UIT_CLIENT_DB_NAME,
-		"UIT_CLIENT_DB_HOST":   clientConfig.UIT_CLIENT_DB_HOST,
-		"UIT_CLIENT_DB_PORT":   clientConfig.UIT_CLIENT_DB_PORT,
-		"UIT_CLIENT_NTP_HOST":  clientConfig.UIT_CLIENT_NTP_HOST,
-		"UIT_CLIENT_PING_HOST": clientConfig.UIT_CLIENT_PING_HOST,
-		"UIT_SERVER_HOSTNAME":  clientConfig.UIT_SERVER_HOSTNAME,
-		"UIT_WEB_HTTP_HOST":    clientConfig.UIT_WEB_HTTP_HOST,
-		"UIT_WEB_HTTP_PORT":    clientConfig.UIT_WEB_HTTP_PORT,
-		"UIT_WEB_HTTPS_HOST":   clientConfig.UIT_WEB_HTTPS_HOST,
-		"UIT_WEB_HTTPS_PORT":   clientConfig.UIT_WEB_HTTPS_PORT,
+	if err := json.NewEncoder(w).Encode(clientConfig); err != nil {
+		log.HTTPWarning(req, "Error encoding client config to JSON in GetClientConfig: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
-
-	var response string
-	for k, v := range clientConfigMap {
-		if v == "" {
-			log.HTTPWarning(req, "Client config value for '"+k+"' is empty: using default empty string")
-		}
-		response += fmt.Sprintf("%s=%s\n", k, v)
-	}
-
-	middleware.WriteJson(w, http.StatusOK, response)
+	middleware.WriteJson(w, http.StatusOK, clientConfig)
 }
 
 func GetManufacturersAndModels(w http.ResponseWriter, req *http.Request) {
@@ -770,11 +743,9 @@ func GetManufacturersAndModels(w http.ResponseWriter, req *http.Request) {
 
 	manufacturersAndModels, err := db.GetManufacturersAndModels(ctx)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetManufacturersAndModels: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetManufacturersAndModels: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 	middleware.WriteJson(w, http.StatusOK, manufacturersAndModels)
 }
@@ -804,11 +775,9 @@ func GetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 
 	batteryHealthData, err := db.GetClientBatteryHealth(ctx, tagnumber)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetClientBatteryHealth: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetClientBatteryHealth: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 
 	middleware.WriteJson(w, http.StatusOK, batteryHealthData)
@@ -827,11 +796,9 @@ func GetDomains(w http.ResponseWriter, req *http.Request) {
 
 	domains, err := db.GetDomains(ctx)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetDomains: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetDomains: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 	middleware.WriteJson(w, http.StatusOK, domains)
 }
@@ -849,11 +816,9 @@ func GetDepartments(w http.ResponseWriter, req *http.Request) {
 
 	departments, err := db.GetDepartments(ctx)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetDepartments: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetDepartments: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 	middleware.WriteJson(w, http.StatusOK, departments)
 }
@@ -888,11 +853,9 @@ func GetBatteryStandardDeviation(w http.ResponseWriter, req *http.Request) {
 
 	batteryStdDevData, err := db.GetBatteryStandardDeviation(ctx)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetBatteryStandardDeviation: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetBatteryStandardDeviation: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 	middleware.WriteJson(w, http.StatusOK, batteryStdDevData)
 }
@@ -910,11 +873,9 @@ func GetAllJobs(w http.ResponseWriter, req *http.Request) {
 
 	allJobs, err := db.GetAllJobs(ctx)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetAllJobs: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetAllJobs: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 	middleware.WriteJson(w, http.StatusOK, allJobs)
 }
@@ -932,11 +893,9 @@ func GetAllLocations(w http.ResponseWriter, req *http.Request) {
 
 	allLocations, err := db.GetAllLocations(ctx)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetAllLocations: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetAllLocations: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 	middleware.WriteJson(w, http.StatusOK, allLocations)
 }
@@ -953,11 +912,9 @@ func GetAllStatuses(w http.ResponseWriter, req *http.Request) {
 	}
 	allStatuses, err := db.GetAllStatuses(ctx)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetAllStatuses: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetAllStatuses: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 	middleware.WriteJson(w, http.StatusOK, allStatuses)
 }

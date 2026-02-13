@@ -28,9 +28,9 @@ type UpdateRepo struct {
 }
 
 func NewUpdateRepo() (Update, error) {
-	db := config.GetDatabaseConn()
-	if db == nil {
-		return nil, fmt.Errorf("db connection is nil in NewUpdateRepo")
+	db, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("error getting database connection in NewUpdateRepo: %w", err)
 	}
 	return &UpdateRepo{DB: db}, nil
 }

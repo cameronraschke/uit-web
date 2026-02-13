@@ -344,15 +344,18 @@ func checkValidIP(ipStr string) (ipAddr netip.Addr, isValid bool, isLoopback boo
 }
 
 func CheckAuthCredentials(ctx context.Context, username, password string) (bool, error) {
-	db := config.GetDatabaseConn()
-	if db == nil {
-		return false, errors.New("database is not initialized")
+	if strings.TrimSpace(username) == "" || strings.TrimSpace(password) == "" {
+		return false, errors.New("username or password is empty")
+	}
+
+	db, err := config.GetDatabaseConn()
+	if err != nil {
+		return false, fmt.Errorf("error getting database connection in CheckAuthCredentials: %w", err)
 	}
 
 	sqlCode := `SELECT password FROM logins WHERE username = $1 LIMIT 1;`
 	var dbBcryptHash sql.NullString
-	err := db.QueryRowContext(ctx, sqlCode, username).Scan(&dbBcryptHash)
-	if err != nil {
+	if err := db.QueryRowContext(ctx, sqlCode, username).Scan(&dbBcryptHash); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			buffer1 := make([]byte, 32)
 			_, _ = rand.Read(buffer1)
@@ -363,15 +366,13 @@ func CheckAuthCredentials(ctx context.Context, username, password string) (bool,
 			bcrypt.CompareHashAndPassword(pass1, pass2)
 			return false, errors.New("invalid credentials")
 		}
-
-		return false, errors.New("query error")
+		return false, fmt.Errorf("query error in CheckAuthCredentials: %w", err)
 	}
 
-	// Compare supplied (already SHA256 hex or plaintext per your chosen model) versus stored bcrypt
+	// Compare plaintext password versus stored bcrypt
 	if bcrypt.CompareHashAndPassword([]byte(dbBcryptHash.String), []byte(password)) != nil {
 		return false, errors.New("invalid credentials")
 	}
-
 	return true, nil
 }
 
@@ -386,9 +387,6 @@ func IsPrintableASCII(b []byte) bool {
 }
 
 func IsASCIIStringPrintable(s string) bool {
-	// if s == "" {
-	// 	return false
-	// }
 	if !utf8.ValidString(s) {
 		return false
 	}

@@ -14,22 +14,28 @@ import (
 	"time"
 )
 
+const (
+	basicTTL  = 20 * time.Minute
+	bearerTTL = 20 * time.Minute
+	csrfTTL   = 20 * time.Minute
+)
+
 // Auth for web users
-func GetAdminCredentials() (*string, *string, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return nil, nil, errors.New("app state is not initialized")
+func GetAdminCredentials() (string, string, error) {
+	appState, err := GetAppState()
+	if err != nil {
+		return "", "", fmt.Errorf("error getting app state in GetAdminCredentials: %w", err)
 	}
 
 	adminUsername := "admin"
 	adminPasswd := strings.TrimSpace(appState.AppConfig.Load().UIT_WEB_USER_DEFAULT_PASSWD)
-	return &adminUsername, &adminPasswd, nil
+	return adminUsername, adminPasswd, nil
 }
 
 // Auth session management
 func GetAuthSessions() map[string]AuthSession {
-	appState := GetAppState()
-	if appState == nil {
+	appState, err := GetAppState()
+	if err != nil {
 		return nil
 	}
 	authSessionsMap := make(map[string]AuthSession)
@@ -48,18 +54,12 @@ func CreateAuthSession(ipAddress netip.Addr) (string, string, string, string, er
 	if ipAddress == (netip.Addr{}) {
 		return "", "", "", "", errors.New("empty IP address")
 	}
-	appState := GetAppState()
-	if appState == nil {
-		return "", "", "", "", errors.New("app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return "", "", "", "", fmt.Errorf("error getting app state in CreateAuthSession: %w", err)
 	}
 
 	curTime := time.Now()
-
-	const (
-		basicTTL  = 20 * time.Minute
-		bearerTTL = 20 * time.Minute
-		csrfTTL   = 20 * time.Minute
-	)
 
 	sessionID, err := GenerateSessionToken(32)
 	if err != nil {
@@ -141,8 +141,8 @@ func CreateAuthSession(ipAddress netip.Addr) (string, string, string, string, er
 }
 
 func DeleteAuthSession(sessionID string) {
-	appState := GetAppState()
-	if appState == nil {
+	appState, err := GetAppState()
+	if err != nil {
 		return
 	}
 	if _, ok := appState.AuthMap.LoadAndDelete(sessionID); ok {
@@ -155,8 +155,8 @@ func DeleteAuthSession(sessionID string) {
 
 func ClearExpiredAuthSessions() {
 	log := GetLogger()
-	appState := GetAppState()
-	if appState == nil {
+	appState, err := GetAppState()
+	if err != nil {
 		return
 	}
 	curTime := time.Now()
@@ -175,16 +175,16 @@ func ClearExpiredAuthSessions() {
 }
 
 func GetAuthSessionCount() int64 {
-	appState := GetAppState()
-	if appState == nil {
+	appState, err := GetAppState()
+	if err != nil {
 		return 0
 	}
 	return appState.AuthMapEntryCount.Load()
 }
 
 func RefreshAndGetAuthSessionCount() int64 {
-	appState := GetAppState()
-	if appState == nil {
+	appState, err := GetAppState()
+	if err != nil {
 		return 0
 	}
 	var entries int64
@@ -200,9 +200,9 @@ func CheckAuthSessionExists(sessionID string, ipAddress netip.Addr, basicToken s
 	sessionValid := false
 	sessionExists := false
 
-	appState := GetAppState()
-	if appState == nil {
-		return sessionValid, sessionExists, errors.New("app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return sessionValid, sessionExists, fmt.Errorf("error getting app state in CheckAuthSessionExists: %w", err)
 	}
 
 	value, ok := appState.AuthMap.Load(sessionID)
@@ -240,9 +240,9 @@ func CheckAuthSessionExists(sessionID string, ipAddress netip.Addr, basicToken s
 }
 
 func ExtendAuthSession(sessionID string) (bool, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return false, errors.New("app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return false, fmt.Errorf("error getting app state in ExtendAuthSession: %w", err)
 	}
 	value, ok := appState.AuthMap.Load(sessionID)
 	if !ok {
@@ -302,9 +302,9 @@ func VerifySessionToken(clientToken string, storedHex string) bool {
 }
 
 func GetServerSecret() ([]byte, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return nil, errors.New("app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return nil, fmt.Errorf("error getting app state in GetServerSecret: %w", err)
 	}
 	serverSecret := make([]byte, len(appState.SessionSecret))
 	copy(serverSecret, appState.SessionSecret)

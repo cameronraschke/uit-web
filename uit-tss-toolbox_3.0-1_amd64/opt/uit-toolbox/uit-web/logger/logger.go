@@ -105,10 +105,10 @@ func (consoleLogger *ConsoleLogger) logHTTP(req *http.Request, logLevel LogLevel
 
 	requestMethod := req.Method
 
-	urlString := strings.Builder{}
+	urlString := new(strings.Builder)
 	urlString.WriteString(req.URL.Path)
 	for k, v := range req.URL.Query() {
-		fmt.Fprintf(&urlString, "%s=%s&", k, strings.Join(v, ","))
+		fmt.Fprintf(urlString, "%s=%s&", k, strings.Join(v, ","))
 	}
 	requestURL := urlString.String()
 	requestURL = strings.TrimSuffix(requestURL, "&")
@@ -116,9 +116,9 @@ func (consoleLogger *ConsoleLogger) logHTTP(req *http.Request, logLevel LogLevel
 		requestURL = "INVALID URL"
 	}
 
-	messageBuilder := strings.Builder{}
+	messageBuilder := new(strings.Builder)
 	messageBuilder.WriteString(message)
-	fmt.Fprintf(&messageBuilder, " (%s %s %s)", ipAddr, requestMethod, requestURL)
+	fmt.Fprintf(messageBuilder, " (%s %s %s)", ipAddr, requestMethod, requestURL)
 	consoleLogger.log(logLevel, messageBuilder.String())
 }
 
@@ -166,11 +166,11 @@ func (consoleLogger *ConsoleLogger) HTTPError(req *http.Request, message string)
 func CreateLogger(loggerType string, logLevel LogLevel) Logger {
 	switch strings.TrimSpace(strings.ToLower(loggerType)) {
 	case "console":
-		logger := &ConsoleLogger{}
+		logger := new(ConsoleLogger)
 		logger.SetLoggerLevel(logLevel)
 		return logger
 	default:
-		logger := &ConsoleLogger{}
+		logger := new(ConsoleLogger)
 		logger.SetLoggerLevel(Warning)
 		return logger
 	}

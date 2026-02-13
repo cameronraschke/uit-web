@@ -24,9 +24,9 @@ type WebEndpointConfig struct {
 }
 
 func GetWebEndpointConfig(endpointPath string) (*WebEndpointConfig, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return nil, fmt.Errorf("app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return nil, fmt.Errorf("error getting app state in GetWebEndpointConfig: %w", err)
 	}
 	value, ok := appState.WebEndpoints.Load(endpointPath)
 	if !ok {

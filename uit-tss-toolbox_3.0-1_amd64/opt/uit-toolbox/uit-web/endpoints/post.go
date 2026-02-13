@@ -810,12 +810,6 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "no database connection available")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
 	updateRepo, err := database.NewUpdateRepo()
 	if err != nil {
 		log.HTTPError(req, "No database connection available for TogglePinImage")
@@ -864,12 +858,6 @@ func SetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 	// 	middleware.WriteJsonError(w, http.StatusBadRequest)
 	// 	return
 	// }
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "no database connection available for SetClientBatteryHealth")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
 	updateRepo, err := database.NewUpdateRepo()
 	if err != nil {
 		log.HTTPError(req, "No database connection available for SetClientBatteryHealth")
@@ -908,12 +896,6 @@ func SetAllJobs(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db := config.GetDatabaseConn()
-	if db == nil {
-		log.HTTPWarning(req, "no database connection available for SetAllJobs")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
 	updateRepo, err := database.NewUpdateRepo()
 	if err != nil {
 		log.HTTPError(req, "No database connection available for SetAllJobs")

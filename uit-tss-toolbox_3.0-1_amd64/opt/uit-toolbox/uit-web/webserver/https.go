@@ -154,7 +154,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsServer.Protocols.SetHTTP2(true)
 
 	webCertFile, webKeyFile, err := config.GetTLSCertFiles()
-	if err != nil || strings.TrimSpace(webCertFile) == "" || strings.TrimSpace(webKeyFile) == "" {
+	if err != nil || (strings.TrimSpace(webCertFile) == "" || strings.TrimSpace(webKeyFile) == "") {
 		return fmt.Errorf("error getting TLS cert files for HTTPS web server: %w", err)
 	}
 

@@ -61,7 +61,7 @@ func InitPermissions() (*PermissionConfig, error) {
 		return nil, fmt.Errorf("failed to read files in the endpoints directory: %w", err)
 	}
 
-	permissionConfig := &PermissionConfig{}
+	permissionConfig := new(PermissionConfig)
 	for _, file := range files {
 		if file.IsDir() || !strings.HasSuffix(file.Name(), ".json") {
 			continue

@@ -41,10 +41,12 @@ type SelectRepo struct {
 	DB *sql.DB
 }
 
+const approxClientCount = 600
+
 func NewSelectRepo() (Select, error) {
-	db := config.GetDatabaseConn()
-	if db == nil {
-		return nil, fmt.Errorf("db connection is nil in NewSelectRepo")
+	db, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("error getting database connection in NewSelectRepo: %w", err)
 	}
 	return &SelectRepo{DB: db}, nil
 }
@@ -608,7 +610,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		ToNullString(serial),
 	)
 
-	inventoryUpdateForm := &InventoryUpdateForm{}
+	inventoryUpdateForm := new(InventoryUpdateForm)
 	if err := row.Scan(
 		&inventoryUpdateForm.Time,
 		&inventoryUpdateForm.Tagnumber,
@@ -766,12 +768,12 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 	}
 	defer rows.Close()
 
-	var results []InventoryTableData
+	results := make([]InventoryTableData, 0, approxClientCount)
 	for rows.Next() {
 		if err := ctx.Err(); err != nil {
 			return nil, fmt.Errorf("context error: %w", err)
 		}
-		row := InventoryTableData{}
+		var row InventoryTableData
 		if err := rows.Scan(
 			&row.Tagnumber,
 			&row.SystemSerial,
@@ -949,17 +951,16 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRo
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 	ORDER BY locations.tagnumber;`
 
-	jobQueueRows := make([]JobQueueTableRow, 0, 560) // 560 is the approximate # of clients
-
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
+	jobQueueRows := make([]JobQueueTableRow, 0, approxClientCount) // 560 is the approximate # of clients
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, errors.New("context error: " + ctx.Err().Error())
+			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
 		var row JobQueueTableRow
 		if err := rows.Scan(
@@ -1047,7 +1048,7 @@ func (repo *SelectRepo) GetBatteryStandardDeviation(ctx context.Context) ([]Clie
 
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, errors.New("context error: " + ctx.Err().Error())
+			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
 		var clientReport ClientReport
 		if err := rows.Scan(
@@ -1086,7 +1087,7 @@ func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]AllJobs, error) {
 
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, errors.New("context error: " + ctx.Err().Error())
+			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
 		var job AllJobs
 		if err := rows.Scan(

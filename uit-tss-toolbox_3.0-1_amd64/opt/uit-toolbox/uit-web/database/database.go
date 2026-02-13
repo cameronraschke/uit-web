@@ -122,30 +122,27 @@ func ptrTimeToString(p *time.Time) string {
 }
 
 func CreateAdminUser() error {
-	db := config.GetDatabaseConn()
-	if db == nil {
-		return fmt.Errorf("database connection is not initialized")
+	db, err := config.GetDatabaseConn()
+	if err != nil {
+		return fmt.Errorf("error getting database connection in CreateAdminUser: %w", err)
 	}
 	adminUsername, adminPasswd, err := config.GetAdminCredentials()
 	if err != nil {
 		return fmt.Errorf("failed to get admin credentials: %w", err)
 	}
-	if adminUsername == nil || adminPasswd == nil {
-		return fmt.Errorf("admin credentials are nil")
-	}
 
-	if strings.TrimSpace(*adminUsername) == "" {
+	if strings.TrimSpace(adminUsername) == "" {
 		return fmt.Errorf("admin username is empty")
 	}
 	usernameHash := crypto.SHA256.New()
-	usernameHash.Write([]byte(*adminUsername))
+	usernameHash.Write([]byte(adminUsername))
 	adminUsernameHash := hex.EncodeToString(usernameHash.Sum(nil))
 
-	if strings.TrimSpace(*adminPasswd) == "" {
+	if strings.TrimSpace(adminPasswd) == "" {
 		return fmt.Errorf("admin password is empty")
 	}
 	passwordHash := crypto.SHA256.New()
-	passwordHash.Write([]byte(*adminPasswd))
+	passwordHash.Write([]byte(adminPasswd))
 	adminPasswdHash := hex.EncodeToString(passwordHash.Sum(nil))
 
 	bcryptHashBytes, err := bcrypt.GenerateFromPassword([]byte(adminPasswdHash), bcrypt.DefaultCost)
@@ -162,14 +159,18 @@ func CreateAdminUser() error {
     INSERT INTO logins (username, password, common_name, is_admin, enabled)
     VALUES ($1, $2, 'admin', TRUE, TRUE)
     ON CONFLICT (username)
-    DO UPDATE SET password = EXCLUDED.password
+    DO UPDATE SET 
+		username = EXCLUDED.username,
+		common_name = EXCLUDED.common_name,
+		is_admin = EXCLUDED.is_admin,
+		enabled = EXCLUDED.enabled,
+		password = EXCLUDED.password;
     `
 
 	_, err = db.ExecContext(ctx, sqlCode, adminUsernameHash, bcryptHashString)
 	if err != nil {
 		return fmt.Errorf("failed to create admin user: %w", err)
 	}
-
 	return nil
 }
 

@@ -435,7 +435,7 @@ func InitApp() (*AppState, error) {
 		BanPeriod: appConfig.UIT_WEB_RATE_LIMIT_BAN_DURATION,
 	})
 
-	appState := &AppState{}
+	appState := new(AppState)
 
 	// Store app config in app state
 	appState.AppConfig.Store(appConfig)
@@ -605,18 +605,18 @@ func SetAppState(newState *AppState) error {
 	return nil
 }
 
-func GetAppState() *AppState {
+func GetAppState() (*AppState, error) {
 	appState := appStateInstance.Load()
 	if appState == nil {
-		return nil
+		return nil, fmt.Errorf("app state is not initialized")
 	}
-	return appState
+	return appState, nil
 }
 
 // Logger access
 func GetLogger() logger.Logger {
-	appState := GetAppState()
-	if appState == nil {
+	appState, err := GetAppState()
+	if err != nil {
 		fmt.Println("App state not initialized in GetLogger, using default logger")
 		return logger.CreateLogger("console", logger.ParseLogLevel("INFO"))
 	}
@@ -638,34 +638,41 @@ func GetLogger() logger.Logger {
 
 // Database managment
 func GetDatabaseCredentials() (dbName string, dbHost string, dbPort string, dbUsername string, dbPassword string, err error) {
-	appState := GetAppState()
-	if appState == nil {
-		return "", "", "", "", "", errors.New("app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return "", "", "", "", "", fmt.Errorf("error getting app state in GetDatabaseCredentials: %w", err)
 	}
 	return appState.AppConfig.Load().UIT_WEB_DB_NAME, appState.AppConfig.Load().UIT_WEB_DB_HOST.String(), strconv.FormatUint(uint64(appState.AppConfig.Load().UIT_WEB_DB_PORT), 10), appState.AppConfig.Load().UIT_WEB_DB_USERNAME, appState.AppConfig.Load().UIT_WEB_DB_PASSWD, nil
 }
 
 func GetWebServerUserDBCredentials() (dbName string, dbHost string, dbPort string, dbUsername string, dbPassword string, err error) {
-	appState := GetAppState()
-	if appState == nil {
-		return "", "", "", "", "", errors.New("app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return "", "", "", "", "", fmt.Errorf("error getting app state in GetWebServerUserDBCredentials: %w", err)
 	}
 	return appState.AppConfig.Load().UIT_WEB_DB_NAME, appState.AppConfig.Load().UIT_WEB_DB_HOST.String(), strconv.FormatUint(uint64(appState.AppConfig.Load().UIT_WEB_DB_PORT), 10), appState.AppConfig.Load().UIT_WEB_DB_USERNAME, appState.AppConfig.Load().UIT_WEB_DB_PASSWD, nil
 }
 
-func GetDatabaseConn() *sql.DB {
-	appState := GetAppState()
-	if appState == nil {
-		return nil
+func GetDatabaseConn() (*sql.DB, error) {
+	appState, err := GetAppState()
+	if err != nil {
+		return nil, fmt.Errorf("error getting app state in GetDatabaseConn: %w", err)
 	}
-	return appState.DBConn.Load()
+	db := appState.DBConn.Load()
+	if db == nil {
+		return nil, fmt.Errorf("database connection is not initialized")
+	}
+	return db, nil
 }
 
 func SetDatabaseConn(newDbConn *sql.DB) error {
 	if newDbConn == nil {
 		return errors.New("new database connection is nil in SetDatabaseConn")
 	}
-	appState := GetAppState()
+	appState, err := GetAppState()
+	if err != nil {
+		return fmt.Errorf("error getting app state in SetDatabaseConn: %w", err)
+	}
 	if appState == nil {
 		return errors.New("app state is not initialized in SetDatabaseConn")
 	}
@@ -675,9 +682,12 @@ func SetDatabaseConn(newDbConn *sql.DB) error {
 
 // IP address checks
 func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error) {
-	appState := GetAppState()
+	appState, err := GetAppState()
+	if err != nil {
+		return false, fmt.Errorf("error getting app state in IsIPAllowed: %w", err)
+	}
 	if appState == nil {
-		return false, fmt.Errorf("app state is not initialized")
+		return false, fmt.Errorf("app state is not initialized in IsIPAllowed")
 	}
 
 	if !ipAddr.IsValid() || IsIPBlocked(ipAddr) {
@@ -729,8 +739,8 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 
 func IsIPBlocked(ipAddress netip.Addr) bool {
 
-	appState := GetAppState()
-	if appState == nil {
+	appState, err := GetAppState()
+	if err != nil {
 		return true
 	}
 
@@ -754,8 +764,8 @@ func IsIPBlocked(ipAddress netip.Addr) bool {
 }
 
 func CleanupBlockedIPs() {
-	appState := GetAppState()
-	if appState == nil {
+	appState, err := GetAppState()
+	if err != nil {
 		return
 	}
 
@@ -771,9 +781,9 @@ func CleanupBlockedIPs() {
 
 // Webserver config
 func GetWebServerIPs() (string, string, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return "", "", errors.New("app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return "", "", fmt.Errorf("error getting app state in GetWebServerIPs: %w", err)
 	}
 	return appState.AppConfig.Load().UIT_WEB_HTTP_HOST.String(), appState.AppConfig.Load().UIT_WEB_HTTPS_HOST.String(), nil
 }
@@ -806,57 +816,66 @@ func GetServerIPAddressByInterface(ifName string) (string, error) {
 }
 
 func GetWebmasterContact() (webmasterName string, webmasterEmail string, err error) {
-	appState := GetAppState()
-	if appState == nil {
-		return "", "", errors.New("app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return "", "", fmt.Errorf("error getting app state in GetWebmasterContact: %w", err)
 	}
 	return appState.AppConfig.Load().UIT_WEBMASTER_NAME, appState.AppConfig.Load().UIT_WEBMASTER_EMAIL, nil
 }
 
 func GetClientConfig() (*ClientConfig, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return nil, errors.New("app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return nil, fmt.Errorf("error getting app state in GetClientConfig: %w", err)
 	}
+	appConfig := appState.AppConfig.Load()
+	if appConfig == nil {
+		return nil, fmt.Errorf("app config is not loaded in GetClientConfig")
+	}
+
 	clientConfig := &ClientConfig{
-		UIT_CLIENT_DB_USER:   appState.AppConfig.Load().UIT_CLIENT_DB_USER,
-		UIT_CLIENT_DB_PASSWD: appState.AppConfig.Load().UIT_CLIENT_DB_PASSWD,
-		UIT_CLIENT_DB_NAME:   appState.AppConfig.Load().UIT_CLIENT_DB_NAME,
-		UIT_CLIENT_DB_HOST:   appState.AppConfig.Load().UIT_CLIENT_DB_HOST.String(),
-		UIT_CLIENT_DB_PORT:   strconv.FormatUint(uint64(appState.AppConfig.Load().UIT_CLIENT_DB_PORT), 10),
-		UIT_CLIENT_NTP_HOST:  appState.AppConfig.Load().UIT_CLIENT_NTP_HOST.String(),
-		UIT_CLIENT_PING_HOST: appState.AppConfig.Load().UIT_CLIENT_PING_HOST.String(),
-		UIT_SERVER_HOSTNAME:  appState.AppConfig.Load().UIT_SERVER_HOSTNAME,
-		UIT_WEB_HTTP_HOST:    appState.AppConfig.Load().UIT_WEB_HTTP_HOST.String(),
-		UIT_WEB_HTTP_PORT:    strconv.FormatUint(uint64(appState.AppConfig.Load().UIT_WEB_HTTP_PORT), 10),
-		UIT_WEB_HTTPS_HOST:   appState.AppConfig.Load().UIT_WEB_HTTPS_HOST.String(),
-		UIT_WEB_HTTPS_PORT:   strconv.FormatUint(uint64(appState.AppConfig.Load().UIT_WEB_HTTPS_PORT), 10),
-		UIT_WEBMASTER_NAME:   appState.AppConfig.Load().UIT_WEBMASTER_NAME,
-		UIT_WEBMASTER_EMAIL:  appState.AppConfig.Load().UIT_WEBMASTER_EMAIL,
+		UIT_CLIENT_DB_USER:   appConfig.UIT_CLIENT_DB_USER,
+		UIT_CLIENT_DB_PASSWD: appConfig.UIT_CLIENT_DB_PASSWD,
+		UIT_CLIENT_DB_NAME:   appConfig.UIT_CLIENT_DB_NAME,
+		UIT_CLIENT_DB_HOST:   appConfig.UIT_CLIENT_DB_HOST.String(),
+		UIT_CLIENT_DB_PORT:   strconv.FormatUint(uint64(appConfig.UIT_CLIENT_DB_PORT), 10),
+		UIT_CLIENT_NTP_HOST:  appConfig.UIT_CLIENT_NTP_HOST.String(),
+		UIT_CLIENT_PING_HOST: appConfig.UIT_CLIENT_PING_HOST.String(),
+		UIT_SERVER_HOSTNAME:  appConfig.UIT_SERVER_HOSTNAME,
+		UIT_WEB_HTTP_HOST:    appConfig.UIT_WEB_HTTP_HOST.String(),
+		UIT_WEB_HTTP_PORT:    strconv.FormatUint(uint64(appConfig.UIT_WEB_HTTP_PORT), 10),
+		UIT_WEB_HTTPS_HOST:   appConfig.UIT_WEB_HTTPS_HOST.String(),
+		UIT_WEB_HTTPS_PORT:   strconv.FormatUint(uint64(appConfig.UIT_WEB_HTTPS_PORT), 10),
+		UIT_WEBMASTER_NAME:   appConfig.UIT_WEBMASTER_NAME,
+		UIT_WEBMASTER_EMAIL:  appConfig.UIT_WEBMASTER_EMAIL,
 	}
 	return clientConfig, nil
 }
 
 func GetTLSCertFiles() (certFile string, keyFile string, err error) {
-	appState := GetAppState()
-	if appState == nil {
-		return "", "", fmt.Errorf("cannot retrieve TLS cert files, app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return "", "", fmt.Errorf("error getting app state in GetTLSCertFiles: %w", err)
 	}
-	return appState.AppConfig.Load().UIT_WEB_TLS_CERT_FILE, appState.AppConfig.Load().UIT_WEB_TLS_KEY_FILE, nil
+	appConfig := appState.AppConfig.Load()
+	if appConfig == nil {
+		return "", "", fmt.Errorf("app config is not loaded in GetTLSCertFiles")
+	}
+	return appConfig.UIT_WEB_TLS_CERT_FILE, appConfig.UIT_WEB_TLS_KEY_FILE, nil
 }
 
 func GetMaxUploadSize() (int64, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return 0, fmt.Errorf("cannot retrieve max upload size, app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return 0, fmt.Errorf("error getting app state in GetMaxUploadSize: %w", err)
 	}
 	return appState.AppConfig.Load().UIT_WEB_MAX_UPLOAD_SIZE_MB, nil
 }
 
 func GetRequestTimeout(timeoutType string) (time.Duration, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return 0, fmt.Errorf("cannot get request timeout, app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return 0, fmt.Errorf("error getting app state in GetRequestTimeout: %w", err)
 	}
 	switch strings.ToLower(timeoutType) {
 	case "api":
@@ -877,9 +896,9 @@ func GetRequestTimeout(timeoutType string) (time.Duration, error) {
 }
 
 func SetRequestTimeout(timeoutType string, timeout time.Duration) error {
-	appState := GetAppState()
-	if appState == nil {
-		return fmt.Errorf("cannot set request timeout, app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return fmt.Errorf("error getting app state in SetRequestTimeout: %w", err)
 	}
 	if timeout <= 0 {
 		return fmt.Errorf("invalid timeout value in SetRequestTimeout: %.2f", timeout.Seconds())
@@ -897,9 +916,9 @@ func SetRequestTimeout(timeoutType string, timeout time.Duration) error {
 }
 
 func GetAllowedLANIPs() ([]netip.Prefix, error) {
-	appState := GetAppState()
-	if appState == nil {
-		return nil, fmt.Errorf("cannot retrieve allowed LAN IPs, app state is not initialized")
+	appState, err := GetAppState()
+	if err != nil {
+		return nil, fmt.Errorf("error getting app state in GetAllowedLANIPs: %w", err)
 	}
 	var allowedIPs []netip.Prefix
 	appState.AllowedLANIPs.Range(func(k, v any) bool {

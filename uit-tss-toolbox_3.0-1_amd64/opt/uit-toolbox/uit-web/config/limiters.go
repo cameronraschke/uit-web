@@ -9,8 +9,8 @@ import (
 )
 
 func GetLimiter(limiterType string) *RateLimiter {
-	appState := GetAppState()
-	if appState == nil {
+	appState, err := GetAppState()
+	if err != nil {
 		return nil
 	}
 
@@ -54,8 +54,8 @@ func (blockedClients *BlockedClients) Block(ip netip.Addr) {
 }
 
 func IsClientRateLimited(limiterType string, ip netip.Addr) (limited bool, retryAfter time.Duration) {
-	appState := GetAppState()
-	if appState == nil || ip == (netip.Addr{}) {
+	appState, err := GetAppState()
+	if err != nil || ip == (netip.Addr{}) {
 		return false, 0
 	}
 
@@ -89,8 +89,8 @@ func IsClientRateLimited(limiterType string, ip netip.Addr) (limited bool, retry
 }
 
 func CleanupOldLimiterEntries() (int64, error) {
-	appState := GetAppState()
-	if appState == nil {
+	appState, err := GetAppState()
+	if err != nil {
 		return 0, errors.New("app state is not initialized")
 	}
 	now := time.Now()
