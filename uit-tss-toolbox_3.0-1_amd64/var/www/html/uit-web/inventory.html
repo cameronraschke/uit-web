@@ -25,7 +25,7 @@
 							<div class="flex-container horizontal"><p>Tag Number/Serial Number Lookup:</p></div>
 							<input type="number" id="inventory-tag-lookup" list="inventory-tag-suggestions"
 								class="text-search"
-								placeholder="Search Tag Number"
+								placeholder="Enter Tag Number"
 								minlength="6"
 								maxlength="6"
 								autocomplete="off"
@@ -37,7 +37,7 @@
 							<datalist id="inventory-tag-suggestions"></datalist>
 							<input type="text" id="inventory-serial-lookup"
 								class="text-search"
-								placeholder="Search Serial Number"
+								placeholder="Enter Serial Number"
 								minlength="4"
 								maxlength="64"
 								autocomplete="off"
@@ -279,54 +279,43 @@
 
 		<section>
 			<div class="flex-container vertical">
-				<div class="flex-container horizontal">
-					<input id="inventory-sort-tagnumber" name="inventory-sort-tagnumber"
+				<div id="inventory-table-search-container" class="flex-container horizontal">
+					<input id="inventory-table-search" name="inventory-table-search"
+						class="text-search"
 						type="text" 
-						placeholder="Search tags..."
+						placeholder="Search..."
 					/>
-					<input id="inventory-sort-serial" name="inventory-sort-serial" 
-						type="text" 
-						placeholder="Search serial..."
-					/>
-					<select id="inventory-sort-by">
+					<select id="inventory-table-sort-by">
 						<option value="time-desc" selected>Sort by Time (Desc)</option>
 						<option value="time-asc">Sort by Time (Asc)</option>
 						<option value="tagnumber-asc">Sort by Tag # (Asc)</option>
 						<option value="tagnumber-desc">Sort by Tag # (Desc)</option>
+						<option value="serial-asc">Sort by Serial No. (Asc)</option>
+						<option value="serial-desc">Sort by Serial No. (Desc)</option>
 						<option value="location-asc">Sort by Location (A-Z)</option>
 						<option value="location-desc">Sort by Location (Z-A)</option>
-						<option value="manufacturer-asc">Sort by Manufacturer (A-Z)</option>
-						<option value="manufacturer-desc">Sort by Manufacturer (Z-A)</option>
-						<option value="model-asc">Sort by Model (A-Z)</option>
-						<option value="model-desc">Sort by Model (Z-A)</option>
-						<option value="department-asc">Sort by Department (A-Z)</option>
-						<option value="department-desc">Sort by Department (Z-A)</option>
-						<option value="domain-asc">Sort by AD Domain (A-Z)</option>
-						<option value="domain-desc">Sort by AD Domain (Z-A)</option>
-						<option value="status-asc">Sort by Status (A-Z)</option>
-						<option value="status-desc">Sort by Status (Z-A)</option>
 					</select>
 					<p id="inventory-table-rowcount">0 entries</p>
 				</div>
+				<table id="inventory-table">
+					<thead>
+						<tr>
+							<th class="clickable">Actions</th>
+							<th class="clickable">IDs</th>
+							<th class="clickable">Location</th>
+							<th class="clickable">Hardware Info</th>
+							<th class="clickable">Department</th>
+							<th class="clickable">AD Domain</th>
+							<th class="clickable">Status</th>
+							<th>Notes</th>
+							<th class="clickable">Last Entry</th>
+						</tr>
+					</thead>
+					<tbody id="inventory-table-body">
+						<tr><td colspan="10">Loading inventory...</td></tr>
+					</tbody>
+				</table>
 			</div>
-			<table id="inventory-table">
-				<thead>
-					<tr>
-						<th class="clickable">Actions</th>
-						<th class="clickable">IDs</th>
-						<th class="clickable">Location</th>
-						<th class="clickable">Hardware Info</th>
-						<th class="clickable">Department</th>
-						<th class="clickable">AD Domain</th>
-						<th class="clickable">Status</th>
-						<th>Notes</th>
-						<th class="clickable">Last Entry</th>
-					</tr>
-				</thead>
-				<tbody id="inventory-table-body">
-					<tr><td colspan="10">Loading inventory...</td></tr>
-				</tbody>
-			</table>
 		</section>
 
 		<div id="uit-footer" class="flex-container footer"></div>

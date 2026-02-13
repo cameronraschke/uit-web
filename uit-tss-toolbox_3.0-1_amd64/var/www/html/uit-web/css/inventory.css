@@ -45,3 +45,8 @@
 	font-size: 1.5rem;
 	margin-right: var(--select-element-extended-margin);
 }
+
+#inventory-table-search-container {
+	justify-content: flex-start;
+	gap: 1rem;
+}

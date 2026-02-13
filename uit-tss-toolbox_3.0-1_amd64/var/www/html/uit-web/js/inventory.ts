@@ -77,6 +77,7 @@ const printCheckoutLink = document.getElementById('print-checkout-link') as HTML
 const printCheckoutContainer = document.getElementById('print-checkout-container') as HTMLElement;
 
 // Inventory update form elements
+const formAnchor = document.querySelector('#update-and-search-container') as HTMLElement;
 const updateForm = document.getElementById('inventory-update-form') as HTMLFormElement;
 const lastUpdateTime = document.getElementById('last-update-time-message') as HTMLElement;
 const locationEl = document.getElementById('location') as HTMLInputElement;

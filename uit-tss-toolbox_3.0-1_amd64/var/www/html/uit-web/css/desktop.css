@@ -166,7 +166,7 @@ textarea.readonly-input {
 }
 
 table {
-  width: 90dvw;
+  width: 100%;
   border-collapse: collapse;
   margin: auto;
   overflow: auto;

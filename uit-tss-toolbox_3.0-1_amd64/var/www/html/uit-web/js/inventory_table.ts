@@ -18,17 +18,10 @@ type InventoryRow = {
 
 // Table elements
 const tableBody = document.getElementById('inventory-table-body') as HTMLElement;
-
-const tagLookupInput = document.getElementById('inventory-tag-lookup') as HTMLInputElement;
-const serialLookupInput = document.getElementById('inventory-serial-lookup') as HTMLInputElement;
 const rowCountElement = document.getElementById('inventory-table-rowcount') as HTMLElement;
-const formAnchor = document.querySelector('#update-and-search-container') as HTMLElement;
-const inventoryTagSortInput = document.getElementById('inventory-sort-tagnumber') as HTMLInputElement;
-const inventorySerialSortInput = document.getElementById('inventory-sort-serial') as HTMLInputElement;
-const inventoryTimeSortInput = document.getElementById('inventory-sort-time') as HTMLInputElement;
-const inventorySortByInput = document.getElementById('inventory-sort-by') as HTMLSelectElement;
-
-
+const inventoryTableSearch = document.getElementById('inventory-table-search') as HTMLInputElement;
+const inventoryTableSortBy = document.getElementById('inventory-table-sort-by') as HTMLSelectElement;
+let inventoryTableSearchDebounce: ReturnType<typeof setTimeout> | null = null;
 
 function createManufacturerModelCell(jsonRow: InventoryRow) {
   const cell = document.createElement('td');
@@ -63,8 +56,6 @@ function createManufacturerModelCell(jsonRow: InventoryRow) {
   
   return cell;
 }
-
-
 
 // Empty table state
 function renderEmptyTable(tableBody: HTMLElement, message: string) {
@@ -107,14 +98,19 @@ async function renderInventoryTable() {
 			const tr = document.createElement('tr');
 
 			// variables & dataset values
+			const lastUpdated = jsonRow.last_updated ? new Date(jsonRow.last_updated).getTime() : '';
 			const tagnumber = jsonRow.tagnumber.toString() || '';
 			const systemSerial = jsonRow.system_serial ? jsonRow.system_serial.trim() : '';
 			const locationFormatted = jsonRow.location_formatted || '';
 			const building = jsonRow.building || '';
 			const room = jsonRow.room || '';
+			const note = jsonRow.note || '';
 
+			tr.dataset.lastUpdated = lastUpdated.toString();
 			tr.dataset.tagnumber = tagnumber;
 			tr.dataset.systemSerial = systemSerial;
+			tr.dataset.locationFormatted = locationFormatted;
+			tr.dataset.note = note;
 
 			// Actions cell
 			const actionsCell = document.createElement('td');
@@ -194,7 +190,7 @@ async function renderInventoryTable() {
 
 			let deviceTypeText = 'N/A';
 			if (jsonRow.device_type) {
-				deviceTypeText = jsonRow.device_type;
+				deviceTypeText = jsonRow.device_type_formatted || jsonRow.device_type;
 			} else {
 				deviceTypeContainer.style.fontStyle = 'italic';
 			}
@@ -253,45 +249,64 @@ async function renderInventoryTable() {
 	}
 }
 
-function getInventorySortByParams() {
-	const sortBy = inventorySortByInput.value.trim();
-	const sortByArr = sortBy.split('-');
-	const sortKey = sortByArr[0];
-	const sortOrder = sortByArr[1];
-	if (sortKey.trim() === '' || sortOrder.trim() === '') {
-		return null;
-	}
-	const table = document.getElementById('inventory-table') as HTMLTableElement;
-	const tbody = table.querySelector("tbody") as HTMLTableSectionElement;
-	if (!table || !tbody) {
-		return null;
-	}
-	return { sortKey, sortOrder, table, tbody };
-}
-
-function sortInventoryTable(sortKey: string, sortOrder: string, tbody: HTMLTableSectionElement) {
-	const rowsArray = Array.from(tbody.rows);
-	rowsArray.sort((a, b) => {
-		const aValue = a.dataset[sortKey] || '';
-		const bValue = b.dataset[sortKey] || '';
-		if (sortKey === 'last_updated') {
-			const aDate = new Date(aValue).getTime();
-			const bDate = new Date(bValue).getTime();
-			return sortOrder === 'asc' ? aDate - bDate : bDate - aDate;
-		} else {
-			const comparison = aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' });
-			return sortOrder === 'asc' ? comparison : -comparison;
+inventoryTableSortBy.addEventListener('change', () => {
+	const presentRows = Array.from(tableBody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+	const rowData = presentRows.map(row => ({
+		lastUpdated: row.dataset.lastUpdated || '',
+		tagnumber: row.dataset.tagnumber || '',
+		systemSerial: row.dataset.systemSerial || '',
+		locationFormatted: row.dataset.locationFormatted || '',
+		rowElement: row
+	}));
+	const sortedRows = rowData.sort((a, b) => {
+		if (!inventoryTableSortBy.value) return 0;
+		const sortKeys = inventoryTableSortBy.value.split('-');
+		const sortKey = sortKeys[0];
+		const sortOrder = sortKeys[1];
+		
+		if (sortKey === 'time') {
+			const aTime = Number(a.lastUpdated) || 0;
+			const bTime = Number(b.lastUpdated) || 0;
+			return sortOrder === 'asc' ? aTime - bTime : bTime - aTime;
 		}
+		if (sortKey === 'tagnumber') {
+			return sortOrder === 'asc' ? Number(a.tagnumber) - Number(b.tagnumber) : Number(b.tagnumber) - Number(a.tagnumber);
+		}
+		if (sortKey === 'serial') {
+			const aSerial = a.systemSerial || '';
+			const bSerial = b.systemSerial || '';
+			return sortOrder === 'asc' ? aSerial.localeCompare(bSerial) : bSerial.localeCompare(aSerial);
+		}
+		if (sortKey === 'location') {
+			const aLocation = a.locationFormatted || '';
+			const bLocation = b.locationFormatted || '';
+			return sortOrder === 'asc' ? aLocation.localeCompare(bLocation) : bLocation.localeCompare(aLocation);
+		}
+		return 0;
 	});
-	// Re-append sorted rows
-	for (const row of rowsArray) {
-		tbody.appendChild(row);
-	}
-}
+	sortedRows.forEach(row => tableBody.appendChild(row.rowElement));
+});
 
-inventorySortByInput.addEventListener('change', async () => {
-	const sortParams = getInventorySortByParams();
-	if (sortParams) {
-		sortInventoryTable(sortParams.sortKey, sortParams.sortOrder, sortParams.tbody);
+inventoryTableSearch.addEventListener('keyup', () => {
+	if (inventoryTableSearchDebounce !== null) {
+		clearTimeout(inventoryTableSearchDebounce);
 	}
+
+	inventoryTableSearchDebounce = setTimeout(() => {
+		const searchedText = String(inventoryTableSearch.value.trim().replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || '');
+		const allRows = Array.from(tableBody.querySelectorAll('tr'));
+		for (const row of allRows) {
+			if (searchedText === '') {
+				row.style.display = 'table-row';
+				continue;
+			}
+			const rowText = (row.dataset.tagnumber + ' ' + row.dataset.systemSerial + ' ' + row.dataset.locationFormatted + ' ' + row.dataset.note).replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+			if (rowText.includes(searchedText)) { // searchedText values are already lower case
+				row.style.display = 'table-row';
+			} else {
+				row.style.display = 'none';
+			}
+		}
+		rowCountElement.textContent = `${allRows.filter(row => row.style.display === 'table-row').length} entries`;
+	}, 100);
 });

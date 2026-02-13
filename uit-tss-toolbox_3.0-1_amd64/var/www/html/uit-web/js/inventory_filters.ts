@@ -346,7 +346,11 @@ async function populateDomainSelect(el: HTMLSelectElement, purgeCache: boolean =
 		}
 
 		domainData.sort((a, b) => {
-			return a.domain_sort_order - b.domain_sort_order;
+			if (a.ad_domain && a.ad_domain === 'unknown') return 1;
+			if (a.ad_domain && a.ad_domain === 'none') return 2;
+			if (b.ad_domain && b.ad_domain === 'unknown') return -1;
+			if (b.ad_domain && b.ad_domain === 'none') return -2;
+			return (a.ad_domain_formatted || '').localeCompare(b.ad_domain_formatted || '');
 		});
 
 		resetSelectElement(el, 'Domain', false, undefined);
@@ -457,7 +461,9 @@ async function populateStatusSelect(el: HTMLSelectElement, purgeCache: boolean =
 		}
 
 		statusData.sort((a, b) => {
-			return a.sort_order - b.sort_order;
+			if (a.status && a.status === 'other') return 1;
+			if (b.status && b.status === 'other') return -1;
+			return (a.status_formatted || a.status).localeCompare(b.status_formatted || b.status);
 		});
 
 		resetSelectElement(el, 'Status', false, undefined);
@@ -519,6 +525,9 @@ inventoryFilterForm.addEventListener("submit", (event) => {
 
 advSearchFormReset.addEventListener("click", async (event) => {
   event.preventDefault();
+
+	inventoryTableSearch.value = '';
+	inventoryTableSortBy.value = 'time-desc';
 
 	for (const param of advSearchParams) {
 		if (!param.inputElement || !param.paramString) continue;
