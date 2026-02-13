@@ -68,17 +68,16 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var hardwareData *database.ClientLookup
+	var lookupSQLErr error
 	if tagnumber != nil {
-		hardwareData, err = db.ClientLookupByTag(ctx, tagnumber)
+		hardwareData, lookupSQLErr = db.ClientLookupByTag(ctx, tagnumber)
 	} else if systemSerial != nil {
-		hardwareData, err = db.ClientLookupBySerial(ctx, systemSerial)
+		hardwareData, lookupSQLErr = db.ClientLookupBySerial(ctx, systemSerial)
 	}
-	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "error querying client in GetClientLookup: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+	if lookupSQLErr != nil {
+		log.HTTPWarning(req, "error querying client in GetClientLookup: "+lookupSQLErr.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 	middleware.WriteJson(w, http.StatusOK, hardwareData)
 }
@@ -95,11 +94,9 @@ func GetAllTags(w http.ResponseWriter, req *http.Request) {
 	}
 	allTags, err := db.AllTags(ctx)
 	if err != nil {
-		if err != sql.ErrNoRows {
-			log.HTTPWarning(req, "Query error in GetAllTags: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+		log.HTTPWarning(req, "Query error in GetAllTags: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 	middleware.WriteJson(w, http.StatusOK, allTags)
 }
@@ -110,7 +107,7 @@ func GetHardwareIdentifiers(w http.ResponseWriter, req *http.Request) {
 
 	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
-		log.HTTPWarning(req, "Error retrieving query parameters from context for GetHardwareIdentifiers: "+err.Error())
+		log.HTTPWarning(req, "Error retrieving query parameters from context in GetHardwareIdentifiers: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -129,11 +126,9 @@ func GetHardwareIdentifiers(w http.ResponseWriter, req *http.Request) {
 	}
 	hardwareData, err := db.GetHardwareIdentifiers(ctx, tagnumber)
 	if err != nil {
-		if err != sql.ErrNoRows {
 			log.HTTPWarning(req, "Query error in GetHardwareIdentifiers: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
-		}
 	}
 	middleware.WriteJson(w, http.StatusOK, hardwareData)
 }
