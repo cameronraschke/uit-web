@@ -1,6 +1,7 @@
 :root {
 	--font-family: "Tahoma", sans-serif;
 	--font-size: 20px;
+	--font-size-smaller: 16px;
 	--text-color: oklch(0 0 0);
 	--bg-color-darker: oklch(0.92 0 0);
 	--bg-color: oklch(0.96 0 0);
@@ -51,6 +52,12 @@ a {
   font-weight: bold;
   color: var(--accent-color);
   text-decoration: underline;
+}
+
+a.unstyled {
+  font-weight: normal;
+	text-decoration: none;
+	color: var(--text-color);
 }
 
 a:hover {
@@ -181,13 +188,13 @@ tbody > tr:nth-child(even) {
 }
 
 th {
-  text-align: left;
+  text-align: center;
   padding: 1rem 0.5rem;
 }
 
 td {
   vertical-align: middle;
-  text-align: left;
+  text-align: center;
   padding: 0.5rem;
 }
 
@@ -252,6 +259,15 @@ td {
 .svg-button.cancel:hover {
 	background-color: var(--dark-accent-color);
 	background-image: url(/icons/general/cancel.svg);
+}
+
+.svg-button.edit {
+	background-color: var(--bg-color);
+	background-image: url(/icons/general/edit_square.svg);
+}
+
+.svg-button.edit:hover {
+	background-color: var(--light-accent-color);
 }
 
 .svg-select {
@@ -566,4 +582,12 @@ td {
 	100% {
 		transform: translateX(0%);
 	}
+}
+
+.smaller-text {
+	font-size: var(--font-size-smaller);
+}
+
+.centered-text {
+	text-align: center;
 }

@@ -154,8 +154,8 @@ async function fetchFilteredInventoryData(csvDownload = false): Promise<Inventor
 	}
 
 	try {
-		const jsonResponse: InventoryRow[] = await fetchData(`/api/inventory?${apiQuery.toString()}`, false);
-		if (!jsonResponse) console.warn("No data returned from /api/inventory");
+		const jsonResponse: InventoryRow[] | null = await fetchData(`/api/inventory?${apiQuery.toString()}`, false);
+		if (jsonResponse === null) console.warn("No data returned from /api/inventory");
 		return jsonResponse;
 	} catch (error) {
 		console.warn("Error fetching inventory data:", error);

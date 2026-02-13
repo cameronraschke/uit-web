@@ -827,8 +827,11 @@ async function populateDeviceTypeSelect(selectEl: HTMLSelectElement, purgeCache:
 		resetSelectElement(selectEl, "Device Type", false, undefined);
 		const uniqueMetaCategores = new Set(deviceTypes.map(dev => dev.device_meta_category));
 		const sortedUniqueMetaCategories = [...uniqueMetaCategores].sort((a, b) => {
+			if (!a && !b) return 0;
 			const aVal = a ? a.trim().toLowerCase() : '';
 			const bVal = b ? b.trim().toLowerCase() : '';
+			if (aVal && aVal === 'unknown/other') return 1;
+			if (bVal && bVal === 'unknown/other') return -1;
 			return aVal.localeCompare(bVal);
 		});
 		for (const device of sortedUniqueMetaCategories) {

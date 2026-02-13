@@ -2,8 +2,12 @@ type InventoryRow = {
 	tagnumber: number | 0;
 	system_serial: string | "";
 	location_formatted: string | "";
+	building: string | "";
+	room: string | "";
 	system_manufacturer: string | "";
 	system_model: string | "";
+	device_type: string | "";
+	device_type_formatted: string | "";
 	department_formatted: string | "";
 	ad_domain_formatted: string | "";
 	status: string | "";
@@ -102,30 +106,100 @@ async function renderInventoryTable() {
 		for (const jsonRow of sortedData) {
 			const tr = document.createElement('tr');
 
-			// Tag Number URL with system serial as well
-			const tagCell = document.createElement('td');
-			tagCell.dataset.tagnumber = jsonRow.tagnumber ? jsonRow.tagnumber.toString() : 'No Tag';
-			tagCell.appendChild(document.createElement('a'));
-			const tagAnchor = tagCell.querySelector('a') as HTMLAnchorElement;
-			tagAnchor.textContent = jsonRow.tagnumber ? jsonRow.tagnumber.toString() : 'No Tag';
+			// variables & dataset values
+			const tagnumber = jsonRow.tagnumber.toString() || '';
+			const systemSerial = jsonRow.system_serial ? jsonRow.system_serial.trim() : '';
+			const locationFormatted = jsonRow.location_formatted || '';
+			const building = jsonRow.building || '';
+			const room = jsonRow.room || '';
+
+			tr.dataset.tagnumber = tagnumber;
+			tr.dataset.systemSerial = systemSerial;
+
+			// Actions cell
+			const actionsCell = document.createElement('td');
+			const actionsContainer = document.createElement('div');
+			const tagAnchor = document.createElement('a');
+			const editButton = document.createElement('button');
+
+			actionsContainer.classList.add('flex-container', 'horizontal');
+			tagAnchor.classList.add('unstyled', 'smaller-text');
+			editButton.classList.add('svg-button', 'edit');
+
 			const tagURL = new URL(window.location.href);
-			tagURL.searchParams.set('tagnumber', jsonRow.tagnumber.toString() || '');
-			tagURL.searchParams.set('system_serial', jsonRow.system_serial || '');
+			tagURL.searchParams.set('tagnumber', tagnumber);
+			tagURL.searchParams.set('system_serial', systemSerial);
 			tagURL.searchParams.set('update', 'true');
 			tagAnchor.href = tagURL.toString();
+			
+			editButton.textContent = 'Edit';
 
-			tr.appendChild(tagCell);
+			tagAnchor.appendChild(editButton);
+			actionsContainer.appendChild(tagAnchor);
+			actionsCell.appendChild(actionsContainer);
+			tr.appendChild(actionsCell);
 
-			// Serial Number with truncation and click to expand
-			tr.appendChild(createTextCell(undefined, 'system_serial', jsonRow.system_serial, 20, undefined));
+			// Tag Number URL with system serial as well
+			const idCell = document.createElement('td');
+			const idContainer = document.createElement('div');
+			const tagDiv = document.createElement('div');
+			const serialDiv = document.createElement('div');
+
+			idContainer.classList.add('flex-container', 'vertical');
+			tagDiv.classList.add('flex-container', 'horizontal');
+			serialDiv.classList.add('flex-container', 'horizontal', 'smaller-text');
+			
+			tagDiv.textContent = tagnumber;
+			serialDiv.textContent = systemSerial;
+
+			idContainer.appendChild(tagDiv);
+			idContainer.appendChild(serialDiv);
+			idCell.appendChild(idContainer);
+			tr.appendChild(idCell);
 
 			// Location
-			tr.appendChild(createTextCell(undefined, 'location', jsonRow.location_formatted, 40, undefined));
+			const locationCell = document.createElement('td');
+			const locationContainer = document.createElement('div');
+			const locationFormattedDiv = document.createElement('div');
+			const buildingRoomDiv = document.createElement('div');
+
+			locationContainer.classList.add('flex-container', 'vertical');
+			locationFormattedDiv.classList.add('flex-container', 'horizontal');
+			buildingRoomDiv.classList.add('flex-container', 'horizontal', 'smaller-text');
+
+			locationFormattedDiv.textContent = locationFormatted || 'N/A';
+			buildingRoomDiv.textContent = `B: ${building || 'N/A'} - R: ${room || 'N/A'}`;
+			if (!locationFormatted) locationFormattedDiv.style.fontStyle = 'italic';
+			if (!building && !room) buildingRoomDiv.style.fontStyle = 'italic';
+
+			locationContainer.appendChild(locationFormattedDiv);
+			locationContainer.appendChild(buildingRoomDiv);
+			locationCell.appendChild(locationContainer);
+			tr.appendChild(locationCell);
 
 			// Manufacturer and Model combined cell
 			const manufacturerModelCell = document.createElement('td');
+			const manufacturerModelContainer = document.createElement('div');
+			const deviceTypeContainer = document.createElement('div');
+			const manufacturerModelDiv = document.createElement('div');
+
+			manufacturerModelContainer.classList.add('flex-container', 'vertical');
+			deviceTypeContainer.classList.add('flex-container', 'horizontal');
+			manufacturerModelDiv.classList.add('flex-container', 'horizontal', 'smaller-text');
+
 			manufacturerModelCell.dataset.systemManufacturer = jsonRow.system_manufacturer || '';
 			manufacturerModelCell.dataset.systemModel = jsonRow.system_model || '';
+			manufacturerModelCell.dataset.deviceType = jsonRow.device_type || '';
+
+
+			let deviceTypeText = 'N/A';
+			if (jsonRow.device_type) {
+				deviceTypeText = jsonRow.device_type;
+			} else {
+				deviceTypeContainer.style.fontStyle = 'italic';
+			}
+			deviceTypeContainer.textContent = truncateString(deviceTypeText, 20).truncatedString;
+
 			let manufacturerModelText = 'N/A';
 			if (jsonRow.system_manufacturer && jsonRow.system_model) {
 				manufacturerModelText = `${jsonRow.system_manufacturer}/${jsonRow.system_model}`;
@@ -134,21 +208,25 @@ async function renderInventoryTable() {
 			} else if (!jsonRow.system_manufacturer && jsonRow.system_model) {
 				manufacturerModelText = `Unknown Manufacturer/${jsonRow.system_model}`;
 			} else {
-				manufacturerModelCell.style.fontStyle = 'italic';
+				manufacturerModelDiv.style.fontStyle = 'italic';
 			}
 			if (manufacturerModelText.length > 30) {
 				const arr = manufacturerModelText.split('/');
 				const truncated = `${arr[0].substring(0, 11)}.../${arr[1].substring(0, 17)}...`;
-				manufacturerModelCell.title = manufacturerModelText;
-				manufacturerModelCell.style.cursor = 'pointer';
-				manufacturerModelCell.textContent = truncated;
-				manufacturerModelCell.addEventListener('click', () => {
-					manufacturerModelCell.textContent = manufacturerModelText;
-					manufacturerModelCell.style.cursor = 'auto';
+				manufacturerModelDiv.title = manufacturerModelText;
+				manufacturerModelDiv.style.cursor = 'pointer';
+				manufacturerModelDiv.textContent = truncated;
+				manufacturerModelDiv.addEventListener('click', () => {
+					manufacturerModelDiv.textContent = manufacturerModelText;
+					manufacturerModelDiv.style.cursor = 'auto';
 				}, { once: true });
 			} else {
-				manufacturerModelCell.textContent = manufacturerModelText;
+				manufacturerModelDiv.textContent = manufacturerModelText;
 			}
+
+			manufacturerModelContainer.appendChild(deviceTypeContainer)
+			manufacturerModelContainer.appendChild(manufacturerModelDiv);
+			manufacturerModelCell.appendChild(manufacturerModelContainer);
 			tr.appendChild(manufacturerModelCell);
 
 			// Department
