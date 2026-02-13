@@ -254,9 +254,9 @@ async function submitInventoryLookup() {
     clientLookupWarningMessage.textContent = "Tag number must be numeric.";
     return;
   }
-  if (lookupSerial && (lookupSerial.length < 4 || lookupSerial.length > 20)) {
+  if (lookupSerial && (lookupSerial.length < 1 || lookupSerial.length > 128)) {
     clientLookupWarningMessage.style.display = "block";
-    clientLookupWarningMessage.textContent = "Serial number must be between 4 and 20 characters long.";
+    clientLookupWarningMessage.textContent = "Serial number must be between 1 and 128 characters long.";
     return;
   }
   if (lookupTag && lookupTag.toString().length != 6) {
