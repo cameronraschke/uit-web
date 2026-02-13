@@ -722,7 +722,7 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 
 	const sqlQuery = `SELECT locations.tagnumber, locations.system_serial, locations.location, 
 		locationFormatting(locations.location) AS location_formatted, locations.building, locations.room,
-		hardware_data.system_manufacturer, hardware_data.system_model, hardware_data.device_type, static_device_type.device_type_formatted, locations.department_name, static_department_info.department_name_formatted,
+		hardware_data.system_manufacturer, hardware_data.system_model, hardware_data.device_type, static_device_types.device_type_formatted, locations.department_name, static_department_info.department_name_formatted,
 		locations.ad_domain, static_ad_domains.domain_name_formatted, client_health.os_installed, client_health.os_name, static_client_statuses.status_formatted,
 		locations.is_broken, locations.note, locations.time AS last_updated
 		FROM locations
@@ -731,6 +731,7 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 		LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
 		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status
+		LEFT JOIN static_device_types ON hardware_data.device_type = static_device_types.device_type
 		WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 		AND ($1::bigint IS NULL OR locations.tagnumber = $1)
 		AND ($2::text IS NULL OR locations.system_serial = $2)
