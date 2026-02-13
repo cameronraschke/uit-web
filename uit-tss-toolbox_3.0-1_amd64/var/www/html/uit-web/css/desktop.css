@@ -54,12 +54,6 @@ a {
   text-decoration: underline;
 }
 
-a.unstyled {
-  font-weight: normal;
-	text-decoration: none;
-	color: var(--text-color);
-}
-
 a:hover {
 	color: var(--dark-accent-color);
 }
@@ -195,7 +189,11 @@ th {
 td {
   vertical-align: middle;
   text-align: center;
-  padding: 0.5rem;
+  padding: 1rem 0rem;
+}
+
+td > div.flex-container {
+	row-gap: 0.5rem;
 }
 
 .vertical-spacer {
@@ -392,11 +390,19 @@ td {
 	min-width: fit-content;
 }
 
-.flex-container.horizontal small, .flex-container.horizontal a, .flex-container.horizontal input, .flex-container.horizontal select, .flex-container.horizontal button {
+.flex-container.horizontal small, .flex-container.horizontal input, .flex-container.horizontal select, .flex-container.horizontal button {
 	margin-top: var(--select-element-margin);
 	margin-bottom: var(--select-element-margin);
 	margin-right: var(--select-element-margin);
 	margin-left: 0px;
+}
+
+.flex-container.horizontal a > button {
+	margin-top: 0px;
+	margin-bottom: 0px;
+	margin-right: 0px;
+	margin-left: 0px;
+	box-shadow: none;
 }
 
 .flex-container.form-buttons {
@@ -536,10 +542,6 @@ td {
   gap: 0px;
   justify-content: start;
 	align-content: center;
-}
-
-.clickable {
-	cursor: pointer;
 }
 
 .active {

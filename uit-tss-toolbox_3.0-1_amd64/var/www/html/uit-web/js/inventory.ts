@@ -527,15 +527,15 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 
 	resetInputElement(retiredDateUpdate, "Retired Date", false, "empty-input");
 
-	resetSelectElement(isBrokenUpdate, "Is Broken?", false, "empty-input");
+	resetSelectElement(isBrokenUpdate, "Is Functional?", false, "empty-input");
 		if (isBrokenUpdate) {
 		const op1 = document.createElement("option");
-		op1.value = "true";
-		op1.textContent = "Is broken"
+		op1.value = "false";
+		op1.textContent = "Yes, it is functional";
 
 		const op2 = document.createElement("option");
-		op2.value = "false";
-		op2.textContent = "Is functional";
+		op2.value = "true";
+		op2.textContent = "No, it is broken";
 
 		const op3 = document.createElement("option");
 		op3.value = "unknown";
@@ -546,15 +546,15 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		isBrokenUpdate.append(op3);
 	}
 
-	resetSelectElement(diskRemovedUpdate, "Disk Removed?", false, "empty-input");
+	resetSelectElement(diskRemovedUpdate, "Disk Present?", false, "empty-input");
 	if (diskRemovedUpdate) {
 		const op1 = document.createElement("option");
-		op1.value = "true";
-		op1.textContent = "Yes, disk removed"
+		op1.value = "false";
+		op1.textContent = "Yes, disk present";
 
 		const op2 = document.createElement("option");
-		op2.value = "false";
-		op2.textContent = "No, disk present";
+		op2.value = "true";
+		op2.textContent = "No, disk removed"
 
 		const op3 = document.createElement("option");
 		op3.value = "unknown";
@@ -712,6 +712,21 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			} else {
 				acquiredDateUpdate.classList.add("empty-input");
 			}
+
+			if (locationFormData.retired_date) {
+				const retiredDateValue = locationFormData.retired_date ? new Date(locationFormData.retired_date) : null;
+				if (retiredDateValue && !isNaN(retiredDateValue.getTime())) {
+					// Format as YYYY-MM-DD for input[type="date"]
+					const year = retiredDateValue.getFullYear();
+					const month = String(retiredDateValue.getMonth() + 1).padStart(2, '0');
+					const day = String(retiredDateValue.getDate()).padStart(2, '0');
+					const retiredDateFormatted = `${year}-${month}-${day}`;
+					retiredDateUpdate.value = retiredDateFormatted;
+					retiredDateUpdate.classList.remove("empty-input");
+				}
+			} else {
+				retiredDateUpdate.classList.add("empty-input");
+			}
 			
 			if (locationFormData.is_broken === true) {
 				isBrokenUpdate.value = "true";
@@ -731,6 +746,23 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				diskRemovedUpdate.classList.remove("empty-input");
 			} else {
 				diskRemovedUpdate.classList.add("empty-input");
+			}
+
+			if (locationFormData.last_hardware_check) {
+				const hardwareCheckDate = new Date(locationFormData.last_hardware_check);
+				const hardwareCheckDateLocal = !isNaN(hardwareCheckDate.getTime())
+					? new Date(hardwareCheckDate.getTime() - hardwareCheckDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+					: "";
+				if (hardwareCheckDateLocal && !isNaN(new Date(hardwareCheckDateLocal).getTime())) {
+					lastHardwareCheckUpdate.value = hardwareCheckDateLocal;
+					lastHardwareCheckUpdate.classList.remove("empty-input");
+				} else {
+					lastHardwareCheckUpdate.value = "";
+					lastHardwareCheckUpdate.classList.add("empty-input");
+				}
+			} else {
+				lastHardwareCheckUpdate.value = "";
+				lastHardwareCheckUpdate.classList.add("empty-input");
 			}
 
 			if (locationFormData.status) {
@@ -930,6 +962,12 @@ clientLookupTagInput.addEventListener("keyup", (event: KeyboardEvent) => {
   }
 });
 
+function parseDateTimeLocalToUTC(value: string): Date | null {
+	if (!value) return null;
+	const parsed = new Date(value);
+	return isNaN(parsed.getTime()) ? null : parsed;
+}
+
 updateForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   submitUpdate.disabled = true;
@@ -958,7 +996,7 @@ updateForm.addEventListener("submit", async (event) => {
 		formObj.retired_date = getInputDateValue(retiredDateUpdate, true);
     formObj.is_broken = getInputBooleanValue(isBrokenUpdate);
 		formObj.disk_removed = getInputBooleanValue(diskRemovedUpdate);
-		formObj.last_hardware_check = getInputTimeValue(lastHardwareCheckUpdate);
+		formObj.last_hardware_check = lastHardwareCheckUpdate.value ? parseDateTimeLocalToUTC(lastHardwareCheckUpdate.value) : null;
     formObj.status = getInputStringValue(clientStatusUpdate);
 		formObj.checkout_bool = formObj.status && statusesThatIndicateCheckout.includes(formObj.status) ? true : false;
 		formObj.checkout_date = getInputDateValue(checkoutDateUpdate, true);
@@ -968,7 +1006,13 @@ updateForm.addEventListener("submit", async (event) => {
     // const jsonPayload = new Blob([jsonBase64], { type: "application/json" });
 
     const formData = new FormData();
-    formData.append("json", new Blob([JSON.stringify(formObj)], { type: "application/json" }), "inventory.json");
+		const jsonPayload = JSON.stringify(formObj, (_key, value) => {
+			if (value instanceof Date) {
+				return value.toISOString();
+			}
+			return value;
+		});
+    formData.append("json", new Blob([jsonPayload], { type: "application/json" }), "inventory.json");
 
     if (fileInputUpdate && fileInputUpdate.files && fileInputUpdate.files.length > 0) {
 			const fileList = Array.from(fileInputUpdate.files);

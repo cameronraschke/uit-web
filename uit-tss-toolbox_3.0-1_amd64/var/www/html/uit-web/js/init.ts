@@ -160,18 +160,14 @@ function getInputDateValue(inputEl: HTMLInputElement | HTMLSelectElement, isNull
 	return dateObj;
 }
 function getInputTimeValue(inputEl: HTMLInputElement | HTMLSelectElement): Date | null {
-	if (!inputEl) {
-		throw new Error("Input element not found in DOM");
-	}
-	const value = inputEl.value ? inputEl.value.trim() : null;
-	if (inputEl.required && (!value || value.length === 0)) {
-		throw new Error(`${inputEl.id} field cannot be empty`);
-	}
+	if (!inputEl) throw new Error("Input element not found in DOM");
 
-	const timeObj = new Date(value as string);
-	if (isNaN(timeObj.getTime())) {
-		throw new Error(`${inputEl.id} field must be a valid datetime`);
-	}
+	const value = inputEl.value ? inputEl.value.trim() : null;
+	if (inputEl.required && (!value || value.length === 0)) throw new Error(`${inputEl.id} field cannot be empty`);
+	if (!value || value.length === 0) return null;
+
+	const timeObj = new Date(value);
+	if (isNaN(timeObj.getTime())) throw new Error(`${inputEl.id} field must be a valid datetime`);
 	return timeObj;
 }
 

@@ -163,14 +163,14 @@
 								<div class="flex-container vertical">
 									<label for="is_broken">Is it broken?</label>
 									<select id="is_broken" name="is_broken">
-										<option value="" disabled selected>Is it Broken?</option>
-										<option value="true">Yes, it is broken</option>
-										<option value="false">No, it isn't broken</option>
+										<option value="" disabled selected>Is it Working?</option>
+										<option value="false">Yes, it is working</option>
+										<option value="true">No, it is broken</option>
 										<option value="unknown">Unknown</option>
 									</select>
 								</div>
 								<div class="flex-container vertical">
-									<label for="disk_removed">Is the Disk Removed?</label>
+									<label for="disk_removed">Is the Disk Present?</label>
 									<select id="disk_removed" name="disk_removed"></select>
 								</div>
 								<div class="flex-container vertical">
@@ -300,15 +300,15 @@
 				<table id="inventory-table">
 					<thead>
 						<tr>
-							<th class="clickable">Actions</th>
-							<th class="clickable">IDs</th>
-							<th class="clickable">Location</th>
-							<th class="clickable">Hardware Info</th>
-							<th class="clickable">Department</th>
-							<th class="clickable">AD Domain</th>
-							<th class="clickable">Status</th>
+							<th>Actions</th>
+							<th>IDs</th>
+							<th>Location</th>
+							<th>Hardware Info</th>
+							<th>Department</th>
+							<th>AD Domain</th>
+							<th>Status</th>
 							<th>Notes</th>
-							<th class="clickable">Last Entry</th>
+							<th>Last Entry</th>
 						</tr>
 					</thead>
 					<tbody id="inventory-table-body">

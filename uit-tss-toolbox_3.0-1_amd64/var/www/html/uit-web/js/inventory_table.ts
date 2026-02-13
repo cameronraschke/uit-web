@@ -117,21 +117,31 @@ async function renderInventoryTable() {
 			const actionsContainer = document.createElement('div');
 			const tagAnchor = document.createElement('a');
 			const editButton = document.createElement('button');
+			const imagesAnchor = document.createElement('a');
+			const viewImagesButton = document.createElement('button');
 
 			actionsContainer.classList.add('flex-container', 'horizontal');
-			tagAnchor.classList.add('unstyled', 'smaller-text');
+			tagAnchor.classList.add('smaller-text');
 			editButton.classList.add('svg-button', 'edit');
+			viewImagesButton.classList.add('svg-button', 'photo-album');
 
 			const tagURL = new URL(window.location.href);
 			tagURL.searchParams.set('tagnumber', tagnumber);
 			tagURL.searchParams.set('system_serial', systemSerial);
 			tagURL.searchParams.set('update', 'true');
 			tagAnchor.href = tagURL.toString();
-			
+
+			const imagesURL = new URL(`client_images?tagnumber=${tagnumber}`, window.location.origin);
+			imagesAnchor.target = '_blank';
+			imagesAnchor.href = imagesURL.toString();
+	
 			editButton.textContent = 'Edit';
+			viewImagesButton.textContent = 'Images';
 
 			tagAnchor.appendChild(editButton);
+			imagesAnchor.appendChild(viewImagesButton);
 			actionsContainer.appendChild(tagAnchor);
+			actionsContainer.appendChild(imagesAnchor);
 			actionsCell.appendChild(actionsContainer);
 			tr.appendChild(actionsCell);
 
@@ -293,15 +303,20 @@ inventoryTableSearch.addEventListener('keyup', () => {
 	}
 
 	inventoryTableSearchDebounce = setTimeout(() => {
-		const searchedText = String(inventoryTableSearch.value.trim().replace(/[^a-zA-Z0-9]/g, "").toLowerCase() || '');
+		let searchIncludesSpecialChars = /[^a-zA-Z0-9]/.test(inventoryTableSearch.value);
+
+		let lowerCaseSearchedTextInput = String(inventoryTableSearch.value.trim().toLowerCase());
+		if (lowerCaseSearchedTextInput === '') searchIncludesSpecialChars = false;
+		lowerCaseSearchedTextInput = !searchIncludesSpecialChars ? lowerCaseSearchedTextInput.replace(/[^a-zA-Z0-9]/g, "") : lowerCaseSearchedTextInput;
 		const allRows = Array.from(tableBody.querySelectorAll('tr'));
 		for (const row of allRows) {
-			if (searchedText === '') {
+			if (lowerCaseSearchedTextInput === '') {
 				row.style.display = 'table-row';
 				continue;
 			}
-			const rowText = (row.dataset.tagnumber + ' ' + row.dataset.systemSerial + ' ' + row.dataset.locationFormatted + ' ' + row.dataset.note).replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-			if (rowText.includes(searchedText)) { // searchedText values are already lower case
+			let lowerCaseSearchableData = (row.dataset.tagnumber + ' ' + row.dataset.systemSerial + ' ' + row.dataset.locationFormatted + ' ' + row.dataset.note).toLowerCase();
+			lowerCaseSearchableData = !searchIncludesSpecialChars ? lowerCaseSearchableData.replace(/[^a-zA-Z0-9]/g, "") : lowerCaseSearchableData;
+			if (lowerCaseSearchableData.includes(lowerCaseSearchedTextInput)) { // lowerCaseSearchedTextInput values are already lower case
 				row.style.display = 'table-row';
 			} else {
 				row.style.display = 'none';
