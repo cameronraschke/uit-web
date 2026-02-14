@@ -101,6 +101,66 @@ type AppConfig struct {
 	UIT_WEBMASTER_EMAIL             string         `json:"UIT_WEBMASTER_EMAIL"`
 }
 
+type InputFieldConstraints struct {
+	tagnumberMinChars           int64
+	tagnumberMaxChars           int64
+	tagnumberMaxBytes           int64
+	systemSerialMinChars        int64
+	systemSerialMaxChars        int64
+	systemSerialMaxBytes        int64
+	buildingMinChars            int64
+	buildingMaxChars            int64
+	buildingMaxBytes            int64
+	roomMinChars                int64
+	roomMaxChars                int64
+	roomMaxBytes                int64
+	manufacturerMinChars        int64
+	manufacturerMaxChars        int64
+	manufacturerMaxBytes        int64
+	systemModelMinChars         int64
+	systemModelMaxChars         int64
+	systemModelMaxBytes         int64
+	deviceTypeMinChars          int64
+	deviceTypeMaxChars          int64
+	deviceTypeMaxBytes          int64
+	departmentMinChars          int64
+	departmentMaxChars          int64
+	departmenMaxBytes           int64
+	domainMinChars              int64
+	domainMaxChars              int64
+	domainMaxBytes              int64
+	propertyCustodianMinChars   int64
+	propertyCustodianMaxChars   int64
+	propertyCustodianMaxBytes   int64
+	acquiredDateMinChars        int64
+	acquiredDateMaxChars        int64
+	acquiredDateMaxBytes        int64
+	retiredDateMinChars         int64
+	retiredDateMaxChars         int64
+	retiredDateMaxBytes         int64
+	isFunctionalMinChars        int64
+	isFunctionalMaxChars        int64
+	isFunctionalMaxBytes        int64
+	diskRemovedMinChars         int64
+	diskRemovedMaxChars         int64
+	diskRemovedMaxBytes         int64
+	lastHardwareCheckMinChars   int64
+	lastHardwareCheckMaxChars   int64
+	lastHardwareCheckMaxBytes   int64
+	clientStatusMinChars        int64
+	clientStatusMaxChars        int64
+	clientStatusMaxBytes        int64
+	checkoutDateMaxBytes        int64
+	returnDateMaxBytes          int64
+	clientNoteMinChars          int64
+	clientNoteMaxChars          int64
+	clientNoteMaxBytes          int64
+	inventoryUpdateFormMaxBytes int64
+	imageUploadMaxFiles         int64
+	imageUploadMaxFileBytes     int64
+	imageUploadMaxTotalBytes    int64
+}
+
 type ClientLimiter struct {
 	IPAddr   netip.Addr
 	Limiter  *rate.Limiter
@@ -151,6 +211,7 @@ type FileList struct {
 
 type AppState struct {
 	AppConfig          atomic.Pointer[AppConfig]
+	InputConstraints   atomic.Pointer[InputFieldConstraints]
 	DBConn             atomic.Pointer[sql.DB]
 	AuthMap            sync.Map
 	AuthMapEntryCount  atomic.Int64
