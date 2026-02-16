@@ -276,15 +276,9 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 	defer jsonFile.Close()
 
-	jsonReader := &io.LimitedReader{R: jsonFile, N: maxInventoryFormJsonBytes}
+	jsonReader := &io.LimitedReader{R: jsonFile, N: maxInventoryFormJsonBytes + 1}
 	jsonBytes, err := io.ReadAll(jsonReader)
 	if err != nil {
-		var maxBytesErr *http.MaxBytesError
-		if errors.As(err, &maxBytesErr) {
-			log.HTTPWarning(req, "JSON data in form exceeds maximum allowed size: "+err.Error())
-			middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
-			return
-		}
 		log.HTTPWarning(req, "Error reading JSON data from form: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -297,7 +291,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var inventoryUpdate database.InventoryUpdateForm
-	if err := json.NewDecoder(jsonFile).Decode(&inventoryUpdate); err != nil {
+	if err := json.Unmarshal(jsonBytes, &inventoryUpdate); err != nil {
 		log.HTTPWarning(req, "Cannot decode JSON for InsertInventoryUpdateForm: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
