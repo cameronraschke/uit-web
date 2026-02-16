@@ -46,7 +46,7 @@ getConfigValue() {
         value=$(echo "$value" | tr -d '[:space:]')
     fi
 		if [[ $key == "UIT_SERVER_WAN_ALLOWED_IP" || $key == "UIT_SERVER_LAN_ALLOWED_IP" ]]; then
-			value=$(printf "%s" "$value" | tr -d '\n []')
+			value=$(printf "%s" "$value" | tr -d '\n []"')
     fi
     echo "$value"
 }
