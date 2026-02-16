@@ -696,10 +696,10 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 	// Process uploaded files
 	var totalActualFileBytes int64
+	var fileUploadCount int
 	for _, fileHeader := range files {
 		var manifest database.ImageManifest
 		// Check multipart headers
-
 		// File name/extension checks
 		if matched, _ := regexp.MatchString(allowedRegex, fileHeader.Filename); !matched {
 			log.HTTPWarning(req, "Invalid characters in uploaded file name for InsertInventoryUpdateForm")
@@ -906,7 +906,17 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		}
 		log.HTTPInfo(req, fmt.Sprintf("Uploaded file details - Name: %s, Size: %.2f MB, MIME Type: %s", fileName, float64(*manifest.FileSize)/1024/1024, mimeType)+" ("+fileHeader.Filename+")")
 		_ = file.Close()
+		fileUploadCount++
 	}
+	if fileUploadCount == 0 {
+		log.HTTPInfo(req, "No valid files uploaded for inventory update, proceeding with inventory data update")
+	}
+	if fileUploadCount > maxFileUploadCount {
+		log.HTTPWarning(req, "Number of valid uploaded files exceeds maximum allowed for InsertInventoryUpdateForm: "+strconv.Itoa(fileUploadCount))
+		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
+		return
+	}
+	log.HTTPInfo(req, fmt.Sprintf("Total uploaded files: %d, Total size of uploaded files: %.2f MB", fileUploadCount, float64(totalActualFileBytes)/1024/1024))
 	// Update db
 	// tagnumber and broken bool are converted above
 	err = updateRepo.InsertInventoryUpdateForm(ctx, transactionUUID, &inventoryUpdate)
