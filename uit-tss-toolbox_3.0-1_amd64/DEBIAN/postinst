@@ -59,7 +59,6 @@ configArr[UIT_SERVER_LAN_IF]=$(getConfigValue "UIT_SERVER_LAN_IF")
 configArr[UIT_SERVER_LAN_IP_ADDRESS]=$(getConfigValue "UIT_SERVER_LAN_IP_ADDRESS")
 configArr[UIT_SERVER_WAN_ALLOWED_IP]=$(getConfigValue "UIT_SERVER_WAN_ALLOWED_IP" false)
 configArr[UIT_SERVER_LAN_ALLOWED_IP]=$(getConfigValue "UIT_SERVER_LAN_ALLOWED_IP" false)
-configArr[UIT_PRINTER_IP]=$(getConfigValue "UIT_PRINTER_IP")
 configArr[UIT_WEB_DB_PASSWD]=$(openssl rand 30 | hexdump | tr -d '\n' | sed 's/[[:space:]]//g' | head -n1 | md5sum | awk '{print $1}')
 jq '.UIT_WEB_DB_PASSWD = "'"${configArr[UIT_WEB_DB_PASSWD]}"'"' /etc/uit-toolbox/uit-toolbox.json > /etc/uit-toolbox/uit-toolbox.tmp && mv /etc/uit-toolbox/uit-toolbox.tmp /etc/uit-toolbox/uit-toolbox.json
 configArr[UIT_WEB_DB_HOST]=$(getConfigValue "UIT_WEB_DB_HOST")

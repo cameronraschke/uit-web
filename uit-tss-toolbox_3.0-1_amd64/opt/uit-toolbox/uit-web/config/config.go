@@ -54,7 +54,6 @@ type ConfigFile struct {
 	UIT_CLIENT_DB_PORT              string `json:"UIT_CLIENT_DB_PORT"`
 	UIT_CLIENT_NTP_HOST             string `json:"UIT_CLIENT_NTP_HOST"`
 	UIT_CLIENT_PING_HOST            string `json:"UIT_CLIENT_PING_HOST"`
-	UIT_PRINTER_IP                  string `json:"UIT_PRINTER_IP"`
 	UIT_WEBMASTER_NAME              string `json:"UIT_WEBMASTER_NAME"`
 	UIT_WEBMASTER_EMAIL             string `json:"UIT_WEBMASTER_EMAIL"`
 }
@@ -96,7 +95,6 @@ type AppConfig struct {
 	UIT_CLIENT_DB_PORT              uint16         `json:"UIT_CLIENT_DB_PORT"`
 	UIT_CLIENT_NTP_HOST             netip.Addr     `json:"UIT_CLIENT_NTP_HOST"`
 	UIT_CLIENT_PING_HOST            netip.Addr     `json:"UIT_CLIENT_PING_HOST"`
-	UIT_PRINTER_IP                  netip.Addr     `json:"UIT_PRINTER_IP"`
 	UIT_WEBMASTER_NAME              string         `json:"UIT_WEBMASTER_NAME"`
 	UIT_WEBMASTER_EMAIL             string         `json:"UIT_WEBMASTER_EMAIL"`
 }
@@ -278,184 +276,48 @@ var (
 
 func LoadConfig() (*AppConfig, error) {
 	var appConfig AppConfig
-	var configFile ConfigFile
 
 	// Decode JSON
 	mainConfigFile, err := os.ReadFile("/etc/uit-toolbox/uit-toolbox.json")
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config mainConfigFile: %w", err)
+		return nil, fmt.Errorf("failed to read config '/etc/uit-toolbox/uit-toolbox.json': %w", err)
 	}
-	if err := json.Unmarshal(mainConfigFile, &configFile); err != nil {
+	if err := json.Unmarshal(mainConfigFile, &appConfig); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config JSON: %w", err)
 	}
 
-	// Server section
-	appConfig.UIT_SERVER_LOG_LEVEL = configFile.UIT_SERVER_LOG_LEVEL
-	appConfig.UIT_SERVER_ADMIN_PASSWD = configFile.UIT_SERVER_ADMIN_PASSWD
-	appConfig.UIT_SERVER_DB_NAME = configFile.UIT_SERVER_DB_NAME
-	appConfig.UIT_SERVER_HOSTNAME = configFile.UIT_SERVER_HOSTNAME
-
 	// WAN interface, IP, and allowed IPs
-	wanIPAddr, err := netip.ParseAddr(configFile.UIT_SERVER_WAN_IP_ADDRESS)
+	ifaces, err := net.Interfaces()
 	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_SERVER_WAN_IP_ADDRESS: %w", err)
+		return nil, fmt.Errorf("failed to get network interfaces: %w", err)
 	}
-	appConfig.UIT_SERVER_WAN_IP_ADDRESS = wanIPAddr
-
-	lanIPAddr, err := netip.ParseAddr(configFile.UIT_SERVER_LAN_IP_ADDRESS)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_SERVER_LAN_IP_ADDRESS: %w", err)
-	}
-	appConfig.UIT_SERVER_LAN_IP_ADDRESS = lanIPAddr
-
-	appConfig.UIT_SERVER_WAN_IF = configFile.UIT_SERVER_WAN_IF
-	appConfig.UIT_SERVER_LAN_IF = configFile.UIT_SERVER_LAN_IF
-
-	for wanIPStr := range strings.SplitSeq(configFile.UIT_SERVER_WAN_ALLOWED_IP, ",") {
-		ipStr := strings.TrimSpace(wanIPStr)
-		if ipStr == "" {
-			continue
-		}
-		ip, err := netip.ParsePrefix(ipStr)
+	for _, iface := range ifaces {
+		addrs, err := iface.Addrs()
 		if err != nil {
-			fmt.Println("Skipping invalid UIT_SERVER_WAN_ALLOWED_IP entry: " + ipStr)
-		} else {
-			appConfig.UIT_SERVER_WAN_ALLOWED_IP = append(appConfig.UIT_SERVER_WAN_ALLOWED_IP, ip)
-			appConfig.UIT_SERVER_ANY_ALLOWED_IP = append(appConfig.UIT_SERVER_ANY_ALLOWED_IP, ip)
+			return nil, fmt.Errorf("failed to get addresses for WAN interface: %w", err)
+		}
+		for _, addr := range addrs {
+			convIP, ok := addr.(*net.IPNet)
+			if !ok {
+				return nil, fmt.Errorf("address is not an IPNet: %v", addr)
+			}
+			if iface.Name == appConfig.UIT_SERVER_WAN_IF && convIP.IP.String() != appConfig.UIT_SERVER_WAN_IP_ADDRESS.String() {
+				return nil, fmt.Errorf("WAN interface %s does not have the expected IP address %s", appConfig.UIT_SERVER_WAN_IF, appConfig.UIT_SERVER_WAN_IP_ADDRESS.String())
+			}
+			if iface.Name == appConfig.UIT_SERVER_LAN_IF && convIP.IP.String() != appConfig.UIT_SERVER_LAN_IP_ADDRESS.String() {
+				return nil, fmt.Errorf("LAN interface %s does not have the expected IP address %s", appConfig.UIT_SERVER_LAN_IF, appConfig.UIT_SERVER_LAN_IP_ADDRESS.String())
+			}
 		}
 	}
-
-	for lanIPStr := range strings.SplitSeq(configFile.UIT_SERVER_LAN_ALLOWED_IP, ",") {
-		ipStr := strings.TrimSpace(lanIPStr)
-		if ipStr == "" {
-			continue
-		}
-		ip, err := netip.ParsePrefix(ipStr)
-		if err != nil {
-			fmt.Println("Skipping invalid UIT_SERVER_LAN_ALLOWED_IP entry: " + ipStr)
-		} else {
-			appConfig.UIT_SERVER_LAN_ALLOWED_IP = append(appConfig.UIT_SERVER_LAN_ALLOWED_IP, ip)
-			appConfig.UIT_SERVER_ANY_ALLOWED_IP = append(appConfig.UIT_SERVER_ANY_ALLOWED_IP, ip)
-		}
+	
+	for _, wanIP := range appConfig.UIT_SERVER_WAN_ALLOWED_IP {
+		appConfig.UIT_SERVER_WAN_ALLOWED_IP = append(appConfig.UIT_SERVER_WAN_ALLOWED_IP, wanIP)
+		appConfig.UIT_SERVER_ANY_ALLOWED_IP = append(appConfig.UIT_SERVER_ANY_ALLOWED_IP, wanIP)
 	}
-
-	// Webserver section
-	appConfig.UIT_WEB_USER_DEFAULT_PASSWD = configFile.UIT_WEB_USER_DEFAULT_PASSWD
-	appConfig.UIT_WEB_DB_USERNAME = configFile.UIT_WEB_DB_USERNAME
-	appConfig.UIT_WEB_DB_PASSWD = configFile.UIT_WEB_DB_PASSWD
-	appConfig.UIT_WEB_DB_NAME = configFile.UIT_WEB_DB_NAME
-
-	dbHostAddr, err := netip.ParseAddr(configFile.UIT_WEB_DB_HOST)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_WEB_DB_HOST: %w", err)
+	for _, lanIP := range appConfig.UIT_SERVER_LAN_ALLOWED_IP {
+		appConfig.UIT_SERVER_LAN_ALLOWED_IP = append(appConfig.UIT_SERVER_LAN_ALLOWED_IP, lanIP)
+		appConfig.UIT_SERVER_ANY_ALLOWED_IP = append(appConfig.UIT_SERVER_ANY_ALLOWED_IP, lanIP)
 	}
-	appConfig.UIT_WEB_DB_HOST = dbHostAddr
-
-	dbPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_DB_HOST + ":" + configFile.UIT_WEB_DB_PORT)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_WEB_DB_PORT: %w", err)
-	}
-	appConfig.UIT_WEB_DB_PORT = dbPortAddr.Port()
-
-	httpHostAddr, err := netip.ParseAddr(configFile.UIT_WEB_HTTP_HOST)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_WEB_HTTP_HOST: %w", err)
-	}
-	appConfig.UIT_WEB_HTTP_HOST = httpHostAddr
-
-	httpPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_HTTP_HOST + ":" + configFile.UIT_WEB_HTTP_PORT)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_WEB_HTTP_PORT: %w", err)
-	}
-	appConfig.UIT_WEB_HTTP_PORT = httpPortAddr.Port()
-
-	httpsHostAddr, err := netip.ParseAddr(configFile.UIT_WEB_HTTPS_HOST)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_WEB_HTTPS_HOST: %w", err)
-	}
-	appConfig.UIT_WEB_HTTPS_HOST = httpsHostAddr
-
-	httpsPortAddr, err := netip.ParseAddrPort(configFile.UIT_WEB_HTTPS_HOST + ":" + configFile.UIT_WEB_HTTPS_PORT)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_WEB_HTTPS_PORT: %w", err)
-	}
-	appConfig.UIT_WEB_HTTPS_PORT = httpsPortAddr.Port()
-	uploadSizeBytes, err := strconv.ParseInt(configFile.UIT_WEB_MAX_UPLOAD_SIZE_MB, 10, 64)
-	uploadSizeMB := uploadSizeBytes << 20
-	appConfig.UIT_WEB_MAX_UPLOAD_SIZE_MB = uploadSizeMB
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_WEB_MAX_UPLOAD_SIZE_MB: %w", err)
-	}
-	requestAPITimeoutSeconds, err := strconv.ParseInt(configFile.UIT_WEB_API_REQUEST_TIMEOUT, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_WEB_API_REQUEST_TIMEOUT: %w", err)
-	}
-	appConfig.UIT_WEB_API_REQUEST_TIMEOUT = time.Duration(requestAPITimeoutSeconds) * time.Second
-	requestFileTimeoutSeconds, err := strconv.ParseInt(configFile.UIT_WEB_FILE_REQUEST_TIMEOUT, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_WEB_FILE_REQUEST_TIMEOUT: %w", err)
-	}
-	appConfig.UIT_WEB_FILE_REQUEST_TIMEOUT = time.Duration(requestFileTimeoutSeconds) * time.Second
-	appConfig.UIT_WEB_TLS_CERT_FILE = configFile.UIT_WEB_TLS_CERT_FILE
-	appConfig.UIT_WEB_TLS_KEY_FILE = configFile.UIT_WEB_TLS_KEY_FILE
-
-	rateLimitBurst, err := strconv.Atoi(configFile.UIT_WEB_RATE_LIMIT_BURST)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_WEB_RATE_LIMIT_BURST: %w", err)
-	}
-	appConfig.UIT_WEB_RATE_LIMIT_BURST = rateLimitBurst
-
-	rateLimitInterval, err := strconv.ParseFloat(configFile.UIT_WEB_RATE_LIMIT_INTERVAL, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_WEB_RATE_LIMIT_INTERVAL: %w", err)
-	}
-	appConfig.UIT_WEB_RATE_LIMIT_INTERVAL = rateLimitInterval
-
-	banDurationSeconds, err := strconv.ParseInt(configFile.UIT_WEB_RATE_LIMIT_BAN_DURATION, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_WEB_RATE_LIMIT_BAN_DURATION: %w", err)
-	}
-	appConfig.UIT_WEB_RATE_LIMIT_BAN_DURATION = time.Duration(banDurationSeconds) * time.Second
-
-	// Client section
-	appConfig.UIT_CLIENT_DB_USER = configFile.UIT_CLIENT_DB_USER
-	appConfig.UIT_CLIENT_DB_PASSWD = configFile.UIT_CLIENT_DB_PASSWD
-	appConfig.UIT_CLIENT_DB_NAME = configFile.UIT_CLIENT_DB_NAME
-
-	clientDBHostAddr, err := netip.ParseAddr(configFile.UIT_CLIENT_DB_HOST)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_CLIENT_DB_HOST: %w", err)
-	}
-	appConfig.UIT_CLIENT_DB_HOST = clientDBHostAddr
-
-	clientDBPortAddr, err := netip.ParseAddrPort(configFile.UIT_CLIENT_DB_HOST + ":" + configFile.UIT_CLIENT_DB_PORT)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_CLIENT_DB_PORT: %w", err)
-	}
-	appConfig.UIT_CLIENT_DB_PORT = clientDBPortAddr.Port()
-
-	clientNTPHostAddr, err := netip.ParseAddr(configFile.UIT_CLIENT_NTP_HOST)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_CLIENT_NTP_HOST: %w", err)
-	}
-	appConfig.UIT_CLIENT_NTP_HOST = clientNTPHostAddr
-
-	clientPingHostAddr, err := netip.ParseAddr(configFile.UIT_CLIENT_PING_HOST)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_CLIENT_PING_HOST: %w", err)
-	}
-	appConfig.UIT_CLIENT_PING_HOST = clientPingHostAddr
-
-	// Printer IP
-	printerIPAddr, err := netip.ParseAddr(configFile.UIT_PRINTER_IP)
-	if err != nil {
-		return nil, fmt.Errorf("invalid UIT_PRINTER_IP: %w", err)
-	}
-	appConfig.UIT_PRINTER_IP = printerIPAddr
-
-	// Webmaster email
-	appConfig.UIT_WEBMASTER_NAME = configFile.UIT_WEBMASTER_NAME
-	appConfig.UIT_WEBMASTER_EMAIL = configFile.UIT_WEBMASTER_EMAIL
 
 	return &appConfig, nil
 }
