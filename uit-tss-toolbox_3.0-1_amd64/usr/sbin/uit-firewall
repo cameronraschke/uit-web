@@ -28,7 +28,6 @@ iptables --table filter --append OUTPUT --out-interface lo --jump ACCEPT
 
 # INPUT Traffic WAN
 iptables --table filter --append INPUT --in-interface "${wanif}" --source "${wan}" --match conntrack --ctstate NEW,RELATED,ESTABLISHED --protocol tcp --match multiport --destination-ports 22,31411 --jump ACCEPT
-iptables --table filter --append INPUT --in-interface "${wanif}" --source "${printer}" --match conntrack --ctstate NEW,RELATED,ESTABLISHED --jump ACCEPT
 iptables --table filter --append INPUT --in-interface "${wanif}" --match conntrack --ctstate NEW,RELATED,ESTABLISHED --protocol udp --match multiport --destination-ports 68,5353 --jump ACCEPT
 iptables --table filter --append INPUT --in-interface "${wanif}" --match conntrack --ctstate RELATED,ESTABLISHED --protocol udp --match multiport --source-ports 53,123 --jump ACCEPT
 iptables --table filter --append INPUT --in-interface "${wanif}" --match conntrack --ctstate RELATED,ESTABLISHED --protocol tcp --match multiport --source-ports 80,443 --jump ACCEPT
