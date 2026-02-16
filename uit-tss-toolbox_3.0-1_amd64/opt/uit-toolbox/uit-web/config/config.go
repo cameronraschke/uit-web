@@ -18,47 +18,9 @@ import (
 	"golang.org/x/time/rate"
 )
 
-type ConfigFile struct {
-	UIT_SERVER_LOG_LEVEL            string `json:"UIT_SERVER_LOG_LEVEL"`
-	UIT_SERVER_ADMIN_PASSWD         string `json:"UIT_SERVER_ADMIN_PASSWD"`
-	UIT_SERVER_DB_NAME              string `json:"UIT_SERVER_DB_NAME"`
-	UIT_SERVER_HOSTNAME             string `json:"UIT_SERVER_HOSTNAME"`
-	UIT_SERVER_WAN_IP_ADDRESS       string `json:"UIT_SERVER_WAN_IP_ADDRESS"`
-	UIT_SERVER_LAN_IP_ADDRESS       string `json:"UIT_SERVER_LAN_IP_ADDRESS"`
-	UIT_SERVER_WAN_IF               string `json:"UIT_SERVER_WAN_IF"`
-	UIT_SERVER_LAN_IF               string `json:"UIT_SERVER_LAN_IF"`
-	UIT_SERVER_WAN_ALLOWED_IP       string `json:"UIT_SERVER_WAN_ALLOWED_IP"`
-	UIT_SERVER_LAN_ALLOWED_IP       string `json:"UIT_SERVER_LAN_ALLOWED_IP"`
-	UIT_WEB_USER_DEFAULT_PASSWD     string `json:"UIT_WEB_USER_DEFAULT_PASSWD"`
-	UIT_WEB_DB_USERNAME             string `json:"UIT_WEB_DB_USERNAME"`
-	UIT_WEB_DB_PASSWD               string `json:"UIT_WEB_DB_PASSWD"`
-	UIT_WEB_DB_NAME                 string `json:"UIT_WEB_DB_NAME"`
-	UIT_WEB_DB_HOST                 string `json:"UIT_WEB_DB_HOST"`
-	UIT_WEB_DB_PORT                 string `json:"UIT_WEB_DB_PORT"`
-	UIT_WEB_HTTP_HOST               string `json:"UIT_WEB_HTTP_HOST"`
-	UIT_WEB_HTTP_PORT               string `json:"UIT_WEB_HTTP_PORT"`
-	UIT_WEB_HTTPS_HOST              string `json:"UIT_WEB_HTTPS_HOST"`
-	UIT_WEB_HTTPS_PORT              string `json:"UIT_WEB_HTTPS_PORT"`
-	UIT_WEB_TLS_CERT_FILE           string `json:"UIT_WEB_TLS_CERT_FILE"`
-	UIT_WEB_TLS_KEY_FILE            string `json:"UIT_WEB_TLS_KEY_FILE"`
-	UIT_WEB_MAX_UPLOAD_SIZE_MB      string `json:"UIT_WEB_MAX_UPLOAD_SIZE_MB"`
-	UIT_WEB_API_REQUEST_TIMEOUT     string `json:"UIT_WEB_API_REQUEST_TIMEOUT"`
-	UIT_WEB_FILE_REQUEST_TIMEOUT    string `json:"UIT_WEB_FILE_REQUEST_TIMEOUT"`
-	UIT_WEB_RATE_LIMIT_BURST        string `json:"UIT_WEB_RATE_LIMIT_BURST"`
-	UIT_WEB_RATE_LIMIT_INTERVAL     string `json:"UIT_WEB_RATE_LIMIT_INTERVAL"`
-	UIT_WEB_RATE_LIMIT_BAN_DURATION string `json:"UIT_WEB_RATE_LIMIT_BAN_DURATION"`
-	UIT_CLIENT_DB_USER              string `json:"UIT_CLIENT_DB_USER"`
-	UIT_CLIENT_DB_PASSWD            string `json:"UIT_CLIENT_DB_PASSWD"`
-	UIT_CLIENT_DB_NAME              string `json:"UIT_CLIENT_DB_NAME"`
-	UIT_CLIENT_DB_HOST              string `json:"UIT_CLIENT_DB_HOST"`
-	UIT_CLIENT_DB_PORT              string `json:"UIT_CLIENT_DB_PORT"`
-	UIT_CLIENT_NTP_HOST             string `json:"UIT_CLIENT_NTP_HOST"`
-	UIT_CLIENT_PING_HOST            string `json:"UIT_CLIENT_PING_HOST"`
-	UIT_WEBMASTER_NAME              string `json:"UIT_WEBMASTER_NAME"`
-	UIT_WEBMASTER_EMAIL             string `json:"UIT_WEBMASTER_EMAIL"`
-}
-
 type AppConfig struct {
+	InputConstraints                atomic.Pointer[InputFieldConstraints]
+	FormConstraints                 atomic.Pointer[HTMLFormConstraints]
 	UIT_SERVER_LOG_LEVEL            string         `json:"UIT_SERVER_LOG_LEVEL"`
 	UIT_SERVER_ADMIN_PASSWD         string         `json:"UIT_SERVER_ADMIN_PASSWD"`
 	UIT_SERVER_DB_NAME              string         `json:"UIT_SERVER_DB_NAME"`
@@ -97,66 +59,6 @@ type AppConfig struct {
 	UIT_CLIENT_PING_HOST            netip.Addr     `json:"UIT_CLIENT_PING_HOST"`
 	UIT_WEBMASTER_NAME              string         `json:"UIT_WEBMASTER_NAME"`
 	UIT_WEBMASTER_EMAIL             string         `json:"UIT_WEBMASTER_EMAIL"`
-}
-
-type InputFieldConstraints struct {
-	tagnumberMinChars           int64
-	tagnumberMaxChars           int64
-	tagnumberMaxBytes           int64
-	systemSerialMinChars        int64
-	systemSerialMaxChars        int64
-	systemSerialMaxBytes        int64
-	buildingMinChars            int64
-	buildingMaxChars            int64
-	buildingMaxBytes            int64
-	roomMinChars                int64
-	roomMaxChars                int64
-	roomMaxBytes                int64
-	manufacturerMinChars        int64
-	manufacturerMaxChars        int64
-	manufacturerMaxBytes        int64
-	systemModelMinChars         int64
-	systemModelMaxChars         int64
-	systemModelMaxBytes         int64
-	deviceTypeMinChars          int64
-	deviceTypeMaxChars          int64
-	deviceTypeMaxBytes          int64
-	departmentMinChars          int64
-	departmentMaxChars          int64
-	departmenMaxBytes           int64
-	domainMinChars              int64
-	domainMaxChars              int64
-	domainMaxBytes              int64
-	propertyCustodianMinChars   int64
-	propertyCustodianMaxChars   int64
-	propertyCustodianMaxBytes   int64
-	acquiredDateMinChars        int64
-	acquiredDateMaxChars        int64
-	acquiredDateMaxBytes        int64
-	retiredDateMinChars         int64
-	retiredDateMaxChars         int64
-	retiredDateMaxBytes         int64
-	isFunctionalMinChars        int64
-	isFunctionalMaxChars        int64
-	isFunctionalMaxBytes        int64
-	diskRemovedMinChars         int64
-	diskRemovedMaxChars         int64
-	diskRemovedMaxBytes         int64
-	lastHardwareCheckMinChars   int64
-	lastHardwareCheckMaxChars   int64
-	lastHardwareCheckMaxBytes   int64
-	clientStatusMinChars        int64
-	clientStatusMaxChars        int64
-	clientStatusMaxBytes        int64
-	checkoutDateMaxBytes        int64
-	returnDateMaxBytes          int64
-	clientNoteMinChars          int64
-	clientNoteMaxChars          int64
-	clientNoteMaxBytes          int64
-	inventoryUpdateFormMaxBytes int64
-	imageUploadMaxFiles         int64
-	imageUploadMaxFileBytes     int64
-	imageUploadMaxTotalBytes    int64
 }
 
 type ClientLimiter struct {
@@ -209,7 +111,6 @@ type FileList struct {
 
 type AppState struct {
 	AppConfig          atomic.Pointer[AppConfig]
-	InputConstraints   atomic.Pointer[InputFieldConstraints]
 	DBConn             atomic.Pointer[sql.DB]
 	AuthMap            sync.Map
 	AuthMapEntryCount  atomic.Int64
@@ -286,6 +187,11 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, fmt.Errorf("failed to unmarshal config JSON: %w", err)
 	}
 
+	// Convert durations to seconds
+	appConfig.UIT_WEB_API_REQUEST_TIMEOUT *= time.Second
+	appConfig.UIT_WEB_FILE_REQUEST_TIMEOUT *= time.Second
+	appConfig.UIT_WEB_RATE_LIMIT_BAN_DURATION *= time.Second
+
 	// WAN interface, IP, and allowed IPs
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -309,7 +215,7 @@ func LoadConfig() (*AppConfig, error) {
 			}
 		}
 	}
-	
+
 	for _, wanIP := range appConfig.UIT_SERVER_WAN_ALLOWED_IP {
 		appConfig.UIT_SERVER_WAN_ALLOWED_IP = append(appConfig.UIT_SERVER_WAN_ALLOWED_IP, wanIP)
 		appConfig.UIT_SERVER_ANY_ALLOWED_IP = append(appConfig.UIT_SERVER_ANY_ALLOWED_IP, wanIP)
@@ -318,6 +224,66 @@ func LoadConfig() (*AppConfig, error) {
 		appConfig.UIT_SERVER_LAN_ALLOWED_IP = append(appConfig.UIT_SERVER_LAN_ALLOWED_IP, lanIP)
 		appConfig.UIT_SERVER_ANY_ALLOWED_IP = append(appConfig.UIT_SERVER_ANY_ALLOWED_IP, lanIP)
 	}
+
+	// Set input constraints
+	inputConstraints := &InputFieldConstraints{
+		usernameMinChars:             64,
+		usernameMaxChars:             64,
+		passwordMinChars:             64,
+		passwordMaxChars:             64, // All SHA-256, fixed length
+		tagnumberMinChars:            6,
+		tagnumberMaxChars:            6,
+		systemSerialMinChars:         1,
+		systemSerialMaxChars:         128,
+		locationMinChars:             1,
+		locationMaxChars:             128,
+		buildingMinChars:             1,
+		buildingMaxChars:             128,
+		roomMinChars:                 1,
+		roomMaxChars:                 128,
+		manufacturerMinChars:         1,
+		manufacturerMaxChars:         128,
+		systemModelMinChars:          1,
+		systemModelMaxChars:          128,
+		deviceTypeMinChars:           1,
+		deviceTypeMaxChars:           64,
+		departmentMinChars:           1,
+		departmentMaxChars:           64,
+		domainMinChars:               1,
+		domainMaxChars:               64,
+		propertyCustodianMinChars:    1,
+		propertyCustodianMaxChars:    64,
+		acquiredDateIsMandatory:      false,
+		retiredDateIsMandatory:       false,
+		isFunctionalIsMandatory:      false,
+		diskRemovedIsMandatory:       false,
+		lastHardwareCheckIsMandatory: false,
+		clientStatusMinChars:         1,
+		clientStatusMaxChars:         64,
+		checkoutBoolIsMandatory:      false,
+		checkoutDateIsMandatory:      false,
+		returnDateIsMandatory:        false,
+		clientNoteMinChars:           0,
+		clientNoteMaxChars:           512,
+		noteTypeMinChars:             0,
+		noteTypeMaxChars:             256,
+		noteContentMinChars:          0,
+		noteContentMaxChars:          8192,
+	}
+	appConfig.InputConstraints.Store(inputConstraints)
+
+	formConstraints := &HTMLFormConstraints{
+		maxLoginFormSizeBytes:           512,
+		noteMaxBytes:                    8192,
+		inventoryUpdateFormMaxJsonBytes: 2 << 20,
+		fileUploadMaxFileCount:          20,
+		fileUploadMinFileBytes:          512,
+		fileUploadMaxFileBytes:          20 << 20,
+		fileUploadMaxTotalBytes:         120 << 20, // Either limited by the size of a few large files or large amount of small files
+		fileUploadAllowedFileExtensions: []string{".jpg", ".jpeg", ".jfif", ".png"},
+		fileUploadAllowedFileRegex:      `^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$`,
+	}
+	appConfig.FormConstraints.Store(formConstraints)
 
 	return &appConfig, nil
 }
@@ -792,7 +758,7 @@ func GetMaxUploadSize() (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("error getting app state in GetMaxUploadSize: %w", err)
 	}
-	return appState.AppConfig.Load().UIT_WEB_MAX_UPLOAD_SIZE_MB, nil
+	return appState.AppConfig.Load().UIT_WEB_MAX_UPLOAD_SIZE_MB << 20, nil
 }
 
 func GetRequestTimeout(timeoutType string) (time.Duration, error) {

@@ -7,6 +7,7 @@ import (
 	"crypto"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -29,16 +30,11 @@ import (
 	"github.com/google/uuid"
 )
 
-const maxLoginFormSizeBytes = 512 // 512 bytes
-
-const maxInventoryFileSizeBytes = 64 << 20  // 64 MB
-const minInventoryFileSizeBytes = 512       // 512 bytes
-const maxInventoryFormSizeBytes = 128 << 20 // 128 MB
-
-const maxNoteContentRunes = 8192
-
-const allowedFileNameRegex = `^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$` // file name + extension
-var allowedFileExtensions = []string{".jpg", ".jpeg", ".jfif", ".png"}
+type AuthFormData struct {
+	Username      string `json:"username"`
+	Password      string `json:"password"`
+	ReturnedToken string `json:"token,omitempty"`
+}
 
 type RemoteTable struct {
 	Tagnumber         *int       `sql:"tagnumber"`
@@ -71,67 +67,64 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestPath, err := middleware.GetRequestPathFromContext(ctx)
+
+	appState, err := config.GetAppState()
 	if err != nil {
-		log.HTTPWarning(req, "Error retrieving request path from context (WebAuthEndpoint): "+err.Error())
+		log.HTTPWarning(req, "Cannot get app state in WebAuthEndpoint: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-
-	// Check method and URL path
-	if req.Method != http.MethodPost || requestPath != "/login" {
-		log.HTTPWarning(req, "Invalid method or URL for auth form sanitization")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
+	maxLoginSizeBytes, _, _, _, _, err := appState.GetLoginFormSizeConstraint()
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving login form constraints: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
+	req.Body = http.MaxBytesReader(w, req.Body, maxLoginSizeBytes)
+	defer req.Body.Close()
 
-	reader := io.LimitReader(req.Body, maxLoginFormSizeBytes)
-	body, err := io.ReadAll(reader)
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			log.HTTPWarning(req, "Login form size exceeds maximum allowed: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
+			return
+		}
 		log.HTTPWarning(req, "Cannot read request body: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	defer req.Body.Close()
 
-	base64String := strings.TrimSpace(string(body))
-	if base64String == "" {
-		log.HTTPWarning(req, "No base64 string provided in auth form")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-
-	decodedBytes, err := base64.RawURLEncoding.DecodeString(base64String)
+	decoded, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(string(body)))
 	if err != nil {
 		log.HTTPWarning(req, "Invalid base64 encoding: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	if !utf8.Valid(decodedBytes) {
+	if !utf8.Valid(decoded) {
 		log.HTTPWarning(req, "Invalid UTF-8 in decoded data")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	var clientFormAuthData struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
-	if err := json.Unmarshal(decodedBytes, &clientFormAuthData); err != nil {
-		log.HTTPWarning(req, "Invalid JSON structure: "+err.Error())
+
+	var clientFormAuthData AuthFormData
+	if err := json.Unmarshal(decoded, &clientFormAuthData); err != nil {
+		log.HTTPWarning(req, "Invalid JSON structure in WebAuthEndpoint: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	// Validate input data
-	if err := middleware.ValidateAuthFormInputSHA256(clientFormAuthData.Username, clientFormAuthData.Password); err != nil {
+	if err := ValidateAuthFormInputSHA256(clientFormAuthData.Username, clientFormAuthData.Password); err != nil {
 		log.HTTPWarning(req, "Invalid auth input: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	// Authenticate with bcrypt
-	authenticated, err := middleware.CheckAuthCredentials(ctx, clientFormAuthData.Username, clientFormAuthData.Password)
+	authenticated, err := CheckAuthCredentials(ctx, clientFormAuthData.Username, clientFormAuthData.Password)
 	if err != nil || !authenticated {
 		log.HTTPInfo(req, "Authentication failed: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusUnauthorized)
@@ -158,29 +151,37 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	w.Write([]byte(`{"token":"` + bearerToken + `"}`))
+	returnedJson, err := json.Marshal(&AuthFormData{ReturnedToken: bearerToken})
+	if err != nil {
+		log.HTTPError(req, "Failed to marshal JSON response: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	w.Write(returnedJson)
 }
 
 func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	requestPath, err := middleware.GetRequestPathFromContext(ctx)
+
+	appState, err := config.GetAppState()
 	if err != nil {
-		log.HTTPWarning(req, "Error retrieving request path from context for InsertNewNote")
+		log.HTTPWarning(req, "Cannot get app state in InsertNewNote: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	noteFormMaxBytes, noteTypeMinChars, noteTypeMaxChars, noteContentMinChars, noteContentMaxChars, err := appState.GetNoteConstraints()
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving note constraints in InsertNewNote: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
-	// Check POST request
-	if req.Method != http.MethodPost || !(strings.HasSuffix(requestPath, "/notes")) {
-		log.HTTPWarning(req, "Invalid method or URL for InsertNewNote")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
+	lr := io.LimitReader(req.Body, noteFormMaxBytes)
 
 	// Parse and validate note data
 	var newNote database.Note
-	err = json.NewDecoder(req.Body).Decode(&newNote)
+	err = json.NewDecoder(lr).Decode(&newNote)
 	if err != nil {
 		log.HTTPWarning(req, "Cannot decode note JSON: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -188,17 +189,14 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	}
 	defer req.Body.Close()
 
-	noteTypeTrimmed := strings.TrimSpace(newNote.NoteType)
-	if utf8.RuneCountInString(noteTypeTrimmed) <= 1 || utf8.RuneCountInString(newNote.NoteType) > 64 {
+	if utf8.RuneCountInString(strings.TrimSpace(newNote.NoteType)) <= noteTypeMinChars || utf8.RuneCountInString(newNote.NoteType) > noteTypeMaxChars {
 		log.HTTPWarning(req, "Note type outside of valid length range, not inserting new note")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
+		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
 	}
-
-	noteContentTrimmed := strings.TrimSpace(newNote.Content)
-	if utf8.RuneCountInString(newNote.Content) > maxNoteContentRunes {
-		log.HTTPWarning(req, "Note content too long, not inserting new note")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
+	if utf8.RuneCountInString(strings.TrimSpace(newNote.Content)) < noteContentMinChars || utf8.RuneCountInString(newNote.Content) > noteContentMaxChars {
+		log.HTTPWarning(req, "Note content outside of valid length range, not inserting new note")
+		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -210,7 +208,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	curTime := time.Now()
-	err = insertRepo.InsertNewNote(ctx, &curTime, &noteTypeTrimmed, &noteContentTrimmed)
+	err = insertRepo.InsertNewNote(ctx, &curTime, &newNote.NoteType, &newNote.Content)
 	if err != nil {
 		log.HTTPError(req, "Failed to insert new note: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -223,7 +221,47 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx)
 
 	// Parse inventory data
-	if err := req.ParseMultipartForm(maxInventoryFormSizeBytes); err != nil {
+	appState, err := config.GetAppState()
+	if err != nil {
+		log.HTTPWarning(req, "Cannot get app state in InsertInventoryUpdateForm: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	maxInventoryFormJsonBytes, err := appState.GetInventoryUpdateFormConstraints()
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving inventory update form size constraint: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	maxFileUploadTotalBytes, minFileUploadBytes, maxFileUploadBytes, maxFileUploadCount, err := appState.GetFileUploadSizeConstraints()
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving file upload size constraints: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	totalAllowedBytes := maxInventoryFormJsonBytes + maxFileUploadTotalBytes
+	req.Body = http.MaxBytesReader(w, req.Body, totalAllowedBytes)
+	defer req.Body.Close()
+
+	if err := req.ParseMultipartForm(totalAllowedBytes); err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.Is(err, http.ErrNotMultipart) {
+			log.HTTPWarning(req, "Request body is not multipart form data: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, http.ErrMissingBoundary) {
+			log.HTTPWarning(req, "Multipart form data missing boundary: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		if errors.As(err, &maxBytesErr) {
+			log.HTTPWarning(req, "Request body too large: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
+			return
+		}
 		log.HTTPWarning(req, "Cannot parse multipart form: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
@@ -238,9 +276,34 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 	defer jsonFile.Close()
 
+	jsonReader := &io.LimitedReader{R: jsonFile, N: maxInventoryFormJsonBytes}
+	jsonBytes, err := io.ReadAll(jsonReader)
+	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			log.HTTPWarning(req, "JSON data in form exceeds maximum allowed size: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
+			return
+		}
+		log.HTTPWarning(req, "Error reading JSON data from form: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	if int64(len(jsonBytes)) > maxInventoryFormJsonBytes {
+		log.HTTPWarning(req, "JSON data in form exceeds maximum allowed size after reading")
+		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
+		return
+	}
+
 	var inventoryUpdate database.InventoryUpdateForm
 	if err := json.NewDecoder(jsonFile).Decode(&inventoryUpdate); err != nil {
 		log.HTTPWarning(req, "Cannot decode JSON for InsertInventoryUpdateForm: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if !utf8.Valid(jsonBytes) {
+		log.HTTPWarning(req, "Invalid UTF-8 in JSON data for InsertInventoryUpdateForm")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -254,13 +317,19 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// System serial (required, min 1 char, max 128 chars, printable ASCII only)
+	// System serial
 	if inventoryUpdate.SystemSerial == nil {
 		log.HTTPWarning(req, "Invalid system serial provided for InsertInventoryUpdateForm")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.SystemSerial)) < 1 || utf8.RuneCountInString(*inventoryUpdate.SystemSerial) > 128 {
+	serialMinChars, serialMaxChars, err := appState.GetSystemSerialConstraints()
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving system serial constraints: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.SystemSerial)) < serialMinChars || utf8.RuneCountInString(*inventoryUpdate.SystemSerial) > serialMaxChars {
 		log.HTTPWarning(req, "Invalid system serial length provided for InsertInventoryUpdateForm")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -272,13 +341,19 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 	*inventoryUpdate.SystemSerial = strings.TrimSpace(*inventoryUpdate.SystemSerial)
 
-	// Location (required, min 1 char, max 128 Unicode chars)
+	// Location
 	if inventoryUpdate.Location == nil {
 		log.HTTPWarning(req, "No location provided for InsertInventoryUpdateForm")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Location)) < 1 || utf8.RuneCountInString(*inventoryUpdate.Location) > 128 {
+	locationMinChars, locationMaxChars, err := appState.GetLocationConstraints()
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving location constraints: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Location)) < locationMinChars || utf8.RuneCountInString(*inventoryUpdate.Location) > locationMaxChars {
 		log.HTTPWarning(req, "Invalid location length for InsertInventoryUpdateForm")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -290,9 +365,15 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 	*inventoryUpdate.Location = strings.TrimSpace(*inventoryUpdate.Location)
 
-	// Building (optional, min 1 char, max 64 Unicode chars)
+	// Building (optional)
 	if inventoryUpdate.Building != nil {
-		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Building)) < 1 || utf8.RuneCountInString(*inventoryUpdate.Building) > 64 {
+		buildingMinChars, buildingMaxChars, err := appState.GetBuildingConstraints()
+		if err != nil {
+			log.HTTPWarning(req, "Error retrieving building constraints: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Building)) < buildingMinChars || utf8.RuneCountInString(*inventoryUpdate.Building) > buildingMaxChars {
 			log.HTTPWarning(req, "Invalid building length for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
@@ -307,9 +388,15 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		log.HTTPInfo(req, "No building provided for inventory update")
 	}
 
-	// Room (optional, min 1 char, max 64 Unicode chars)
+	// Room (optional)
 	if inventoryUpdate.Room != nil {
-		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Room)) < 1 || utf8.RuneCountInString(*inventoryUpdate.Room) > 64 {
+		roomMinChars, roomMaxChars, err := appState.GetRoomConstraints()
+		if err != nil {
+			log.HTTPWarning(req, "Error retrieving room constraints: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Room)) < roomMinChars || utf8.RuneCountInString(*inventoryUpdate.Room) > roomMaxChars {
 			log.HTTPWarning(req, "Invalid room length for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
@@ -326,7 +413,13 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 	// System manufacturer (optional, min 1 char, max 24, Unicode chars)
 	if inventoryUpdate.SystemManufacturer != nil {
-		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.SystemManufacturer)) < 1 || utf8.RuneCountInString(*inventoryUpdate.SystemManufacturer) > 24 {
+		systemManufacturerMinChars, systemManufacturerMaxChars, err := appState.GetManufacturerConstraints()
+		if err != nil {
+			log.HTTPWarning(req, "Error retrieving system manufacturer constraints: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.SystemManufacturer)) < systemManufacturerMinChars || utf8.RuneCountInString(*inventoryUpdate.SystemManufacturer) > systemManufacturerMaxChars {
 			log.HTTPWarning(req, "Invalid system manufacturer length for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
@@ -343,7 +436,13 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 	// System model (optional, min 1 char, max 64 Unicode chars)
 	if inventoryUpdate.SystemModel != nil {
-		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.SystemModel)) < 1 || utf8.RuneCountInString(*inventoryUpdate.SystemModel) > 64 {
+		systemModelMinChars, systemModelMaxChars, err := appState.GetSystemModelConstraints()
+		if err != nil {
+			log.HTTPWarning(req, "Error retrieving system model constraints: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.SystemModel)) < systemModelMinChars || utf8.RuneCountInString(*inventoryUpdate.SystemModel) > systemModelMaxChars {
 			log.HTTPWarning(req, "Invalid system model length for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
@@ -364,7 +463,13 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Department)) < 1 || utf8.RuneCountInString(*inventoryUpdate.Department) > 64 {
+	departmentMinChars, departmentMaxChars, err := appState.GetDepartmentConstraints()
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving department constraints: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Department)) < departmentMinChars || utf8.RuneCountInString(*inventoryUpdate.Department) > departmentMaxChars {
 		log.HTTPWarning(req, "Invalid department_name length for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -382,7 +487,13 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Domain)) < 1 || utf8.RuneCountInString(*inventoryUpdate.Domain) > 64 {
+	domainMinChars, domainMaxChars, err := appState.GetDomainConstraints()
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving domain constraints: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Domain)) < domainMinChars || utf8.RuneCountInString(*inventoryUpdate.Domain) > domainMaxChars {
 		log.HTTPWarning(req, "Invalid domain length for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -396,7 +507,13 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 	// Property custodian (optional, min 1 char, max 64 Unicode chars)
 	if inventoryUpdate.PropertyCustodian != nil {
-		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.PropertyCustodian)) < 1 || utf8.RuneCountInString(*inventoryUpdate.PropertyCustodian) > 64 {
+		propertyCustodianMinChars, propertyCustodianMaxChars, err := appState.GetPropertyCustodianConstraints()
+		if err != nil {
+			log.HTTPWarning(req, "Error retrieving property custodian constraints: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.PropertyCustodian)) < propertyCustodianMinChars || utf8.RuneCountInString(*inventoryUpdate.PropertyCustodian) > propertyCustodianMaxChars {
 			log.HTTPWarning(req, "Invalid property custodian length for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
@@ -449,7 +566,13 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.ClientStatus)) < 1 || utf8.RuneCountInString(*inventoryUpdate.ClientStatus) > 24 {
+	clientStatusMinChars, clientStatusMaxChars, err := appState.GetClientStatusConstraints()
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving client status constraints: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.ClientStatus)) < clientStatusMinChars || utf8.RuneCountInString(*inventoryUpdate.ClientStatus) > clientStatusMaxChars {
 		log.HTTPWarning(req, "Invalid status length for inventory update")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -461,12 +584,20 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 	*inventoryUpdate.ClientStatus = strings.TrimSpace(*inventoryUpdate.ClientStatus)
 
-	// Checkout bool (optional, bool)
-	if inventoryUpdate.CheckoutBool == nil {
-		log.HTTPInfo(req, "No is_checked_out bool value provided for inventory update")
+	// Checkout bool (optional)
+	checkoutDateMandatory, returnDateMandatory, checkoutBoolMandatory, err := appState.GetCheckoutConstraints()
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving checkout constraints: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 
 	// Checkout date (optional, process as UTC)
+	if checkoutDateMandatory && inventoryUpdate.CheckoutDate == nil {
+		log.HTTPWarning(req, "No checkout_date provided for inventory update, not updating inventory entry.")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
 	if inventoryUpdate.CheckoutDate != nil {
 		checkoutDateUTC := inventoryUpdate.CheckoutDate.UTC()
 		inventoryUpdate.CheckoutDate = &checkoutDateUTC
@@ -475,6 +606,11 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Return date (optional, process as UTC)
+	if returnDateMandatory && inventoryUpdate.ReturnDate == nil {
+		log.HTTPWarning(req, "No return_date provided for inventory update, not updating inventory entry.")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
 	if inventoryUpdate.ReturnDate != nil {
 		returnDateUTC := inventoryUpdate.ReturnDate.UTC()
 		inventoryUpdate.ReturnDate = &returnDateUTC
@@ -482,9 +618,21 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		log.HTTPInfo(req, "No return_date provided for inventory update")
 	}
 
-	// Note (optional, min 1, max 512 UTF-8 chars)
-	if inventoryUpdate.Note != nil && utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Note)) > 1 {
-		if utf8.RuneCountInString(*inventoryUpdate.Note) > 512 {
+	if checkoutBoolMandatory && inventoryUpdate.CheckoutBool == nil {
+		log.HTTPWarning(req, "No is_checked_out bool value provided for inventory update, not updating inventory entry.")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	// Note (optional)
+	if inventoryUpdate.Note != nil {
+		noteMinChars, noteMaxChars, err := appState.GetClientNoteConstraints()
+		if err != nil {
+			log.HTTPWarning(req, "Error retrieving client note constraints: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Note)) < noteMinChars || utf8.RuneCountInString(*inventoryUpdate.Note) > noteMaxChars {
 			log.HTTPWarning(req, "Invalid note length for inventory update")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
@@ -500,12 +648,29 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Other part of form:
-	// Image/File uploads (base64, optional, max 64MB, multiple file uploads supported)
 	var files []*multipart.FileHeader
 	if req.MultipartForm != nil && req.MultipartForm.File != nil {
 		if f := req.MultipartForm.File["inventory-file-input"]; len(f) > 0 {
 			files = f
+		} else {
+			log.HTTPInfo(req, "No files uploaded for inventory update")
 		}
+	}
+
+	if len(files) > maxFileUploadCount {
+		log.HTTPWarning(req, "Number of uploaded files exceeds maximum allowed for InsertInventoryUpdateForm: "+strconv.Itoa(len(files)))
+		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
+		return
+	}
+
+	var totalHeaderFileSize int64
+	for _, fileHeader := range files {
+		totalHeaderFileSize += fileHeader.Size
+	}
+	if totalHeaderFileSize > maxFileUploadTotalBytes {
+		log.HTTPWarning(req, "Total size of uploaded files exceeds maximum allowed for InsertInventoryUpdateForm: "+strconv.FormatInt(totalHeaderFileSize, 10)+" bytes")
+		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
+		return
 	}
 
 	// Establish DB connection before processing files
@@ -529,31 +694,38 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	allowedExtensions, allowedRegex, err := appState.GetFileUploadAllowedExtensionsAndRegex()
+	if err != nil {
+		log.HTTPWarning(req, "Error retrieving file upload constraints: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
 	// Process uploaded files
+	var totalActualFileBytes int64
 	for _, fileHeader := range files {
 		var manifest database.ImageManifest
 		// Check multipart headers
 
 		// File name/extension checks
-		if matched, _ := regexp.MatchString(allowedFileNameRegex, fileHeader.Filename); !matched {
+		if matched, _ := regexp.MatchString(allowedRegex, fileHeader.Filename); !matched {
 			log.HTTPWarning(req, "Invalid characters in uploaded file name for InsertInventoryUpdateForm")
 			continue
 		}
-		if !slices.Contains(allowedFileExtensions, strings.ToLower(filepath.Ext(fileHeader.Filename))) {
+		if !slices.Contains(allowedExtensions, strings.ToLower(filepath.Ext(fileHeader.Filename))) {
 			log.HTTPWarning(req, "Uploaded file has disallowed extension for InsertInventoryUpdateForm: ("+fileHeader.Filename+")")
 			continue
 		}
 
 		// File size from multipart header checks
-		if fileHeader.Size > maxInventoryFileSizeBytes {
+		if fileHeader.Size > maxFileUploadBytes {
 			log.HTTPWarning(req, "Multipart header size value is too large for InsertInventoryUpdateForm ("+strconv.FormatInt(fileHeader.Size, 10)+" bytes)")
 			continue
 		}
-		if fileHeader.Size == 0 {
+		if fileHeader.Size <= 0 {
 			log.HTTPWarning(req, "Multipart header size value is empty for InsertInventoryUpdateForm: "+fileHeader.Filename)
 			continue
 		}
-		if fileHeader.Size < minInventoryFileSizeBytes {
+		if fileHeader.Size <= minFileUploadBytes {
 			log.HTTPWarning(req, "Multipart header size value too small for InsertInventoryUpdateForm: "+fileHeader.Filename+" ("+strconv.FormatInt(fileHeader.Size, 10)+" bytes)")
 			continue
 		}
@@ -564,39 +736,39 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			log.HTTPWarning(req, "Failed to open uploaded file for InsertInventoryUpdateForm: "+err.Error())
 			continue
 		}
-		defer file.Close()
 
-		lr := &io.LimitedReader{R: file, N: maxInventoryFileSizeBytes + 1}
+		lr := &io.LimitedReader{R: file, N: maxFileUploadBytes + 1}
 		fileBytes, err := io.ReadAll(lr)
+		file.Close()
 		if err != nil {
-			_ = file.Close()
+			if maxBytesErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
+				log.HTTPWarning(req, "Uploaded file size exceeds maximum allowed for InsertInventoryUpdateForm: "+maxBytesErr.Error())
+				continue
+			}
 			log.HTTPWarning(req, "Failed to read uploaded file for InsertInventoryUpdateForm: "+err.Error())
 			continue
 		}
 
 		// File size checks (in addition to header checks - not necessarily same value)
 		fileSize := int64(len(fileBytes))
-		if fileSize > maxInventoryFileSizeBytes {
-			_ = file.Close()
-			log.HTTPWarning(req, "Uploaded file too large for InsertInventoryUpdateForm ("+strconv.Itoa(int(fileSize))+" bytes)")
+		if fileSize > maxFileUploadBytes {
+			log.HTTPWarning(req, "Uploaded file too large for InsertInventoryUpdateForm ("+strconv.FormatInt(fileSize, 10)+" bytes)")
 			continue
 		}
 		if fileSize == 0 {
-			_ = file.Close()
 			log.HTTPWarning(req, "Empty file uploaded for InsertInventoryUpdateForm: "+fileHeader.Filename)
 			continue
 		}
-		if fileSize < minInventoryFileSizeBytes {
-			_ = file.Close()
-			log.HTTPWarning(req, "Uploaded file too small for InsertInventoryUpdateForm: "+fileHeader.Filename+" ("+strconv.Itoa(int(fileSize))+" bytes)")
+		if fileSize < minFileUploadBytes {
+			log.HTTPWarning(req, "Uploaded file too small for InsertInventoryUpdateForm: "+fileHeader.Filename+" ("+strconv.FormatInt(fileSize, 10)+" bytes)")
 			continue
 		}
 		manifest.FileSize = &fileSize
+		totalActualFileBytes += fileSize
 
 		// MIME type detection
 		mimeType := http.DetectContentType(fileBytes[:fileSize])
 		if !strings.HasPrefix(mimeType, "image/") { // temporary while implementing video support
-			_ = file.Close()
 			log.HTTPWarning(req, "Uploaded file has a non-accepted MIME type for InsertInventoryUpdateForm: (Content-Type: "+mimeType+")")
 			continue
 		}
@@ -608,13 +780,11 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		// Rewind and decode image to get image.Image
 		_, err = imageReader.Seek(0, io.SeekStart)
 		if err != nil {
-			_ = file.Close()
 			log.HTTPError(req, "Failed to seek to start of uploaded image for InsertInventoryUpdateForm: "+err.Error())
 			continue
 		}
 		decodedImage, imageFormat, err := image.Decode(imageReader)
 		if err != nil {
-			_ = file.Close()
 			log.HTTPError(req, "Failed to decode thumbnail in InsertInventoryUpdateForm: "+err.Error()+" ("+fileHeader.Filename+")")
 			continue
 		}
@@ -622,13 +792,11 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		// Rewind and decode image to get image config
 		_, err = imageReader.Seek(0, io.SeekStart)
 		if err != nil {
-			_ = file.Close()
 			log.HTTPError(req, "Failed to seek to start of uploaded image for InsertInventoryUpdateForm: "+err.Error()+" ("+fileHeader.Filename+")")
 			continue
 		}
 		decodedImageConfig, _, err := image.DecodeConfig(imageReader)
 		if err != nil {
-			_ = file.Close()
 			log.HTTPError(req, "Failed to decode uploaded image config for InsertInventoryUpdateForm: "+err.Error()+": "+fileHeader.Filename+" ("+fileHeader.Filename+")")
 			continue
 		}
@@ -675,7 +843,6 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		// Compute SHA256 hash of file
 		fileHash := crypto.SHA256.New()
 		if _, err := fileHash.Write(fileBytes); err != nil {
-			_ = file.Close()
 			log.HTTPError(req, "Failed to compute hash of uploaded file for InsertInventoryUpdateForm: "+err.Error()+" ("+fileHeader.Filename+")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
@@ -688,7 +855,6 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		imageDirectoryPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", *inventoryUpdate.Tagnumber))
 		err = os.MkdirAll(imageDirectoryPath, 0755)
 		if err != nil {
-			_ = file.Close()
 			log.HTTPError(req, "Failed to create directories for uploaded file for InsertInventoryUpdateForm: "+err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
@@ -696,7 +862,6 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 		// Set file/directory permissions
 		if err := os.Chmod(imageDirectoryPath, 0755); err != nil {
-			_ = file.Close()
 			log.HTTPError(req, "Failed to set directory permissions: "+err.Error()+" ("+fileHeader.Filename+")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
@@ -704,7 +869,6 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 		fullFilePath := filepath.Join(imageDirectoryPath, fileName)
 		if err := os.WriteFile(fullFilePath, fileBytes, 0644); err != nil {
-			_ = file.Close()
 			log.HTTPError(req, "Failed to save uploaded file for InsertInventoryUpdateForm: "+err.Error()+" ("+fileHeader.Filename+")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
@@ -723,11 +887,8 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
-			defer thumbnailFile.Close()
 
-			err = jpeg.Encode(thumbnailFile, decodedImage, &jpeg.Options{Quality: 50})
-			if err != nil {
-				_ = thumbnailFile.Close()
+			if err = jpeg.Encode(thumbnailFile, decodedImage, &jpeg.Options{Quality: 50}); err != nil {
 				log.HTTPError(req, "Failed to encode thumbnail image for InsertInventoryUpdateForm: "+err.Error()+" ("+fileHeader.Filename+")")
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return

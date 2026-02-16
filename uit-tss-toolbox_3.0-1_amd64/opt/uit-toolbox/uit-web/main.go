@@ -78,6 +78,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Log allowed IPs
+	as, err := config.GetAppState()
+	if err != nil {
+		log.Error("Failed to get app state: " + err.Error())
+		os.Exit(1)
+	}
+	for _, ip := range as.AppConfig.Load().UIT_SERVER_ANY_ALLOWED_IP {
+		log.Info("Allowed IP: " + ip.String())
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -86,28 +96,22 @@ func main() {
 
 	// Start HTTP file server
 	log.Info("Starting HTTP file server on http://" + httpHost + ":8080")
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		if err := webserver.StartFileServer(ctx, httpHost); err != nil {
 			errChan <- err
 		}
-	}()
+	})
 
 	// Start HTTPS web server
 	log.Info("Starting HTTPS web server on https://*:31411")
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		if err := webserver.StartWebServer(ctx); err != nil {
 			errChan <- err
 		}
-	}()
+	})
 
 	// Start background processes
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		defer func() {
 			if recoveryErr := recover(); recoveryErr != nil {
 				log.Error("Background process panic: " + fmt.Sprint(recoveryErr))
@@ -121,7 +125,7 @@ func main() {
 		}()
 		log.Info("Starting background processes...")
 		backgroundProcesses(ctx, errChan)
-	}()
+	})
 
 	// Wait for shutdown signal
 	shutdown := make(chan os.Signal, 1)
