@@ -14,77 +14,53 @@ import (
 	"sync/atomic"
 	"time"
 	"uit-toolbox/logger"
-
-	"golang.org/x/time/rate"
 )
 
-type AppConfig struct {
-	InputConstraints                atomic.Pointer[InputFieldConstraints]
-	FormConstraints                 atomic.Pointer[HTMLFormConstraints]
-	UIT_SERVER_LOG_LEVEL            string         `json:"UIT_SERVER_LOG_LEVEL"`
-	UIT_SERVER_ADMIN_PASSWD         string         `json:"UIT_SERVER_ADMIN_PASSWD"`
-	UIT_SERVER_DB_NAME              string         `json:"UIT_SERVER_DB_NAME"`
-	UIT_SERVER_HOSTNAME             string         `json:"UIT_SERVER_HOSTNAME"`
-	UIT_SERVER_WAN_IP_ADDRESS       netip.Addr     `json:"UIT_SERVER_WAN_IP_ADDRESS"`
-	UIT_SERVER_LAN_IP_ADDRESS       netip.Addr     `json:"UIT_SERVER_LAN_IP_ADDRESS"`
-	UIT_SERVER_WAN_IF               string         `json:"UIT_SERVER_WAN_IF"`
-	UIT_SERVER_LAN_IF               string         `json:"UIT_SERVER_LAN_IF"`
-	UIT_SERVER_WAN_ALLOWED_IP       []netip.Prefix `json:"UIT_SERVER_WAN_ALLOWED_IP"`
-	UIT_SERVER_LAN_ALLOWED_IP       []netip.Prefix `json:"UIT_SERVER_LAN_ALLOWED_IP"`
-	UIT_SERVER_ANY_ALLOWED_IP       []netip.Prefix `json:"UIT_SERVER_ANY_ALLOWED_IP"`
-	UIT_WEB_USER_DEFAULT_PASSWD     string         `json:"UIT_WEB_USER_DEFAULT_PASSWD"`
-	UIT_WEB_DB_USERNAME             string         `json:"UIT_WEB_DB_USERNAME"`
-	UIT_WEB_DB_PASSWD               string         `json:"UIT_WEB_DB_PASSWD"`
-	UIT_WEB_DB_NAME                 string         `json:"UIT_WEB_DB_NAME"`
-	UIT_WEB_DB_HOST                 netip.Addr     `json:"UIT_WEB_DB_HOST"`
-	UIT_WEB_DB_PORT                 uint16         `json:"UIT_WEB_DB_PORT"`
-	UIT_WEB_HTTP_HOST               netip.Addr     `json:"UIT_WEB_HTTP_HOST"`
-	UIT_WEB_HTTP_PORT               uint16         `json:"UIT_WEB_HTTP_PORT"`
-	UIT_WEB_HTTPS_HOST              netip.Addr     `json:"UIT_WEB_HTTPS_HOST"`
-	UIT_WEB_HTTPS_PORT              uint16         `json:"UIT_WEB_HTTPS_PORT"`
-	UIT_WEB_TLS_CERT_FILE           string         `json:"UIT_WEB_TLS_CERT_FILE"`
-	UIT_WEB_TLS_KEY_FILE            string         `json:"UIT_WEB_TLS_KEY_FILE"`
-	UIT_WEB_MAX_UPLOAD_SIZE_MB      int64          `json:"UIT_WEB_MAX_UPLOAD_SIZE_MB"`
-	UIT_WEB_API_REQUEST_TIMEOUT     time.Duration  `json:"UIT_WEB_API_REQUEST_TIMEOUT"`
-	UIT_WEB_FILE_REQUEST_TIMEOUT    time.Duration  `json:"UIT_WEB_FILE_REQUEST_TIMEOUT"`
-	UIT_WEB_RATE_LIMIT_BURST        int            `json:"UIT_WEB_RATE_LIMIT_BURST"`
-	UIT_WEB_RATE_LIMIT_INTERVAL     float64        `json:"UIT_WEB_RATE_LIMIT_INTERVAL"`
-	UIT_WEB_RATE_LIMIT_BAN_DURATION time.Duration  `json:"UIT_WEB_RATE_LIMIT_BAN_DURATION"`
-	UIT_CLIENT_DB_USER              string         `json:"UIT_CLIENT_DB_USER"`
-	UIT_CLIENT_DB_PASSWD            string         `json:"UIT_CLIENT_DB_PASSWD"`
-	UIT_CLIENT_DB_NAME              string         `json:"UIT_CLIENT_DB_NAME"`
-	UIT_CLIENT_DB_HOST              netip.Addr     `json:"UIT_CLIENT_DB_HOST"`
-	UIT_CLIENT_DB_PORT              uint16         `json:"UIT_CLIENT_DB_PORT"`
-	UIT_CLIENT_NTP_HOST             netip.Addr     `json:"UIT_CLIENT_NTP_HOST"`
-	UIT_CLIENT_PING_HOST            netip.Addr     `json:"UIT_CLIENT_PING_HOST"`
-	UIT_WEBMASTER_NAME              string         `json:"UIT_WEBMASTER_NAME"`
-	UIT_WEBMASTER_EMAIL             string         `json:"UIT_WEBMASTER_EMAIL"`
+type AppConfiguration struct {
+	inputConstraints     atomic.Pointer[InputFieldConstraints]
+	formConstraints      atomic.Pointer[HTMLFormConstraints]
+	LogLevel             string         `json:"UIT_SERVER_LOG_LEVEL"`
+	AdminPasswd          string         `json:"UIT_SERVER_ADMIN_PASSWD"`
+	DBName               string         `json:"UIT_SERVER_DB_NAME"`
+	ServerHostname       string         `json:"UIT_SERVER_HOSTNAME"`
+	WANAddr              netip.Addr     `json:"UIT_SERVER_WAN_IP_ADDRESS"`
+	LANAddr              netip.Addr     `json:"UIT_SERVER_LAN_IP_ADDRESS"`
+	WANIfaceName         string         `json:"UIT_SERVER_WAN_IF"`
+	LANIfaceName         string         `json:"UIT_SERVER_LAN_IF"`
+	AllowedWANIPs        []netip.Prefix `json:"UIT_SERVER_WAN_ALLOWED_IP"`
+	AllowedLANIPs        []netip.Prefix `json:"UIT_SERVER_LAN_ALLOWED_IP"`
+	AllAllowedIPs        []netip.Prefix `json:"UIT_SERVER_ANY_ALLOWED_IP"`
+	WebUserDefaultPasswd string         `json:"UIT_WEB_USER_DEFAULT_PASSWD"`
+	WebDBUsername        string         `json:"UIT_WEB_DB_USERNAME"`
+	WebDBPasswd          string         `json:"UIT_WEB_DB_PASSWD"`
+	WebDBName            string         `json:"UIT_WEB_DB_NAME"`
+	WebDBHost            netip.Addr     `json:"UIT_WEB_DB_HOST"`
+	WebDBPort            uint16         `json:"UIT_WEB_DB_PORT"`
+	WebHTTPAddr          netip.Addr     `json:"UIT_WEB_HTTP_HOST"`
+	WebHTTPPort          uint16         `json:"UIT_WEB_HTTP_PORT"`
+	WebHTTPSAddr         netip.Addr     `json:"UIT_WEB_HTTPS_HOST"`
+	WebHTTPSPort         uint16         `json:"UIT_WEB_HTTPS_PORT"`
+	WebTLSCertFile       string         `json:"UIT_WEB_TLS_CERT_FILE"`
+	WebTLSKeyFile        string         `json:"UIT_WEB_TLS_KEY_FILE"`
+	APIRequestTimeout    time.Duration  `json:"UIT_WEB_API_REQUEST_TIMEOUT"`
+	FileRequestTimeout   time.Duration  `json:"UIT_WEB_FILE_REQUEST_TIMEOUT"`
+	RateLimitBurst       int            `json:"UIT_WEB_RATE_LIMIT_BURST"`
+	RateLimitInterval    float64        `json:"UIT_WEB_RATE_LIMIT_INTERVAL"`
+	RateLimitBanDuration time.Duration  `json:"UIT_WEB_RATE_LIMIT_BAN_DURATION"`
+	ClientDBUser         string         `json:"UIT_CLIENT_DB_USER"`
+	ClientDBPasswd       string         `json:"UIT_CLIENT_DB_PASSWD"`
+	ClientDBName         string         `json:"UIT_CLIENT_DB_NAME"`
+	ClientDBHost         netip.Addr     `json:"UIT_CLIENT_DB_HOST"`
+	ClientDBPort         uint16         `json:"UIT_CLIENT_DB_PORT"`
+	ClientNTPHost        netip.Addr     `json:"UIT_CLIENT_NTP_HOST"`
+	ClientPingHost       netip.Addr     `json:"UIT_CLIENT_PING_HOST"`
+	WebmasterName        string         `json:"UIT_WEBMASTER_NAME"`
+	WebmasterEmail       string         `json:"UIT_WEBMASTER_EMAIL"`
 }
 
-type ClientLimiter struct {
-	IPAddr   netip.Addr
-	Limiter  *rate.Limiter
-	LastSeen time.Time
-}
-
-type RateLimiter struct {
-	Type      string
-	ClientMap sync.Map // map[netip.Addr]ClientLimiter
-	Rate      float64
-	Burst     int
-}
-
-var (
-	webRateLimiter  atomic.Pointer[RateLimiter]
-	apiRateLimiter  atomic.Pointer[RateLimiter]
-	authRateLimiter atomic.Pointer[RateLimiter]
-	fileRateLimiter atomic.Pointer[RateLimiter]
-	blockedClients  atomic.Pointer[BlockedClients]
-)
-
-type BlockedClients struct {
-	ClientMap sync.Map // map[netip.Addr]ClientLimiter
-	BanPeriod time.Duration
+type BanList struct {
+	bannedClients sync.Map // map[netip.Addr]ClientLimiter
+	banPeriod     time.Duration
 }
 
 type ClientConfig struct {
@@ -104,81 +80,36 @@ type ClientConfig struct {
 	UIT_WEBMASTER_EMAIL  string `json:"UIT_WEBMASTER_EMAIL"`
 }
 
-type FileList struct {
-	Filename string `json:"filename"`
-	Allowed  bool   `json:"allowed"`
-}
-
 type AppState struct {
-	AppConfig          atomic.Pointer[AppConfig]
-	DBConn             atomic.Pointer[sql.DB]
-	AuthMap            sync.Map
-	AuthMapEntryCount  atomic.Int64
-	Log                atomic.Pointer[logger.Logger]
-	WebServerLimiter   atomic.Pointer[RateLimiter]
-	FileLimiter        atomic.Pointer[RateLimiter]
-	APILimiter         atomic.Pointer[RateLimiter]
-	AuthLimiter        atomic.Pointer[RateLimiter]
-	BlockedIPs         atomic.Pointer[BlockedClients]
-	AllowedWANIPs      sync.Map
-	AllowedLANIPs      sync.Map
-	AllowedIPs         sync.Map
-	SessionSecret      []byte
-	APIRequestTimeout  atomic.Pointer[time.Duration]
-	FileRequestTimeout atomic.Pointer[time.Duration]
-	WebEndpoints       sync.Map
-	GroupPermissions   sync.Map
-	UserPermissions    sync.Map
-}
-
-type AuthHTTPHeader struct {
-	CSRFToken   *string
-	BasicToken  *string
-	BearerToken *string
-}
-
-type BasicToken struct {
-	Token     string     `json:"token"`
-	Expiry    time.Time  `json:"expiry"`
-	NotBefore time.Time  `json:"not_before"`
-	TTL       float64    `json:"ttl"`
-	IP        netip.Addr `json:"ip"`
-	Valid     bool       `json:"valid"`
-}
-
-type BearerToken struct {
-	Token     string     `json:"token"`
-	Expiry    time.Time  `json:"expiry"`
-	NotBefore time.Time  `json:"not_before"`
-	TTL       float64    `json:"ttl"`
-	IP        netip.Addr `json:"ip"`
-	Valid     bool       `json:"valid"`
-}
-
-type CSRFToken struct {
-	Token     string     `json:"token"`
-	Expiry    time.Time  `json:"expiry"`
-	NotBefore time.Time  `json:"not_before"`
-	TTL       float64    `json:"ttl"`
-	IP        netip.Addr `json:"ip"`
-	Valid     bool       `json:"valid"`
-}
-
-type AuthSession struct {
-	SessionID string
-	Basic     BasicToken
-	Bearer    BearerToken
-	CSRF      CSRFToken
+	appConfig          atomic.Pointer[AppConfiguration]
+	dbConn             atomic.Pointer[sql.DB]
+	authMap            sync.Map
+	authMapEntryCount  atomic.Int64
+	log                atomic.Pointer[logger.Logger]
+	webServerLimiter   atomic.Pointer[RateLimiter]
+	fileLimiter        atomic.Pointer[RateLimiter]
+	apiLimiter         atomic.Pointer[RateLimiter]
+	authLimiter        atomic.Pointer[RateLimiter]
+	banList            atomic.Pointer[BanList]
+	allowedWANIPs      sync.Map
+	allowedLANIPs      sync.Map
+	allAllowedIPs      sync.Map
+	sessionSecret      []byte
+	apiRequestTimeout  atomic.Pointer[time.Duration]
+	fileRequestTimeout atomic.Pointer[time.Duration]
+	webEndpoints       sync.Map
+	groupPermissions   sync.Map
+	userPermissions    sync.Map
 }
 
 var (
 	appStateInstance atomic.Pointer[AppState]
 )
 
-func LoadConfig() (*AppConfig, error) {
-	var appConfig AppConfig
+func InitConfig() (*AppConfiguration, error) {
+	var appConfig AppConfiguration
 
-	// Decode JSON
+	// Decode config file JSON
 	mainConfigFile, err := os.ReadFile("/etc/uit-toolbox/uit-toolbox.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config '/etc/uit-toolbox/uit-toolbox.json': %w", err)
@@ -188,9 +119,9 @@ func LoadConfig() (*AppConfig, error) {
 	}
 
 	// Convert durations to seconds
-	appConfig.UIT_WEB_API_REQUEST_TIMEOUT *= time.Second
-	appConfig.UIT_WEB_FILE_REQUEST_TIMEOUT *= time.Second
-	appConfig.UIT_WEB_RATE_LIMIT_BAN_DURATION *= time.Second
+	appConfig.APIRequestTimeout *= time.Second
+	appConfig.FileRequestTimeout *= time.Second
+	appConfig.RateLimitBanDuration *= time.Second
 
 	// WAN interface, IP, and allowed IPs
 	ifaces, err := net.Interfaces()
@@ -207,22 +138,22 @@ func LoadConfig() (*AppConfig, error) {
 			if !ok {
 				return nil, fmt.Errorf("address is not an IPNet: %v", addr)
 			}
-			if iface.Name == appConfig.UIT_SERVER_WAN_IF && convIP.IP.String() != appConfig.UIT_SERVER_WAN_IP_ADDRESS.String() {
-				return nil, fmt.Errorf("WAN interface %s does not have the expected IP address %s", appConfig.UIT_SERVER_WAN_IF, appConfig.UIT_SERVER_WAN_IP_ADDRESS.String())
+			if iface.Name == appConfig.WANIfaceName && convIP.IP.String() != appConfig.WANAddr.String() {
+				return nil, fmt.Errorf("WAN interface %s does not have the expected IP address %s", appConfig.WANIfaceName, appConfig.WANAddr.String())
 			}
-			if iface.Name == appConfig.UIT_SERVER_LAN_IF && convIP.IP.String() != appConfig.UIT_SERVER_LAN_IP_ADDRESS.String() {
-				return nil, fmt.Errorf("LAN interface %s does not have the expected IP address %s", appConfig.UIT_SERVER_LAN_IF, appConfig.UIT_SERVER_LAN_IP_ADDRESS.String())
+			if iface.Name == appConfig.LANIfaceName && convIP.IP.String() != appConfig.LANAddr.String() {
+				return nil, fmt.Errorf("LAN interface %s does not have the expected IP address %s", appConfig.LANIfaceName, appConfig.LANAddr.String())
 			}
 		}
 	}
 
-	for _, wanIP := range appConfig.UIT_SERVER_WAN_ALLOWED_IP {
-		appConfig.UIT_SERVER_WAN_ALLOWED_IP = append(appConfig.UIT_SERVER_WAN_ALLOWED_IP, wanIP)
-		appConfig.UIT_SERVER_ANY_ALLOWED_IP = append(appConfig.UIT_SERVER_ANY_ALLOWED_IP, wanIP)
+	for _, wanIP := range appConfig.AllowedWANIPs {
+		appConfig.AllowedWANIPs = append(appConfig.AllowedWANIPs, wanIP)
+		appConfig.AllAllowedIPs = append(appConfig.AllAllowedIPs, wanIP)
 	}
-	for _, lanIP := range appConfig.UIT_SERVER_LAN_ALLOWED_IP {
-		appConfig.UIT_SERVER_LAN_ALLOWED_IP = append(appConfig.UIT_SERVER_LAN_ALLOWED_IP, lanIP)
-		appConfig.UIT_SERVER_ANY_ALLOWED_IP = append(appConfig.UIT_SERVER_ANY_ALLOWED_IP, lanIP)
+	for _, lanIP := range appConfig.AllowedLANIPs {
+		appConfig.AllowedLANIPs = append(appConfig.AllowedLANIPs, lanIP)
+		appConfig.AllAllowedIPs = append(appConfig.AllAllowedIPs, lanIP)
 	}
 
 	// Set input constraints
@@ -270,7 +201,7 @@ func LoadConfig() (*AppConfig, error) {
 		noteContentMinChars:          0,
 		noteContentMaxChars:          8192,
 	}
-	appConfig.InputConstraints.Store(inputConstraints)
+	appConfig.inputConstraints.Store(inputConstraints)
 
 	formConstraints := &HTMLFormConstraints{
 		maxLoginFormSizeBytes:           512,
@@ -283,13 +214,13 @@ func LoadConfig() (*AppConfig, error) {
 		fileUploadAllowedFileExtensions: []string{".jpg", ".jpeg", ".jfif", ".png"},
 		fileUploadAllowedFileRegex:      `^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$`,
 	}
-	appConfig.FormConstraints.Store(formConstraints)
+	appConfig.formConstraints.Store(formConstraints)
 
 	return &appConfig, nil
 }
 
 func InitApp() (*AppState, error) {
-	appConfig, err := LoadConfig()
+	appConfig, err := InitConfig()
 	if err != nil || appConfig == nil {
 		return nil, errors.New("failed to load app config: " + err.Error())
 	}
@@ -298,68 +229,69 @@ func InitApp() (*AppState, error) {
 	webRateLimiter.Store(&RateLimiter{
 		Type:      "webserver",
 		ClientMap: sync.Map{},
-		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL,
-		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST,
+		Rate:      appConfig.RateLimitInterval,
+		Burst:     appConfig.RateLimitBurst,
 	})
 	apiRateLimiter.Store(&RateLimiter{
 		Type:      "api",
 		ClientMap: sync.Map{},
-		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL,
-		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST,
+		Rate:      appConfig.RateLimitInterval,
+		Burst:     appConfig.RateLimitBurst,
 	})
 	authRateLimiter.Store(&RateLimiter{
 		Type:      "auth",
 		ClientMap: sync.Map{},
-		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 2,
-		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST / 2,
+		Rate:      appConfig.RateLimitInterval / 2,
+		Burst:     appConfig.RateLimitBurst / 2,
 	})
 	fileRateLimiter.Store(&RateLimiter{
 		Type:      "file",
 		ClientMap: sync.Map{},
-		Rate:      appConfig.UIT_WEB_RATE_LIMIT_INTERVAL / 4,
-		Burst:     appConfig.UIT_WEB_RATE_LIMIT_BURST / 4,
-	})
-	blockedClients.Store(&BlockedClients{
-		ClientMap: sync.Map{},
-		BanPeriod: appConfig.UIT_WEB_RATE_LIMIT_BAN_DURATION,
+		Rate:      appConfig.RateLimitInterval / 4,
+		Burst:     appConfig.RateLimitBurst / 4,
 	})
 
 	appState := new(AppState)
 
 	// Store app config in app state
-	appState.AppConfig.Store(appConfig)
+	appState.appConfig.Store(appConfig)
 
 	// Set DB connection to nil initially
-	appState.DBConn.Store(nil)
+	appState.dbConn.Store(nil)
 
 	// Set logger to nil initially
-	appState.Log.Store(nil)
+	appState.log.Store(nil)
 
 	// Store rate limiters in app state
-	appState.WebServerLimiter.Store(webRateLimiter.Load())
-	appState.FileLimiter.Store(fileRateLimiter.Load())
-	appState.APILimiter.Store(apiRateLimiter.Load())
-	appState.AuthLimiter.Store(authRateLimiter.Load())
-	appState.BlockedIPs.Store(blockedClients.Load())
+	appState.webServerLimiter.Store(webRateLimiter.Load())
+	appState.fileLimiter.Store(fileRateLimiter.Load())
+	appState.apiLimiter.Store(apiRateLimiter.Load())
+	appState.authLimiter.Store(authRateLimiter.Load())
+	// Initialize ban list
+	banList := &BanList{
+		bannedClients: sync.Map{},
+		banPeriod:     appConfig.RateLimitBanDuration,
+	}
+	appState.banList.Store(banList)
 
 	// Initialize logger
 	log := logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_SERVER_LOG_LEVEL")))
 	if log == nil {
 		return nil, errors.New("failed to create logger")
 	}
-	appState.Log.Store(&log)
+	appState.log.Store(&log)
 
 	// Populate allowed IPs
-	for _, wanIP := range appConfig.UIT_SERVER_WAN_ALLOWED_IP {
-		appState.AllowedWANIPs.Store(wanIP, true)
+	for _, wanIP := range appConfig.AllowedWANIPs {
+		appState.allowedWANIPs.Store(wanIP, true)
 	}
 
-	for _, lanIP := range appConfig.UIT_SERVER_LAN_ALLOWED_IP {
-		appState.AllowedLANIPs.Store(lanIP, true)
+	for _, lanIP := range appConfig.AllowedLANIPs {
+		appState.allowedLANIPs.Store(lanIP, true)
 	}
 
-	for _, allIP := range appConfig.UIT_SERVER_ANY_ALLOWED_IP {
-		appState.AllowedIPs.Store(allIP, true)
+	for _, allIP := range appConfig.AllAllowedIPs {
+		appState.allAllowedIPs.Store(allIP, true)
 	}
 
 	// Generate server-side secret for HMAC
@@ -367,7 +299,7 @@ func InitApp() (*AppState, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate session secret: %w", err)
 	}
-	appState.SessionSecret = []byte(sessionSecret)
+	appState.sessionSecret = []byte(sessionSecret)
 
 	// Configure web endpoints
 	endpointsDirectory := "/etc/uit-toolbox/endpoints/"
@@ -389,25 +321,26 @@ func InitApp() (*AppState, error) {
 			return nil, fmt.Errorf("failed to read web endpoints config file %s: %w", file.Name(), err)
 		}
 
-		var webEndpoints WebEndpoints
-		if err := json.Unmarshal(endpointsConfig, &webEndpoints); err != nil {
+		endpoints := make(map[string]WebEndpointConfig)
+		if err := json.Unmarshal(endpointsConfig, &endpoints); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal web endpoints config JSON: %w", err)
 		}
-		for endpointPath, endpointData := range webEndpoints {
+		for endpointPath, endpointData := range endpoints {
 			merged := WebEndpointConfig{
-				FilePath:       endpointData.FilePath,
-				AllowedMethods: endpointData.AllowedMethods,
-				TLSRequired:    endpointData.TLSRequired,
-				AuthRequired:   endpointData.AuthRequired,
-				Requires:       endpointData.Requires,
-				ACLUsers:       endpointData.ACLUsers,
-				ACLGroups:      endpointData.ACLGroups,
-				HTTPVersion:    endpointData.HTTPVersion,
-				EndpointType:   endpointData.EndpointType,
-				ContentType:    endpointData.ContentType,
-				StatusCode:     endpointData.StatusCode,
-				Redirect:       endpointData.Redirect,
-				RedirectURL:    endpointData.RedirectURL,
+				FilePath:        endpointData.FilePath,
+				AllowedMethods:  endpointData.AllowedMethods,
+				TLSRequired:     endpointData.TLSRequired,
+				AuthRequired:    endpointData.AuthRequired,
+				MaxUploadSizeKB: endpointData.MaxUploadSizeKB << 10,
+				Requires:        endpointData.Requires,
+				ACLUsers:        endpointData.ACLUsers,
+				ACLGroups:       endpointData.ACLGroups,
+				HTTPVersion:     endpointData.HTTPVersion,
+				EndpointType:    endpointData.EndpointType,
+				ContentType:     endpointData.ContentType,
+				StatusCode:      endpointData.StatusCode,
+				Redirect:        endpointData.Redirect,
+				RedirectURL:     endpointData.RedirectURL,
 			}
 			if len(merged.AllowedMethods) == 0 {
 				merged.AllowedMethods = []string{"OPTIONS", "GET"}
@@ -420,20 +353,11 @@ func InitApp() (*AppState, error) {
 				merged.AuthRequired = new(bool)
 				*merged.AuthRequired = true
 			}
+			if merged.MaxUploadSizeKB == 0 {
+				merged.MaxUploadSizeKB = 20 << 10 // 20KB default max upload size
+			}
 			if merged.Requires == nil {
 				merged.Requires = []string{}
-				// merged.Requires = []string{
-				// 	"nonce",
-				// 	"webmaster_contact",
-				// 	"departments",
-				// 	"domains",
-				// 	"statuses",
-				// 	"locations",
-				// 	"client_tag",
-				// 	"checkout_date",
-				// 	"return_date",
-				// 	"customer_name",
-				// }
 			}
 			if merged.Redirect == nil {
 				merged.Redirect = new(bool)
@@ -451,7 +375,7 @@ func InitApp() (*AppState, error) {
 			if merged.StatusCode == 0 {
 				merged.StatusCode = 200
 			}
-			appState.WebEndpoints.Store(endpointPath, &merged)
+			appState.webEndpoints.Store(endpointPath, &merged)
 		}
 	}
 
@@ -461,16 +385,16 @@ func InitApp() (*AppState, error) {
 	}
 
 	for _, groupPermissions := range permissions.Groups {
-		appState.GroupPermissions.Store(groupPermissions.ID, groupPermissions)
+		appState.groupPermissions.Store(groupPermissions.ID, groupPermissions)
 	}
 
 	for _, userPermissions := range permissions.Users {
-		appState.UserPermissions.Store(userPermissions.ID, userPermissions)
+		appState.userPermissions.Store(userPermissions.ID, userPermissions)
 	}
 
 	// Set initial timeouts
-	appState.APIRequestTimeout.Store(&appConfig.UIT_WEB_API_REQUEST_TIMEOUT)
-	appState.FileRequestTimeout.Store(&appConfig.UIT_WEB_FILE_REQUEST_TIMEOUT)
+	appState.apiRequestTimeout.Store(&appConfig.APIRequestTimeout)
+	appState.fileRequestTimeout.Store(&appConfig.FileRequestTimeout)
 
 	// Declare endpoints
 
@@ -510,12 +434,12 @@ func GetLogger() logger.Logger {
 		return logger.CreateLogger("console", logger.ParseLogLevel("INFO"))
 	}
 
-	if appState.Log == (atomic.Pointer[logger.Logger]{}) {
+	if appState.log == (atomic.Pointer[logger.Logger]{}) {
 		fmt.Println("Logger not initialized in GetLogger, using default logger")
 		return logger.CreateLogger("console", logger.ParseLogLevel("INFO"))
 	}
 
-	l := appState.Log.Load()
+	l := appState.log.Load()
 	if l == nil {
 		fmt.Println("Logger is nil in GetLogger, using default logger")
 		return logger.CreateLogger("console", logger.ParseLogLevel("INFO"))
@@ -531,7 +455,7 @@ func GetDatabaseCredentials() (dbName string, dbHost string, dbPort string, dbUs
 	if err != nil {
 		return "", "", "", "", "", fmt.Errorf("error getting app state in GetDatabaseCredentials: %w", err)
 	}
-	return appState.AppConfig.Load().UIT_WEB_DB_NAME, appState.AppConfig.Load().UIT_WEB_DB_HOST.String(), strconv.FormatUint(uint64(appState.AppConfig.Load().UIT_WEB_DB_PORT), 10), appState.AppConfig.Load().UIT_WEB_DB_USERNAME, appState.AppConfig.Load().UIT_WEB_DB_PASSWD, nil
+	return appState.appConfig.Load().WebDBName, appState.appConfig.Load().WebDBHost.String(), strconv.FormatUint(uint64(appState.appConfig.Load().WebDBPort), 10), appState.appConfig.Load().WebDBUsername, appState.appConfig.Load().WebDBPasswd, nil
 }
 
 func GetWebServerUserDBCredentials() (dbName string, dbHost string, dbPort string, dbUsername string, dbPassword string, err error) {
@@ -539,7 +463,7 @@ func GetWebServerUserDBCredentials() (dbName string, dbHost string, dbPort strin
 	if err != nil {
 		return "", "", "", "", "", fmt.Errorf("error getting app state in GetWebServerUserDBCredentials: %w", err)
 	}
-	return appState.AppConfig.Load().UIT_WEB_DB_NAME, appState.AppConfig.Load().UIT_WEB_DB_HOST.String(), strconv.FormatUint(uint64(appState.AppConfig.Load().UIT_WEB_DB_PORT), 10), appState.AppConfig.Load().UIT_WEB_DB_USERNAME, appState.AppConfig.Load().UIT_WEB_DB_PASSWD, nil
+	return appState.appConfig.Load().WebDBName, appState.appConfig.Load().WebDBHost.String(), strconv.FormatUint(uint64(appState.appConfig.Load().WebDBPort), 10), appState.appConfig.Load().WebDBUsername, appState.appConfig.Load().WebDBPasswd, nil
 }
 
 func GetDatabaseConn() (*sql.DB, error) {
@@ -547,7 +471,7 @@ func GetDatabaseConn() (*sql.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting app state in GetDatabaseConn: %w", err)
 	}
-	db := appState.DBConn.Load()
+	db := appState.dbConn.Load()
 	if db == nil {
 		return nil, fmt.Errorf("database connection is not initialized")
 	}
@@ -565,7 +489,7 @@ func SetDatabaseConn(newDbConn *sql.DB) error {
 	if appState == nil {
 		return errors.New("app state is not initialized in SetDatabaseConn")
 	}
-	appState.DBConn.Store(newDbConn)
+	appState.dbConn.Store(newDbConn)
 	return nil
 }
 
@@ -585,7 +509,7 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 	allowed = false
 	switch trafficType {
 	case "wan":
-		appState.AllowedWANIPs.Range(func(k, v any) bool {
+		appState.allowedWANIPs.Range(func(k, v any) bool {
 			ipRange, ok := k.(netip.Prefix)
 			if !ok || ipRange == (netip.Prefix{}) {
 				return true
@@ -597,7 +521,7 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 			return true
 		})
 	case "lan":
-		appState.AllowedLANIPs.Range(func(k, v any) bool {
+		appState.allowedLANIPs.Range(func(k, v any) bool {
 			ipRange, ok := k.(netip.Prefix)
 			if !ok || ipRange == (netip.Prefix{}) {
 				return true
@@ -609,7 +533,7 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 			return true
 		})
 	case "any":
-		appState.AllowedIPs.Range(func(k, v any) bool {
+		appState.allAllowedIPs.Range(func(k, v any) bool {
 			ipRange, ok := k.(netip.Prefix)
 			if !ok || ipRange == (netip.Prefix{}) {
 				return true
@@ -627,28 +551,26 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 }
 
 func IsIPBlocked(ipAddress netip.Addr) bool {
-
-	appState, err := GetAppState()
-	if err != nil {
+	as, err := GetAppState()
+	if err != nil || as == nil {
 		return true
 	}
 
-	clMap := &appState.BlockedIPs.Load().ClientMap
-	val, ok := clMap.Load(ipAddress)
-	if !ok {
+	bannedClient, ok := as.banList.Load().bannedClients.Load(ipAddress)
+	if !ok || bannedClient == nil {
 		return false
 	}
 
-	clientLimiter, ok := val.(ClientLimiter)
-	if !ok {
+	bannedClientLimiter, ok := bannedClient.(ClientLimiter)
+	if !ok || bannedClientLimiter == (ClientLimiter{}) {
 		return false
 	}
 
-	if time.Now().Before(clientLimiter.LastSeen.Add(appState.BlockedIPs.Load().BanPeriod)) {
+	if time.Now().Before(bannedClientLimiter.LastSeen.Add(as.banList.Load().banPeriod)) {
 		return true
 	}
 
-	clMap.Delete(ipAddress)
+	as.banList.Load().bannedClients.Delete(ipAddress)
 	return false
 }
 
@@ -658,10 +580,10 @@ func CleanupBlockedIPs() {
 		return
 	}
 
-	blockedIPMap := &appState.BlockedIPs.Load().ClientMap
+	blockedIPMap := &appState.banList.Load().bannedClients
 	blockedIPMap.Range(func(k, v any) bool {
 		value := v.(ClientLimiter)
-		if time.Now().After(value.LastSeen.Add(appState.BlockedIPs.Load().BanPeriod)) {
+		if time.Now().After(value.LastSeen.Add(appState.banList.Load().banPeriod)) {
 			blockedIPMap.Delete(k)
 		}
 		return true
@@ -674,7 +596,7 @@ func GetWebServerIPs() (string, string, error) {
 	if err != nil {
 		return "", "", fmt.Errorf("error getting app state in GetWebServerIPs: %w", err)
 	}
-	return appState.AppConfig.Load().UIT_WEB_HTTP_HOST.String(), appState.AppConfig.Load().UIT_WEB_HTTPS_HOST.String(), nil
+	return appState.appConfig.Load().WebHTTPAddr.String(), appState.appConfig.Load().WebHTTPSAddr.String(), nil
 }
 
 func GetServerIPAddressByInterface(ifName string) (string, error) {
@@ -709,7 +631,7 @@ func GetWebmasterContact() (webmasterName string, webmasterEmail string, err err
 	if err != nil {
 		return "", "", fmt.Errorf("error getting app state in GetWebmasterContact: %w", err)
 	}
-	return appState.AppConfig.Load().UIT_WEBMASTER_NAME, appState.AppConfig.Load().UIT_WEBMASTER_EMAIL, nil
+	return appState.appConfig.Load().WebmasterName, appState.appConfig.Load().WebmasterEmail, nil
 }
 
 func GetClientConfig() (*ClientConfig, error) {
@@ -717,26 +639,26 @@ func GetClientConfig() (*ClientConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting app state in GetClientConfig: %w", err)
 	}
-	appConfig := appState.AppConfig.Load()
+	appConfig := appState.appConfig.Load()
 	if appConfig == nil {
 		return nil, fmt.Errorf("app config is not loaded in GetClientConfig")
 	}
 
 	clientConfig := &ClientConfig{
-		UIT_CLIENT_DB_USER:   appConfig.UIT_CLIENT_DB_USER,
-		UIT_CLIENT_DB_PASSWD: appConfig.UIT_CLIENT_DB_PASSWD,
-		UIT_CLIENT_DB_NAME:   appConfig.UIT_CLIENT_DB_NAME,
-		UIT_CLIENT_DB_HOST:   appConfig.UIT_CLIENT_DB_HOST.String(),
-		UIT_CLIENT_DB_PORT:   strconv.FormatUint(uint64(appConfig.UIT_CLIENT_DB_PORT), 10),
-		UIT_CLIENT_NTP_HOST:  appConfig.UIT_CLIENT_NTP_HOST.String(),
-		UIT_CLIENT_PING_HOST: appConfig.UIT_CLIENT_PING_HOST.String(),
-		UIT_SERVER_HOSTNAME:  appConfig.UIT_SERVER_HOSTNAME,
-		UIT_WEB_HTTP_HOST:    appConfig.UIT_WEB_HTTP_HOST.String(),
-		UIT_WEB_HTTP_PORT:    strconv.FormatUint(uint64(appConfig.UIT_WEB_HTTP_PORT), 10),
-		UIT_WEB_HTTPS_HOST:   appConfig.UIT_WEB_HTTPS_HOST.String(),
-		UIT_WEB_HTTPS_PORT:   strconv.FormatUint(uint64(appConfig.UIT_WEB_HTTPS_PORT), 10),
-		UIT_WEBMASTER_NAME:   appConfig.UIT_WEBMASTER_NAME,
-		UIT_WEBMASTER_EMAIL:  appConfig.UIT_WEBMASTER_EMAIL,
+		UIT_CLIENT_DB_USER:   appConfig.ClientDBUser,
+		UIT_CLIENT_DB_PASSWD: appConfig.ClientDBPasswd,
+		UIT_CLIENT_DB_NAME:   appConfig.ClientDBName,
+		UIT_CLIENT_DB_HOST:   appConfig.ClientDBHost.String(),
+		UIT_CLIENT_DB_PORT:   strconv.FormatUint(uint64(appConfig.ClientDBPort), 10),
+		UIT_CLIENT_NTP_HOST:  appConfig.ClientNTPHost.String(),
+		UIT_CLIENT_PING_HOST: appConfig.ClientPingHost.String(),
+		UIT_SERVER_HOSTNAME:  appConfig.ServerHostname,
+		UIT_WEB_HTTP_HOST:    appConfig.WebHTTPAddr.String(),
+		UIT_WEB_HTTP_PORT:    strconv.FormatUint(uint64(appConfig.WebHTTPPort), 10),
+		UIT_WEB_HTTPS_HOST:   appConfig.WebHTTPSAddr.String(),
+		UIT_WEB_HTTPS_PORT:   strconv.FormatUint(uint64(appConfig.WebHTTPSPort), 10),
+		UIT_WEBMASTER_NAME:   appConfig.WebmasterName,
+		UIT_WEBMASTER_EMAIL:  appConfig.WebmasterEmail,
 	}
 	return clientConfig, nil
 }
@@ -746,19 +668,11 @@ func GetTLSCertFiles() (certFile string, keyFile string, err error) {
 	if err != nil {
 		return "", "", fmt.Errorf("error getting app state in GetTLSCertFiles: %w", err)
 	}
-	appConfig := appState.AppConfig.Load()
+	appConfig := appState.appConfig.Load()
 	if appConfig == nil {
 		return "", "", fmt.Errorf("app config is not loaded in GetTLSCertFiles")
 	}
-	return appConfig.UIT_WEB_TLS_CERT_FILE, appConfig.UIT_WEB_TLS_KEY_FILE, nil
-}
-
-func GetMaxUploadSize() (int64, error) {
-	appState, err := GetAppState()
-	if err != nil {
-		return 0, fmt.Errorf("error getting app state in GetMaxUploadSize: %w", err)
-	}
-	return appState.AppConfig.Load().UIT_WEB_MAX_UPLOAD_SIZE_MB << 20, nil
+	return appConfig.WebTLSCertFile, appConfig.WebTLSKeyFile, nil
 }
 
 func GetRequestTimeout(timeoutType string) (time.Duration, error) {
@@ -768,13 +682,13 @@ func GetRequestTimeout(timeoutType string) (time.Duration, error) {
 	}
 	switch strings.ToLower(timeoutType) {
 	case "api":
-		apiTimeout := appState.APIRequestTimeout.Load()
+		apiTimeout := appState.apiRequestTimeout.Load()
 		if apiTimeout == nil {
 			return 0, fmt.Errorf("cannot get API request timeout in GetRequestTimeout")
 		}
 		return *apiTimeout, nil
 	case "file":
-		fileTimeout := appState.FileRequestTimeout.Load()
+		fileTimeout := appState.fileRequestTimeout.Load()
 		if fileTimeout == nil {
 			return 0, fmt.Errorf("cannot get file request timeout in GetRequestTimeout")
 		}
@@ -794,10 +708,10 @@ func SetRequestTimeout(timeoutType string, timeout time.Duration) error {
 	}
 	switch strings.TrimSpace(strings.ToLower(timeoutType)) {
 	case "api":
-		appState.APIRequestTimeout.Store(&timeout)
+		appState.apiRequestTimeout.Store(&timeout)
 		return nil
 	case "file":
-		appState.FileRequestTimeout.Store(&timeout)
+		appState.fileRequestTimeout.Store(&timeout)
 		return nil
 	default:
 		return fmt.Errorf("invalid timeout type: %s", timeoutType)
@@ -810,7 +724,7 @@ func GetAllowedLANIPs() ([]netip.Prefix, error) {
 		return nil, fmt.Errorf("error getting app state in GetAllowedLANIPs: %w", err)
 	}
 	var allowedIPs []netip.Prefix
-	appState.AllowedLANIPs.Range(func(k, v any) bool {
+	appState.allowedLANIPs.Range(func(k, v any) bool {
 		ipRange, ok := k.(netip.Prefix)
 		if !ok || ipRange == (netip.Prefix{}) {
 			return true

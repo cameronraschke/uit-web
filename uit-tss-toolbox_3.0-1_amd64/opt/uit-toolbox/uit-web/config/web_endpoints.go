@@ -5,22 +5,21 @@ import (
 	"strings"
 )
 
-type WebEndpoints map[string]WebEndpointConfig
-
 type WebEndpointConfig struct {
-	FilePath       string   `json:"file_path"`
-	AllowedMethods []string `json:"allowed_methods"`
-	TLSRequired    *bool    `json:"tls_required"`
-	AuthRequired   *bool    `json:"auth_required"`
-	Requires       []string `json:"requires"`
-	ACLUsers       []string `json:"acl_users"`
-	ACLGroups      []string `json:"acl_groups"`
-	HTTPVersion    string   `json:"http_version"`
-	EndpointType   string   `json:"endpoint_type"`
-	ContentType    string   `json:"content_type"`
-	StatusCode     int      `json:"status_code"`
-	Redirect       *bool    `json:"redirect"`
-	RedirectURL    string   `json:"redirect_url"`
+	FilePath        string   `json:"file_path"`
+	AllowedMethods  []string `json:"allowed_methods"`
+	TLSRequired     *bool    `json:"tls_required"`
+	AuthRequired    *bool    `json:"auth_required"`
+	MaxUploadSizeKB int64    `json:"max_upload_size_kb"`
+	Requires        []string `json:"requires"`
+	ACLUsers        []string `json:"acl_users"`
+	ACLGroups       []string `json:"acl_groups"`
+	HTTPVersion     string   `json:"http_version"`
+	EndpointType    string   `json:"endpoint_type"`
+	ContentType     string   `json:"content_type"`
+	StatusCode      int      `json:"status_code"`
+	Redirect        *bool    `json:"redirect"`
+	RedirectURL     string   `json:"redirect_url"`
 }
 
 func GetWebEndpointConfig(endpointPath string) (*WebEndpointConfig, error) {
@@ -28,13 +27,16 @@ func GetWebEndpointConfig(endpointPath string) (*WebEndpointConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting app state in GetWebEndpointConfig: %w", err)
 	}
-	value, ok := appState.WebEndpoints.Load(endpointPath)
+	value, ok := appState.webEndpoints.Load(endpointPath)
 	if !ok {
 		return nil, fmt.Errorf("endpoint not found in config: %s", endpointPath)
 	}
 	endpointData, ok := value.(*WebEndpointConfig)
 	if !ok {
 		return nil, fmt.Errorf("invalid/missing endpoint data for: %s", endpointPath)
+	}
+	if endpointData == nil {
+		return nil, fmt.Errorf("endpoint data is nil for: %s", endpointPath)
 	}
 	return endpointData, nil // return a copy
 }

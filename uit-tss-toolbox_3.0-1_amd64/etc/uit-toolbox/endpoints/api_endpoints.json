@@ -11,6 +11,7 @@
   "/api/job_queue/client/job_available": {},
   "/api/client/location_form_data": {},
   "/api/notes": {
+		"max_ip"
     "allowed_methods": ["OPTIONS", "GET", "POST"]
   },
   "/api/dashboard/inventory_summary": {},

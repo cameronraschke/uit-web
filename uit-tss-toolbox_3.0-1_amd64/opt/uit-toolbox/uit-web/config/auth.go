@@ -14,6 +14,40 @@ import (
 	"time"
 )
 
+type BasicToken struct {
+	Token     string     `json:"token"`
+	Expiry    time.Time  `json:"expiry"`
+	NotBefore time.Time  `json:"not_before"`
+	TTL       float64    `json:"ttl"`
+	IP        netip.Addr `json:"ip"`
+	Valid     bool       `json:"valid"`
+}
+
+type BearerToken struct {
+	Token     string     `json:"token"`
+	Expiry    time.Time  `json:"expiry"`
+	NotBefore time.Time  `json:"not_before"`
+	TTL       float64    `json:"ttl"`
+	IP        netip.Addr `json:"ip"`
+	Valid     bool       `json:"valid"`
+}
+
+type CSRFToken struct {
+	Token     string     `json:"token"`
+	Expiry    time.Time  `json:"expiry"`
+	NotBefore time.Time  `json:"not_before"`
+	TTL       float64    `json:"ttl"`
+	IP        netip.Addr `json:"ip"`
+	Valid     bool       `json:"valid"`
+}
+
+type AuthSession struct {
+	SessionID string
+	Basic     BasicToken
+	Bearer    BearerToken
+	CSRF      CSRFToken
+}
+
 const (
 	basicTTL  = 20 * time.Minute
 	bearerTTL = 20 * time.Minute
@@ -28,7 +62,7 @@ func GetAdminCredentials() (string, string, error) {
 	}
 
 	adminUsername := "admin"
-	adminPasswd := strings.TrimSpace(appState.AppConfig.Load().UIT_WEB_USER_DEFAULT_PASSWD)
+	adminPasswd := strings.TrimSpace(appState.appConfig.Load().WebUserDefaultPasswd)
 	return adminUsername, adminPasswd, nil
 }
 
@@ -39,7 +73,7 @@ func GetAuthSessions() map[string]AuthSession {
 		return nil
 	}
 	authSessionsMap := make(map[string]AuthSession)
-	appState.AuthMap.Range(func(k, v any) bool {
+	appState.authMap.Range(func(k, v any) bool {
 		key, keyExists := k.(string)
 		value, valueExists := v.(AuthSession)
 		if keyExists && valueExists {
@@ -121,7 +155,7 @@ func CreateAuthSession(ipAddress netip.Addr) (string, string, string, string, er
 
 	for i := range 3 {
 		if i > 0 {
-			if _, exists := appState.AuthMap.Load(authSession.SessionID); !exists {
+			if _, exists := appState.authMap.Load(authSession.SessionID); !exists {
 				break
 			}
 			newID, genErr := GenerateSessionToken(32)
@@ -133,8 +167,8 @@ func CreateAuthSession(ipAddress netip.Addr) (string, string, string, string, er
 	}
 
 	// Store and bump count
-	appState.AuthMap.Store(authSession.SessionID, authSession)
-	appState.AuthMapEntryCount.Add(1)
+	appState.authMap.Store(authSession.SessionID, authSession)
+	appState.authMapEntryCount.Add(1)
 
 	return authSession.SessionID, basicToken, bearerToken, csrfToken, nil
 
@@ -145,10 +179,10 @@ func DeleteAuthSession(sessionID string) {
 	if err != nil {
 		return
 	}
-	if _, ok := appState.AuthMap.LoadAndDelete(sessionID); ok {
-		newVal := appState.AuthMapEntryCount.Add(-1)
+	if _, ok := appState.authMap.LoadAndDelete(sessionID); ok {
+		newVal := appState.authMapEntryCount.Add(-1)
 		if newVal < 0 {
-			appState.AuthMapEntryCount.Store(0)
+			appState.authMapEntryCount.Store(0)
 		}
 	}
 }
@@ -160,7 +194,7 @@ func ClearExpiredAuthSessions() {
 		return
 	}
 	curTime := time.Now()
-	appState.AuthMap.Range(func(k, v any) bool {
+	appState.authMap.Range(func(k, v any) bool {
 		authSession, ok := v.(AuthSession)
 		if !ok {
 			return true
@@ -179,7 +213,7 @@ func GetAuthSessionCount() int64 {
 	if err != nil {
 		return 0
 	}
-	return appState.AuthMapEntryCount.Load()
+	return appState.authMapEntryCount.Load()
 }
 
 func RefreshAndGetAuthSessionCount() int64 {
@@ -188,11 +222,11 @@ func RefreshAndGetAuthSessionCount() int64 {
 		return 0
 	}
 	var entries int64
-	appState.AuthMap.Range(func(_, _ any) bool {
+	appState.authMap.Range(func(_, _ any) bool {
 		entries++
 		return true
 	})
-	appState.AuthMapEntryCount.Store(entries)
+	appState.authMapEntryCount.Store(entries)
 	return entries
 }
 
@@ -205,7 +239,7 @@ func CheckAuthSessionExists(sessionID string, ipAddress netip.Addr, basicToken s
 		return sessionValid, sessionExists, fmt.Errorf("error getting app state in CheckAuthSessionExists: %w", err)
 	}
 
-	value, ok := appState.AuthMap.Load(sessionID)
+	value, ok := appState.authMap.Load(sessionID)
 	if !ok {
 		return sessionValid, sessionExists, nil
 	}
@@ -244,7 +278,7 @@ func ExtendAuthSession(sessionID string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("error getting app state in ExtendAuthSession: %w", err)
 	}
-	value, ok := appState.AuthMap.Load(sessionID)
+	value, ok := appState.authMap.Load(sessionID)
 	if !ok {
 		return false, nil
 	}
@@ -260,7 +294,7 @@ func ExtendAuthSession(sessionID string) (bool, error) {
 	authSession.Basic.Expiry = curTime.Add(time.Duration(20 * time.Minute))
 	authSession.Bearer.Expiry = curTime.Add(time.Duration(20 * time.Minute))
 	authSession.CSRF.Expiry = curTime.Add(time.Duration(20 * time.Minute))
-	appState.AuthMap.Store(sessionID, authSession)
+	appState.authMap.Store(sessionID, authSession)
 	return true, nil
 }
 
@@ -306,7 +340,7 @@ func GetServerSecret() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting app state in GetServerSecret: %w", err)
 	}
-	serverSecret := make([]byte, len(appState.SessionSecret))
-	copy(serverSecret, appState.SessionSecret)
+	serverSecret := make([]byte, len(appState.sessionSecret))
+	copy(serverSecret, appState.sessionSecret)
 	return serverSecret, nil
 }

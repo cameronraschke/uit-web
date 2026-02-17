@@ -99,12 +99,13 @@ func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusLengthRequired)
 			return
 		}
-		maxSize, err := config.GetMaxUploadSize()
+		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
 		if err != nil {
-			log.HTTPError(req, "Failed to get max upload size from config: "+err.Error())
+			log.HTTPError(req, "Failed to get endpoint config from config: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
+		maxSize := endpointConfig.MaxUploadSizeKB
 		if req.ContentLength > maxSize {
 			log.HTTPWarning(req, "Request content length exceeds limit: "+fmt.Sprintf("%.2fMB", float64(req.ContentLength)/1e6)+" > "+fmt.Sprintf("%.2fMB", float64(maxSize)/1e6))
 			WriteJsonError(w, http.StatusRequestEntityTooLarge)

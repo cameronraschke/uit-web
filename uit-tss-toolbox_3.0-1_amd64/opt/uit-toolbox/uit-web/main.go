@@ -84,8 +84,9 @@ func main() {
 		log.Error("Failed to get app state: " + err.Error())
 		os.Exit(1)
 	}
-	for _, ip := range as.AppConfig.Load().UIT_SERVER_ANY_ALLOWED_IP {
-		log.Info("Allowed IP: " + ip.String())
+	if as == nil {
+		log.Error("App state is nil in main")
+		os.Exit(1)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

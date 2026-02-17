@@ -257,13 +257,13 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	log.HTTPDebug(req, "Web request from "+requestIP.String()+" for "+requestedPath)
 
 	// Get endpoint config
-	endpointData, err := config.GetWebEndpointConfig(requestedPath)
+	endpointConfig, err := config.GetWebEndpointConfig(requestedPath)
 	if err != nil {
 		log.HTTPWarning(req, "Cannot get endpoint config for endpoint "+requestedPath+": "+err.Error()+"")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	filePath, err := config.GetWebEndpointFilePath(endpointData)
+	filePath, err := config.GetWebEndpointFilePath(endpointConfig)
 	if err != nil {
 		log.HTTPWarning(req, "Cannot get file path for endpoint "+requestedPath+": "+err.Error()+"")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -292,12 +292,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	maxFileSize, err := config.GetMaxUploadSize()
-	if err != nil {
-		log.HTTPError(req, "Cannot get max upload size from config: "+err.Error()+"")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+	maxFileSize := endpointConfig.MaxUploadSizeKB
 	if metadata.Size() > maxFileSize {
 		log.HTTPWarning(req, "File too large: "+filePath+" ("+fmt.Sprintf("%d", metadata.Size())+" bytes)")
 		http.Error(w, "File too large", http.StatusRequestEntityTooLarge)
@@ -305,7 +300,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Set headers
-	contentType, err := config.GetWebEndpointContentType(endpointData)
+	contentType, err := config.GetWebEndpointContentType(endpointConfig)
 	if err != nil {
 		log.HTTPWarning(req, "Cannot get content type for endpoint "+requestedPath+": "+err.Error()+"")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -331,13 +326,13 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		}
 
 		var httpTemplateResponseData = &HttpTemplateResponseData{}
-		if endpointData.Requires != nil {
+		if endpointConfig.Requires != nil {
 			// Generate nonce
-			if slices.Contains(endpointData.Requires, "nonce") {
+			if slices.Contains(endpointConfig.Requires, "nonce") {
 				httpTemplateResponseData.JsNonce = nonce
 			}
 
-			if slices.Contains(endpointData.Requires, "webmaster_contact") {
+			if slices.Contains(endpointConfig.Requires, "webmaster_contact") {
 				webmasterName, webmasterEmail, err := config.GetWebmasterContact()
 				if err != nil {
 					log.HTTPError(req, "Cannot get webmaster contact info: "+err.Error()+"")
@@ -348,7 +343,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 				httpTemplateResponseData.WebmasterEmail = webmasterEmail
 			}
 
-			if slices.Contains(endpointData.Requires, "client_tag") {
+			if slices.Contains(endpointConfig.Requires, "client_tag") {
 				urlTag := req.URL.Query().Get("tagnumber")
 				tagnumber, err := ConvertAndVerifyTagnumber(urlTag)
 				if err != nil {
@@ -364,9 +359,9 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 				httpTemplateResponseData.ClientTag = strconv.FormatInt(*tagnumber, 10)
 			}
 
-			if slices.Contains(endpointData.Requires, "checkout_date") ||
-				slices.Contains(endpointData.Requires, "return_date") ||
-				slices.Contains(endpointData.Requires, "customer_name") {
+			if slices.Contains(endpointConfig.Requires, "checkout_date") ||
+				slices.Contains(endpointConfig.Requires, "return_date") ||
+				slices.Contains(endpointConfig.Requires, "customer_name") {
 				checkoutDate := requestQueries.Get("checkout_date")
 				returnDate := requestQueries.Get("return_date")
 				customerName := requestQueries.Get("customer_name")

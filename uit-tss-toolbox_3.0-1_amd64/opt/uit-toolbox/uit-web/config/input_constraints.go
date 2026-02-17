@@ -65,7 +65,7 @@ func (as *AppState) GetTagnumberConstraints() (min int, max int, err error) {
 	if as == nil {
 		return 0, 0, fmt.Errorf("app state is nil in GetTagnumberConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, fmt.Errorf("input constraints not set in GetTagnumberConstraints")
 	}
@@ -76,7 +76,7 @@ func (as *AppState) GetSystemSerialConstraints() (min int, max int, err error) {
 	if as == nil {
 		return 0, 0, fmt.Errorf("app state is nil in GetSystemSerialConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, fmt.Errorf("input constraints not set in GetSystemSerialConstraints")
 	}
@@ -87,7 +87,7 @@ func (as *AppState) GetLocationConstraints() (min int, max int, err error) {
 	if as == nil {
 		return 0, 0, fmt.Errorf("app state is nil in GetLocationConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, fmt.Errorf("input constraints not set in GetLocationConstraints")
 	}
@@ -98,7 +98,7 @@ func (as *AppState) GetBuildingConstraints() (min int, max int, err error) {
 	if as == nil {
 		return 0, 0, fmt.Errorf("app state is nil in GetBuildingConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, fmt.Errorf("input constraints not set in GetBuildingConstraints")
 	}
@@ -109,7 +109,7 @@ func (as *AppState) GetRoomConstraints() (min int, max int, err error) {
 	if as == nil {
 		return 0, 0, fmt.Errorf("app state is nil in GetRoomConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, fmt.Errorf("input constraints not set in GetRoomConstraints")
 	}
@@ -120,7 +120,7 @@ func (as *AppState) GetManufacturerConstraints() (min int, max int, err error) {
 	if as == nil {
 		return 0, 0, fmt.Errorf("app state is nil in GetManufacturerConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, fmt.Errorf("input constraints not set in GetManufacturerConstraints")
 	}
@@ -131,7 +131,7 @@ func (as *AppState) GetSystemModelConstraints() (min int, max int, err error) {
 	if as == nil {
 		return 0, 0, fmt.Errorf("app state is nil in GetSystemModelConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, fmt.Errorf("input constraints not set in GetSystemModelConstraints")
 	}
@@ -142,7 +142,7 @@ func (as *AppState) GetDeviceTypeConstraints() (min int, max int, err error) {
 	if as == nil {
 		return 0, 0, fmt.Errorf("app state is nil in GetDeviceTypeConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, fmt.Errorf("input constraints not set in GetDeviceTypeConstraints")
 	}
@@ -153,7 +153,7 @@ func (as *AppState) GetDepartmentConstraints() (min int, max int, err error) {
 	if as == nil {
 		return 0, 0, fmt.Errorf("app state is nil in GetDepartmentConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, fmt.Errorf("input constraints not set in GetDepartmentConstraints")
 	}
@@ -164,7 +164,7 @@ func (as *AppState) GetDomainConstraints() (min int, max int, err error) {
 	if as == nil {
 		return 0, 0, fmt.Errorf("app state is nil in GetDomainConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, fmt.Errorf("input constraints not set in GetDomainConstraints")
 	}
@@ -175,7 +175,7 @@ func (as *AppState) GetPropertyCustodianConstraints() (min int, max int, err err
 	if as == nil {
 		return 0, 0, fmt.Errorf("app state is nil in GetPropertyCustodianConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, fmt.Errorf("input constraints not set in GetPropertyCustodianConstraints")
 	}
@@ -186,7 +186,7 @@ func (as *AppState) GetClientStatusConstraints() (min int, max int, err error) {
 	if as == nil {
 		return 0, 0, fmt.Errorf("app state is nil in GetClientStatusConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, fmt.Errorf("input constraints not set in GetClientStatusConstraints")
 	}
@@ -197,7 +197,7 @@ func (as *AppState) GetCheckoutConstraints() (checkoutDateIsMandatory, returnDat
 	if as == nil {
 		return false, false, false, fmt.Errorf("app state is nil in GetCheckoutConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return false, false, false, fmt.Errorf("input constraints not set in GetCheckoutConstraints")
 	}
@@ -208,7 +208,7 @@ func (as *AppState) GetClientNoteConstraints() (minChars int, maxChars int, err 
 	if as == nil {
 		return 0, 0, fmt.Errorf("app state is nil in GetClientNoteConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, fmt.Errorf("input constraints not set in GetClientNoteConstraints")
 	}
@@ -219,11 +219,11 @@ func (as *AppState) GetNoteConstraints() (noteFormMaxBytes int64, noteTypeMinCha
 	if as == nil {
 		return 0, 0, 0, 0, 0, fmt.Errorf("app state is nil in GetNoteConstraints")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, 0, 0, 0, fmt.Errorf("input constraints not set in GetNoteConstraints")
 	}
-	fc := as.AppConfig.Load().FormConstraints.Load()
+	fc := as.appConfig.Load().formConstraints.Load()
 	if fc == nil {
 		return 0, 0, 0, 0, 0, fmt.Errorf("form constraints not set in GetNoteConstraints")
 	}
@@ -234,11 +234,11 @@ func (as *AppState) GetLoginFormSizeConstraint() (maxFormBytes int64, minUsernam
 	if as == nil {
 		return 0, 0, 0, 0, 0, fmt.Errorf("app state is nil in GetLoginFormSizeConstraint")
 	}
-	ic := as.AppConfig.Load().InputConstraints.Load()
+	ic := as.appConfig.Load().inputConstraints.Load()
 	if ic == nil {
 		return 0, 0, 0, 0, 0, fmt.Errorf("input constraints not set in GetLoginFormSizeConstraint")
 	}
-	fc := as.AppConfig.Load().FormConstraints.Load()
+	fc := as.appConfig.Load().formConstraints.Load()
 	if fc == nil {
 		return 0, 0, 0, 0, 0, fmt.Errorf("form constraints not set in GetLoginFormSizeConstraint")
 	}
@@ -249,7 +249,7 @@ func (as *AppState) GetInventoryUpdateFormConstraints() (maxFormJsonBytes int64,
 	if as == nil {
 		return 0, fmt.Errorf("app state is nil in GetInventoryUpdateFormConstraints")
 	}
-	fc := as.AppConfig.Load().FormConstraints.Load()
+	fc := as.appConfig.Load().formConstraints.Load()
 	if fc == nil {
 		return 0, fmt.Errorf("form constraints not set in GetInventoryUpdateFormConstraints")
 	}
@@ -260,7 +260,7 @@ func (as *AppState) GetFileUploadSizeConstraints() (maxFormBytes int64, minFileS
 	if as == nil {
 		return 0, 0, 0, 0, fmt.Errorf("app state is nil in GetFileUploadSizeConstraints")
 	}
-	fc := as.AppConfig.Load().FormConstraints.Load()
+	fc := as.appConfig.Load().formConstraints.Load()
 	if fc == nil {
 		return 0, 0, 0, 0, fmt.Errorf("form constraints not set in GetFileUploadSizeConstraints")
 	}
@@ -271,7 +271,7 @@ func (as *AppState) GetFileUploadAllowedExtensionsAndRegex() (allowedExtensions 
 	if as == nil {
 		return nil, "", fmt.Errorf("app state is nil in GetFileUploadAllowedExtensionsAndRegex")
 	}
-	fc := as.AppConfig.Load().FormConstraints.Load()
+	fc := as.appConfig.Load().formConstraints.Load()
 	if fc == nil {
 		return nil, "", fmt.Errorf("form constraints not set in GetFileUploadAllowedExtensionsAndRegex")
 	}
