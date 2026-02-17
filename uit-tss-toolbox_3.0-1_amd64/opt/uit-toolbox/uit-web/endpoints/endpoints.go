@@ -144,50 +144,52 @@ func ConvertAndVerifyTagnumber(tagStr string) (*int64, error) {
 func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	requestIP, err := middleware.GetRequestIPFromContext(ctx)
+	endpointConfig, err := middleware.GetWebEndpointConfigFromContext(ctx)
 	if err != nil {
-		log.Warning("Error retrieving IP address stored in context for FileServerHandler: " + err.Error())
+		log.Warning("Error retrieving web endpoint config from context (FileServerHandler): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	resolvedPath, resolvedPathExists := middleware.GetRequestFileFromContext(ctx)
-	if !resolvedPathExists {
-		log.Warning("no requested file stored in context for FileServerHandler")
+	resolvedPath, err := middleware.GetRequestFileFromContext(ctx)
+	if err != nil {
+		log.Warning("Error retrieving requested file from context (FileServerHandler): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-
-	log.HTTPDebug(req, "File request received")
 
 	// Previous path and file validation done in middleware
-	// Open the file
-	f, err := os.Open(resolvedPath)
+	if ctx.Err() != nil {
+		log.HTTPWarning(req, "Context error (FileServerHandler): "+ctx.Err().Error())
+		middleware.WriteJsonError(w, http.StatusRequestTimeout)
+		return
+	}
+	requestedFile, err := os.Open(resolvedPath)
 	if err != nil {
-		log.HTTPWarning(req, "File not found for FileServerHandler: "+err.Error())
+		log.HTTPWarning(req, "Error opening file (FileServerHandler): '"+resolvedPath+"': "+err.Error())
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
-	defer f.Close()
+	defer requestedFile.Close()
 
-	// err = f.SetDeadline(time.Now().Add(30 * time.Second))
-	// if err != nil {
-	// 	log.Error("Cannot set file read deadline: " + resolvedPath + " (" + err.Error() + ")")
-	// 	http.Error(w, http.StatusInternalServerError)
-	// 	return
-	// }
-
-	metadata, err := f.Stat()
+	metadata, err := requestedFile.Stat()
 	if err != nil {
-		log.Error("Cannot stat file: " + resolvedPath + " (" + err.Error() + ")")
+		log.HTTPError(req, "Error retrieving file metadata (FileServerHandler): '"+resolvedPath+"': "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
-	maxFileSize := int64(10) << 30 // 10 GiB
-	if metadata.Size() > maxFileSize {
-		log.Warning("File too large: " + resolvedPath + " (" + fmt.Sprintf("%d", metadata.Size()) + " bytes)")
-		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
-		return
+	if endpointConfig.EndpointType == "static_file" {
+		if endpointConfig.MaxDownloadSizeMB != 0 {
+			if metadata.Size() > endpointConfig.MaxDownloadSizeMB {
+				log.HTTPWarning(req, "Requested file is too large (FileServerHandler): '"+resolvedPath+"' ("+fmt.Sprintf("%.2f", float64(metadata.Size())/1024/1024)+" MB, max allowed: "+fmt.Sprintf("%d", endpointConfig.MaxDownloadSizeMB)+" MB)")
+				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
+				return
+			}
+		} else {
+			log.HTTPWarning(req, "Max download size is not set for static file endpoint (FileServerHandler): '"+resolvedPath+"', rejecting request")
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Get file info for headers
@@ -220,14 +222,13 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Cache-Control", "private, max-age=300")
 
 	if ctx.Err() != nil {
-		log.HTTPWarning(req, "Context cancelled while serving file: "+resolvedPath+": "+ctx.Err().Error())
+		log.HTTPWarning(req, "Context error while serving file (FileServerHandler): '"+resolvedPath+"': "+ctx.Err().Error())
 		return
 	}
 
 	// Serve the file
-	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), f)
-
-	log.Info("Served file: " + resolvedPath + " to " + requestIP.String())
+	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), requestedFile)
+	log.HTTPInfo(req, "Served file '"+resolvedPath+"' ("+fmt.Sprintf("%.2f", float64(metadata.Size())/1024)+" KB)")
 }
 
 func WebServerHandler(w http.ResponseWriter, req *http.Request) {
@@ -270,6 +271,11 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	// Open the file
+	if ctx.Err() != nil {
+		log.HTTPWarning(req, "Context error (WebServerHandler): "+ctx.Err().Error())
+		middleware.WriteJsonError(w, http.StatusRequestTimeout)
+		return
+	}
 	file, err := os.Open(filePath)
 	if err != nil {
 		log.HTTPWarning(req, "Cannot open file: "+filePath+": "+err.Error()+"")
@@ -289,13 +295,6 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.HTTPWarning(req, "Cannot stat file: "+filePath+": "+err.Error()+"")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	maxFileSize := endpointConfig.MaxUploadSizeKB
-	if metadata.Size() > maxFileSize {
-		log.HTTPWarning(req, "File too large: "+filePath+" ("+fmt.Sprintf("%d", metadata.Size())+" bytes)")
-		http.Error(w, "File too large", http.StatusRequestEntityTooLarge)
 		return
 	}
 

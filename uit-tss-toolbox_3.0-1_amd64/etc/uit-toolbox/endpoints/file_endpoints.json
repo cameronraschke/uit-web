@@ -1,67 +1,57 @@
 {
-  "/client/iso/live/filesystem.squashfs": {
-    "file_path": "/srv/uit-toolbox/client/iso/live/filesystem.squashfs",
-    "tls_required": false,
-    "auth_required": false,
-    "http_version": "HTTP/1.1",
-    "endpoint_type": "static_file",
-    "content_type": "application/octet-stream"
-  },
-  "/client/iso/live/vmlinuz": {
-    "file_path": "/srv/uit-toolbox/client/iso/live/vmlinuz",
-    "tls_required": false,
-    "auth_required": false,
-    "http_version": "HTTP/1.1",
-    "endpoint_type": "static_file",
-    "content_type": "application/octet-stream"
-  },
-  "/client/iso/live/initrd": {
-    "file_path": "/srv/uit-toolbox/client/iso/live/initrd",
-    "tls_required": false,
-    "auth_required": false,
-    "http_version": "HTTP/1.1",
-    "endpoint_type": "static_file",
-    "content_type": "application/octet-stream"
-  },
-  "/client/certs/uit-web.crt": {
-    "file_path": "/usr/local/share/ca-certificates/uit-web.crt",
-    "tls_required": false,
-    "auth_required": false,
-    "http_version": "HTTP/1.1",
-    "endpoint_type": "static_file",
-    "content_type": "application/x-x509-user-cert"
-  },
-  "/client/pkg/uit-toolbox-client.deb": {
-    "file_path": "/srv/uit-toolbox/client/pkg/uit-toolbox-client.deb",
-    "tls_required": false,
-    "auth_required": false,
-    "http_version": "HTTP/1.1",
-    "endpoint_type": "static_file",
-    "content_type": "application/vnd.debian.binary-package"
-  },
-  "/client/pkg/go-latest.linux-amd64.tar.gz": {
-    "file_path": "/srv/uit-toolbox/client/pkg/go-latest.linux-amd64.tar.gz",
-    "tls_required": false,
-    "auth_required": false,
-    "http_version": "HTTP/1.1",
-    "endpoint_type": "static_file",
-    "content_type": "application/gzip"
-  },
-  "/client/api/configs/uit-client": {
-    "file_path": "/srv/uit-toolbox/client/configs/uit-client.conf",
-    "tls_required": true,
-    "auth_required": true,
-    "http_version": "HTTP/1.1",
-    "endpoint_type": "static_file",
-    "content_type": "text/plain; charset=utf-8"
-  },
-	"/client/src/go-latest.linux-amd64.tar.gz": {
-		"file_path": "/srv/uit-toolbox/client/pkg/go-latest.linux-amd64.tar.gz",
+	"/client/iso/live/filesystem.squashfs": {
+		"file_path": "/srv/uit-toolbox/client/iso/live/filesystem.squashfs",
 		"tls_required": false,
 		"auth_required": false,
+		"max_download_size_mb": 10000,
 		"http_version": "HTTP/1.1",
 		"endpoint_type": "static_file",
-		"content_type": "application/gzip"
+		"content_type": "application/octet-stream"
+	},
+	"/client/iso/live/vmlinuz": {
+		"file_path": "/srv/uit-toolbox/client/iso/live/vmlinuz",
+		"tls_required": false,
+		"auth_required": false,
+		"max_download_size_mb": 10000,
+		"http_version": "HTTP/1.1",
+		"endpoint_type": "static_file",
+		"content_type": "application/octet-stream"
+	},
+	"/client/iso/live/initrd": {
+		"file_path": "/srv/uit-toolbox/client/iso/live/initrd",
+		"tls_required": false,
+		"auth_required": false,
+		"max_download_size_mb": 10000,
+		"http_version": "HTTP/1.1",
+		"endpoint_type": "static_file",
+		"content_type": "application/octet-stream"
+	},
+	"/client/certs/uit-web.crt": {
+		"file_path": "/usr/local/share/ca-certificates/uit-web.crt",
+		"tls_required": false,
+		"auth_required": false,
+		"max_download_size_mb": 1,
+		"http_version": "HTTP/1.1",
+		"endpoint_type": "static_file",
+		"content_type": "application/x-x509-user-cert"
+	},
+	"/client/pkg/uit-toolbox-client.deb": {
+		"file_path": "/srv/uit-toolbox/client/pkg/uit-toolbox-client.deb",
+		"tls_required": false,
+		"auth_required": false,
+		"max_download_size_mb": 1000,
+		"http_version": "HTTP/1.1",
+		"endpoint_type": "static_file",
+		"content_type": "application/vnd.debian.binary-package"
+	},
+	"/client/api/configs/uit-client": {
+		"file_path": "/srv/uit-toolbox/client/configs/uit-client.conf",
+		"tls_required": true,
+		"auth_required": true,
+		"max_download_size_mb": 1,
+		"http_version": "HTTP/1.1",
+		"endpoint_type": "static_file",
+		"content_type": "text/plain; charset=utf-8"
 	},
 	"/client/pkg/uit-client": {
 		"file_path": "/srv/uit-toolbox/client/pkg/uit-client",

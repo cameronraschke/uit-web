@@ -194,9 +194,9 @@ func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 func TLSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log := GetLoggerFromContext(req.Context())
-		endpointConfig, ok := GetWebEndpointConfigFromContext(req.Context())
-		if !ok {
-			log.HTTPWarning(req, "Error getting endpoint config in TLS middleware")
+		endpointConfig, err := GetWebEndpointConfigFromContext(req.Context())
+		if err != nil {
+			log.HTTPWarning(req, "Error getting endpoint config (TLSMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -240,16 +240,16 @@ func TLSMiddleware(next http.Handler) http.Handler {
 func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log := GetLoggerFromContext(req.Context())
-		endpointConfig, ok := GetWebEndpointConfigFromContext(req.Context())
-		if !ok {
-			log.HTTPWarning(req, "Error getting endpoint config in HTTP version middleware")
+		endpointConfig, err := GetWebEndpointConfigFromContext(req.Context())
+		if err != nil {
+			log.HTTPWarning(req, "Error getting endpoint config (CheckHttpVersionMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		endpointConfigMajorVersion, _, ok := http.ParseHTTPVersion(endpointConfig.HTTPVersion)
 		if !ok {
-			log.HTTPWarning(req, "Invalid HTTP version in endpoint config: "+endpointConfig.HTTPVersion)
+			log.HTTPWarning(req, "Invalid HTTP version in endpoint config (CheckHttpVersionMiddleware): "+endpointConfig.HTTPVersion)
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -262,7 +262,7 @@ func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		log.HTTPWarning(req, "Unsupported HTTP version: HTTP/"+strconv.Itoa(req.ProtoMajor)+"."+strconv.Itoa(req.ProtoMinor)+" < "+endpointConfig.HTTPVersion)
+		log.HTTPWarning(req, "Unsupported HTTP version (CheckHttpVersionMiddleware): HTTP/"+strconv.Itoa(req.ProtoMajor)+"."+strconv.Itoa(req.ProtoMinor)+" < "+endpointConfig.HTTPVersion)
 		w.Header().Set("Upgrade", "HTTP/2")
 		WriteJsonError(w, http.StatusUpgradeRequired)
 	})
@@ -366,20 +366,20 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 			http.MethodDelete:  true,
 		}
 		if !validMethods[req.Method] {
-			log.HTTPWarning(req, "Invalid request method")
+			log.HTTPWarning(req, "Invalid request method (HTTPMethodMiddleware): "+req.Method)
 			WriteJsonError(w, http.StatusMethodNotAllowed)
 			return
 		}
 
-		endpointConfig, ok := GetWebEndpointConfigFromContext(req.Context())
-		if !ok {
-			log.HTTPWarning(req, "Error getting endpoint config in HTTP method middleware")
+		endpointConfig, err := GetWebEndpointConfigFromContext(req.Context())
+		if err != nil {
+			log.HTTPWarning(req, "Error getting endpoint config (HTTPMethodMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		if !slices.Contains(endpointConfig.AllowedMethods, req.Method) {
-			log.HTTPInfo(req, "Method is not allowed for endpoint")
+			log.HTTPInfo(req, "Method is not allowed for endpoint (HTTPMethodMiddleware): "+req.Method)
 			WriteJsonError(w, http.StatusMethodNotAllowed)
 			return
 		}
@@ -409,26 +409,26 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		// URL path
 		cleanPath, err := validateAndCleanURLPath(req.URL.Path)
 		if err != nil {
-			log.HTTPWarning(req, "Invalid URL path: "+err.Error())
+			log.HTTPWarning(req, "Invalid URL path (CheckValidURLMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
 		// Validate query parameters (even if empty)
 		if err := validateQueryParams(req.URL.Query()); err != nil {
-			log.HTTPWarning(req, "Invalid URL query parameters: "+err.Error())
+			log.HTTPWarning(req, "Invalid URL query parameters (CheckValidURLMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		// Check RawQuery for null bytes and CRLF. req.URL.Query() and url.Parse() may be empty even if RawQuery is not.
 		if strings.Contains(req.URL.RawQuery, "\x00") {
-			log.HTTPWarning(req, "Null byte detected in raw query string")
+			log.HTTPWarning(req, "Null byte detected in raw query string (CheckValidURLMiddleware)")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if strings.ContainsAny(req.URL.RawQuery, "\r\n") {
-			log.HTTPWarning(req, "CRLF characters detected in raw query string")
+			log.HTTPWarning(req, "CRLF characters detected in raw query string (CheckValidURLMiddleware)")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -438,7 +438,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		// Store clean path in context (to be used later on)
 		ctx, err = withRequestPath(ctx, cleanPath)
 		if err != nil {
-			log.HTTPError(req, "Error storing path in context: "+err.Error())
+			log.HTTPError(req, "Error storing path in context (CheckValidURLMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -447,7 +447,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		queries := req.URL.Query()
 		ctx, err = withRequestQuery(ctx, &queries)
 		if err != nil {
-			log.HTTPError(req, "Error storing query in context: "+err.Error())
+			log.HTTPError(req, "Error storing query in context (CheckValidURLMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -470,7 +470,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 
 			// Block disallowed characters in header keys
 			if strings.ContainsAny(headerKey, disallowedHeaderChars) {
-				log.HTTPWarning(req, "Disallowed characters in header key")
+				log.HTTPWarning(req, "Disallowed characters in header key (CheckHeadersMiddleware)")
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}

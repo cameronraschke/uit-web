@@ -1,69 +1,69 @@
 {
-  "/test": {
-    "file_path": "/var/www/html/uit-web/404.html",
-    "allowed_methods": ["OPTIONS", "GET", "POST", "PUSH", "DELETE"],
-    "tls_required": true,
-    "auth_required": false,
-    "acl_users": [""],
-    "acl_groups": [""],
-    "http_version": "HTTP/1.1",
-    "endpoint_type": "web_content",
-    "content_type": "text/html; charset=utf-8",
-    "status_code": 404,
-    "redirect": false,
-    "redirect_url": ""
-  },
-	  "/": {
-    "auth_required": false,
-    "endpoint_type": "web_content",
-    "content_type": "application/json; charset=utf-8",
-    "status_code": 302,
-    "redirect": true,
-    "redirect_url": "/dashboard"
-  },
-  "/header": {
-    "file_path": "/var/www/html/uit-web/header.html",
-    "endpoint_type": "web_content",
-    "content_type": "text/html; charset=utf-8"
-  },
-  "/footer": {
-    "file_path": "/var/www/html/uit-web/footer.html",
+	"/test": {
+		"file_path": "/var/www/html/uit-web/404.html",
+		"allowed_methods": ["OPTIONS", "GET", "POST", "PUSH", "DELETE"],
+		"tls_required": true,
+		"auth_required": false,
+		"acl_users": [""],
+		"acl_groups": [""],
+		"http_version": "HTTP/1.1",
+		"endpoint_type": "web_content",
+		"content_type": "text/html; charset=utf-8",
+		"status_code": 404,
+		"redirect": false,
+		"redirect_url": ""
+	},
+	"/": {
+		"auth_required": false,
+		"endpoint_type": "web_content",
+		"content_type": "application/json; charset=utf-8",
+		"status_code": 302,
+		"redirect": true,
+		"redirect_url": "/dashboard"
+	},
+	"/header": {
+		"file_path": "/var/www/html/uit-web/header.html",
+		"endpoint_type": "web_content",
+		"content_type": "text/html; charset=utf-8"
+	},
+	"/footer": {
+		"file_path": "/var/www/html/uit-web/footer.html",
 		"requires": ["webmaster_contact"],
-    "endpoint_type": "web_content",
-    "content_type": "text/html; charset=utf-8"
-  },
-  "/login": {
-    "file_path": "/var/www/html/uit-web/login.html",
+		"endpoint_type": "web_content",
+		"content_type": "text/html; charset=utf-8"
+	},
+	"/login": {
+		"file_path": "/var/www/html/uit-web/login.html",
 		"requires": ["nonce", "webmaster_contact"],
-    "allowed_methods": ["OPTIONS", "GET", "POST"],
-    "auth_required": false,
-    "endpoint_type": "web_content",
-    "content_type": "text/html; charset=utf-8"
-  },
-  "/logout": {
-    "file_path": "/var/www/html/uit-web/logout.html",
+		"allowed_methods": ["OPTIONS", "GET", "POST"],
+		"auth_required": false,
+		"endpoint_type": "web_content",
+		"content_type": "text/html; charset=utf-8"
+	},
+	"/logout": {
+		"file_path": "/var/www/html/uit-web/logout.html",
 		"requires": ["nonce"],
-    "endpoint_type": "web_content",
-    "content_type": "text/html; charset=utf-8"
-  },
-  "/dashboard": {
-    "file_path": "/var/www/html/uit-web/dashboard.html",
+		"endpoint_type": "web_content",
+		"content_type": "text/html; charset=utf-8"
+	},
+	"/dashboard": {
+		"file_path": "/var/www/html/uit-web/dashboard.html",
 		"requires": ["nonce"],
-    "endpoint_type": "web_content",
-    "content_type": "text/html; charset=utf-8"
-  },
-  "/inventory": {
-    "file_path": "/var/www/html/uit-web/inventory.html",
+		"endpoint_type": "web_content",
+		"content_type": "text/html; charset=utf-8"
+	},
+	"/inventory": {
+		"file_path": "/var/www/html/uit-web/inventory.html",
 		"requires": ["nonce"],
-    "endpoint_type": "web_content",
-    "content_type": "text/html; charset=utf-8"
-  },
-  "/client_images": {
-    "file_path": "/var/www/html/uit-web/client_images.html",
+		"endpoint_type": "web_content",
+		"content_type": "text/html; charset=utf-8"
+	},
+	"/client_images": {
+		"file_path": "/var/www/html/uit-web/client_images.html",
 		"requires": ["nonce", "client_tag"],
-    "endpoint_type": "web_content",
-    "content_type": "text/html; charset=utf-8"
-  },
+		"endpoint_type": "web_content",
+		"content_type": "text/html; charset=utf-8"
+	},
 	"/checkout-form" : {
 		"file_path": "/var/www/html/uit-web/checkout-form.html",
 		"requires": ["nonce", "customer_name", "checkout_date", "return_date", "client_tag"],
@@ -80,18 +80,18 @@
 		"file_path": "/var/www/html/uit-web/client.html",
 		"requires": ["nonce", "client_tag"],
 		"endpoint_type": "web_content",
-    "content_type": "text/html; charset=utf-8"
+		"content_type": "text/html; charset=utf-8"
 	},
 	"/job-queue": {
 		"file_path": "/var/www/html/uit-web/job-queue.html",
 		"requires": ["nonce"],
 		"endpoint_type": "web_content",
-    "content_type": "text/html; charset=utf-8"
+		"content_type": "text/html; charset=utf-8"
 	},
 	"/reports": {
 		"file_path": "/var/www/html/uit-web/reports.html",
 		"requires": ["nonce"],
 		"endpoint_type": "web_content",
-    "content_type": "text/html; charset=utf-8"
+		"content_type": "text/html; charset=utf-8"
 	}
 }

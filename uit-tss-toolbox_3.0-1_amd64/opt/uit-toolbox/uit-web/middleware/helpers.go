@@ -137,9 +137,12 @@ func withWebEndpointConfig(ctx context.Context, endpoint *config.WebEndpointConf
 	return context.WithValue(ctx, requestEndpointKey, *endpoint), nil
 }
 
-func GetWebEndpointConfigFromContext(ctx context.Context) (endpoint config.WebEndpointConfig, ok bool) {
-	endpoint, ok = ctx.Value(requestEndpointKey).(config.WebEndpointConfig)
-	return endpoint, ok
+func GetWebEndpointConfigFromContext(ctx context.Context) (endpoint config.WebEndpointConfig, err error) {
+	endpoint, ok := ctx.Value(requestEndpointKey).(config.WebEndpointConfig)
+	if !ok {
+		return config.WebEndpointConfig{}, fmt.Errorf("web endpoint config not found in context")
+	}
+	return endpoint, nil
 }
 
 func withClientIP(ctx context.Context, ip netip.Addr) (context.Context, error) {
@@ -237,9 +240,12 @@ func withRequestFile(ctx context.Context, file string) (context.Context, error) 
 	return context.WithValue(ctx, fileRequestKey, file), nil
 }
 
-func GetRequestFileFromContext(ctx context.Context) (file string, ok bool) {
-	file, ok = ctx.Value(fileRequestKey).(string)
-	return file, ok
+func GetRequestFileFromContext(ctx context.Context) (file string, err error) {
+	file, ok := ctx.Value(fileRequestKey).(string)
+	if !ok {
+		return "", fmt.Errorf("file not found in context")
+	}
+	return file, nil
 }
 
 func withRequestUUID(ctx context.Context, uuid string) (context.Context, error) {
@@ -248,9 +254,12 @@ func withRequestUUID(ctx context.Context, uuid string) (context.Context, error) 
 	}
 	return context.WithValue(ctx, requestUUIDKey, uuid), nil
 }
-func GetRequestUUIDFromContext(ctx context.Context) (uuid string, ok bool) {
-	uuid, ok = ctx.Value(requestUUIDKey).(string)
-	return uuid, ok
+func GetRequestUUIDFromContext(ctx context.Context) (uuid string, err error) {
+	uuid, ok := ctx.Value(requestUUIDKey).(string)
+	if !ok {
+		return "", fmt.Errorf("UUID not found in context")
+	}
+	return uuid, nil
 }
 
 func withLogger(ctx context.Context, logger logger.Logger) (context.Context, error) {

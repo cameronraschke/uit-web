@@ -19,18 +19,6 @@ import (
 	middleware "uit-toolbox/middleware"
 )
 
-var acceptedImageExtensionsAndMimeTypes = map[string]string{
-	".jpg":  "jpeg",
-	".jpeg": "jpeg",
-	".png":  "png",
-	".jfif": "jpeg",
-}
-
-var acceptedVideoExtensionsAndMimeTypes = map[string]string{
-	".mp4": "mp4",
-	".mov": "mov",
-}
-
 // Per-client functions
 func GetServerTime(w http.ResponseWriter, req *http.Request) {
 	curTime := time.Now().Format(time.RFC3339)
@@ -352,6 +340,25 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	appState, err := config.GetAppState()
+	if err != nil {
+		log.HTTPWarning(req, "Error getting app state in GetClientImagesManifest: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	_, _, _, acceptedImageExtensionsAndMimeTypes, err := appState.GetFileUploadImageConstraints()
+	if err != nil {
+		log.HTTPWarning(req, "Error getting accepted image extensions and mime types in GetClientImagesManifest: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	_, _, _, acceptedVideoExtensionsAndMimeTypes, err := appState.GetFileUploadVideoConstraints()
+	if err != nil {
+		log.HTTPWarning(req, "Error getting accepted video extensions and mime types in GetClientImagesManifest: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
 	db, err := database.NewSelectRepo()
 	if err != nil {
 		log.HTTPWarning(req, "Error creating select repository in GetClientImagesManifest: "+err.Error())
@@ -494,6 +501,24 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
+	appState, err := config.GetAppState()
+	if err != nil {
+		log.HTTPWarning(req, "Error getting app state (GetImage): "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	_, _, _, acceptedImageExtensionsAndMimeTypes, err := appState.GetFileUploadImageConstraints()
+	if err != nil {
+		log.HTTPWarning(req, "Error getting file upload image constraints (GetImage): "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	_, _, _, acceptedVideoExtensionsAndMimeTypes, err := appState.GetFileUploadVideoConstraints()
+	if err != nil {
+		log.HTTPWarning(req, "Error getting file upload video constraints (GetImage): "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
 
 	// local filepath example: inventory-images/{tag}/{date --iso}-{uuid}.{file extension}
 	// incoming request url: /api/images/{tag}/{uuid}.{file extension}
@@ -515,14 +540,14 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	if imageUUID == "" {
-		log.HTTPWarning(req, "No image path provided in request")
+		log.HTTPWarning(req, "No uuid provided in request (GetImage)")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.HTTPWarning(req, "Error creating select repository in GetImage: "+err.Error())
+		log.HTTPWarning(req, "Error creating select repository (GetImage): "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -531,29 +556,29 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 	imageManifest, err := db.GetClientImageFilePathFromUUID(ctx, &imageUUID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			log.HTTPInfo(req, "Image not found from UUID lookup: "+imageUUID+" "+err.Error())
+			log.HTTPInfo(req, "Image not found from UUID lookup (GetImage): "+imageUUID+" "+err.Error())
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		log.HTTPInfo(req, "Client image query error: "+imageUUID+" "+err.Error())
+		log.HTTPInfo(req, "Client image query error (GetImage): "+imageUUID+" "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	if imageManifest == nil {
-		log.HTTPInfo(req, "No image manifest data found for UUID: "+imageUUID)
+		log.HTTPInfo(req, "No image manifest data found for UUID (GetImage): "+imageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 
 	if imageManifest.Hidden != nil && *imageManifest.Hidden {
-		log.HTTPWarning(req, "Attempt to access hidden image: "+imageUUID)
+		log.HTTPWarning(req, "Attempt to access hidden image (GetImage): "+imageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 
 	if imageManifest.FilePath == nil || strings.TrimSpace(*imageManifest.FilePath) == "" {
-		log.HTTPWarning(req, "File path for image is nil or empty: "+imageUUID)
+		log.HTTPWarning(req, "File path for image is nil or empty (GetImage): "+imageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
@@ -561,11 +586,11 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 	imageFile, err := os.Open(*imageManifest.FilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.HTTPWarning(req, "Image not found on disk: "+imageUUID+" "+err.Error())
+			log.HTTPWarning(req, "Image not found on disk (GetImage): "+imageUUID+" "+err.Error())
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		log.HTTPWarning(req, "Image cannot be opened: "+imageUUID+" "+err.Error())
+		log.HTTPWarning(req, "Image cannot be opened (GetImage): "+imageUUID+" "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -581,14 +606,14 @@ func GetJobQueueTable(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.HTTPWarning(req, "Error creating select repository in GetBiosData: "+err.Error())
+		log.HTTPWarning(req, "Error creating select repository (GetJobQueueTable): "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	jobQueueTable, err := db.GetJobQueueTable(ctx)
 	if err != nil {
-		log.HTTPWarning(req, "Query error in GetJobQueueTable: "+err.Error())
+		log.HTTPWarning(req, "Query error (GetJobQueueTable): "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -602,14 +627,14 @@ func GetJobQueueOverview(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.HTTPWarning(req, "Error creating select repository in GetBiosData: "+err.Error())
+		log.HTTPWarning(req, "Error creating select repository (GetJobQueueOverview): "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	jobQueueOverview, err := db.GetJobQueueOverview(ctx)
 	if err != nil {
-		log.HTTPWarning(req, "Query error in GetJobQueueOverview: "+err.Error())
+		log.HTTPWarning(req, "Query error (GetJobQueueOverview): "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -623,14 +648,14 @@ func GetDashboardInventorySummary(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.HTTPWarning(req, "Error creating select repository in GetBiosData: "+err.Error())
+		log.HTTPWarning(req, "Error creating select repository (GetDashboardInventorySummary): "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	inventorySummary, err := db.GetDashboardInventorySummary(ctx)
 	if err != nil {
-		log.HTTPWarning(req, "Query error in GetDashboardInventorySummary: "+err.Error())
+		log.HTTPWarning(req, "Query error (GetDashboardInventorySummary): "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -671,14 +696,14 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.HTTPWarning(req, "Error creating select repository in GetBiosData: "+err.Error())
+		log.HTTPWarning(req, "Error creating select repository (GetInventoryTableData): "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	inventoryTableData, err := db.GetInventoryTableData(ctx, filterOptions)
 	if err != nil {
-		log.HTTPWarning(req, "Query error in GetInventoryTableData: "+err.Error())
+		log.HTTPWarning(req, "Query error (GetInventoryTableData): "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}

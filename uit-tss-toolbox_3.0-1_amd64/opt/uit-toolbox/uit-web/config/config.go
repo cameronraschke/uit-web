@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/netip"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,9 +17,32 @@ import (
 	"uit-toolbox/logger"
 )
 
+type ImageUploadConstraints struct {
+	minFileSize                         int64
+	maxFileSize                         int64
+	maxFileCount                        int
+	acceptedImageExtensionsAndMimeTypes map[string]string
+}
+
+type VideoUploadConstraints struct {
+	minFileSize                         int64
+	maxFileSize                         int64
+	maxFileCount                        int
+	acceptedVideoExtensionsAndMimeTypes map[string]string
+}
+
+type FileUploadConstraints struct {
+	imageConstraints        *ImageUploadConstraints
+	videoConstraints        *VideoUploadConstraints
+	defaultAllowedFileRegex *regexp.Regexp
+	defaultMaxFileSize      int64
+	defaultMinFileSize      int64
+}
+
 type AppConfiguration struct {
 	inputConstraints     atomic.Pointer[InputFieldConstraints]
 	formConstraints      atomic.Pointer[HTMLFormConstraints]
+	fileConstraints      atomic.Pointer[FileUploadConstraints]
 	LogLevel             string         `json:"UIT_SERVER_LOG_LEVEL"`
 	AdminPasswd          string         `json:"UIT_SERVER_ADMIN_PASSWD"`
 	DBName               string         `json:"UIT_SERVER_DB_NAME"`
@@ -203,18 +227,43 @@ func InitConfig() (*AppConfiguration, error) {
 	}
 	appConfig.inputConstraints.Store(inputConstraints)
 
+	// Set form constraints
 	formConstraints := &HTMLFormConstraints{
 		maxLoginFormSizeBytes:           512,
 		noteMaxBytes:                    8192,
 		inventoryUpdateFormMaxJsonBytes: 2 << 20,
-		fileUploadMaxFileCount:          20,
-		fileUploadMinFileBytes:          512,
-		fileUploadMaxFileBytes:          20 << 20,
-		fileUploadMaxTotalBytes:         120 << 20, // Either limited by the size of a few large files or large amount of small files
-		fileUploadAllowedFileExtensions: []string{".jpg", ".jpeg", ".jfif", ".png"},
-		fileUploadAllowedFileRegex:      `^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$`,
 	}
 	appConfig.formConstraints.Store(formConstraints)
+
+	// Set file upload constraints
+	imgConstraints := ImageUploadConstraints{
+		minFileSize:  512,
+		maxFileSize:  20 << 20,
+		maxFileCount: 20,
+		acceptedImageExtensionsAndMimeTypes: map[string]string{
+			".jpg":  "image/jpeg",
+			".jpeg": "image/jpeg",
+			".png":  "image/png",
+			".jfif": "image/jpeg",
+		},
+	}
+	vidConstraints := VideoUploadConstraints{
+		minFileSize:  512,
+		maxFileSize:  100 << 20,
+		maxFileCount: 5,
+		acceptedVideoExtensionsAndMimeTypes: map[string]string{
+			".mp4": "video/mp4",
+			".mov": "video/quicktime",
+		},
+	}
+	fileConstraints := &FileUploadConstraints{
+		imageConstraints:        &imgConstraints,
+		videoConstraints:        &vidConstraints,
+		defaultAllowedFileRegex: regexp.MustCompile(`^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$`),
+		defaultMaxFileSize:      100 << 20,
+		defaultMinFileSize:      512,
+	}
+	appConfig.fileConstraints.Store(fileConstraints)
 
 	return &appConfig, nil
 }
@@ -302,83 +351,11 @@ func InitApp() (*AppState, error) {
 	appState.sessionSecret = []byte(sessionSecret)
 
 	// Configure web endpoints
-	endpointsDirectory := "/etc/uit-toolbox/endpoints/"
-	fileInfo, err := os.Stat(endpointsDirectory)
-	if err != nil || !fileInfo.IsDir() {
-		return appState, fmt.Errorf("endpoints directory does not exist, skipping endpoint loading")
-	}
-	files, err := os.ReadDir(endpointsDirectory)
-	if err != nil || len(files) == 0 {
-		return nil, fmt.Errorf("failed to read files in the endpoints directory: %w", err)
-	}
-	for _, file := range files {
-		if file.IsDir() || !strings.HasSuffix(file.Name(), ".json") {
-			continue
-		}
-
-		endpointsConfig, err := os.ReadFile(endpointsDirectory + file.Name())
-		if err != nil {
-			return nil, fmt.Errorf("failed to read web endpoints config file %s: %w", file.Name(), err)
-		}
-
-		endpoints := make(map[string]WebEndpointConfig)
-		if err := json.Unmarshal(endpointsConfig, &endpoints); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal web endpoints config JSON: %w", err)
-		}
-		for endpointPath, endpointData := range endpoints {
-			merged := WebEndpointConfig{
-				FilePath:        endpointData.FilePath,
-				AllowedMethods:  endpointData.AllowedMethods,
-				TLSRequired:     endpointData.TLSRequired,
-				AuthRequired:    endpointData.AuthRequired,
-				MaxUploadSizeKB: endpointData.MaxUploadSizeKB << 10,
-				Requires:        endpointData.Requires,
-				ACLUsers:        endpointData.ACLUsers,
-				ACLGroups:       endpointData.ACLGroups,
-				HTTPVersion:     endpointData.HTTPVersion,
-				EndpointType:    endpointData.EndpointType,
-				ContentType:     endpointData.ContentType,
-				StatusCode:      endpointData.StatusCode,
-				Redirect:        endpointData.Redirect,
-				RedirectURL:     endpointData.RedirectURL,
-			}
-			if len(merged.AllowedMethods) == 0 {
-				merged.AllowedMethods = []string{"OPTIONS", "GET"}
-			}
-			if merged.TLSRequired == nil {
-				merged.TLSRequired = new(bool)
-				*merged.TLSRequired = true
-			}
-			if merged.AuthRequired == nil {
-				merged.AuthRequired = new(bool)
-				*merged.AuthRequired = true
-			}
-			if merged.MaxUploadSizeKB == 0 {
-				merged.MaxUploadSizeKB = 20 << 10 // 20KB default max upload size
-			}
-			if merged.Requires == nil {
-				merged.Requires = []string{}
-			}
-			if merged.Redirect == nil {
-				merged.Redirect = new(bool)
-				*merged.Redirect = false
-			}
-			if merged.HTTPVersion == "" {
-				merged.HTTPVersion = "HTTP/2.0"
-			}
-			if merged.EndpointType == "" {
-				merged.EndpointType = "api"
-			}
-			if merged.ContentType == "" {
-				merged.ContentType = "application/json; charset=utf-8"
-			}
-			if merged.StatusCode == 0 {
-				merged.StatusCode = 200
-			}
-			appState.webEndpoints.Store(endpointPath, &merged)
-		}
+	if err := InitWebEndpoints(appState); err != nil {
+		return nil, fmt.Errorf("failed to initialize web endpoints: %w", err)
 	}
 
+	// Load permissions
 	permissions, err := InitPermissions()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load permission config: %w", err)

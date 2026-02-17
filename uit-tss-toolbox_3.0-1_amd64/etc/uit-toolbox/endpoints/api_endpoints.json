@@ -1,31 +1,31 @@
 {
 	"/api/check_auth": {},
-  "/api/server_time": {},
-  "/api/lookup": {},
-  "/api/all_tags": {},
-  "/api/client/hardware/ids": {},
-  "/api/client/bios": {},
-  "/api/client/os": {},
-  "/api/job_queue/overview": {},
-  "/api/job_queue/client/queued_job": {},
-  "/api/job_queue/client/job_available": {},
-  "/api/client/location_form_data": {},
-  "/api/notes": {
-    "allowed_methods": ["OPTIONS", "GET", "POST"]
-  },
-  "/api/dashboard/inventory_summary": {},
-  "/api/images/manifest": {},
-  "/api/images": {
-    "allowed_methods": ["OPTIONS", "GET", "DELETE"]
-  },
-  "/api/inventory": {},
-  "/api/update_inventory": {
-    "allowed_methods": ["OPTIONS", "POST"]
-  },
-  "/api/images/toggle_pin": {
-    "allowed_methods": ["OPTIONS", "POST"]
-  },
-  "/api/models": {},
+	"/api/server_time": {},
+	"/api/lookup": {},
+	"/api/all_tags": {},
+	"/api/client/hardware/ids": {},
+	"/api/client/bios": {},
+	"/api/client/os": {},
+	"/api/job_queue/overview": {},
+	"/api/job_queue/client/queued_job": {},
+	"/api/job_queue/client/job_available": {},
+	"/api/client/location_form_data": {},
+	"/api/notes": {
+		"allowed_methods": ["OPTIONS", "GET", "POST"]
+	},
+	"/api/dashboard/inventory_summary": {},
+	"/api/images/manifest": {},
+	"/api/images": {
+		"allowed_methods": ["OPTIONS", "GET", "DELETE"]
+	},
+	"/api/inventory": {},
+	"/api/update_inventory": {
+		"allowed_methods": ["OPTIONS", "POST"]
+	},
+	"/api/images/toggle_pin": {
+		"allowed_methods": ["OPTIONS", "POST"]
+	},
+	"/api/models": {},
 	"/api/client/health/battery": {
 		"allowed_methods": ["OPTIONS", "GET", "POST"]
 	},

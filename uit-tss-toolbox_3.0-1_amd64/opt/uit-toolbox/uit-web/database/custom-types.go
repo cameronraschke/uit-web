@@ -2,6 +2,16 @@ package database
 
 import "time"
 
+type NotesTable struct {
+	Time     *time.Time `json:"time"`
+	NoteType *string    `json:"note_type"`
+	Note     *string    `json:"note"`
+	ToDo     *string    `json:"todo"`
+	Projects *string    `json:"projects"`
+	Misc     *string    `json:"misc"`
+	Bugs     *string    `json:"bugs"`
+}
+
 type ClientLookup struct {
 	Tagnumber    *int64  `json:"tagnumber"`
 	SystemSerial *string `json:"system_serial"`
@@ -171,14 +181,6 @@ type Department struct {
 	OrganizationName          *string `json:"organization_name"`
 	OrganizationNameFormatted *string `json:"organization_name_formatted"`
 	OrganizationSortOrder     *int64  `json:"organization_sort_order"`
-}
-
-type JobQueueHeader struct {
-	TotalClients        *int64   `json:"total_clients"`
-	TotalOnlineClients  *int64   `json:"total_online_clients"`
-	TotalOfflineClients *int64   `json:"total_offline_clients"`
-	TotalPowerAvailable *float64 `json:"total_power_available"`
-	TotalPowerUsage     *float64 `json:"total_power_usage"`
 }
 
 type JobQueueTableRow struct {
