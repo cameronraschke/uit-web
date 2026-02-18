@@ -756,7 +756,8 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			manifest.ResolutionY = &resY
 
 			// Generate jpeg thumbnail
-			fullThumbnailPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", *inventoryUpdate.Tagnumber), "thumbnail-"+fileName+".jpeg")
+			strippedFileName := strings.TrimSuffix(fileName, filepath.Ext(fileName))
+			fullThumbnailPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", *inventoryUpdate.Tagnumber), strippedFileName+"-thumbnail.jpeg")
 			thumbnailFile, err := os.Create(fullThumbnailPath)
 			if err != nil {
 				log.HTTPError(req, "Failed to create thumbnail file (InsertInventoryUpdateForm): "+err.Error()+" ("+fileHeader.Filename+")")
