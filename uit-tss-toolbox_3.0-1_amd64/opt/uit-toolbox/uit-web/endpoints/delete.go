@@ -79,15 +79,11 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 	}
 
 	dbFilePath := filepath.Join(*imageManifest.FilePath)
+	dbFilePath = filepath.Clean(dbFilePath)
 	resolvedFilePath, err := filepath.EvalSymlinks(dbFilePath)
 	if err != nil {
 		log.HTTPError(req, "Error resolving file path for DeleteImage: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	if filepath.Base(requestedImageUUID) != filepath.Base(resolvedFilePath) || !strings.HasPrefix(resolvedFilePath, filepath.Join(filepath.Clean("inventory-images"), fmt.Sprintf("%06d", *tag))) {
-		log.HTTPWarning(req, "Invalid uuid query parameter provided for DeleteImage: "+requestedImageUUID)
-		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
@@ -113,6 +109,24 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		log.HTTPError(req, "Error deleting image file for DeleteImage: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
+	}
+
+	if imageManifest.ThumbnailFilePath != nil && strings.TrimSpace(*imageManifest.ThumbnailFilePath) != "" {
+		thumbnailFilePath := filepath.Join(*imageManifest.ThumbnailFilePath)
+		thumbnailFilePath = filepath.Clean(thumbnailFilePath)
+		resolvedThumbnailPath, err := filepath.EvalSymlinks(thumbnailFilePath)
+		thumbnailFile, err := os.Open(resolvedThumbnailPath)
+		if err != nil {
+			log.HTTPError(req, "Error opening thumbnail file for DeleteImage: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		thumbnailFile.Close()
+		if err := os.Remove(resolvedThumbnailPath); err != nil {
+			log.HTTPError(req, "Error deleting thumbnail file for DeleteImage: "+err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Update database to mark image as deleted
