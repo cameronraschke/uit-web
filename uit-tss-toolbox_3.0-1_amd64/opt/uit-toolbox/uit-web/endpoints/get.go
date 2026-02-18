@@ -405,7 +405,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 			continue
 		}
 
-		// Check MIME type in DB
+		// Check MIME type from DB
 		if imageManifest.MimeType == nil {
 			log.HTTPWarning(req, "File '"+fileUUID+"' has a nil MIME type in DB (GetClientImagesManifest)")
 			continue
@@ -436,14 +436,6 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 				return false
 			}
 
-			// Check if MIME type matches file content
-			mt := http.DetectContentType([]byte(filePath))
-			if mt != mimeType {
-				log.HTTPWarning(req, "MIME in type in DB does not match file content for file '"+fileUUID+"' (GetClientImagesManifest): Detected MIME type: "+mt+", MIME type in DB: "+mimeType)
-				return false
-			}
-			imageManifest.MimeType = &mimeType
-
 			// Get file size
 			metadataFileSize := imageStat.Size()
 			imageManifest.FileSize = &metadataFileSize
@@ -473,11 +465,18 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 					return false
 				}
 
+				// Check if MIME type matches file content
+				mt := http.DetectContentType(imageBytes)
+				if mt != mimeType {
+					log.HTTPWarning(req, "MIME in type in DB does not match file content for file '"+fileUUID+"' (GetClientImagesManifest): Detected MIME type: "+mt+", MIME type in DB: "+mimeType)
+					return false
+				}
 				// Check http's library MIME type against image library's detected type
 				if imageType != "image/"+acceptedImageExtensionsAndMimeTypes[fileExtension] {
 					log.HTTPWarning(req, "Image has invalid file type in GetClientImagesManifest: "+filePath+" -> Image type: "+imageType+", File extension: "+fileExtension)
 					return false
 				}
+				imageManifest.MimeType = &mimeType
 
 				// If image has zero width or height, continue
 				if imageConfig.Width == 0 || imageConfig.Height == 0 {
@@ -509,6 +508,12 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 				}
 
 				// Check MIME type matches expected MIME type for video extension
+				// Check if MIME type matches file content
+				mt := http.DetectContentType(videoBytes)
+				if mt != mimeType {
+					log.HTTPWarning(req, "MIME in type in DB does not match file content for file '"+fileUUID+"' (GetClientImagesManifest): Detected MIME type: "+mt+", MIME type in DB: "+mimeType)
+					return false
+				}
 				if acceptedVideoExtensionsAndMimeTypes[fileExtension] != mimeType {
 					log.HTTPWarning(req, "Video manifest has mismatched MIME type in GetClientImagesManifest: "+filePath+" -> Detected MIME type: "+mimeType+", Expected MIME type: "+acceptedVideoExtensionsAndMimeTypes[fileExtension])
 					return false
