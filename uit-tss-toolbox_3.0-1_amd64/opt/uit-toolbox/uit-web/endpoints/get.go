@@ -507,17 +507,18 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 					return false
 				}
 
-				// Check MIME type matches expected MIME type for video extension
 				// Check if MIME type matches file content
 				mt := http.DetectContentType(videoBytes)
 				if mt != mimeType {
 					log.HTTPWarning(req, "MIME in type in DB does not match file content for file '"+fileUUID+"' (GetClientImagesManifest): Detected MIME type: "+mt+", MIME type in DB: "+mimeType)
 					return false
 				}
+				// Check MIME type matches expected MIME type for video extension
 				if acceptedVideoExtensionsAndMimeTypes[fileExtension] != mimeType {
 					log.HTTPWarning(req, "Video manifest has mismatched MIME type in GetClientImagesManifest: "+filePath+" -> Detected MIME type: "+mimeType+", Expected MIME type: "+acceptedVideoExtensionsAndMimeTypes[fileExtension])
 					return false
 				}
+				imageManifest.MimeType = &mimeType
 				return true
 			}
 
