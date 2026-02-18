@@ -59,11 +59,11 @@ async function loadClientImages(clientTag: number) {
     }
 
     let imageIndex = 1;
-    for (const img of manifestArr) {
+    for (const file of manifestArr) {
       const div = document.createElement('div');
       div.className = 'image-entry';
-      div.setAttribute('id', `${img.uuid}`);
-      if (img.primary_image) {
+      div.setAttribute('id', `${file.uuid}`);
+      if (file.primary_image) {
         div.setAttribute('imageManifest-primary-image', 'true');
         div.style.border = '2px solid black';
         div.style.backgroundColor = 'lightgray';
@@ -83,35 +83,39 @@ async function loadClientImages(clientTag: number) {
       timestampDiv.className = 'image-caption';
 
 			const timeStampCaption = document.createElement('p');
-			const timeStamp = new Date(img.time);
+			const timeStamp = new Date(file.time);
 			if (isNaN(timeStamp.getTime())) {
 				timeStampCaption.textContent = 'N/A';
 			} else {
 				timeStampCaption.textContent = `Uploaded on: ${timeStamp.toLocaleDateString()} ${timeStamp.toLocaleTimeString()}`;
 			}
 
+			// Source URL
+			const imgURL = new URL(`/api/images`, window.location.origin);
+			imgURL.searchParams.set('tagnumber', clientTag.toString());
+			imgURL.searchParams.set('uuid', file.uuid);
+
+			// Videos do not get a imgLink
 			const imgLink = document.createElement('a');
-      const imgURL = new URL(`/api/images`, window.location.origin);
-      imgURL.searchParams.set('tagnumber', clientTag.toString());
-      imgURL.searchParams.set('uuid', img.uuid);
-      imgLink.href = imgURL.toString();
-			imgLink.target = '_blank';
-			imgLink.rel = 'noopener noreferrer';
 
       let media = null as HTMLImageElement | HTMLVideoElement | null;
-      if (img.mime_type && img.mime_type.startsWith('video/')) {
-			  media = document.createElement('video');
-			media.controls = true;
-      } else if (img.mime_type && img.mime_type.startsWith('image/')) {
+      if (file.mime_type && file.mime_type.startsWith('video/')) {
+				media = document.createElement('video');
+				media.controls = true;
+				media.preload = 'metadata';
+      } else if (file.mime_type && file.mime_type.startsWith('image/')) {
         media = document.createElement('img');
       	media.loading = 'lazy';
 				media.alt = `Images for ${clientTag}`;
+				imgLink.href = imgURL.toString();
+				imgLink.target = '_blank';
+				imgLink.rel = 'noopener noreferrer';
       } else {
-        console.warn(`Unsupported media type: ${img.mime_type} for image UUID: ${img.uuid}`);
+        console.warn(`Unsupported media type: ${file.mime_type} for image UUID: ${file.uuid}`);
         continue;
       }
       if (!media) {
-        console.warn(`Failed to create media element for image UUID: ${img.uuid}`);
+        console.warn(`Failed to create media element for image UUID: ${file.uuid}`);
         continue;
       }
       media.src = imgURL.toString();
@@ -121,31 +125,31 @@ async function loadClientImages(clientTag: number) {
       captionDiv.className = 'image-caption';
 
 			const fileSizeCaption = document.createElement('p');
-			if (img.file_size && !isNaN(img.file_size)) {
-				const fileSizeInMB = img.file_size / (1024 * 1024);
+			if (file.file_size && !isNaN(file.file_size)) {
+				const fileSizeInMB = file.file_size / (1024 * 1024);
 				if (fileSizeInMB >= 1) {
 					fileSizeCaption.textContent = `(size: ${fileSizeInMB.toFixed(2)} MB)`;
 				} else {
-					const fileSizeInKB = img.file_size / 1024;
+					const fileSizeInKB = file.file_size / 1024;
 					fileSizeCaption.textContent = `(size: ${fileSizeInKB.toFixed(2)} KB)`;
 				}
 			}
 
 			const noteCaption = document.createElement('p');
-			noteCaption.textContent = img.note || "No description";
+			noteCaption.textContent = file.note || "No description";
 			if (noteCaption.textContent === "No description") {
 				noteCaption.style.fontStyle = "italic";
 			}
 
       const deleteIcon = document.createElement('span');
-      deleteIcon.dataset.uuid = img.uuid;
+      deleteIcon.dataset.uuid = file.uuid;
       deleteIcon.dataset.imageCount = imageIndex + "/" + manifestArr.length;
       deleteIcon.className = 'delete-icon';
       deleteIcon.innerHTML = '&times;';
       deleteIcon.title = 'Delete Image';
 
       const unpinIcon = document.createElement('span');
-      unpinIcon.dataset.uuid = img.uuid;
+      unpinIcon.dataset.uuid = file.uuid;
       unpinIcon.className = 'unpin-icon';
       unpinIcon.innerHTML = '&#128204;';
       unpinIcon.style.fontSize = '1rem';

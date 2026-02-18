@@ -1,11 +1,11 @@
 package endpoints
 
 import (
-	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
-	"time"
 	"uit-toolbox/database"
 	middleware "uit-toolbox/middleware"
 )
@@ -38,38 +38,97 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if tag == nil {
+	if tag == nil || *tag <= 0 {
 		log.HTTPWarning(req, "No tagnumber provided in URL for DeleteImage")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	requestedImageUUID := strings.TrimSpace(requestQueries.Get("uuid"))
-	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".jpeg")
-	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".png")
-	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".mp4")
-	requestedImageUUID = strings.TrimSuffix(requestedImageUUID, ".mov")
 	// Check if uuid is empty after trimming
+	requestedImageUUID := strings.TrimSpace(requestQueries.Get("uuid"))
 	if requestedImageUUID == "" {
 		log.HTTPWarning(req, "Invalid/empty uuid query parameter provided for DeleteImage")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	repo, err := database.NewUpdateRepo()
+	// Get filepath from uuid
+	selectRepo, err := database.NewSelectRepo()
 	if err != nil {
 		log.HTTPError(req, "No database connection available")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	err = repo.HideClientImageByUUID(ctx, tag, &requestedImageUUID)
+	imageManifest, err := selectRepo.GetClientImageFilePathFromUUID(ctx, &requestedImageUUID)
 	if err != nil {
-		log.Error("Failed to delete client image with UUID " + requestedImageUUID + " for tagnumber " + fmt.Sprintf("%d", *tag) + ": " + err.Error())
+		log.HTTPError(req, "Error retrieving image file path for DeleteImage: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	// Check returned file path
+	if imageManifest == nil || imageManifest.FilePath == nil || strings.TrimSpace(*imageManifest.FilePath) == "" {
+		log.HTTPWarning(req, "No image found for provided uuid in DeleteImage: "+requestedImageUUID)
+		middleware.WriteJsonError(w, http.StatusNotFound)
+		return
+	}
+	// Checked that returned tagnumber matches tagnumber from queries
+	if imageManifest.Tagnumber == nil || *imageManifest.Tagnumber != *tag {
+		log.HTTPWarning(req, "Tagnumber mismatch for provided uuid in DeleteImage. Expected tagnumber: "+fmt.Sprintf("%d", *imageManifest.Tagnumber)+" provided tagnumber: "+fmt.Sprintf("%d", *tag))
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	dbFilePath := filepath.Join(*imageManifest.FilePath)
+	resolvedFilePath, err := filepath.EvalSymlinks(dbFilePath)
+	if err != nil {
+		log.HTTPError(req, "Error resolving file path for DeleteImage: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if filepath.Base(requestedImageUUID) != filepath.Base(resolvedFilePath) || !strings.HasPrefix(resolvedFilePath, filepath.Join(filepath.Clean("inventory-images"), fmt.Sprintf("%06d", *tag))) {
+		log.HTTPWarning(req, "Invalid uuid query parameter provided for DeleteImage: "+requestedImageUUID)
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	imageFile, err := os.Open(resolvedFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.HTTPWarning(req, "No image file found for provided uuid and tagnumber in DeleteImage: "+requestedImageUUID)
+			middleware.WriteJsonError(w, http.StatusNotFound)
+			return
+		}
+		log.HTTPError(req, "Error reading image file for DeleteImage: "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if imageFile == nil {
+		log.HTTPWarning(req, "No image found for provided uuid and tagnumber in DeleteImage: "+requestedImageUUID)
+		middleware.WriteJsonError(w, http.StatusNotFound)
+		return
+	}
+	imageFile.Close()
+
+	if err := os.Remove(resolvedFilePath); err != nil {
+		log.HTTPError(req, "Error deleting image file for DeleteImage: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
+	// Update database to mark image as deleted
+	deleteRepo, err := database.NewUpdateRepo()
+	if err != nil {
+		log.HTTPError(req, "No database connection available")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	if err := deleteRepo.DeleteClientImageByUUID(ctx, tag, &requestedImageUUID); err != nil {
+		log.Error("Failed to delete client image with UUID '" + requestedImageUUID + "' and tagnumber '" + fmt.Sprintf("%d", *tag) + "': " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	log.Info("Successfully deleted client image with UUID '" + requestedImageUUID + "' and tagnumber '" + fmt.Sprintf("%d", *tag) + "'")
+	middleware.WriteJson(w, http.StatusOK, map[string]string{"message": "Image deleted successfully"})
 }

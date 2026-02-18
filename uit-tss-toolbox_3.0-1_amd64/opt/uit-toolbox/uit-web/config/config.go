@@ -253,7 +253,6 @@ func InitConfig() (*AppConfiguration, error) {
 		maxFileCount: 5,
 		acceptedVideoExtensionsAndMimeTypes: map[string]string{
 			".mp4": "video/mp4",
-			".mov": "video/quicktime",
 		},
 	}
 	fileConstraints := &FileUploadConstraints{

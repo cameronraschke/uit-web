@@ -669,7 +669,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			continue
 		}
 
-		lr := &io.LimitedReader{R: file, N: maxImgFileSize + 1}
+		lr := &io.LimitedReader{R: file, N: maxImgFileSize + maxVideoFileSize + 1}
 		fileBytes, err := io.ReadAll(lr)
 		file.Close()
 		if err != nil {
@@ -687,7 +687,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		manifest.FileSize = &fileSize
 
 		// MIME type detection
-		mimeType := http.DetectContentType(fileBytes[:fileSize])
+		mimeType := http.DetectContentType(fileBytes)
 		if mimeType == "application/octet-stream" {
 			log.HTTPWarning(req, "Unknown MIME type for file '"+fileHeader.Filename+"' (InsertInventoryUpdateForm)")
 			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)

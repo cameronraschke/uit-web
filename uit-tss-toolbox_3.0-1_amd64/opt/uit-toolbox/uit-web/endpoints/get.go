@@ -414,10 +414,6 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 
 		// File extension
 		fileExtension := strings.ToLower(filepath.Ext(filePath))
-		if fileExtension == "" || acceptedImageExtensionsAndMimeTypes[fileExtension] == "" {
-			log.HTTPWarning(req, "File '"+fileUUID+"' has an unsupported file extension (GetClientImagesManifest): "+fileExtension)
-			continue
-		}
 
 		// Open file and read metadata
 		file, err := os.Open(filePath)

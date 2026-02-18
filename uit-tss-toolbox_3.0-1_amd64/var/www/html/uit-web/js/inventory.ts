@@ -103,8 +103,8 @@ const fileInputUpdate = updateForm.querySelector("#inventory-file-input") as HTM
 const submitUpdate = document.getElementById('inventory-update-submit-button') as HTMLButtonElement;
 const cancelUpdate = document.getElementById('inventory-update-cancel-button') as HTMLButtonElement;
 
-const allowedFileNameRegex = /^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$/; // file name + extension
-const allowedFileExtensions = [".jpg", ".jpeg", ".jfif", ".png"];
+const allowedFileNameRegex = /^[a-zA-Z0-9.\-_ ()]+\.(jpg|jpeg|jfif|png|mp4)$/i; // file name + extension
+const allowedFileExtensions = [".jpg", ".jpeg", ".jfif", ".png", ".mp4"];
 
 const statusesThatIndicateBroken = ["needs-repair"];
 const statusesThatIndicateCheckout = ["checked-out", "reserved-for-checkout"];
@@ -1033,9 +1033,6 @@ updateForm.addEventListener("submit", async (event) => {
         if (!allowedFileExtensions.some(ext => fileName.toLowerCase().endsWith(ext))) {
           throw new Error(`File name ${fileName} has a forbidden extension`);
         }
-				if (fileName.endsWith(".jfif")) {
-					fileName = fileName.replace(/\.jfif$/i, ".jpeg");
-				}
         formData.append("inventory-file-input", file, fileName);
       }
     }

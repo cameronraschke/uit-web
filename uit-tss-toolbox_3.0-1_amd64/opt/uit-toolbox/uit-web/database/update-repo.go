@@ -18,6 +18,7 @@ type Update interface {
 	UpdateHardwareData(ctx context.Context, tagnumber *int64, systemManufacturer *string, systemModel *string) (err error)
 	UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *ImageManifest) (err error)
 	HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
+	DeleteClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	SetClientBatteryHealth(ctx context.Context, uuid *string, healthPcnt *int64) (err error)
 	SetAllOnlineClientJobs(ctx context.Context, allJobs *AllJobs) (err error)
@@ -372,6 +373,42 @@ func (updateRepo *UpdateRepo) HideClientImageByUUID(ctx context.Context, tagnumb
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return fmt.Errorf("error while checking rows affected on client_images table update: %w", err)
+	}
+	return nil
+}
+
+func (updateRepo *UpdateRepo) DeleteClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error) {
+	if tagnumber == nil || uuid == nil || strings.TrimSpace(*uuid) == "" {
+		return fmt.Errorf("tagnumber and uuid are both required")
+	}
+
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	const sqlQuery = `DELETE FROM client_images WHERE tagnumber = $1 AND uuid = $2;`
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, sqlQuery,
+		ToNullInt64(tagnumber),
+		ToNullString(uuid),
+	)
+	if err != nil {
+		return fmt.Errorf("error deleting client image: %w", err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on client_images table delete: %w", err)
 	}
 	return nil
 }
