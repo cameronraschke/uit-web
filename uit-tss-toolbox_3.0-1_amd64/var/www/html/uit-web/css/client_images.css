@@ -45,6 +45,13 @@
 	opacity: 0.95;
 }
 
+.file-icons {
+	display: flex;
+	justify-content: space-between;
+	margin-top: 0.5rem;
+
+}
+
 .file-caption {
   margin-top: 0.5rem;
   font-size: 0.9rem;

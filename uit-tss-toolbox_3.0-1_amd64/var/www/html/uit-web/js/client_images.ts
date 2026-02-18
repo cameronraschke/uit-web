@@ -93,6 +93,32 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 			fileEntry.classList.add('file-entry');
 		}
 
+		const iconContainer = document.createElement('div');
+		iconContainer.classList.add('file-icons');
+		const imageCount = document.createElement('span');
+		imageCount.textContent = imageIndex++ + "/" + manifestArr.length || '';
+		iconContainer.appendChild(imageCount);
+
+		const unpinIcon = document.createElement('button');
+		unpinIcon.dataset.uuid = file.uuid;
+		if (file.primary_image) {
+			unpinIcon.classList.add('svg-button', 'pinned');
+			unpinIcon.textContent = 'Unpin Image';
+		} else {
+			unpinIcon.classList.add('svg-button', 'unpinned');
+			unpinIcon.textContent = 'Pin Image';
+		}
+		iconContainer.appendChild(unpinIcon);
+
+		const deleteIcon = document.createElement('button');
+		deleteIcon.dataset.uuid = file.uuid;
+		deleteIcon.dataset.imageCount = imageIndex + "/" + manifestArr.length;
+		deleteIcon.classList.add('svg-button', 'delete');
+		deleteIcon.title = 'Delete Image';
+		iconContainer.appendChild(deleteIcon);
+		
+		initListeners(unpinIcon, deleteIcon, clientTag);
+
 		const timestampContainer = document.createElement('div');
 		timestampContainer.classList.add('file-caption', 'timestamp');
 
@@ -169,36 +195,15 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 			noteCaption.textContent = "No description";
 			noteCaption.style.fontStyle = "italic";
 		}
-
-		const deleteIcon = document.createElement('button');
-		deleteIcon.dataset.uuid = file.uuid;
-		deleteIcon.dataset.imageCount = imageIndex + "/" + manifestArr.length;
-		deleteIcon.classList.add('delete-icon', 'svg-button', 'delete');
-		deleteIcon.title = 'Delete Image';
-
-		const unpinIcon = document.createElement('button');
-		unpinIcon.dataset.uuid = file.uuid;
-		if (file.primary_image) {
-			unpinIcon.classList.add('unpin-icon', 'svg-button', 'small-x');
-			unpinIcon.title = 'Unpin Image';
-		} else {
-			unpinIcon.classList.add('unpin-icon', 'svg-button', 'small-check');
-		}
-
-		const imageCount = document.createElement('span');
-		imageCount.className = 'image-count';
-		imageCount.textContent = imageIndex++ + "/" + manifestArr.length || '';
+		
 		captionContainer.appendChild(noteCaption);
 		captionContainer.appendChild(fileSizeCaption);
-		captionContainer.appendChild(unpinIcon);
-		captionContainer.appendChild(deleteIcon);
-		captionContainer.appendChild(imageCount);
 
+		fileEntry.appendChild(iconContainer);
 		fileEntry.appendChild(timestampContainer);
 		fileEntry.appendChild(filePreviewContainer);
 		fileEntry.appendChild(captionContainer);
 
-		initListeners(unpinIcon, deleteIcon, clientTag);
 
 		container.appendChild(fileEntry);
 	}

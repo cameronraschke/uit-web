@@ -65,6 +65,18 @@
 		"endpoint_type": "web_content",
 		"content_type": "image/svg+xml"
 	},
+	"/icons/general/check_small.svg": {
+		"file_path": "/var/www/html/uit-web/icons/general/check_small.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/general/delete.svg": {
+		"file_path": "/var/www/html/uit-web/icons/general/delete.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
 	"/icons/general/location_on.svg": {
 		"file_path": "/var/www/html/uit-web/icons/general/location_on.svg",
 		"auth_required": true,
@@ -127,6 +139,18 @@
 	},
 	"/icons/general/edit_square.svg": {
 		"file_path": "/var/www/html/uit-web/icons/general/edit_square.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/general/add_location.svg": {
+		"file_path": "/var/www/html/uit-web/icons/general/add_location.svg",
+		"auth_required": true,
+		"endpoint_type": "web_content",
+		"content_type": "image/svg+xml"
+	},
+	"/icons/general/location_off.svg": {
+		"file_path": "/var/www/html/uit-web/icons/general/location_off.svg",
 		"auth_required": true,
 		"endpoint_type": "web_content",
 		"content_type": "image/svg+xml"

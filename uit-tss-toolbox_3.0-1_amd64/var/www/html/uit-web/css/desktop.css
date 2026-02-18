@@ -274,17 +274,48 @@ td > div.flex-container {
 }
 
 .svg-button.small-check {
+	background-color: var(--bg-color);
 	background-image: url(/icons/general/check_small.svg);
 }
 .svg-button.small-check:hover {
+	background-color: var(--bg-color-darker);
 	background-image: url(/icons/general/close_small.svg);
 }
 
 .svg-button.small-x {
+	background-color: var(--bg-color);
 	background-image: url(/icons/general/close_small.svg);
 }
 .svg-button.small-x:hover {
+	background-color: var(--bg-color-darker);
 	background-image: url(/icons/general/check_small.svg);
+}
+
+.svg-button.delete {
+	background-color: var(--bg-color);
+	background-image: url(/icons/general/delete.svg);
+}
+.svg-button.delete:hover {
+	background-color: red;
+	background-image: url(/icons/general/delete.svg);
+}
+
+.svg-button.unpinned {
+	background-color: var(--bg-color);
+	background-image: url(/icons/general/add_location.svg);
+}
+.svg-button.unpinned:hover {
+	background-image: url(/icons/general/location_on.svg);
+	background-color: var(--bg-color-darker);
+}
+
+.svg-button.pinned {
+	background-color: var(--bg-color);
+	background-image: url(/icons/general/location_on.svg);
+}
+.svg-button.pinned:hover {
+	background-color: var(--light-accent-color);
+	background-image: url(/icons/general/location_off.svg);
 }
 
 .svg-select {
