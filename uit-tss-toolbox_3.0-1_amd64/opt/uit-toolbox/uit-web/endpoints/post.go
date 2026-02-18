@@ -896,10 +896,6 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	uuid = strings.TrimSuffix(uuid, ".jpeg")
-	uuid = strings.TrimSuffix(uuid, ".png")
-	uuid = strings.TrimSuffix(uuid, ".mp4")
-	uuid = strings.TrimSuffix(uuid, ".mov")
 	if uuid == "" {
 		log.HTTPWarning(req, "No image path provided for TogglePinImage body")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -919,7 +915,7 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	if err = updateRepo.TogglePinImage(ctx, &tagnumber, &uuid); err != nil {
+	if err := updateRepo.TogglePinImage(ctx, &tagnumber, &uuid); err != nil {
 		log.HTTPError(req, "Failed to toggle pin image: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return

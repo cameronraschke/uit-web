@@ -21,10 +21,10 @@ type ImageManifest = {
 
 const container = document.getElementById('image-container') as HTMLElement;
 
-async function loadClientImages(clientTag: number) {
+async function fetchManifestData(clientTag: number) : Promise<ImageManifest[]> {
 	if (!container) {
 		console.error('Image container not found in DOM.');
-		return;
+		return [];
 	}
 
 	container.innerHTML = '';
@@ -32,17 +32,19 @@ async function loadClientImages(clientTag: number) {
 		const invalidTagParagraph = document.createElement('p');
 		invalidTagParagraph.textContent = 'Invalid client tag provided.';
 		container.appendChild(invalidTagParagraph);
-		return;
+		return [];
 	}
+	const manifestURL = new URL(`/api/images/manifest`, window.location.origin);
+	manifestURL.searchParams.set('tagnumber', clientTag.toString());
 
 	try {
-		const response = await fetch(`/api/images/manifest?tagnumber=${encodeURIComponent(clientTag)}`)
+		const response = await fetch(manifestURL.toString());
 		if (!response.ok) {
 			if (response.status === 404) {
 				const noManifestErrorParagraph = document.createElement('p');
 				noManifestErrorParagraph.textContent = `No images found for tag ${clientTag}.`;
 				container.appendChild(noManifestErrorParagraph);
-				return;
+				return [];
 			}
 			throw new Error (`Error fetching images: ${response.status} ${response.statusText}`);
 		}
@@ -55,238 +57,271 @@ async function loadClientImages(clientTag: number) {
       const noImagesParagraph = document.createElement('p');
       noImagesParagraph.textContent = `No images found for tag ${clientTag}.`;
       container.appendChild(noImagesParagraph);
-      return;
+      return [];
     }
 
-    let imageIndex = 1;
-    for (const file of manifestArr) {
-      const div = document.createElement('div');
-      div.className = 'image-entry';
-      div.setAttribute('id', `${file.uuid}`);
-      if (file.primary_image) {
-        div.setAttribute('imageManifest-primary-image', 'true');
-        div.style.border = '2px solid black';
-        div.style.backgroundColor = 'lightgray';
-        const pinnedMessage = document.createElement('p');
-        pinnedMessage.textContent = 'Pinned';
-        pinnedMessage.style.fontWeight = 'bold';
-        div.appendChild(pinnedMessage);
-      } else {
-        div.setAttribute('imageManifest-primary-image', 'false');
-      }
-      const primaryImageDiv = document.querySelector(`[imageManifest-primary-image="true"]`);
+		manifestArr.sort((a, b) => {
+			const timeA = new Date(a.time).getTime();
+			const timeB = new Date(b.time).getTime();
+			return timeB - timeA;
+		});
 
-			const imgDiv = document.createElement('div');
-			imgDiv.className = 'image-box';
-
-			const timestampDiv = document.createElement('div');
-      timestampDiv.className = 'image-caption';
-
-			const timeStampCaption = document.createElement('p');
-			const timeStamp = new Date(file.time);
-			if (isNaN(timeStamp.getTime())) {
-				timeStampCaption.textContent = 'N/A';
-			} else {
-				timeStampCaption.textContent = `Uploaded on: ${timeStamp.toLocaleDateString()} ${timeStamp.toLocaleTimeString()}`;
-			}
-
-			// Source URL
-			const imgURL = new URL(`/api/images`, window.location.origin);
-			imgURL.searchParams.set('tagnumber', clientTag.toString());
-			imgURL.searchParams.set('uuid', file.uuid);
-
-			// Videos do not get a imgLink
-			const imgLink = document.createElement('a');
-
-      let media = null as HTMLImageElement | HTMLVideoElement | null;
-      if (file.mime_type && file.mime_type.startsWith('video/')) {
-				media = document.createElement('video');
-				media.controls = true;
-				media.preload = 'metadata';
-      } else if (file.mime_type && file.mime_type.startsWith('image/')) {
-        media = document.createElement('img');
-      	media.loading = 'lazy';
-				media.alt = `Images for ${clientTag}`;
-				imgLink.href = imgURL.toString();
-				imgLink.target = '_blank';
-				imgLink.rel = 'noopener noreferrer';
-      } else {
-        console.warn(`Unsupported media type: ${file.mime_type} for image UUID: ${file.uuid}`);
-        continue;
-      }
-      if (!media) {
-        console.warn(`Failed to create media element for image UUID: ${file.uuid}`);
-        continue;
-      }
-      media.src = imgURL.toString();
-			media.className = 'client-image';
-
-      const captionDiv = document.createElement('div');
-      captionDiv.className = 'image-caption';
-
-			const fileSizeCaption = document.createElement('p');
-			if (file.file_size && !isNaN(file.file_size)) {
-				const fileSizeInMB = file.file_size / (1024 * 1024);
-				if (fileSizeInMB >= 1) {
-					fileSizeCaption.textContent = `(size: ${fileSizeInMB.toFixed(2)} MB)`;
-				} else {
-					const fileSizeInKB = file.file_size / 1024;
-					fileSizeCaption.textContent = `(size: ${fileSizeInKB.toFixed(2)} KB)`;
-				}
-			}
-
-			const noteCaption = document.createElement('p');
-			noteCaption.textContent = file.note || "No description";
-			if (noteCaption.textContent === "No description") {
-				noteCaption.style.fontStyle = "italic";
-			}
-
-      const deleteIcon = document.createElement('span');
-      deleteIcon.dataset.uuid = file.uuid;
-      deleteIcon.dataset.imageCount = imageIndex + "/" + manifestArr.length;
-      deleteIcon.className = 'delete-icon';
-      deleteIcon.innerHTML = '&times;';
-      deleteIcon.title = 'Delete Image';
-
-      const unpinIcon = document.createElement('span');
-      unpinIcon.dataset.uuid = file.uuid;
-      unpinIcon.className = 'unpin-icon';
-      unpinIcon.innerHTML = '&#128204;';
-      unpinIcon.style.fontSize = '1rem';
-      unpinIcon.title = 'Unpin Image';
-
-      const imageCount = document.createElement('span');
-      imageCount.className = 'image-count';
-      imageCount.textContent = imageIndex++ + "/" + manifestArr.length || '';
-
-			timestampDiv.appendChild(timeStampCaption);
-			imgLink.appendChild(media);
-			imgDiv.appendChild(imgLink);
-			captionDiv.appendChild(fileSizeCaption);
-			captionDiv.appendChild(noteCaption);
-      
-      captionDiv.appendChild(unpinIcon);
-      captionDiv.appendChild(deleteIcon);
-      captionDiv.appendChild(imageCount);
-			div.appendChild(timestampDiv);
-			div.appendChild(imgDiv);
-			div.appendChild(captionDiv);
-      container.appendChild(div);
-      
-      if (primaryImageDiv) {
-        container.insertBefore(primaryImageDiv, container.firstChild);
-      }
-
-			unpinIcon.addEventListener('click', async (event) => {
-				const button = event.currentTarget as HTMLInputElement;
-				button.disabled = true;
-				const uuidToUnpin = button.dataset.uuid;
-				if (!uuidToUnpin) {
-					alert('Error: No UUID found for this image.');
-					return;
-				}
-				const imageEntry = document.getElementById(uuidToUnpin);
-
-				const currentURL = new URL(window.location.href);
-				const clientTag = currentURL.searchParams.get("tagnumber") ? parseInt(currentURL.searchParams.get("tagnumber") as string) : null;				try {
-					
-					const unpinURL = new URL(`/api/images/toggle_pin`, window.location.origin);
-					const unpinResponse = await fetch(unpinURL, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						credentials: 'same-origin',
-						body: JSON.stringify({uuid: uuidToUnpin, tagnumber: clientTag})
-					});
-					if (!unpinResponse.ok) {
-						throw new Error (`Failed to unpin image: ${unpinResponse.status} ${unpinResponse.statusText}`);
-					}
-					if (imageEntry) {
-						imageEntry.style.transition = imageEntry.style.transition || 'opacity 150ms ease';
-						imageEntry.style.opacity = '0.5';
-						await waitForNextPaint(2);
-						imageEntry.removeAttribute('imageManifest-primary-image');
-						imageEntry.style.border = 'none';
-						imageEntry.style.backgroundColor = 'transparent';
-						const pinnedMsg = imageEntry.querySelector('p');
-						if (pinnedMsg) {
-							pinnedMsg.textContent = "Pinned";
-							pinnedMsg.style.fontStyle = "italic";
-						}
-					}
-				} catch (unpinError) {
-					alert(`Error unpinning image: ${unpinError.message}`);
-					} finally {
-					if (imageEntry) imageEntry.style.opacity = '1';
-					if (button instanceof HTMLInputElement) button.disabled = false;
-				}
-			});
-
-      deleteIcon.addEventListener('click', async (event) => {
-        const button = event.currentTarget as HTMLInputElement;
-        if (!(button instanceof HTMLElement)) return;
-        button.disabled = true;
-        const uuidToDelete = button.dataset.uuid;
-        if (!uuidToDelete) {
-          alert('Error: No UUID found for this image.');
-          button.disabled = false;
-          return;
-        }
-        const imageCount = button.dataset.imageCount || '';
-
-        const entry = document.getElementById(uuidToDelete);
-        if (entry) {
-          entry.style.transition = entry.style.transition || 'opacity 150ms ease';
-          entry.style.opacity = '0.5';
-          await waitForNextPaint(2);
-        }
-
-        const okToDelete = window.confirm(`Are you sure you want to delete this image (${imageCount})?`);
-        if (!okToDelete) {
-          if (entry) entry.style.opacity = '1';
-          button.disabled = false;
-          return;
-        }
-
-        try {
-          const deleteURL = new URL(`/api/images`, window.location.origin);
-          deleteURL.searchParams.set('tagnumber', clientTag.toString());
-          deleteURL.searchParams.set('uuid', uuidToDelete);
-          const deleteResponse = await fetch(deleteURL, {
-            method: 'DELETE',
-            credentials: 'same-origin'
-          });
-          if (!deleteResponse.ok) {
-            throw new Error (`Failed to delete image: ${deleteResponse.status} ${deleteResponse.statusText}`);
-          }
-          if (entry) entry.remove();
-        } catch (deleteError) {
-          alert(`Error deleting image: ${deleteError.message}`);
-        } finally {
-          if (entry) entry.style.opacity = '1';
-          button.disabled = false;
-        }
-      });
-    } 
+		manifestArr.sort((a, b) => {
+			if (a.primary_image && !b.primary_image) return -1;
+			if (!a.primary_image && b.primary_image) return 1;
+			return 0;
+		});
+		return manifestArr;
 	} catch (err) {
-    if (err.name === 'AbortError') {
-      console.warn('Image fetch aborted');
-      return;
-    }
+		console.error(`Error fetching image manifest for tag ${clientTag}: ${err.message}`);
+		return [];
+	}
+}
+
+function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
+	let imageIndex = 1;
+	for (const file of manifestArr) {
+		const fileEntry = document.createElement('div');
+		fileEntry.className = 'file-entry';
+		fileEntry.setAttribute('id', `${file.uuid}`);
+		if (file.primary_image) {
+			fileEntry.classList.add('file-entry', 'primary');
+			const pinnedMessage = document.createElement('p');
+			pinnedMessage.textContent = 'Pinned';
+			fileEntry.appendChild(pinnedMessage);
+		} else {
+			fileEntry.classList.add('file-entry');
+		}
+
+		const timestampContainer = document.createElement('div');
+		timestampContainer.classList.add('file-caption', 'timestamp');
+
+		const timeStampCaption = document.createElement('p');
+		const timeStamp = new Date(file.time);
+		if (!isNaN(timeStamp.getTime())) {
+			timeStampCaption.textContent = `Uploaded on: ${timeStamp.toLocaleDateString()} ${timeStamp.toLocaleTimeString()}`;
+			timeStampCaption.style.fontStyle = "normal";
+		} else {
+			timeStampCaption.textContent = `Uploaded on: Unknown date`;
+			timeStampCaption.style.fontStyle = "italic";
+		}
+		timestampContainer.appendChild(timeStampCaption);
+
+		const filePreviewContainer = document.createElement('div');
+		filePreviewContainer.className = 'file-preview';
+
+		// Source URL
+		const imgURL = new URL(`/api/images`, window.location.origin);
+		imgURL.searchParams.set('tagnumber', clientTag.toString());
+		imgURL.searchParams.set('uuid', file.uuid);
+
+		let filePreview = null as HTMLImageElement | HTMLVideoElement | null;
+		if (file.mime_type && file.mime_type.startsWith('video/')) {
+			filePreview = document.createElement('video');
+			filePreview.controls = true;
+			filePreview.preload = 'metadata';
+		filePreviewContainer.appendChild(filePreview);
+		} else if (file.mime_type && file.mime_type.startsWith('image/')) {
+			// Videos do not get an imgLink
+			filePreview = document.createElement('img');
+			filePreview.loading = 'lazy';
+			filePreview.alt = `Images for ${clientTag}`;
+			const imgLink = document.createElement('a');
+			imgLink.href = imgURL.toString();
+			imgLink.target = '_blank';
+			imgLink.rel = 'noopener noreferrer';
+			imgLink.appendChild(filePreview);
+			filePreviewContainer.appendChild(imgLink);
+		} else {
+			console.warn(`Unsupported media type: ${file.mime_type} for image UUID: ${file.uuid}`);
+			continue;
+		}
+		if (!filePreview) {
+			console.warn(`Failed to create media element for image UUID: ${file.uuid}`);
+			continue;
+		}
+		filePreview.src = imgURL.toString();
+		filePreview.className = 'file-preview';
+
+		const captionContainer = document.createElement('div');
+		captionContainer.className = 'file-caption';
+
+		const fileSizeCaption = document.createElement('p');
+		fileSizeCaption.classList.add('file-caption', 'size');
+		if (file.file_size && !isNaN(file.file_size)) {
+			const fileSizeInMB = file.file_size / (1024 * 1024);
+			if (fileSizeInMB >= 1) {
+				fileSizeCaption.textContent = `(size: ${fileSizeInMB.toFixed(2)} MB)`;
+			} else {
+				const fileSizeInKB = file.file_size / 1024;
+				fileSizeCaption.textContent = `(size: ${fileSizeInKB.toFixed(2)} KB)`;
+			}
+		} else {
+			fileSizeCaption.textContent = '(size: Unknown)';
+			fileSizeCaption.style.fontStyle = "italic";
+		}
+
+		const noteCaption = document.createElement('p');
+		if (file.note) {
+			noteCaption.textContent = file.note;
+			noteCaption.style.fontStyle = "normal";
+		} else {
+			noteCaption.textContent = "No description";
+			noteCaption.style.fontStyle = "italic";
+		}
+
+		const deleteIcon = document.createElement('button');
+		deleteIcon.dataset.uuid = file.uuid;
+		deleteIcon.dataset.imageCount = imageIndex + "/" + manifestArr.length;
+		deleteIcon.classList.add('delete-icon', 'svg-button', 'delete');
+		deleteIcon.title = 'Delete Image';
+
+		const unpinIcon = document.createElement('button');
+		unpinIcon.dataset.uuid = file.uuid;
+		if (file.primary_image) {
+			unpinIcon.classList.add('unpin-icon', 'svg-button', 'small-x');
+			unpinIcon.title = 'Unpin Image';
+		} else {
+			unpinIcon.classList.add('unpin-icon', 'svg-button', 'small-check');
+		}
+
+		const imageCount = document.createElement('span');
+		imageCount.className = 'image-count';
+		imageCount.textContent = imageIndex++ + "/" + manifestArr.length || '';
+		captionContainer.appendChild(noteCaption);
+		captionContainer.appendChild(fileSizeCaption);
+		captionContainer.appendChild(unpinIcon);
+		captionContainer.appendChild(deleteIcon);
+		captionContainer.appendChild(imageCount);
+
+		fileEntry.appendChild(timestampContainer);
+		fileEntry.appendChild(filePreviewContainer);
+		fileEntry.appendChild(captionContainer);
+
+		initListeners(unpinIcon, deleteIcon, clientTag);
+
+		container.appendChild(fileEntry);
+	}
+}
+
+function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, clientTag: number) {
+	unpinEl.addEventListener('click', async (event) => {
+		if (!(unpinEl instanceof HTMLElement)) return;
+		const el = event.currentTarget as HTMLButtonElement;
+		el.disabled = true;
+		const uuidToUnpin = el.dataset.uuid || "";
+		if (!uuidToUnpin) {
+			alert('Error: No UUID found for this image.');
+			el.disabled = false;
+			return;
+		}
+		const currentURL = new URL(window.location.href);
+		const clientTag = currentURL.searchParams.get("tagnumber") ? parseInt(currentURL.searchParams.get("tagnumber") as string) : null;
+		const unpinURL = new URL(`/api/images/toggle_pin`, window.location.origin);
+		try {
+			const unpinRequest = await fetch(unpinURL, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'same-origin',
+				body: JSON.stringify({uuid: uuidToUnpin, tagnumber: clientTag})
+			});
+			if (!unpinRequest.ok) {
+				throw new Error (`Failed to unpin image: ${unpinRequest.status} ${unpinRequest.statusText}`);
+			}
+			await fetchManifestData(clientTag as number).then(updatedManifest => {
+				container.innerHTML = '';
+				renderFiles(updatedManifest, clientTag as number);
+			});
+		} catch (unpinError) {
+			alert(`Error unpinning image: ${unpinError.message}`);
+		} finally {
+			el.disabled = false;
+			await initClientImages();
+		}
+	});
+
+	deleteEl.addEventListener('click', async (event) => {
+		const deleteEl = event.currentTarget as HTMLButtonElement;
+		if (!(deleteEl instanceof HTMLElement)) return;
+		deleteEl.disabled = true;
+		const uuidToDelete = deleteEl.dataset.uuid;
+		if (!uuidToDelete) {
+			alert('Error: No UUID found for this image.');
+			deleteEl.disabled = false;
+			return;
+		}
+		const imageCount = deleteEl.dataset.imageCount || '';
+
+		const entry = document.getElementById(uuidToDelete);
+		if (entry) {
+			entry.style.transition = entry.style.transition || 'opacity 150ms ease';
+			entry.style.opacity = '0.5';
+			await waitForNextPaint(2);
+		}
+
+		const okToDelete = window.confirm(`Are you sure you want to delete this image (${imageCount})?`);
+		if (!okToDelete) {
+			if (entry) entry.style.opacity = '1';
+			deleteEl.disabled = false;
+			return;
+		}
+
+		try {
+			const deleteURL = new URL(`/api/images`, window.location.origin);
+			deleteURL.searchParams.set('tagnumber', clientTag.toString());
+			deleteURL.searchParams.set('uuid', uuidToDelete);
+			const deleteResponse = await fetch(deleteURL, {
+				method: 'DELETE',
+				credentials: 'same-origin'
+			});
+			if (!deleteResponse.ok) {
+				throw new Error (`Failed to delete image: ${deleteResponse.status} ${deleteResponse.statusText}`);
+			}
+			if (entry) entry.remove();
+		} catch (deleteError) {
+			alert(`Error deleting image: ${deleteError.message}`);
+		} finally {
+			deleteEl.disabled = false;
+			await initClientImages();
+		}
+	});
+} 
+
+document.addEventListener('DOMContentLoaded', async () => {
+	await initClientImages();
+});
+
+async function initClientImages() {
+	container.innerHTML = '<p>Loading images...</p>';
+	const urlParams = new URLSearchParams(window.location.search);
+	const tag = urlParams.get('tagnumber');
+	if (!tag) {
+		console.warn('No tagnumber parameter found in URL.');
+		const errorParagraph = document.createElement('p');
+		errorParagraph.textContent = `No images found for client tag: ${tag}`;
+		container.appendChild(errorParagraph);
+		return;
+	}
+	const clientTag = parseInt(tag, 10);
+	if (!validateTagInput(clientTag)) {
+		console.warn(`Invalid client tag: ${clientTag}`);
+		return;
+	}
+	try {
+		const manifestData = await fetchManifestData(clientTag);
+		if (manifestData.length === 0) {
+			console.warn(`No images found for client tag: ${clientTag}`);
+			const errorParagraph = document.createElement('p');
+			errorParagraph.textContent = `No images found for client tag: ${clientTag}`;
+			container.appendChild(errorParagraph);
+			return;
+		}
+		renderFiles(manifestData, clientTag);
+	} catch (err) {
 		container.innerHTML = '';
 		const errorParagraph = document.createElement('p');
 		errorParagraph.textContent = `Error fetching images: ${err.message}`;
 		container.appendChild(errorParagraph);
-    console.warn(`Error fetching images for tag ${clientTag}: ${err.message}`);
+		console.warn(`Error fetching images for tag ${clientTag}: ${err.message}`);
 	}
 }
-
-document.addEventListener('DOMContentLoaded', async () => {
-	const urlParams = new URLSearchParams(window.location.search);
-	const clientTag = urlParams.get('tagnumber');
-	  if (!clientTag) {
-	    console.warn('No tagnumber parameter found in URL.');
-	    return;
-	  }
-		const clientTagNumber = parseInt(clientTag, 10); // more strict validation happens in loadClientImages
-		await loadClientImages(clientTagNumber);
-});

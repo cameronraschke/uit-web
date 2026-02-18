@@ -273,6 +273,20 @@ td > div.flex-container {
 	background-color: var(--light-accent-color);
 }
 
+.svg-button.small-check {
+	background-image: url(/icons/general/check_small.svg);
+}
+.svg-button.small-check:hover {
+	background-image: url(/icons/general/close_small.svg);
+}
+
+.svg-button.small-x {
+	background-image: url(/icons/general/close_small.svg);
+}
+.svg-button.small-x:hover {
+	background-image: url(/icons/general/check_small.svg);
+}
+
 .svg-select {
 	margin-right: 2rem;
 	background-color: var(--fg-color);

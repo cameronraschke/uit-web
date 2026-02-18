@@ -7,7 +7,7 @@
   padding: 1dvw;
 }
 
-.image-entry {
+.file-entry {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -20,35 +20,59 @@
   overflow: auto;
   object-fit: contain;
 }
+.file-entry.primary {
+	border: 2px solid black;
+	background-color: lightgray;
+}
+.file-entry.primary p {
+	font-weight: bold;
+	color: black;
+	margin: 0.5rem 0 0 0;
+}
+
+.file-preview img,
+.file-preview video {
+	border-radius: 0.5rem;
+	width: 100%;
+	object-fit: contain;
+	outline: none;
+	background: none;
+}
+.file-preview:hover img, .file-preview:hover video {
+	transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+	transform: translateY(-5px) scale(1.01);
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+	opacity: 0.95;
+}
+
+.file-caption {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+	font-style: normal;
+  text-align: center;
+  color: #555;
+}
+.file-caption.size {
+	font-style: normal;
+  font-size: var(--font-size-smaller);
+  color: #555;
+}
+.file-caption.timestamp {
+	font-style: italic;
+	font-size: var(--font-size-smaller);
+	color: #777;
+}
 
 @media (max-width: 750px) {
-  .image-entry {
+  .file-entry {
     width: 80dvw;
   }
 }
 
 @media (max-width: 1200px) and (min-width: 751px) {
-  .image-entry {
+  .file-entry {
     width: 30dvw;
   }
-}
-
-.image-box {
-  margin-top: 1rem;
-  padding: 0.5rem;
-  text-align: center;
-  overflow: clip;
-}
-
-.image-box img {
-  border-radius: 0.5rem;
-}
-
-.image-caption {
-  margin-top: 0.5rem;
-  font-size: 0.9rem;
-  text-align: center;
-  color: #555;
 }
 
 .delete-icon {
