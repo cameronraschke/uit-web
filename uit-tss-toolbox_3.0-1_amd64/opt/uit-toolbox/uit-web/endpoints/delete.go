@@ -123,7 +123,7 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := deleteRepo.DeleteClientImageByUUID(ctx, tag, &requestedImageUUID); err != nil {
+	if err := deleteRepo.HideClientImageByUUID(ctx, tag, &requestedImageUUID); err != nil {
 		log.Error("Failed to delete client image with UUID '" + requestedImageUUID + "' and tagnumber '" + fmt.Sprintf("%d", *tag) + "': " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
