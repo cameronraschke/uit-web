@@ -305,8 +305,7 @@ td > div.flex-container {
 	background-image: url(/icons/general/add_location.svg);
 }
 .svg-button.unpinned:hover {
-	background-image: url(/icons/general/location_on.svg);
-	background-color: var(--bg-color-darker);
+	background-color: var(--focus-color-underline);
 }
 
 .svg-button.pinned {

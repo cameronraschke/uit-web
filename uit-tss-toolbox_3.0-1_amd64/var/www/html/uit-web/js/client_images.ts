@@ -96,6 +96,7 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 		const iconContainer = document.createElement('div');
 		iconContainer.classList.add('file-icons');
 		const imageCount = document.createElement('span');
+		imageCount.classList.add('smaller-text');
 		imageCount.textContent = imageIndex++ + "/" + manifestArr.length || '';
 		iconContainer.appendChild(imageCount);
 

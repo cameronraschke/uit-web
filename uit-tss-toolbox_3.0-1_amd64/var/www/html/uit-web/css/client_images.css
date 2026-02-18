@@ -24,12 +24,16 @@
 	border: 2px solid black;
 	background-color: lightgray;
 }
-.file-entry.primary p {
+.file-entry.primary > p {
 	font-weight: bold;
 	color: black;
 	margin: 0.5rem 0 0 0;
 }
 
+.file-preview a {
+	outline: 0px;
+	border: none;
+}
 .file-preview img,
 .file-preview video {
 	border-radius: 0.5rem;
