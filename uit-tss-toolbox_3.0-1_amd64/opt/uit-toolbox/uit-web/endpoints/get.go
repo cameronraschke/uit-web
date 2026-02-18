@@ -1,15 +1,16 @@
 package endpoints
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -330,12 +331,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 	}
 	tagnumber, err := ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
 	if err != nil {
-		log.HTTPWarning(req, "No or invalid tagnumber provided in request to GetClientImagesManifest: "+err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if tagnumber == nil {
-		log.HTTPWarning(req, "No tagnumber provided in request to GetClientImagesManifest")
+		log.HTTPWarning(req, "Invalid tagnumber provided in request to GetClientImagesManifest: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -346,13 +342,13 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	_, _, _, acceptedImageExtensionsAndMimeTypes, err := appState.GetFileUploadImageConstraints()
+	minImageSize, maxImageSize, _, acceptedImageExtensionsAndMimeTypes, err := appState.GetFileUploadImageConstraints()
 	if err != nil {
 		log.HTTPWarning(req, "Error getting accepted image extensions and mime types in GetClientImagesManifest: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	_, _, _, acceptedVideoExtensionsAndMimeTypes, err := appState.GetFileUploadVideoConstraints()
+	minVideoSize, maxVideoSize, _, acceptedVideoExtensionsAndMimeTypes, err := appState.GetFileUploadVideoConstraints()
 	if err != nil {
 		log.HTTPWarning(req, "Error getting accepted video extensions and mime types in GetClientImagesManifest: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -380,102 +376,21 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 
 	var filteredImageManifests []database.ImageManifest
 	for _, imageManifest := range imageManifests {
+		// UUID of file
 		if imageManifest.UUID == nil || strings.TrimSpace(*imageManifest.UUID) == "" {
 			log.HTTPWarning(req, "Image manifest UUID is nil or empty in GetClientImagesManifest")
 			continue
 		}
 
-		if imageManifest.Tagnumber == nil || *imageManifest.Tagnumber < 1 || *imageManifest.Tagnumber > 999999 {
-			log.HTTPWarning(req, "Image manifest has no or invalid tag in database in GetClientImagesManifest")
-			continue
-		}
-
-		if imageManifest.Hidden != nil && *imageManifest.Hidden {
-			continue
-		}
-
+		// File path
 		if imageManifest.FilePath == nil || strings.TrimSpace(*imageManifest.FilePath) == "" {
 			log.HTTPInfo(req, "File path provided to GetClientImagesManifest is nil")
 			continue
 		}
+		filePath := strings.ToLower(strings.TrimSpace(*imageManifest.FilePath))
 
-		filepath := strings.ToLower(strings.TrimSpace(*imageManifest.FilePath))
-
-		file, err := os.Open(filepath)
-		if err != nil {
-			log.HTTPWarning(req, "Cannot open image file in GetClientImagesManifest: "+filepath+" "+err.Error())
-			_ = file.Close()
-			continue
-		}
-		defer file.Close()
-
-		imageStat, err := file.Stat()
-		if err != nil {
-			log.HTTPWarning(req, "Cannot stat image in GetClientImagesManifest: "+filepath+" "+err.Error())
-			_ = file.Close()
-			continue
-		}
-
-		fileSize := imageStat.Size()
-		if fileSize < 1 {
-			log.HTTPWarning(req, "Image file has invalid size in GetClientImagesManifest: "+filepath)
-			_ = file.Close()
-			continue
-		}
-		imageManifest.FileSize = &fileSize
-
-		fileExtension := strings.ToLower(path.Ext(imageStat.Name()))
-
-		// If an image
-		if _, ok := acceptedImageExtensionsAndMimeTypes[fileExtension]; ok {
-			imageReader := http.MaxBytesReader(w, file, 64<<20) // 64 MB max
-
-			imageConfig, imageType, err := image.DecodeConfig(imageReader)
-			if err != nil {
-				log.HTTPWarning(req, "Cannot decode image in GetClientImagesManifest: "+filepath+" "+err.Error())
-				_ = file.Close()
-				continue
-			}
-
-			if imageType == "" || !strings.Contains(imageType, acceptedImageExtensionsAndMimeTypes[fileExtension]) {
-				log.HTTPWarning(req, "Image has no valid type in GetClientImagesManifest: "+filepath+" -> Image type: "+imageType)
-				_ = file.Close()
-				continue
-			}
-
-			if acceptedImageExtensionsAndMimeTypes[fileExtension] != imageType {
-				log.HTTPWarning(req, "Image has invalid file extension/type in GetClientImagesManifest: "+filepath+" -> Image type: "+imageType+", File extension: "+fileExtension)
-				_ = file.Close()
-				continue
-			}
-
-			if imageConfig.Width == 0 || imageConfig.Height == 0 {
-				log.HTTPWarning(req, "Image has invalid dimensions in GetClientImagesManifest: "+filepath)
-				_ = file.Close()
-				continue
-			}
-
-			resX := int64(imageConfig.Width)
-			resY := int64(imageConfig.Height)
-			imageManifest.ResolutionX = &resX
-			imageManifest.ResolutionY = &resY
-
-			mimeType := "image/" + acceptedImageExtensionsAndMimeTypes[fileExtension]
-			imageManifest.FileType = &imageType
-			imageManifest.MimeType = &mimeType
-		} else if _, ok := acceptedVideoExtensionsAndMimeTypes[fileExtension]; ok {
-			videoType := acceptedVideoExtensionsAndMimeTypes[fileExtension]
-			mimeType := "video/" + videoType
-			imageManifest.FileType = &videoType
-			imageManifest.MimeType = &mimeType
-		} else {
-			log.HTTPWarning(req, "File has unsupported extension in GetClientImagesManifest: "+filepath)
-			_ = file.Close()
-			continue
-		}
-
-		_ = file.Close()
-
+		// URL to send to client
+		imageManifest.FilePath = nil // Hide actual file path from client
 		urlStr, err := url.JoinPath("/api/images/", fmt.Sprintf("%d", *imageManifest.Tagnumber), *imageManifest.UUID)
 		if err != nil {
 			log.HTTPWarning(req, "Error joining URL paths in GetClientImagesManifest: "+err.Error())
@@ -483,9 +398,138 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		}
 		imageManifest.URL = &urlStr
 
-		imageManifest.FilePath = nil // Hide actual file path from client
+		// Check if marked as hidden
+		if imageManifest.Hidden != nil && *imageManifest.Hidden {
+			log.HTTPInfo(req, "Hidden file requested, but not sent: "+filePath)
+			continue
+		}
+
+		// Check MIME type in DB
+		if imageManifest.MimeType == nil {
+			log.HTTPWarning(req, "Image manifest has a nil MIME type in DB (GetClientImagesManifest): "+filePath)
+			continue
+		}
+		mimeType := strings.TrimSpace(*imageManifest.MimeType)
+
+		// File extension
+		fileExtension := strings.ToLower(filepath.Ext(filePath))
+		if fileExtension == "" || acceptedImageExtensionsAndMimeTypes[fileExtension] == "" {
+			log.HTTPWarning(req, "Image manifest has unsupported file extension in GetClientImagesManifest: "+fileExtension)
+			continue
+		}
+
+		// Open file and read metadata
+		file, err := os.Open(filePath)
+		if err != nil {
+			log.HTTPWarning(req, "Cannot open image file in GetClientImagesManifest: "+filePath+" "+err.Error())
+			_ = file.Close()
+			continue
+		}
+		imageStat, err := file.Stat()
+		if err != nil {
+			log.HTTPWarning(req, "Cannot stat image in GetClientImagesManifest: "+filePath+" "+err.Error())
+			_ = file.Close()
+			continue
+		}
+
+		// Check if MIME type matches file content
+		mt := http.DetectContentType([]byte(filePath))
+		if mt != mimeType {
+			log.HTTPWarning(req, "MIME in type in DB does not match file content in GetClientImagesManifest: "+filePath+" -> Detected MIME type: "+mt+", MIME type in DB: "+mimeType)
+			_ = file.Close()
+			continue
+		}
+		imageManifest.MimeType = &mimeType
+
+		// Get file size
+		metadataFileSize := imageStat.Size()
+		imageManifest.FileSize = &metadataFileSize
+
+		// If an image
+		if _, ok := acceptedImageExtensionsAndMimeTypes[fileExtension]; ok {
+			// Check file size from metadata
+			if metadataFileSize < minImageSize || metadataFileSize > maxImageSize {
+				log.HTTPWarning(req, "Image file size is out of bounds in GetClientImagesManifest: "+filePath+" -> File size: "+fmt.Sprintf("%d", metadataFileSize))
+				_ = file.Close()
+				continue
+			}
+
+			// Wrap file in LimitReader
+			imageReader := io.NopCloser(io.LimitReader(file, maxImageSize+1))
+			imageBytes, err := io.ReadAll(imageReader)
+			_ = file.Close()
+			if err != nil {
+				log.HTTPWarning(req, "Error reading image file in GetClientImagesManifest: "+filePath+" "+err.Error())
+				continue
+			}
+			if len(imageBytes) > int(maxImageSize) {
+				log.HTTPWarning(req, "Image file size exceeds maximum after reading in GetClientImagesManifest: "+filePath+" -> File size: "+fmt.Sprintf("%d", len(imageBytes)))
+				continue
+			}
+
+			// Get image metadata
+			imageConfig, imageType, err := image.DecodeConfig(bytes.NewReader(imageBytes))
+			if err != nil {
+				log.HTTPWarning(req, "Cannot decode image in GetClientImagesManifest: "+filePath+" "+err.Error())
+				continue
+			}
+
+			// Check http's library MIME type against image library's detected type
+			if imageType != "image/"+acceptedImageExtensionsAndMimeTypes[fileExtension] {
+				log.HTTPWarning(req, "Image has invalid file type in GetClientImagesManifest: "+filePath+" -> Image type: "+imageType+", File extension: "+fileExtension)
+				continue
+			}
+
+			// If image has zero width or height, continue
+			if imageConfig.Width == 0 || imageConfig.Height == 0 {
+				log.HTTPWarning(req, "Image has invalid dimensions in GetClientImagesManifest: "+filePath)
+				continue
+			}
+			resX := int64(imageConfig.Width)
+			resY := int64(imageConfig.Height)
+			imageManifest.ResolutionX = &resX
+			imageManifest.ResolutionY = &resY
+		} else if _, ok := acceptedVideoExtensionsAndMimeTypes[fileExtension]; ok { // If a video file
+			// Check file size from metadata
+			if metadataFileSize < minVideoSize || metadataFileSize > maxVideoSize {
+				log.HTTPWarning(req, "Video file size is out of bounds in GetClientImagesManifest: "+filePath+" -> File size: "+fmt.Sprintf("%d", metadataFileSize))
+				_ = file.Close()
+				continue
+			}
+
+			// Wrap in LimitReader
+			videoReader := io.NopCloser(io.LimitReader(file, maxVideoSize+1))
+			videoBytes, err := io.ReadAll(videoReader)
+			_ = file.Close()
+			if err != nil {
+				log.HTTPWarning(req, "Error reading video file in GetClientImagesManifest: "+filePath+" "+err.Error())
+				continue
+			}
+			if len(videoBytes) > int(maxVideoSize) {
+				log.HTTPWarning(req, "Video file size exceeds maximum after reading in GetClientImagesManifest: "+filePath+" -> File size: "+fmt.Sprintf("%d", len(videoBytes)))
+				continue
+			}
+
+			// Check MIME type matches expected MIME type for video extension
+			if acceptedVideoExtensionsAndMimeTypes[fileExtension] != mimeType {
+				log.HTTPWarning(req, "Video manifest has mismatched MIME type in GetClientImagesManifest: "+filePath+" -> Detected MIME type: "+mimeType+", Expected MIME type: "+acceptedVideoExtensionsAndMimeTypes[fileExtension])
+				continue
+			}
+		} else {
+			log.HTTPWarning(req, "File has unsupported extension in GetClientImagesManifest: "+filePath)
+			_ = file.Close()
+			continue
+		}
 
 		filteredImageManifests = append(filteredImageManifests, imageManifest)
+		_ = file.Close() // Close file after all operations are done with it, just in case, but since we read the whole file into memory, it should be fine to close it at this point.
+	}
+
+	// If all manifests were filtered out
+	if len(filteredImageManifests) == 0 {
+		log.HTTPWarning(req, "No valid image manifests to return in GetClientImagesManifest for client: "+fmt.Sprintf("%d", *tagnumber))
+		middleware.WriteJsonError(w, http.StatusNotFound)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
