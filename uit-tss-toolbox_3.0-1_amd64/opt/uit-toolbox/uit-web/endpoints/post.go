@@ -210,7 +210,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	defaultFileUploadNameRegex, defaultMinimumUploadSize, defaultFileUploadMaxTotalSize, err := appState.GetFileUploadDefaultConstraints()
+	_, _, defaultFileUploadMaxTotalSize, err := appState.GetFileUploadDefaultConstraints()
 	if err != nil {
 		log.HTTPWarning(req, "Error retrieving file upload constraints: "+err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -242,7 +242,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// json part
+	// JSON part
 	jsonFile, _, err := req.FormFile("json")
 	if err != nil {
 		log.HTTPWarning(req, "Error retrieving JSON data provided in form: "+err.Error())
@@ -258,7 +258,6 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-
 	if int64(len(jsonBytes)) > maxInventoryFormJsonBytes {
 		log.HTTPWarning(req, "JSON data in form exceeds maximum allowed size after reading")
 		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
@@ -278,7 +277,6 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Validate and sanitize input data
-
 	// Tag number (required, 6 numeric digits, 100000-999999)
 	if err := IsTagnumberInt64Valid(inventoryUpdate.Tagnumber); err != nil {
 		log.HTTPWarning(req, "Invalid tag number provided for InsertInventoryUpdateForm: "+err.Error())
@@ -626,7 +624,14 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	if len(files) > maxFileUploadCount {
+	minImgFileSize, maxImgFileSize, maxImgFileCount, acceptedImageExtensionsAndMimeTypes, err := appState.GetFileUploadImageConstraints()
+	if err != nil {
+		log.HTTPWarning(req, "Error getting file upload image constraints (InsertInventoryUpdateForm): "+err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	if len(files) > maxImgFileCount {
 		log.HTTPWarning(req, "Number of uploaded files exceeds maximum allowed for InsertInventoryUpdateForm: "+strconv.Itoa(len(files)))
 		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
@@ -634,21 +639,23 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 	var totalHeaderFileSize int64
 	for _, fileHeader := range files {
+		if fileHeader.Size < minImgFileSize {
+			log.HTTPWarning(req, "Multipart header size value too small for InsertInventoryUpdateForm: "+fileHeader.Filename+" ("+strconv.FormatInt(fileHeader.Size, 10)+" bytes)")
+			middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
+			return
+		}
+		if fileHeader.Size > maxImgFileSize {
+			log.HTTPWarning(req, "Total size of uploaded files in multipart headers exceeds maximum allowed for InsertInventoryUpdateForm: "+strconv.FormatInt(totalHeaderFileSize, 10)+" bytes")
+			middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
+			return
+		}
 		totalHeaderFileSize += fileHeader.Size
 	}
-	if totalHeaderFileSize > maxFileUploadTotalBytes {
-		log.HTTPWarning(req, "Total size of uploaded files exceeds maximum allowed for InsertInventoryUpdateForm: "+strconv.FormatInt(totalHeaderFileSize, 10)+" bytes")
-		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
-		return
-	}
-
-	// Establish DB connection before processing files
-	updateRepo, err := database.NewUpdateRepo()
-	if err != nil {
-		log.HTTPError(req, "No database connection available for inventory update")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+	// if totalHeaderFileSize > maxImgFileSize {
+	// 	log.HTTPWarning(req, "Total size of uploaded files exceeds maximum allowed for InsertInventoryUpdateForm: "+strconv.FormatInt(totalHeaderFileSize, 10)+" bytes")
+	// 	middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
+	// 	return
+	// }
 
 	// Generate transaction UUID for inventory update and associated file uploads
 	transactionUUID, err := uuid.NewUUID()
@@ -663,55 +670,19 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	minImgFileSize, maxImgFileSize, maxImgFileCount, acceptedImageExtensionsAndMimeTypes, err := appState.GetFileUploadImageConstraints()
+	// Establish DB connection before opening files
+	updateRepo, err := database.NewUpdateRepo()
 	if err != nil {
-		log.HTTPWarning(req, "Error getting file upload image constraints (InsertInventoryUpdateForm): "+err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	minVidFileSize, maxVidFileSize, maxVidFileCount, acceptedVideoExtensionsAndMimeTypes, err := appState.GetFileUploadVideoConstraints()
-	if err != nil {
-		log.HTTPWarning(req, "Error getting file upload video constraints (InsertInventoryUpdateForm): "+err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	allowedFileUploadRegex, maxDefaultFileSize, err := appState.GetFileUploadDefaultConstraints()
-	if err != nil {
-		log.HTTPWarning(req, "Error getting file upload allowed filename regex constraint (InsertInventoryUpdateForm): "+err.Error())
+		log.HTTPError(req, "No database connection available for inventory update")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
-	// Process uploaded files
+	// Process uploaded file headers
 	var totalActualFileBytes int64
 	var fileUploadCount int
 	for _, fileHeader := range files {
 		var manifest database.ImageManifest
-		// Check multipart headers
-		// File name/extension checks
-		if matched := allowedFileUploadRegex.MatchString(fileHeader.Filename); !matched {
-			log.HTTPWarning(req, "Invalid characters in uploaded file name for InsertInventoryUpdateForm")
-			continue
-		}
-		ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
-		if acceptedImageExtensionsAndMimeTypes[ext] == "" && acceptedVideoExtensionsAndMimeTypes[ext] == "" {
-			log.HTTPWarning(req, "Uploaded file has an unaccepted file extension for InsertInventoryUpdateForm: "+ext)
-			continue
-		}
-
-		// Check headers first
-		if fileHeader.Size > maxDefaultFileSize {
-			log.HTTPWarning(req, "Multipart header size value is too large for InsertInventoryUpdateForm ("+strconv.FormatInt(fileHeader.Size, 10)+" bytes)")
-			continue
-		}
-		if fileHeader.Size <= 0 {
-			log.HTTPWarning(req, "Multipart header size value is empty for InsertInventoryUpdateForm: "+fileHeader.Filename)
-			continue
-		}
-		if fileHeader.Size <= maxDefaultFileSize {
-			log.HTTPWarning(req, "Multipart header size value too small for InsertInventoryUpdateForm: "+fileHeader.Filename+" ("+strconv.FormatInt(fileHeader.Size, 10)+" bytes)")
-			continue
-		}
 
 		// Open uploaded file
 		file, err := fileHeader.Open()
@@ -720,7 +691,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			continue
 		}
 
-		lr := &io.LimitedReader{R: file, N: maxDefaultFileSize + 1}
+		lr := &io.LimitedReader{R: file, N: maxImgFileSize + 1}
 		fileBytes, err := io.ReadAll(lr)
 		file.Close()
 		if err != nil {
@@ -734,15 +705,11 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 		// File size checks (in addition to header checks - not necessarily same value)
 		fileSize := int64(len(fileBytes))
-		if fileSize > maxDefaultFileSize {
+		if fileSize > maxImgFileSize {
 			log.HTTPWarning(req, "Uploaded file too large for InsertInventoryUpdateForm ("+strconv.FormatInt(fileSize, 10)+" bytes)")
 			continue
 		}
-		if fileSize == 0 {
-			log.HTTPWarning(req, "Empty file uploaded for InsertInventoryUpdateForm: "+fileHeader.Filename)
-			continue
-		}
-		if fileSize < minDefaultFileSize {
+		if fileSize < minImgFileSize {
 			log.HTTPWarning(req, "Uploaded file too small for InsertInventoryUpdateForm: "+fileHeader.Filename+" ("+strconv.FormatInt(fileSize, 10)+" bytes)")
 			continue
 		}
@@ -753,12 +720,18 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		mimeType := http.DetectContentType(fileBytes[:fileSize])
 
 		// Generate unique file name
+		ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
 		fileTimeStampFormatted := fileTimeStamp.Format("2006-01-02-150405")
 		fileUUID := uuid.New()
 		fileUUIDString := fileUUID.String()
 		var fileName string
 		baseFileName := fileTimeStampFormatted + "-" + fileUUIDString
 		manifest.UUID = &fileUUIDString
+
+		// Get upload timestamp
+		fileTimeStamp := time.Now()
+		timeUTC := fileTimeStamp.UTC()
+		manifest.Time = &timeUTC
 
 		if acceptedImageExtensionsAndMimeTypes[ext] == mimeType { // Image file processing
 			fileName = baseFileName + ext
@@ -768,7 +741,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			// Rewind and decode image to get image.Image
 			_, err = imageReader.Seek(0, io.SeekStart)
 			if err != nil {
-				log.HTTPError(req, "Failed to seek to start of uploaded image for InsertInventoryUpdateForm: "+err.Error())
+				log.HTTPError(req, "Failed to seek to start of uploaded image '"+fileHeader.Filename+"' (InsertInventoryUpdateForm): "+err.Error())
 				continue
 			}
 			decodedImage, imageFormat, err := image.Decode(imageReader)
@@ -780,12 +753,12 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			// Rewind and decode image to get image config
 			_, err = imageReader.Seek(0, io.SeekStart)
 			if err != nil {
-				log.HTTPError(req, "Failed to seek to start of uploaded image for InsertInventoryUpdateForm: "+err.Error()+" ("+fileHeader.Filename+")")
+				log.HTTPError(req, "Failed to seek to start of uploaded image '"+fileHeader.Filename+"' (InsertInventoryUpdateForm): "+err.Error())
 				continue
 			}
 			decodedImageConfig, _, err := image.DecodeConfig(imageReader)
 			if err != nil {
-				log.HTTPError(req, "Failed to decode uploaded image config for InsertInventoryUpdateForm: "+err.Error()+": "+fileHeader.Filename+" ("+fileHeader.Filename+")")
+				log.HTTPError(req, "Failed to decode uploaded image config for InsertInventoryUpdateForm: "+err.Error()+" ("+fileHeader.Filename+")")
 				continue
 			}
 			resX := int64(decodedImageConfig.Width)
@@ -797,14 +770,9 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			manifest.MimeType = &mimeType
 			fileName = baseFileName + ext
 		} else {
-			log.HTTPWarning(req, "Unsupported image MIME type for InsertInventoryUpdateForm: (Content-Type: "+mimeType+")")
+			log.HTTPWarning(req, "Unsupported image MIME type for InsertInventoryUpdateForm: (Content-Type: "+mimeType+") ("+fileHeader.Filename+")")
 			continue
 		}
-
-		// Get upload timestamp
-		fileTimeStamp := time.Now()
-		timeUTC := fileTimeStamp.UTC()
-		manifest.Time = &timeUTC
 
 		// Compute SHA256 hash of file
 		fileHash := crypto.SHA256.New()

@@ -35,8 +35,8 @@ type FileUploadConstraints struct {
 	imageConstraints        *ImageUploadConstraints
 	videoConstraints        *VideoUploadConstraints
 	defaultAllowedFileRegex *regexp.Regexp
-	defaultMaxFileSize      int64
 	defaultMinFileSize      int64
+	defaultMaxFileSize      int64
 }
 
 type AppConfiguration struct {
