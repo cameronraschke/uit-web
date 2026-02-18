@@ -99,13 +99,18 @@ func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusLengthRequired)
 			return
 		}
-		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
+		appState, err := config.GetAppState()
 		if err != nil {
-			log.HTTPError(req, "Failed to get endpoint config from config: "+err.Error())
+			log.HTTPError(req, "Error getting app state (LimitRequestSizeMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		maxSize := endpointConfig.MaxUploadSizeKB
+		_, _, maxSize, err := appState.GetFileUploadDefaultConstraints()
+		if err != nil {
+			log.HTTPError(req, "Error getting file upload constraints from app state (LimitRequestSizeMiddleware): "+err.Error())
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 		if req.ContentLength > maxSize {
 			log.HTTPWarning(req, "Request content length exceeds limit: "+fmt.Sprintf("%.2fMB", float64(req.ContentLength)/1e6)+" > "+fmt.Sprintf("%.2fMB", float64(maxSize)/1e6))
 			WriteJsonError(w, http.StatusRequestEntityTooLarge)

@@ -260,7 +260,7 @@ func InitConfig() (*AppConfiguration, error) {
 		imageConstraints:        &imgConstraints,
 		videoConstraints:        &vidConstraints,
 		defaultAllowedFileRegex: regexp.MustCompile(`^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$`),
-		defaultMaxFileSize:      100 << 20,
+		defaultMaxFileSize:      300 << 20,
 		defaultMinFileSize:      512,
 	}
 	appConfig.fileConstraints.Store(fileConstraints)
