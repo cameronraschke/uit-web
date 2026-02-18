@@ -472,15 +472,15 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 					return false
 				}
 				// Check http's library MIME type against image library's detected type
-				if imageType != "image/"+acceptedImageExtensionsAndMimeTypes[fileExtension] {
-					log.HTTPWarning(req, "Image has invalid file type in GetClientImagesManifest: "+filePath+" -> Image type: "+imageType+", File extension: "+fileExtension)
+				if "image/"+imageType != acceptedImageExtensionsAndMimeTypes[fileExtension] {
+					log.HTTPWarning(req, "Image '"+fileUUID+"' has invalid file type in GetClientImagesManifest: Image type: "+"image/"+imageType+", Accepted matched type: "+acceptedImageExtensionsAndMimeTypes[fileExtension]+", File extension: "+fileExtension)
 					return false
 				}
 				imageManifest.MimeType = &mimeType
 
 				// If image has zero width or height, continue
 				if imageConfig.Width == 0 || imageConfig.Height == 0 {
-					log.HTTPWarning(req, "Image has invalid dimensions in GetClientImagesManifest: "+filePath)
+					log.HTTPWarning(req, "Image '"+fileUUID+"' has invalid dimensions in GetClientImagesManifest: "+filePath)
 					return false
 				}
 				resX := int64(imageConfig.Width)
