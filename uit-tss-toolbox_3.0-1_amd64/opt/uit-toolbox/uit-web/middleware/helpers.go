@@ -145,15 +145,12 @@ func GetWebEndpointConfigFromContext(ctx context.Context) (endpoint config.WebEn
 	return endpoint, nil
 }
 
-func withClientIP(ctx context.Context, ip *netip.Addr) (context.Context, error) {
-	if ip == nil {
-		return ctx, errors.New("nil IP address")
-	}
-	if err := validateIPAddress(ip); err != nil {
+func withClientIP(ctx context.Context, ip netip.Addr) (context.Context, error) {
+	if err := validateIPAddress(&ip); err != nil {
 		return ctx, fmt.Errorf("IP address stored in context is invalid: %w", err)
 	}
 	// Use validated IP address here from checkValidIP
-	return context.WithValue(ctx, clientIPKey, *ip), nil
+	return context.WithValue(ctx, clientIPKey, ip), nil
 }
 func GetRequestIPFromContext(ctx context.Context) (ipAddr netip.Addr, err error) {
 	ip, ok := ctx.Value(clientIPKey).(netip.Addr)

@@ -145,7 +145,7 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 		}
 
 		// withClientIP parses and casts the IP address to netip.Addr
-		ctx, err := withClientIP(req.Context(), reqAddr)
+		ctx, err := withClientIP(req.Context(), *reqAddr)
 		if err != nil {
 			log.Error("Cannot store request IP in context: " + err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
