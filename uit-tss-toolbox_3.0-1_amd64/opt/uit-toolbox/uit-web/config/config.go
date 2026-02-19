@@ -212,15 +212,6 @@ func InitConfig() (*AppConfiguration, error) {
 		}
 	}
 
-	for _, wanIP := range appConfig.AllowedWANIPs {
-		appConfig.AllowedWANIPs = append(appConfig.AllowedWANIPs, wanIP)
-		appConfig.AllAllowedIPs = append(appConfig.AllAllowedIPs, wanIP)
-	}
-	for _, lanIP := range appConfig.AllowedLANIPs {
-		appConfig.AllowedLANIPs = append(appConfig.AllowedLANIPs, lanIP)
-		appConfig.AllAllowedIPs = append(appConfig.AllAllowedIPs, lanIP)
-	}
-
 	// Set input constraints
 	inputConstraints := &InputFieldConstraints{
 		usernameMinChars:             64,
@@ -531,16 +522,16 @@ func SetDatabaseConn(newDbConn *sql.DB) error {
 }
 
 // IP address checks
-func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error) {
+func IsIPAllowed(trafficType string, ipAddr *netip.Addr) (allowed bool, err error) {
 	appState, err := GetAppState()
 	if err != nil {
-		return false, fmt.Errorf("error getting app state in IsIPAllowed: %w", err)
+		return false, fmt.Errorf("error getting app state (IsIPAllowed): %w", err)
 	}
 	if appState == nil {
-		return false, fmt.Errorf("app state is not initialized in IsIPAllowed")
+		return false, fmt.Errorf("app state is not initialized (IsIPAllowed)")
 	}
 
-	if !ipAddr.IsValid() || IsIPBlocked(ipAddr) {
+	if ipAddr == nil || !ipAddr.IsValid() || RequestIPBlocked(ipAddr) {
 		return false, nil
 	}
 	allowed = false
@@ -551,7 +542,7 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 			if !ok || ipRange == (netip.Prefix{}) {
 				return true
 			}
-			if ipRange.Contains(ipAddr) {
+			if ipRange.Contains(*ipAddr) {
 				allowed = true
 				return false
 			}
@@ -563,7 +554,7 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 			if !ok || ipRange == (netip.Prefix{}) {
 				return true
 			}
-			if ipRange.Contains(ipAddr) {
+			if ipRange.Contains(*ipAddr) {
 				allowed = true
 				return false
 			}
@@ -575,7 +566,7 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 			if !ok || ipRange == (netip.Prefix{}) {
 				return true
 			}
-			if ipRange.Contains(ipAddr) {
+			if ipRange.Contains(*ipAddr) {
 				allowed = true
 				return false
 			}
@@ -587,13 +578,16 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 	return allowed, nil
 }
 
-func IsIPBlocked(ipAddress netip.Addr) bool {
+func RequestIPBlocked(ipPtr *netip.Addr) bool {
+	if ipPtr == nil {
+		return true
+	}
 	as, err := GetAppState()
 	if err != nil || as == nil {
 		return true
 	}
 
-	bannedClient, ok := as.banList.Load().bannedClients.Load(ipAddress)
+	bannedClient, ok := as.banList.Load().bannedClients.Load(*ipPtr)
 	if !ok || bannedClient == nil {
 		return false
 	}
@@ -607,7 +601,7 @@ func IsIPBlocked(ipAddress netip.Addr) bool {
 		return true
 	}
 
-	as.banList.Load().bannedClients.Delete(ipAddress)
+	as.banList.Load().bannedClients.Delete(*ipPtr)
 	return false
 }
 

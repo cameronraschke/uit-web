@@ -145,21 +145,18 @@ func GetWebEndpointConfigFromContext(ctx context.Context) (endpoint config.WebEn
 	return endpoint, nil
 }
 
-func withClientIP(ctx context.Context, ip netip.Addr) (context.Context, error) {
+func withClientIP(ctx context.Context, ip *netip.Addr) (context.Context, error) {
 	// Use validated IP address here from checkValidIP
 	return context.WithValue(ctx, clientIPKey, ip), nil
 }
-
-func GetRequestIPFromContext(ctx context.Context) (ipAddr netip.Addr, err error) {
-	ip, ok := ctx.Value(clientIPKey).(netip.Addr)
+func GetRequestIPFromContext(ctx context.Context) (ipAddr *netip.Addr, err error) {
+	ip, ok := ctx.Value(clientIPKey).(*netip.Addr)
 	if !ok {
-		return netip.Addr{}, errors.New("IP address not found in context")
+		return nil, fmt.Errorf("IP address not found in context")
 	}
-
-	if ip == (netip.Addr{}) || !ip.IsValid() {
-		return netip.Addr{}, errors.New("invalid/empty IP address stored in context")
+	if err := validateIPAddress(ip); err != nil {
+		return nil, fmt.Errorf("IP address stored in context is invalid: %w", err)
 	}
-
 	return ip, nil
 }
 
@@ -321,31 +318,39 @@ func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue,
 	return sessionIDCookie, basicCookie, bearerCookie, csrfCookie
 }
 
-func checkValidIP(ipStr string) (ipAddr netip.Addr, isValid bool, isLoopback bool, isLocal bool, err error) {
-	ipStr = strings.TrimSpace(ipStr)
+func validateIPAddress(ipAddr *netip.Addr) error {
+	if ipAddr == nil {
+		return fmt.Errorf("nil IP address")
+	}
+	if ipAddr.IsUnspecified() || !ipAddr.IsValid() {
+		return fmt.Errorf("unspecified or invalid IP address: %s", ipAddr.String())
+	}
+	if ipAddr.IsInterfaceLocalMulticast() || ipAddr.IsLinkLocalMulticast() || ipAddr.IsMulticast() {
+		return fmt.Errorf("multicast IP address not allowed: %s", ipAddr.String())
+	}
+	return nil
+}
 
-	if ipStr == "" {
-		return netip.Addr{}, false, false, false, errors.New("empty IP address")
+func convertAndCheckIPStr(ipPtr *string) (ipAddr *netip.Addr, isLoopback bool, isLocal bool, err error) {
+	if ipPtr == nil {
+		return nil, false, false, fmt.Errorf("nil IP address")
 	}
 
-	if !utf8.ValidString(ipStr) {
-		return netip.Addr{}, false, false, false, errors.New("invalid IP address: " + ipStr)
+	ipStr := strings.TrimSpace(*ipPtr)
+	if ipStr == "" {
+		return nil, false, false, fmt.Errorf("empty IP address")
 	}
 
 	ip, err := netip.ParseAddr(ipStr)
 	if err != nil {
-		return netip.Addr{}, false, false, false, fmt.Errorf("failed to parse IP address: %w", err)
+		return nil, false, false, fmt.Errorf("failed to parse IP address: %w", err)
 	}
 
-	if ip.IsUnspecified() || !ip.IsValid() {
-		return netip.Addr{}, false, false, false, errors.New("parsed IP address is unspecified or invalid: " + ip.String())
+	if err := validateIPAddress(&ip); err != nil {
+		return nil, false, false, fmt.Errorf("invalid IP address: %w", err)
 	}
 
-	if ip.IsInterfaceLocalMulticast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() {
-		return netip.Addr{}, false, false, false, errors.New("parsed IP address is multicast: " + ip.String())
-	}
-
-	return ip, true, ip.IsLoopback(), ip.IsPrivate(), nil
+	return &ip, ip.IsLoopback(), ip.IsPrivate(), nil
 }
 
 func IsPrintableASCII(b []byte) bool {

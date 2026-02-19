@@ -36,22 +36,22 @@ type AuthFormData struct {
 func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	requestIP, err := middleware.GetRequestIPFromContext(ctx)
+	ipPtr, err := middleware.GetRequestIPFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving request IP from context (WebAuthEndpoint): "+err.Error())
+		log.Warn("Error retrieving request IP from context (WebAuthEndpoint): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	appState, err := config.GetAppState()
 	if err != nil {
-		log.Warn("Cannot get app state in WebAuthEndpoint: "+err.Error())
+		log.Warn("Cannot get app state in WebAuthEndpoint: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	maxLoginSizeBytes, _, _, _, _, err := appState.GetLoginFormSizeConstraint()
 	if err != nil {
-		log.Warn("Error retrieving login form constraints: "+err.Error())
+		log.Warn("Error retrieving login form constraints: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -60,20 +60,19 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
-		var maxBytesErr *http.MaxBytesError
-		if errors.As(err, &maxBytesErr) {
-			log.Warn("Login form size exceeds maximum allowed: "+err.Error())
+		if maxBytesErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
+			log.Warn("Login form size exceeds maximum allowed: " + maxBytesErr.Error())
 			middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 			return
 		}
-		log.Warn("Cannot read request body: "+err.Error())
+		log.Warn("Cannot read request body: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	decoded, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(string(body)))
 	if err != nil {
-		log.Warn("Invalid base64 encoding: "+err.Error())
+		log.Warn("Invalid base64 encoding: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -86,14 +85,14 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	var clientFormAuthData AuthFormData
 	if err := json.Unmarshal(decoded, &clientFormAuthData); err != nil {
-		log.Warn("Invalid JSON structure in WebAuthEndpoint: "+err.Error())
+		log.Warn("Invalid JSON structure in WebAuthEndpoint: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	// Validate input data
 	if err := ValidateAuthFormInputSHA256(clientFormAuthData.Username, clientFormAuthData.Password); err != nil {
-		log.Warn("Invalid auth input: "+err.Error())
+		log.Warn("Invalid auth input: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -101,20 +100,20 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	// Authenticate with bcrypt
 	authenticated, err := CheckAuthCredentials(ctx, clientFormAuthData.Username, clientFormAuthData.Password)
 	if err != nil || !authenticated {
-		log.Info("Authentication failed: "+err.Error())
+		log.Info("Authentication failed: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusUnauthorized)
 		return
 	}
 
-	sessionID, basicToken, bearerToken, csrfToken, err := config.CreateAuthSession(requestIP)
+	sessionID, basicToken, bearerToken, csrfToken, err := config.CreateAuthSession(*ipPtr)
 	if err != nil {
-		log.Error("Failed to generate tokens: "+err.Error())
+		log.Error("Failed to generate tokens: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	sessionCount := config.GetAuthSessionCount()
-	log.Info("New auth session created. Total sessions: "+strconv.Itoa(int(sessionCount)))
+	log.Info("New auth session created. Total sessions: " + strconv.Itoa(int(sessionCount)))
 
 	sessionIDCookie, basicTokenCookie, bearerTokenCookie, csrfTokenCookie := middleware.GetAuthCookiesForResponse(sessionID, basicToken, bearerToken, csrfToken, 20*time.Minute)
 
@@ -128,7 +127,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	returnedJson, err := json.Marshal(&AuthFormData{ReturnedToken: bearerToken})
 	if err != nil {
-		log.Error("Failed to marshal JSON response: "+err.Error())
+		log.Error("Failed to marshal JSON response: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -141,13 +140,13 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 
 	appState, err := config.GetAppState()
 	if err != nil {
-		log.Warn("Cannot get app state in InsertNewNote: "+err.Error())
+		log.Warn("Cannot get app state in InsertNewNote: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	noteFormMaxBytes, noteTypeMinChars, noteTypeMaxChars, noteContentMinChars, noteContentMaxChars, err := appState.GetNoteConstraints()
 	if err != nil {
-		log.Warn("Error retrieving note constraints in InsertNewNote: "+err.Error())
+		log.Warn("Error retrieving note constraints in InsertNewNote: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -158,7 +157,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	var newNote database.Note
 	err = json.NewDecoder(lr).Decode(&newNote)
 	if err != nil {
-		log.Warn("Cannot decode note JSON: "+err.Error())
+		log.Warn("Cannot decode note JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -185,7 +184,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	curTime := time.Now()
 	err = insertRepo.InsertNewNote(ctx, &curTime, &newNote.NoteType, &newNote.Content)
 	if err != nil {
-		log.Error("Failed to insert new note: "+err.Error())
+		log.Error("Failed to insert new note: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -198,20 +197,20 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	// Parse inventory data
 	appState, err := config.GetAppState()
 	if err != nil {
-		log.Warn("Cannot get app state in InsertInventoryUpdateForm: "+err.Error())
+		log.Warn("Cannot get app state in InsertInventoryUpdateForm: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	maxInventoryFormJsonBytes, err := appState.GetInventoryUpdateJsonConstraints()
 	if err != nil {
-		log.Warn("Error retrieving inventory update form size constraint: "+err.Error())
+		log.Warn("Error retrieving inventory update form size constraint: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	_, _, defaultFileUploadMaxTotalSize, err := appState.GetFileUploadDefaultConstraints()
 	if err != nil {
-		log.Warn("Error retrieving file upload constraints: "+err.Error())
+		log.Warn("Error retrieving file upload constraints: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -222,21 +221,21 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 	if err := req.ParseMultipartForm(totalAllowedBytes); err != nil {
 		if errors.Is(err, http.ErrNotMultipart) {
-			log.Warn("Request body is not multipart form data: "+err.Error())
+			log.Warn("Request body is not multipart form data: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if errors.Is(err, http.ErrMissingBoundary) {
-			log.Warn("Multipart form data missing boundary: "+err.Error())
+			log.Warn("Multipart form data missing boundary: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if maxBytesErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
-			log.Warn("Request body too large: "+maxBytesErr.Error())
+			log.Warn("Request body too large: " + maxBytesErr.Error())
 			middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 			return
 		}
-		log.Warn("Cannot parse multipart form: "+err.Error())
+		log.Warn("Cannot parse multipart form: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
 	}
@@ -244,7 +243,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	// JSON part
 	jsonFile, _, err := req.FormFile("json")
 	if err != nil {
-		log.Warn("Error retrieving JSON data provided in form: "+err.Error())
+		log.Warn("Error retrieving JSON data provided in form: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -253,7 +252,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	jsonReader := &io.LimitedReader{R: jsonFile, N: maxInventoryFormJsonBytes + 1}
 	jsonBytes, err := io.ReadAll(jsonReader)
 	if err != nil {
-		log.Warn("Error reading JSON data from form: "+err.Error())
+		log.Warn("Error reading JSON data from form: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -265,7 +264,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 	var inventoryUpdate database.InventoryUpdateForm
 	if err := json.Unmarshal(jsonBytes, &inventoryUpdate); err != nil {
-		log.Warn("Cannot decode JSON (InsertInventoryUpdateForm): "+err.Error())
+		log.Warn("Cannot decode JSON (InsertInventoryUpdateForm): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -278,7 +277,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	// Validate and sanitize input data
 	// Tag number (required, 6 numeric digits, 100000-999999)
 	if err := IsTagnumberInt64Valid(inventoryUpdate.Tagnumber); err != nil {
-		log.Warn("Invalid tag number provided (InsertInventoryUpdateForm): "+err.Error())
+		log.Warn("Invalid tag number provided (InsertInventoryUpdateForm): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -291,7 +290,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 	serialMinChars, serialMaxChars, err := appState.GetSystemSerialConstraints()
 	if err != nil {
-		log.Warn("Error retrieving system serial constraints: "+err.Error())
+		log.Warn("Error retrieving system serial constraints: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -315,7 +314,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 	locationMinChars, locationMaxChars, err := appState.GetLocationConstraints()
 	if err != nil {
-		log.Warn("Error retrieving location constraints: "+err.Error())
+		log.Warn("Error retrieving location constraints: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -335,7 +334,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	if inventoryUpdate.Building != nil {
 		buildingMinChars, buildingMaxChars, err := appState.GetBuildingConstraints()
 		if err != nil {
-			log.Warn("Error retrieving building constraints: "+err.Error())
+			log.Warn("Error retrieving building constraints: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -358,7 +357,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	if inventoryUpdate.Room != nil {
 		roomMinChars, roomMaxChars, err := appState.GetRoomConstraints()
 		if err != nil {
-			log.Warn("Error retrieving room constraints: "+err.Error())
+			log.Warn("Error retrieving room constraints: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -381,7 +380,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	if inventoryUpdate.SystemManufacturer != nil {
 		systemManufacturerMinChars, systemManufacturerMaxChars, err := appState.GetManufacturerConstraints()
 		if err != nil {
-			log.Warn("Error retrieving system manufacturer constraints: "+err.Error())
+			log.Warn("Error retrieving system manufacturer constraints: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -404,7 +403,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	if inventoryUpdate.SystemModel != nil {
 		systemModelMinChars, systemModelMaxChars, err := appState.GetSystemModelConstraints()
 		if err != nil {
-			log.Warn("Error retrieving system model constraints: "+err.Error())
+			log.Warn("Error retrieving system model constraints: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -431,7 +430,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 	departmentMinChars, departmentMaxChars, err := appState.GetDepartmentConstraints()
 	if err != nil {
-		log.Warn("Error retrieving department constraints: "+err.Error())
+		log.Warn("Error retrieving department constraints: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -455,7 +454,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 	domainMinChars, domainMaxChars, err := appState.GetDomainConstraints()
 	if err != nil {
-		log.Warn("Error retrieving domain constraints: "+err.Error())
+		log.Warn("Error retrieving domain constraints: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -475,7 +474,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	if inventoryUpdate.PropertyCustodian != nil {
 		propertyCustodianMinChars, propertyCustodianMaxChars, err := appState.GetPropertyCustodianConstraints()
 		if err != nil {
-			log.Warn("Error retrieving property custodian constraints: "+err.Error())
+			log.Warn("Error retrieving property custodian constraints: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -534,7 +533,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 	clientStatusMinChars, clientStatusMaxChars, err := appState.GetClientStatusConstraints()
 	if err != nil {
-		log.Warn("Error retrieving client status constraints: "+err.Error())
+		log.Warn("Error retrieving client status constraints: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -553,7 +552,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	// Checkout bool (optional)
 	checkoutDateMandatory, returnDateMandatory, checkoutBoolMandatory, err := appState.GetCheckoutConstraints()
 	if err != nil {
-		log.Warn("Error retrieving checkout constraints: "+err.Error())
+		log.Warn("Error retrieving checkout constraints: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -594,7 +593,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	if inventoryUpdate.Note != nil {
 		noteMinChars, noteMaxChars, err := appState.GetClientNoteConstraints()
 		if err != nil {
-			log.Warn("Error retrieving client note constraints: "+err.Error())
+			log.Warn("Error retrieving client note constraints: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -642,13 +641,13 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 	minImgFileSize, maxImgFileSize, maxImgFileCount, acceptedImageExtensionsAndMimeTypes, err := appState.GetFileUploadImageConstraints()
 	if err != nil {
-		log.Warn("Error getting file upload image constraints (InsertInventoryUpdateForm): "+err.Error())
+		log.Warn("Error getting file upload image constraints (InsertInventoryUpdateForm): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	minVideoFileSize, maxVideoFileSize, maxVideoFileCount, acceptedVideoExtensionsAndMimeTypes, err := appState.GetFileUploadVideoConstraints()
 	if err != nil {
-		log.Warn("Error getting file upload video constraints (InsertInventoryUpdateForm): "+err.Error())
+		log.Warn("Error getting file upload video constraints (InsertInventoryUpdateForm): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -665,7 +664,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		// Open uploaded file
 		file, err := fileHeader.Open()
 		if err != nil {
-			log.Warn("Failed to open uploaded file '"+fileHeader.Filename+"' (InsertInventoryUpdateForm): "+err.Error())
+			log.Warn("Failed to open uploaded file '" + fileHeader.Filename + "' (InsertInventoryUpdateForm): " + err.Error())
 			continue
 		}
 
@@ -674,11 +673,11 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		file.Close()
 		if err != nil {
 			if maxBytesErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
-				log.Warn("Uploaded file '"+fileHeader.Filename+"' size exceeds maximum allowed (InsertInventoryUpdateForm): "+maxBytesErr.Error())
+				log.Warn("Uploaded file '" + fileHeader.Filename + "' size exceeds maximum allowed (InsertInventoryUpdateForm): " + maxBytesErr.Error())
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
-			log.Warn("Failed to read uploaded file '"+fileHeader.Filename+"' (InsertInventoryUpdateForm): "+err.Error())
+			log.Warn("Failed to read uploaded file '" + fileHeader.Filename + "' (InsertInventoryUpdateForm): " + err.Error())
 			continue
 		}
 
@@ -689,7 +688,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		// MIME type detection
 		mimeType := http.DetectContentType(fileBytes)
 		if mimeType == "application/octet-stream" {
-			log.Warn("Unknown MIME type for file '"+fileHeader.Filename+"' (InsertInventoryUpdateForm)")
+			log.Warn("Unknown MIME type for file '" + fileHeader.Filename + "' (InsertInventoryUpdateForm)")
 			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)
 			return
 		}
@@ -710,17 +709,17 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 		if acceptedImageExtensionsAndMimeTypes[ext] == mimeType { // Image file processing
 			if totalImageFileCount >= maxImgFileCount {
-				log.Warn("Number of uploaded image files exceeds maximum allowed (InsertInventoryUpdateForm): "+strconv.Itoa(totalImageFileCount))
+				log.Warn("Number of uploaded image files exceeds maximum allowed (InsertInventoryUpdateForm): " + strconv.Itoa(totalImageFileCount))
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
 			if fileSize > maxImgFileSize {
-				log.Warn("Uploaded image file '"+fileHeader.Filename+"' too large (InsertInventoryUpdateForm) ("+strconv.FormatInt(int64(fileSize), 10)+" bytes)")
+				log.Warn("Uploaded image file '" + fileHeader.Filename + "' too large (InsertInventoryUpdateForm) (" + strconv.FormatInt(int64(fileSize), 10) + " bytes)")
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
 			if fileSize < minImgFileSize {
-				log.Warn("Uploaded image file too small (InsertInventoryUpdateForm): "+fileHeader.Filename+" ("+strconv.FormatInt(int64(fileSize), 10)+" bytes)")
+				log.Warn("Uploaded image file too small (InsertInventoryUpdateForm): " + fileHeader.Filename + " (" + strconv.FormatInt(int64(fileSize), 10) + " bytes)")
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
@@ -730,24 +729,24 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			// Rewind and decode image to get image.Image
 			_, err = imageReader.Seek(0, io.SeekStart)
 			if err != nil {
-				log.Error("Failed to seek to start of uploaded image '"+fileHeader.Filename+"' (InsertInventoryUpdateForm): "+err.Error())
+				log.Error("Failed to seek to start of uploaded image '" + fileHeader.Filename + "' (InsertInventoryUpdateForm): " + err.Error())
 				continue
 			}
 			decodedImage, _, err := image.Decode(imageReader)
 			if err != nil {
-				log.Error("Failed to decode thumbnail in InsertInventoryUpdateForm: "+err.Error()+" ("+fileHeader.Filename+")")
+				log.Error("Failed to decode thumbnail in InsertInventoryUpdateForm: " + err.Error() + " (" + fileHeader.Filename + ")")
 				continue
 			}
 
 			// Rewind and decode image to get image config
 			_, err = imageReader.Seek(0, io.SeekStart)
 			if err != nil {
-				log.Error("Failed to seek to start of uploaded image '"+fileHeader.Filename+"' (InsertInventoryUpdateForm): "+err.Error())
+				log.Error("Failed to seek to start of uploaded image '" + fileHeader.Filename + "' (InsertInventoryUpdateForm): " + err.Error())
 				continue
 			}
 			decodedImageConfig, _, err := image.DecodeConfig(imageReader)
 			if err != nil {
-				log.Error("Failed to decode uploaded image config (InsertInventoryUpdateForm): "+err.Error()+" ("+fileHeader.Filename+")")
+				log.Error("Failed to decode uploaded image config (InsertInventoryUpdateForm): " + err.Error() + " (" + fileHeader.Filename + ")")
 				continue
 			}
 			resX := int64(decodedImageConfig.Width)
@@ -760,12 +759,12 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			fullThumbnailPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", *inventoryUpdate.Tagnumber), strippedFileName+"-thumbnail.jpeg")
 			thumbnailFile, err := os.Create(fullThumbnailPath)
 			if err != nil {
-				log.Error("Failed to create thumbnail file (InsertInventoryUpdateForm): "+err.Error()+" ("+fileHeader.Filename+")")
+				log.Error("Failed to create thumbnail file (InsertInventoryUpdateForm): " + err.Error() + " (" + fileHeader.Filename + ")")
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			if err := jpeg.Encode(thumbnailFile, decodedImage, &jpeg.Options{Quality: 50}); err != nil {
-				log.Error("Failed to encode thumbnail image (InsertInventoryUpdateForm): "+err.Error()+" ("+fileHeader.Filename+")")
+				log.Error("Failed to encode thumbnail image (InsertInventoryUpdateForm): " + err.Error() + " (" + fileHeader.Filename + ")")
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
@@ -775,24 +774,24 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			totalImageFileCount++
 		} else if acceptedVideoExtensionsAndMimeTypes[ext] == mimeType { // Video file processing
 			if totalVideoFileCount >= maxVideoFileCount {
-				log.Warn("Number of uploaded video files exceeds maximum allowed (InsertInventoryUpdateForm): "+strconv.Itoa(totalVideoFileCount))
+				log.Warn("Number of uploaded video files exceeds maximum allowed (InsertInventoryUpdateForm): " + strconv.Itoa(totalVideoFileCount))
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
 			if fileSize > maxVideoFileSize {
-				log.Warn("Uploaded video file too large (InsertInventoryUpdateForm) ("+strconv.FormatInt(int64(fileSize), 10)+" bytes)")
+				log.Warn("Uploaded video file too large (InsertInventoryUpdateForm) (" + strconv.FormatInt(int64(fileSize), 10) + " bytes)")
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
 			if fileSize < minVideoFileSize {
-				log.Warn("Uploaded video file too small (InsertInventoryUpdateForm): "+fileHeader.Filename+" ("+strconv.FormatInt(int64(fileSize), 10)+" bytes)")
+				log.Warn("Uploaded video file too small (InsertInventoryUpdateForm): " + fileHeader.Filename + " (" + strconv.FormatInt(int64(fileSize), 10) + " bytes)")
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
 			totalVideoFileCount++
 			totalVideoUploadSize += fileSize
 		} else {
-			log.Warn("Unsupported MIME type for '"+fileHeader.Filename+"' (InsertInventoryUpdateForm): MIME Type: "+mimeType)
+			log.Warn("Unsupported MIME type for '" + fileHeader.Filename + "' (InsertInventoryUpdateForm): MIME Type: " + mimeType)
 			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)
 			// totalInvalidFileCount++
 			// totalInvalidUploadSize += fileSize
@@ -802,7 +801,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		// Compute SHA256 hash of file
 		fileHash := crypto.SHA256.New()
 		if _, err := fileHash.Write(fileBytes); err != nil {
-			log.Error("Failed to compute hash of uploaded file (InsertInventoryUpdateForm): "+err.Error()+" ("+fileHeader.Filename+")")
+			log.Error("Failed to compute hash of uploaded file (InsertInventoryUpdateForm): " + err.Error() + " (" + fileHeader.Filename + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -813,21 +812,21 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		// Create directories if not existing
 		imageDirectoryPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", *inventoryUpdate.Tagnumber))
 		if err := os.MkdirAll(imageDirectoryPath, 0755); err != nil {
-			log.Error("Failed to create directories for uploaded file (InsertInventoryUpdateForm): "+err.Error())
+			log.Error("Failed to create directories for uploaded file (InsertInventoryUpdateForm): " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		// Set file/directory permissions
 		if err := os.Chmod(imageDirectoryPath, 0755); err != nil {
-			log.Error("Failed to set directory permissions: "+err.Error()+" ("+fileHeader.Filename+")")
+			log.Error("Failed to set directory permissions: " + err.Error() + " (" + fileHeader.Filename + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		fullFilePath := filepath.Join(imageDirectoryPath, fileName)
 		if err := os.WriteFile(fullFilePath, fileBytes, 0644); err != nil {
-			log.Error("Failed to save uploaded file (InsertInventoryUpdateForm): "+err.Error()+" ("+fileHeader.Filename+")")
+			log.Error("Failed to save uploaded file (InsertInventoryUpdateForm): " + err.Error() + " (" + fileHeader.Filename + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -844,7 +843,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		*manifest.PrimaryImage = false
 
 		if err := updateRepo.UpdateClientImages(ctx, transactionUUID, &manifest); err != nil {
-			log.Error("Failed to update inventory image data: "+err.Error()+" ("+fileHeader.Filename+")")
+			log.Error("Failed to update inventory image data: " + err.Error() + " (" + fileHeader.Filename + ")")
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -859,7 +858,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 	// Update db
 	if err := updateRepo.InsertInventoryUpdateForm(ctx, transactionUUID, &inventoryUpdate); err != nil {
-		log.Error("Failed to update inventory data: "+err.Error())
+		log.Error("Failed to update inventory data: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -885,7 +884,7 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 		Tagnumber int64  `json:"tagnumber"`
 	}
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-		log.Error("Cannot decode TogglePinImage JSON: "+err.Error())
+		log.Error("Cannot decode TogglePinImage JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -916,7 +915,7 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err := updateRepo.TogglePinImage(ctx, &tagnumber, &uuid); err != nil {
-		log.Error("Failed to toggle pin image: "+err.Error())
+		log.Error("Failed to toggle pin image: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -928,7 +927,7 @@ func SetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx)
 	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving URL queries from context for SetClientBatteryHealth: "+err.Error())
+		log.Warn("Error retrieving URL queries from context for SetClientBatteryHealth: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -948,7 +947,7 @@ func SetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-		log.Warn("Cannot decode SetClientBatteryHealth JSON: "+err.Error())
+		log.Warn("Cannot decode SetClientBatteryHealth JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -964,7 +963,7 @@ func SetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err = updateRepo.SetClientBatteryHealth(ctx, &uuid, &body.BatteryHealth); err != nil {
-		log.Error("Failed to set client battery health: "+err.Error())
+		log.Error("Failed to set client battery health: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -983,14 +982,14 @@ func SetAllJobs(w http.ResponseWriter, req *http.Request) {
 
 	clientBody, err := io.ReadAll(req.Body)
 	if err != nil {
-		log.Warn("Cannot read request body for SetAllJobs: "+err.Error())
+		log.Warn("Cannot read request body for SetAllJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	var clientJson database.AllJobs
 	if err := json.Unmarshal(clientBody, &clientJson); err != nil {
-		log.Warn("Cannot decode SetAllJobs JSON: "+err.Error())
+		log.Warn("Cannot decode SetAllJobs JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -1002,7 +1001,7 @@ func SetAllJobs(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if err = updateRepo.SetAllOnlineClientJobs(ctx, &clientJson); err != nil {
-		log.Error("Failed to set all jobs: "+err.Error())
+		log.Error("Failed to set all jobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
