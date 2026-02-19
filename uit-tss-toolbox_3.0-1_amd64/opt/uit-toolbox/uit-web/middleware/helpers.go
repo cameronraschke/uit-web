@@ -21,7 +21,6 @@ import (
 	"unicode/utf8"
 
 	config "uit-toolbox/config"
-	"uit-toolbox/logger"
 )
 
 type ctxClientIPKey struct{}
@@ -263,16 +262,15 @@ func GetRequestUUIDFromContext(ctx context.Context) (uuid string, err error) {
 	return uuid, nil
 }
 
-func withLogger(ctx context.Context, logger slog.Logger) (context.Context, error) {
-	if logger == (slog.Logger{}) {
+func withLogger(ctx context.Context, logger *slog.Logger) (context.Context, error) {
+	if logger == nil {
 		return ctx, errors.New("nil logger")
 	}
 	return context.WithValue(ctx, loggerKey, logger), nil
 }
 
-func GetLoggerFromContext(ctx context.Context) logger.Logger {
-	var log logger.Logger
-	log, ok := ctx.Value(loggerKey).(logger.Logger)
+func GetLoggerFromContext(ctx context.Context) *slog.Logger {
+	log, ok := ctx.Value(loggerKey).(*slog.Logger)
 	if !ok {
 		log = config.GetLogger()
 	}

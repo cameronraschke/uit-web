@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"runtime"
 	"strconv"
 	"sync"
 	"time"
 	config "uit-toolbox/config"
-	"uit-toolbox/logger"
 )
 
 func backgroundProcesses(ctx context.Context, errChan chan error) {
@@ -44,7 +44,7 @@ func backgroundProcesses(ctx context.Context, errChan chan error) {
 	log.Info("Background processes stopped")
 }
 
-func startAuthMapCleanup(ctx context.Context, log logger.Logger, interval time.Duration) {
+func startAuthMapCleanup(ctx context.Context, log *slog.Logger, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
@@ -63,7 +63,7 @@ func startAuthMapCleanup(ctx context.Context, log logger.Logger, interval time.D
 	}
 }
 
-func startIPBlocklistCleanup(ctx context.Context, log logger.Logger, interval time.Duration) {
+func startIPBlocklistCleanup(ctx context.Context, log *slog.Logger, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
@@ -78,7 +78,7 @@ func startIPBlocklistCleanup(ctx context.Context, log logger.Logger, interval ti
 	}
 }
 
-func startIPLimiterCleanup(ctx context.Context, log logger.Logger, interval time.Duration) {
+func startIPLimiterCleanup(ctx context.Context, log *slog.Logger, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
@@ -93,7 +93,7 @@ func startIPLimiterCleanup(ctx context.Context, log logger.Logger, interval time
 	}
 }
 
-func startMemoryMonitor(ctx context.Context, log logger.Logger, maxBytes uint64, interval time.Duration, errChan chan error) {
+func startMemoryMonitor(ctx context.Context, log *slog.Logger, maxBytes uint64, interval time.Duration, errChan chan error) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 

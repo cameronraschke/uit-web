@@ -120,7 +120,7 @@ func main() {
 				select {
 				case errChan <- fmt.Errorf("background process panic: %v", recoveryErr):
 				default:
-					log.Warning("Error channel full, cannot send panic error (func main - backgroundProcesses)")
+					log.Warn("Error channel full, cannot send panic error (func main - backgroundProcesses)")
 				}
 			}
 		}()

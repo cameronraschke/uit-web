@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -129,6 +130,46 @@ type AppState struct {
 var (
 	appStateInstance atomic.Pointer[AppState]
 )
+
+type levelRangeHandler struct {
+	handler  slog.Handler
+	minLevel slog.Level
+	maxLevel slog.Level
+}
+
+func newLevelRangeHandler(handler slog.Handler, minLevel slog.Level, maxLevel slog.Level) slog.Handler {
+	return &levelRangeHandler{handler: handler, minLevel: minLevel, maxLevel: maxLevel}
+}
+
+func (handler *levelRangeHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	if level < handler.minLevel || level > handler.maxLevel {
+		return false
+	}
+	return handler.handler.Enabled(ctx, level)
+}
+
+func (handler *levelRangeHandler) Handle(ctx context.Context, record slog.Record) error {
+	if record.Level < handler.minLevel || record.Level > handler.maxLevel {
+		return nil
+	}
+	return handler.handler.Handle(ctx, record)
+}
+
+func (handler *levelRangeHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &levelRangeHandler{
+		handler:  handler.handler.WithAttrs(attrs),
+		minLevel: handler.minLevel,
+		maxLevel: handler.maxLevel,
+	}
+}
+
+func (handler *levelRangeHandler) WithGroup(name string) slog.Handler {
+	return &levelRangeHandler{
+		handler:  handler.handler.WithGroup(name),
+		minLevel: handler.minLevel,
+		maxLevel: handler.maxLevel,
+	}
+}
 
 func InitConfig() (*AppConfiguration, error) {
 	var appConfig AppConfiguration
@@ -324,8 +365,28 @@ func InitApp() (*AppState, error) {
 	// Set logger to nil initially
 	appState.appLogger.Store(nil)
 
-	th := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
-	logger := slog.NewMultiHandler(th)
+	stdoutTextHandler := newLevelRangeHandler(
+		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
+		slog.LevelDebug,
+		slog.LevelInfo,
+	)
+	stderrTextHandler := newLevelRangeHandler(
+		slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}),
+		slog.LevelWarn,
+		slog.LevelError,
+	)
+	jsonLogFile, err := os.OpenFile("/var/log/uit-web/"+time.Now().Format("2006-01-02_15-04-05")+".json.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o0640)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open JSON log file: %w", err)
+	}
+	jsonFileHandler := newLevelRangeHandler(
+		slog.NewJSONHandler(jsonLogFile, &slog.HandlerOptions{Level: slog.LevelDebug}),
+		slog.LevelInfo,
+		slog.LevelError,
+	)
+
+	multiHandler := slog.NewMultiHandler(stdoutTextHandler, stderrTextHandler, jsonFileHandler)
+	logger := slog.New(multiHandler)
 	slog.SetDefault(logger)
 	appState.appLogger.Store(logger)
 

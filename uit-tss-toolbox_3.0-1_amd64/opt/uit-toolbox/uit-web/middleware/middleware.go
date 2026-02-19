@@ -56,17 +56,14 @@ func (chain MiddlewareChain) ThenFunc(finalHandlerFunc http.HandlerFunc) http.Ha
 
 func StoreLoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		logger := config.GetLogger()
-		// httpLogger := logger.
-		logAttrs := []slog.Attr{slog.String("method", req.Method)}
-		logAttrs = append(logAttrs, slog.String("url", req.URL.String()))
-		logAttrs = append(logAttrs, slog.String("remote_addr", req.RemoteAddr))
-
-		if req.Method == "POST" {
-			logAttrs = append(logAttrs, slog.Int("content-length", int(req.ContentLength)))
-		}
-		logger.LogAttrs(req.Context(), slog.LevelInfo, "Received HTTP request", logAttrs...)
-		ctx, err := withLogger(req.Context(), httpLogger)
+		justIpAddr, _, _ := net.SplitHostPort(req.RemoteAddr)
+		baseLogger := config.GetLogger()
+		requestLogger := baseLogger.WithGroup("request").With(
+			slog.String("method", req.Method),
+			slog.String("url", req.URL.String()),
+			slog.String("remote_addr", justIpAddr),
+		)
+		ctx, err := withLogger(req.Context(), requestLogger)
 		if err != nil {
 			fmt.Println("Error storing logger in context: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
@@ -82,17 +79,10 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 			if err := recover(); err != nil {
 				log := GetLoggerFromContext(req.Context())
 				if log == nil {
-					fmt.Println("Error getting logger from context in panic recovery middleware, attempting to use global logger")
-					log := config.GetLogger()
-					if log == nil {
-						fmt.Println("Error getting global logger in panic recovery middleware: logger is nil")
-						WriteJsonError(w, http.StatusInternalServerError)
-						return
-					}
+					fmt.Fprintln(os.Stderr, "Error getting logger from context in panic recovery middleware, attempting to use global logger")
 				}
 
 				log.Error(fmt.Sprintf("Panic recovered: %v\n%s", err, string(debug.Stack())))
-				log.HTTPError(req, "Request panicked")
 
 				WriteJsonError(w, http.StatusInternalServerError)
 			}
@@ -105,24 +95,24 @@ func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log := GetLoggerFromContext(req.Context())
 		if strings.TrimSpace(req.Header.Get("Content-Length")) == "" && (req.Method == http.MethodPost || req.Method == http.MethodPut) {
-			log.HTTPWarning(req, "Request content length is missing")
+			log.Info("Request content length is missing")
 			WriteJsonError(w, http.StatusLengthRequired)
 			return
 		}
 		appState, err := config.GetAppState()
 		if err != nil {
-			log.HTTPError(req, "Error getting app state (LimitRequestSizeMiddleware): "+err.Error())
+			log.Error("Error getting app state (LimitRequestSizeMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		_, _, maxSize, err := appState.GetFileUploadDefaultConstraints()
 		if err != nil {
-			log.HTTPError(req, "Error getting file upload constraints from app state (LimitRequestSizeMiddleware): "+err.Error())
+			log.Error("Error getting file upload constraints from app state (LimitRequestSizeMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		if req.ContentLength > maxSize {
-			log.HTTPWarning(req, "Request content length exceeds limit: "+fmt.Sprintf("%.2fMB", float64(req.ContentLength)/1e6)+" > "+fmt.Sprintf("%.2fMB", float64(maxSize)/1e6))
+			log.Warn("Request content length exceeds limit: "+fmt.Sprintf("%.2fMB", float64(req.ContentLength)/1e6)+" > "+fmt.Sprintf("%.2fMB", float64(maxSize)/1e6))
 			WriteJsonError(w, http.StatusRequestEntityTooLarge)
 			return
 		}
@@ -136,24 +126,24 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 		log := GetLoggerFromContext(req.Context())
 		ipStr, port, err := net.SplitHostPort(req.RemoteAddr)
 		if err != nil {
-			log.HTTPError(req, "Error parsing client IP from RemoteAddr: "+err.Error())
+			log.Error("Error parsing client IP from RemoteAddr: "+err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if strings.TrimSpace(port) == "" {
-			log.HTTPError(req, "Error parsing client IP from RemoteAddr: missing port")
+			log.Error("Error parsing client IP from RemoteAddr: missing port")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		ip, ipValid, _, _, err := checkValidIP(ipStr)
 		if err != nil {
-			log.HTTPWarning(req, "Error validating IP address for use in context: "+err.Error())
+			log.Warn("Error validating IP address for use in context: "+err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if !ipValid {
-			log.HTTPWarning(req, "Cannot store invalid IP address in context: "+ip.String())
+			log.Warn("Cannot store invalid IP address in context: "+ip.String())
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -161,7 +151,7 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 		// withClientIP parses and casts the IP address to ipnet.Addr type
 		ctx, err := withClientIP(req.Context(), ip)
 		if err != nil {
-			log.HTTPError(req, "Error storing IP address in context: "+err.Error())
+			log.Error("Error storing IP address in context: "+err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -174,12 +164,12 @@ func CheckIPBlockedMiddleware(next http.Handler) http.Handler {
 		log := GetLoggerFromContext(req.Context())
 		requestIP, err := GetRequestIPFromContext(req.Context())
 		if err != nil {
-			log.HTTPWarning(req, "Error retrieving IP address from context in CheckIPBlockedMiddleware: "+err.Error())
+			log.Warn("Error retrieving IP address from context in CheckIPBlockedMiddleware: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		if config.IsIPBlocked(requestIP) {
-			log.HTTPWarning(req, "Blocked client IP address attempted connection")
+			log.Warn("Blocked client IP address attempted connection")
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
@@ -192,13 +182,13 @@ func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 		log := GetLoggerFromContext(req.Context())
 		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
 		if err != nil {
-			log.HTTPWarning(req, "Error getting endpoint config for WebEndpointConfigMiddleware: "+err.Error())
+			log.Warn("Error getting endpoint config for WebEndpointConfigMiddleware: "+err.Error())
 			WriteJsonError(w, http.StatusNotFound)
 			return
 		}
 		ctx, err := withWebEndpointConfig(req.Context(), endpointConfig)
 		if err != nil {
-			log.HTTPError(req, "Error storing endpoint config for WebEndpointConfigMiddleware in context: "+err.Error())
+			log.Error("Error storing endpoint config for WebEndpointConfigMiddleware in context: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -211,7 +201,7 @@ func TLSMiddleware(next http.Handler) http.Handler {
 		log := GetLoggerFromContext(req.Context())
 		endpointConfig, err := GetWebEndpointConfigFromContext(req.Context())
 		if err != nil {
-			log.HTTPWarning(req, "Error getting endpoint config (TLSMiddleware): "+err.Error())
+			log.Warn("Error getting endpoint config (TLSMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -221,13 +211,13 @@ func TLSMiddleware(next http.Handler) http.Handler {
 		}
 
 		if req.TLS == nil || !req.TLS.HandshakeComplete {
-			log.HTTPWarning(req, "TLS handshake failed for client, missing or incomplete TLS connection state")
+			log.Warn("TLS handshake failed for client, missing or incomplete TLS connection state")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		if req.TLS.Version < tls.VersionTLS13 {
-			log.HTTPWarning(req, "Rejected connection with weak TLS version")
+			log.Warn("Rejected connection with weak TLS version")
 			WriteJsonError(w, http.StatusUpgradeRequired)
 			return
 		}
@@ -243,7 +233,7 @@ func TLSMiddleware(next http.Handler) http.Handler {
 			tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256:   true,
 		}
 		if weakCiphers[req.TLS.CipherSuite] {
-			log.HTTPWarning(req, "Rejected connection with weak cipher suite")
+			log.Warn("Rejected connection with weak cipher suite")
 			WriteJsonError(w, http.StatusUpgradeRequired)
 			return
 		}
@@ -257,14 +247,14 @@ func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
 		log := GetLoggerFromContext(req.Context())
 		endpointConfig, err := GetWebEndpointConfigFromContext(req.Context())
 		if err != nil {
-			log.HTTPWarning(req, "Error getting endpoint config (CheckHttpVersionMiddleware): "+err.Error())
+			log.Warn("Error getting endpoint config (CheckHttpVersionMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		endpointConfigMajorVersion, _, ok := http.ParseHTTPVersion(endpointConfig.HTTPVersion)
 		if !ok {
-			log.HTTPWarning(req, "Invalid HTTP version in endpoint config (CheckHttpVersionMiddleware): "+endpointConfig.HTTPVersion)
+			log.Warn("Invalid HTTP version in endpoint config (CheckHttpVersionMiddleware): "+endpointConfig.HTTPVersion)
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -277,7 +267,7 @@ func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		log.HTTPWarning(req, "Unsupported HTTP version (CheckHttpVersionMiddleware): HTTP/"+strconv.Itoa(req.ProtoMajor)+"."+strconv.Itoa(req.ProtoMinor)+" < "+endpointConfig.HTTPVersion)
+		log.Warn("Unsupported HTTP version (CheckHttpVersionMiddleware): HTTP/"+strconv.Itoa(req.ProtoMajor)+"."+strconv.Itoa(req.ProtoMinor)+" < "+endpointConfig.HTTPVersion)
 		w.Header().Set("Upgrade", "HTTP/2")
 		WriteJsonError(w, http.StatusUpgradeRequired)
 	})
@@ -288,24 +278,24 @@ func AllowIPRangeMiddleware(trafficSource string) func(http.Handler) http.Handle
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			log := GetLoggerFromContext(req.Context())
 			if strings.TrimSpace(trafficSource) == "" {
-				log.HTTPWarning(req, "No traffic source specified for AllowIPRangeMiddleware")
+				log.Warn("No traffic source specified for AllowIPRangeMiddleware")
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			requestIP, err := GetRequestIPFromContext(req.Context())
 			if err != nil {
-				log.HTTPWarning(req, "Error retrieving IP address from context in AllowIPRangeMiddleware")
+				log.Warn("Error retrieving IP address from context in AllowIPRangeMiddleware")
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			allowed, err := config.IsIPAllowed(trafficSource, requestIP)
 			if err != nil {
-				log.HTTPError(req, "Error checking if IP is allowed: "+err.Error())
+				log.Error("Error checking if IP is allowed: "+err.Error())
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			if !allowed {
-				log.HTTPWarning(req, "IP address not in allowed range: "+requestIP.String())
+				log.Warn("IP address not in allowed range: "+requestIP.String())
 				WriteJsonError(w, http.StatusForbidden)
 				return
 			}
@@ -320,7 +310,7 @@ func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
 			log := GetLoggerFromContext(req.Context())
 			requestIP, err := GetRequestIPFromContext(req.Context())
 			if err != nil {
-				log.HTTPWarning(req, "Error retrieving IP address from context in RateLimitMiddleware")
+				log.Warn("Error retrieving IP address from context in RateLimitMiddleware")
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
@@ -328,7 +318,7 @@ func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
 			// IsClientRateLimited assigns a rate limiter to the client IP if not already present
 			limited, retryAfter := config.IsClientRateLimited(rateType, requestIP)
 			if limited {
-				log.HTTPDebug(req, "Client is rate limited: (retry after "+retryAfter.String()+")")
+				log.Debug("Client is rate limited: (retry after "+retryAfter.String()+")")
 				WriteJsonError(w, http.StatusTooManyRequests)
 				return
 			}
@@ -343,7 +333,7 @@ func APITimeoutMiddleware(next http.Handler) http.Handler {
 		log := GetLoggerFromContext(req.Context())
 		apiTimeout, err := config.GetRequestTimeout("api")
 		if err != nil {
-			log.HTTPError(req, "Failed to get API timeout from config: "+err.Error())
+			log.Error("Failed to get API timeout from config: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -358,7 +348,7 @@ func FileServerTimeoutMiddleware(next http.Handler) http.Handler {
 		log := GetLoggerFromContext(req.Context())
 		fileTimeout, err := config.GetRequestTimeout("file")
 		if err != nil {
-			log.HTTPError(req, "Failed to get file server timeout from config: "+err.Error())
+			log.Error("Failed to get file server timeout from config: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -381,20 +371,20 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 			http.MethodDelete:  true,
 		}
 		if !validMethods[req.Method] {
-			log.HTTPWarning(req, "Invalid request method (HTTPMethodMiddleware): "+req.Method)
+			log.Warn("Invalid request method (HTTPMethodMiddleware): "+req.Method)
 			WriteJsonError(w, http.StatusMethodNotAllowed)
 			return
 		}
 
 		endpointConfig, err := GetWebEndpointConfigFromContext(req.Context())
 		if err != nil {
-			log.HTTPWarning(req, "Error getting endpoint config (HTTPMethodMiddleware): "+err.Error())
+			log.Warn("Error getting endpoint config (HTTPMethodMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
 		if !slices.Contains(endpointConfig.AllowedMethods, req.Method) {
-			log.HTTPInfo(req, "Method is not allowed for endpoint (HTTPMethodMiddleware): "+req.Method)
+			log.Info("Method is not allowed for endpoint (HTTPMethodMiddleware): "+req.Method)
 			WriteJsonError(w, http.StatusMethodNotAllowed)
 			return
 		}
@@ -409,14 +399,14 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 
 		// URL length
 		if len(req.URL.RequestURI()) > 2048 {
-			log.HTTPWarning(req, "Request URL length exceeds character limit: "+fmt.Sprintf("%d", len(req.URL.RequestURI()))+"/2048")
+			log.Warn("Request URL length exceeds character limit: "+fmt.Sprintf("%d", len(req.URL.RequestURI()))+"/2048")
 			WriteJsonError(w, http.StatusRequestURITooLong)
 			return
 		}
 
 		// URL length
 		if len(req.URL.RequestURI()) > 2048 {
-			log.HTTPWarning(req, "Request URL length exceeds character limit: "+fmt.Sprintf("%d", len(req.URL.RequestURI()))+"/2048")
+			log.Warn("Request URL length exceeds character limit: "+fmt.Sprintf("%d", len(req.URL.RequestURI()))+"/2048")
 			WriteJsonError(w, http.StatusRequestURITooLong)
 			return
 		}
@@ -424,26 +414,26 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		// URL path
 		cleanPath, err := validateAndCleanURLPath(req.URL.Path)
 		if err != nil {
-			log.HTTPWarning(req, "Invalid URL path (CheckValidURLMiddleware): "+err.Error())
+			log.Warn("Invalid URL path (CheckValidURLMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
 		// Validate query parameters (even if empty)
 		if err := validateQueryParams(req.URL.Query()); err != nil {
-			log.HTTPWarning(req, "Invalid URL query parameters (CheckValidURLMiddleware): "+err.Error())
+			log.Warn("Invalid URL query parameters (CheckValidURLMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		// Check RawQuery for null bytes and CRLF. req.URL.Query() and url.Parse() may be empty even if RawQuery is not.
 		if strings.Contains(req.URL.RawQuery, "\x00") {
-			log.HTTPWarning(req, "Null byte detected in raw query string (CheckValidURLMiddleware)")
+			log.Warn("Null byte detected in raw query string (CheckValidURLMiddleware)")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if strings.ContainsAny(req.URL.RawQuery, "\r\n") {
-			log.HTTPWarning(req, "CRLF characters detected in raw query string (CheckValidURLMiddleware)")
+			log.Warn("CRLF characters detected in raw query string (CheckValidURLMiddleware)")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -453,7 +443,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		// Store clean path in context (to be used later on)
 		ctx, err = withRequestPath(ctx, cleanPath)
 		if err != nil {
-			log.HTTPError(req, "Error storing path in context (CheckValidURLMiddleware): "+err.Error())
+			log.Error("Error storing path in context (CheckValidURLMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -462,7 +452,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 		queries := req.URL.Query()
 		ctx, err = withRequestQuery(ctx, &queries)
 		if err != nil {
-			log.HTTPError(req, "Error storing query in context (CheckValidURLMiddleware): "+err.Error())
+			log.Error("Error storing query in context (CheckValidURLMiddleware): "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -478,14 +468,14 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		for headerKey, headerValues := range req.Header {
 			// Check header key length
 			if len(headerKey) > 255 {
-				log.HTTPWarning(req, "Header key too long: "+fmt.Sprintf("%d", len(headerKey))+"/255 bytes")
+				log.Warn("Header key too long: "+fmt.Sprintf("%d", len(headerKey))+"/255 bytes")
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 
 			// Block disallowed characters in header keys
 			if strings.ContainsAny(headerKey, disallowedHeaderChars) {
-				log.HTTPWarning(req, "Disallowed characters in header key (CheckHeadersMiddleware)")
+				log.Warn("Disallowed characters in header key (CheckHeadersMiddleware)")
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
@@ -493,12 +483,12 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 			// Header values
 			for _, headerValue := range headerValues {
 				if strings.ContainsAny(headerValue, disallowedHeaderChars) {
-					log.HTTPWarning(req, "Disallowed characters in header value")
+					log.Warn("Disallowed characters in header value")
 					WriteJsonError(w, http.StatusBadRequest)
 					return
 				}
 				if len(headerValue) > 8192 {
-					log.HTTPWarning(req, "Header value too long for '"+headerKey+"' "+fmt.Sprintf("%.2f", float64(len(headerValue))/1024)+" KB")
+					log.Warn("Header value too long for '"+headerKey+"' "+fmt.Sprintf("%.2f", float64(len(headerValue))/1024)+" KB")
 					WriteJsonError(w, http.StatusBadRequest)
 					return
 				}
@@ -509,18 +499,18 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		// Host header (required)
 		host := req.Host
 		if strings.TrimSpace(host) == "" {
-			log.HTTPWarning(req, "Request is missing 'Host' header")
+			log.Warn("Request is missing 'Host' header")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if len(host) > 255 {
-			log.HTTPWarning(req, "Host header is too long: "+fmt.Sprintf("%d bytes", len(host)))
+			log.Warn("Host header is too long: "+fmt.Sprintf("%d bytes", len(host)))
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		// Block dangerous characters in Host header (already checked \x00\r\n above)
 		if strings.ContainsAny(host, " <>\"'") {
-			log.HTTPWarning(req, "Invalid characters in Host header")
+			log.Warn("Invalid characters in Host header")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -528,12 +518,12 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		// User-Agent header (required)
 		userAgent := strings.TrimSpace(req.Header.Get("User-Agent"))
 		if userAgent == "" {
-			log.HTTPWarning(req, "Request is missing 'User-Agent' header")
+			log.Warn("Request is missing 'User-Agent' header")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if len(userAgent) > 512 {
-			log.HTTPWarning(req, "User-Agent header is too long: "+fmt.Sprintf("%d bytes", len(userAgent)))
+			log.Warn("User-Agent header is too long: "+fmt.Sprintf("%d bytes", len(userAgent)))
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -541,18 +531,18 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		// Content-Type (required for POST/PUT)
 		contentType := strings.TrimSpace(req.Header.Get("Content-Type"))
 		if len(contentType) > 256 {
-			log.HTTPWarning(req, "Content-Type header is too long: "+fmt.Sprintf("%d bytes", len(contentType)))
+			log.Warn("Content-Type header is too long: "+fmt.Sprintf("%d bytes", len(contentType)))
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if req.Method == http.MethodPost || req.Method == http.MethodPut {
 			if contentType == "" {
-				log.HTTPWarning(req, "Missing Content-Type header for POST/PUT request")
+				log.Warn("Missing Content-Type header for POST/PUT request")
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 			if contentType != "application/x-www-form-urlencoded" && contentType != "application/json" && !strings.HasPrefix(contentType, "multipart/form-data") {
-				log.HTTPWarning(req, "Invalid Content-Type header: "+contentType)
+				log.Warn("Invalid Content-Type header: "+contentType)
 				WriteJsonError(w, http.StatusUnsupportedMediaType)
 				return
 			}
@@ -562,7 +552,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		// Cookie (optional, validate length if present)
 		cookieHeader := strings.TrimSpace(req.Header.Get("Cookie"))
 		if len(cookieHeader) > 4096 {
-			log.HTTPWarning(req, "Cookie header is too large: "+fmt.Sprintf("%.2f KB", float64(len(cookieHeader))/1024))
+			log.Warn("Cookie header is too large: "+fmt.Sprintf("%.2f KB", float64(len(cookieHeader))/1024))
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -571,13 +561,13 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		authorization := strings.TrimSpace(req.Header.Get("Authorization"))
 		if authorization != "" {
 			if len(authorization) > 8192 {
-				log.HTTPWarning(req, "Authorization header is too long: "+fmt.Sprintf("%.2f KB", float64(len(authorization))/1024))
+				log.Warn("Authorization header is too long: "+fmt.Sprintf("%.2f KB", float64(len(authorization))/1024))
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
 			// Must start with Bearer or Basic
 			if !strings.HasPrefix(authorization, "Bearer ") && !strings.HasPrefix(authorization, "Basic ") {
-				log.HTTPWarning(req, "Invalid Authorization format (missing Basic/Bearer prefix)")
+				log.Warn("Invalid Authorization format (missing Basic/Bearer prefix)")
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
@@ -585,7 +575,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 
 		// Connection header (disallowed, not allowed in HTTP/2)
 		if req.ProtoMajor == 2 && req.Header.Get("Connection") != "" {
-			log.HTTPWarning(req, "Connection header disallowed in HTTP/2 request")
+			log.Warn("Connection header disallowed in HTTP/2 request")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -593,7 +583,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		// Transfer-Encoding (optional, check for request smuggling)
 		transferEncoding := req.Header.Get("Transfer-Encoding")
 		if transferEncoding != "" && transferEncoding != "chunked" {
-			log.HTTPWarning(req, "Suspicious Transfer-Encoding header: '"+transferEncoding+"'")
+			log.Warn("Suspicious Transfer-Encoding header: '"+transferEncoding+"'")
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -601,7 +591,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		// Referer (optional, but validate length)
 		referer := strings.TrimSpace(req.Header.Get("Referer"))
 		if len(referer) > 2048 {
-			log.HTTPWarning(req, "Referer header is too long: "+fmt.Sprintf("%.2f KB", float64(len(referer))/1024))
+			log.Warn("Referer header is too long: "+fmt.Sprintf("%.2f KB", float64(len(referer))/1024))
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -609,19 +599,19 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 		// Origin (if using CORS, validate length)
 		origin := strings.TrimSpace(req.Header.Get("Origin"))
 		if len(origin) > 2048 {
-			log.HTTPWarning(req, "Origin header is too long: "+fmt.Sprintf("%.2f KB", float64(len(origin))/1024))
+			log.Warn("Origin header is too long: "+fmt.Sprintf("%.2f KB", float64(len(origin))/1024))
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
 		// Suspicious headers
 		if xForwardedFor := strings.TrimSpace(req.Header.Get("X-Forwarded-For")); xForwardedFor != "" {
-			log.HTTPWarning(req, "X-Forwarded-For header present (possible proxy bypass): "+xForwardedFor)
+			log.Warn("X-Forwarded-For header present (possible proxy bypass): "+xForwardedFor)
 			// Log and don't return
 		}
 
 		if xRealIP := strings.TrimSpace(req.Header.Get("X-Real-IP")); xRealIP != "" {
-			log.HTTPWarning(req, "X-Real-IP header present (possible IP spoofing): "+xRealIP)
+			log.Warn("X-Real-IP header present (possible IP spoofing): "+xRealIP)
 			// Log and don't return
 		}
 
@@ -646,7 +636,7 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 		cors := http.NewCrossOriginProtection()
 		// cors.AddTrustedOrigin("https://" + httpsServerIP + ":1411")
 		if err := cors.Check(req); err != nil {
-			log.HTTPWarning(req, "Request blocked because it violates CORS policy: "+err.Error())
+			log.Warn("Request blocked because it violates CORS policy: "+err.Error())
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
@@ -722,7 +712,7 @@ func CheckForRedirectsMiddleware(next http.Handler) http.Handler {
 		log := GetLoggerFromContext(req.Context())
 		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
 		if err != nil {
-			log.HTTPWarning(req, "Error getting endpoint config in CheckForRedirectsMiddleware: "+err.Error())
+			log.Warn("Error getting endpoint config in CheckForRedirectsMiddleware: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -731,7 +721,7 @@ func CheckForRedirectsMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, req)
 			return
 		}
-		log.HTTPInfo(req, "Redirecting request to: "+redirectURL)
+		log.Info("Redirecting request to: "+redirectURL)
 		http.Redirect(w, req, redirectURL, http.StatusFound)
 	})
 }
@@ -742,33 +732,33 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 		log := GetLoggerFromContext(ctx)
 		pathRequested, err := GetRequestPathFromContext(ctx)
 		if err != nil {
-			log.HTTPError(req, "Error retrieving URL path from context in AllowedFilesMiddleware")
+			log.Error("Error retrieving URL path from context in AllowedFilesMiddleware")
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		fileRequested := filepath.Base(pathRequested)
 		endpointConfig, err := config.GetWebEndpointConfig(pathRequested)
 		if err != nil {
-			log.HTTPWarning(req, "Error getting endpoint config in AllowedFilesMiddleware "+err.Error())
+			log.Warn("Error getting endpoint config in AllowedFilesMiddleware "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		endpointFilePath, err := config.GetWebEndpointFilePath(endpointConfig)
 		if err != nil {
-			log.HTTPWarning(req, "No file path configured for endpoint in AllowedFilesMiddleware: "+err.Error())
+			log.Warn("No file path configured for endpoint in AllowedFilesMiddleware: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		endpointType, err := config.GetWebEndpointType(endpointConfig)
 		if err != nil || endpointType == "" {
-			log.HTTPWarning(req, "No valid endpoint config for URL in AllowedFilesMiddleware: "+pathRequested+" "+err.Error())
+			log.Warn("No valid endpoint config for URL in AllowedFilesMiddleware: "+pathRequested+" "+err.Error())
 			WriteJsonError(w, http.StatusNotFound)
 			return
 		}
 		if endpointType != "api" {
 			filePath, err := config.GetWebEndpointFilePath(endpointConfig)
 			if err != nil || strings.TrimSpace(filePath) == "" {
-				log.HTTPWarning(req, "No file path in context configured for AllowedFilesMiddleware: "+err.Error())
+				log.Warn("No file path in context configured for AllowedFilesMiddleware: "+err.Error())
 				WriteJsonError(w, http.StatusNotFound)
 				return
 			}
@@ -776,13 +766,13 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 
 		resolvedPath, err := filepath.EvalSymlinks(endpointFilePath)
 		if err != nil || resolvedPath != endpointFilePath {
-			log.HTTPError(req, "Error resolving symlink in AllowedFilesMiddleware: "+err.Error())
+			log.Error("Error resolving symlink in AllowedFilesMiddleware: "+err.Error())
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
 		if resolvedPath != endpointFilePath {
-			log.HTTPError(req, "Resolved path does not match full path in AllowedFilesMiddleware: "+resolvedPath+" -> "+endpointFilePath)
+			log.Error("Resolved path does not match full path in AllowedFilesMiddleware: "+resolvedPath+" -> "+endpointFilePath)
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
@@ -794,61 +784,61 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		if metadata == nil {
-			log.HTTPError(req, "Metadata is nil for file: "+endpointFilePath)
+			log.Error("Metadata is nil for file: "+endpointFilePath)
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		if metadata.Size() <= 0 {
-			log.HTTPWarning(req, "Attempt to access empty file in AllowedFilesMiddleware: "+fileRequested)
+			log.Warn("Attempt to access empty file in AllowedFilesMiddleware: "+fileRequested)
 			WriteJsonError(w, http.StatusNoContent)
 			return
 		}
 		if metadata.IsDir() {
-			log.HTTPWarning(req, "Attempt to access directory as file in AllowedFilesMiddleware: "+fileRequested)
+			log.Warn("Attempt to access directory as file in AllowedFilesMiddleware: "+fileRequested)
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
 		fileMode := metadata.Mode()
 		if fileMode&os.ModeSymlink != 0 {
-			log.HTTPWarning(req, "Attempt to access symbolic link in AllowedFilesMiddleware: "+fileRequested)
+			log.Warn("Attempt to access symbolic link in AllowedFilesMiddleware: "+fileRequested)
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 		if fileMode&os.ModeDevice != 0 {
-			log.HTTPWarning(req, "Attempt to access device file in AllowedFilesMiddleware: "+fileRequested)
+			log.Warn("Attempt to access device file in AllowedFilesMiddleware: "+fileRequested)
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 		if fileMode&os.ModeNamedPipe != 0 {
-			log.HTTPWarning(req, "Attempt to access named pipe in AllowedFilesMiddleware: "+fileRequested)
+			log.Warn("Attempt to access named pipe in AllowedFilesMiddleware: "+fileRequested)
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 		if fileMode&os.ModeSocket != 0 {
-			log.HTTPWarning(req, "Attempt to access socket file in AllowedFilesMiddleware: "+fileRequested)
+			log.Warn("Attempt to access socket file in AllowedFilesMiddleware: "+fileRequested)
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 		if fileMode&os.ModeCharDevice != 0 {
-			log.HTTPWarning(req, "Attempt to access character device file in AllowedFilesMiddleware: "+fileRequested)
+			log.Warn("Attempt to access character device file in AllowedFilesMiddleware: "+fileRequested)
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 		if fileMode&os.ModeIrregular != 0 {
-			log.HTTPWarning(req, "Attempt to access irregular file in AllowedFilesMiddleware: "+fileRequested)
+			log.Warn("Attempt to access irregular file in AllowedFilesMiddleware: "+fileRequested)
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 		if !fileMode.IsRegular() {
-			log.HTTPWarning(req, "Attempt to access non-regular file in AllowedFilesMiddleware: "+fileRequested)
+			log.Warn("Attempt to access non-regular file in AllowedFilesMiddleware: "+fileRequested)
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}
 
 		ctx, err = withRequestFile(ctx, resolvedPath)
 		if err != nil {
-			log.HTTPWarning(req, "Error storing file request in context: "+err.Error())
+			log.Warn("Error storing file request in context: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -862,13 +852,13 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 		log := GetLoggerFromContext(ctx)
 		requestIP, err := GetRequestIPFromContext(ctx)
 		if err != nil {
-			log.HTTPWarning(req, "Error retrieving IP address from context: "+err.Error())
+			log.Warn("Error retrieving IP address from context: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		requestPath, err := GetRequestPathFromContext(ctx)
 		if err != nil {
-			log.HTTPWarning(req, "Error retrieving URL from context: "+err.Error())
+			log.Warn("Error retrieving URL from context: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -880,13 +870,13 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 
 		if sessionErr != nil || basicErr != nil || bearerErr != nil {
 			if sessionErr != nil && sessionErr != http.ErrNoCookie {
-				log.HTTPWarning(req, "Error retrieving UIT auth cookies: "+sessionErr.Error())
+				log.Warn("Error retrieving UIT auth cookies: "+sessionErr.Error())
 			}
 
 			// IP authentication for LAN IPs
 			allowedIPs, err := config.GetAllowedLANIPs()
 			if err != nil {
-				log.HTTPError(req, "Error getting allowed LAN IPs: "+err.Error())
+				log.Error("Error getting allowed LAN IPs: "+err.Error())
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
@@ -896,7 +886,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 					return
 				}
 			}
-			log.HTTPInfo(req, "No auth cookies found in request: sessionID error: "+fmt.Sprintf("%v", sessionErr)+", basic cookie error: "+fmt.Sprintf("%v", basicErr)+", bearer cookie error: "+fmt.Sprintf("%v", bearerErr))
+			log.Info("No auth cookies found in request: sessionID error: "+fmt.Sprintf("%v", sessionErr)+", basic cookie error: "+fmt.Sprintf("%v", basicErr)+", bearer cookie error: "+fmt.Sprintf("%v", bearerErr))
 			// WriteJsonError(w, http.StatusUnauthorized)
 			http.Redirect(w, req, "/login", http.StatusSeeOther)
 			return
@@ -906,7 +896,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 
 		sessionValid, sessionExists, err := config.CheckAuthSessionExists(uitSessionIDCookie.Value, requestIP, uitBasicCookie.Value, uitBearerCookie.Value, uitCSRFCookie.Value)
 		if err != nil {
-			log.HTTPError(req, "Error validating auth session: "+err.Error())
+			log.Error("Error validating auth session: "+err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -920,15 +910,15 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 
 			sessionExtended, err := config.ExtendAuthSession(uitSessionIDCookie.Value)
 			if err != nil {
-				log.HTTPError(req, "Error extending auth session: "+err.Error())
+				log.Error("Error extending auth session: "+err.Error())
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			if sessionExtended {
-				log.HTTPDebug(req, "Auth session extended")
+				log.Debug("Auth session extended")
 				next.ServeHTTP(w, req)
 			} else {
-				log.HTTPDebug(req, "Auth session not found or expired when attempting to extend session")
+				log.Debug("Auth session not found or expired when attempting to extend session")
 			}
 		} else if sessionExists && strings.TrimSpace(requestPath) == "/logout" {
 			log.Debug("Logging out user and deleting auth session: " + requestIP.String())
@@ -938,7 +928,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			http.Redirect(w, req, "/login", http.StatusSeeOther)
 			return
 		} else {
-			log.HTTPInfo(req, "No valid authentication methods found for request")
+			log.Info("No valid authentication methods found for request")
 			// WriteJsonError(w, FormatHttpError("Unauthorized"), http.StatusUnauthorized)
 			http.Redirect(w, req, "/login", http.StatusSeeOther)
 			return
