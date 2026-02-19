@@ -356,13 +356,26 @@ func InitApp() (*AppState, error) {
 	// Set logger to nil initially
 	appState.appLogger.Store(nil)
 
+	removeTime := func(groups []string, a slog.Attr) slog.Attr {
+		if a.Key == slog.TimeKey && len(groups) == 0 {
+			return slog.Attr{}
+		}
+		return a
+	}
+
 	stdoutTextHandler := newLevelRangeHandler(
-		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		slog.LevelDebug,
+		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level:       slog.LevelInfo,
+			ReplaceAttr: removeTime,
+		}),
+		slog.LevelInfo,
 		slog.LevelInfo,
 	)
 	stderrTextHandler := newLevelRangeHandler(
-		slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelWarn}),
+		slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+			Level:       slog.LevelWarn,
+			ReplaceAttr: removeTime,
+		}),
 		slog.LevelWarn,
 		slog.LevelError,
 	)
@@ -371,7 +384,7 @@ func InitApp() (*AppState, error) {
 		return nil, fmt.Errorf("failed to open JSON log file: %w", err)
 	}
 	jsonFileHandler := newLevelRangeHandler(
-		slog.NewJSONHandler(jsonLogFile, &slog.HandlerOptions{Level: slog.LevelDebug}),
+		slog.NewJSONHandler(jsonLogFile, &slog.HandlerOptions{Level: slog.LevelInfo}),
 		slog.LevelInfo,
 		slog.LevelError,
 	)
@@ -383,15 +396,15 @@ func InitApp() (*AppState, error) {
 
 	// Populate allowed IPs
 	for _, wanIP := range appConfig.AllowedWANIPs {
-		appState.allowedWANIPs.Store(wanIP, true)
+		appState.allowedWANIPs.Store(&wanIP, true)
 	}
 
 	for _, lanIP := range appConfig.AllowedLANIPs {
-		appState.allowedLANIPs.Store(lanIP, true)
+		appState.allowedLANIPs.Store(&lanIP, true)
 	}
 
 	for _, allIP := range appConfig.AllAllowedIPs {
-		appState.allAllowedIPs.Store(allIP, true)
+		appState.allAllowedIPs.Store(&allIP, true)
 	}
 
 	// Generate server-side secret for HMAC
