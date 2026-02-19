@@ -137,7 +137,7 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ipPtr, _, _, err := convertAndCheckIPStr(&ipStr)
+		reqAddr, _, _, err := convertAndCheckIPStr(&ipStr)
 		if err != nil {
 			log.Warn("Cannot convert request IP: " + err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
@@ -145,7 +145,7 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 		}
 
 		// withClientIP parses and casts the IP address to netip.Addr
-		ctx, err := withClientIP(req.Context(), ipPtr)
+		ctx, err := withClientIP(req.Context(), reqAddr)
 		if err != nil {
 			log.Error("Cannot store request IP in context: " + err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
@@ -159,13 +159,13 @@ func CheckIPBlockedMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log := GetLoggerFromContext(req.Context())
 		log = log.With(slog.String("func", "CheckIPBlockedMiddleware"))
-		ipPtr, err := GetRequestIPFromContext(req.Context())
+		reqAddr, err := GetRequestIPFromContext(req.Context())
 		if err != nil {
 			log.Warn("Cannot retrieve request IP from context: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		if config.RequestIPBlocked(ipPtr) {
+		if config.RequestIPBlocked(reqAddr) {
 			log.Warn("Request received from blocked IP")
 			WriteJsonError(w, http.StatusForbidden)
 			return
@@ -295,20 +295,20 @@ func AllowIPRangeMiddleware(trafficSource string) func(http.Handler) http.Handle
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
-			ipPtr, err := GetRequestIPFromContext(req.Context())
+			reqAddr, err := GetRequestIPFromContext(req.Context())
 			if err != nil {
 				log.Warn("Cannot retrieve IP from context: " + err.Error())
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
-			allowed, err := config.IsIPAllowed(trafficSource, ipPtr)
+			allowed, err := config.IsIPAllowed(trafficSource, reqAddr)
 			if err != nil {
 				log.Error("Error encountered while checking if IP is allowed: " + err.Error())
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			if !allowed {
-				log.Warn("IP address not in allowed range: " + ipPtr.String())
+				log.Warn("IP address not in allowed range: " + reqAddr.String())
 				WriteJsonError(w, http.StatusForbidden)
 				return
 			}
@@ -322,7 +322,7 @@ func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			log := GetLoggerFromContext(req.Context())
 			log = log.With(slog.String("func", "RateLimitMiddleware"))
-			ipPtr, err := GetRequestIPFromContext(req.Context())
+			reqIP, err := GetRequestIPFromContext(req.Context())
 			if err != nil {
 				log.Warn("Cannot retrieve IP from context: " + err.Error())
 				WriteJsonError(w, http.StatusInternalServerError)
@@ -330,7 +330,7 @@ func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
 			}
 
 			// IsClientRateLimited assigns a rate limiter to the client IP if not already present
-			limited, retryAfter := config.IsClientRateLimited(rateType, ipPtr)
+			limited, retryAfter := config.IsClientRateLimited(rateType, reqIP)
 			if limited {
 				log.Debug("Client is rate limited", slog.Duration("retry_after", retryAfter))
 				WriteJsonError(w, http.StatusTooManyRequests)
@@ -865,7 +865,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 		ctx := req.Context()
 		log := GetLoggerFromContext(ctx)
 		log = log.With(slog.String("func", "CookieAuthMiddleware"))
-		ipPtr, err := GetRequestIPFromContext(ctx)
+		reqAddr, err := GetRequestIPFromContext(ctx)
 		if err != nil {
 			log.Warn("Cannot retrieve IP from context: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
@@ -896,7 +896,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 				return
 			}
 			for _, allowedIP := range allowedIPs {
-				if allowedIP.Contains(*ipPtr) {
+				if allowedIP.Contains(reqAddr) {
 					next.ServeHTTP(w, req)
 					return
 				}
@@ -909,7 +909,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 
 		config.ClearExpiredAuthSessions()
 
-		sessionValid, sessionExists, err := config.CheckAuthSessionExists(uitSessionIDCookie.Value, *ipPtr, uitBasicCookie.Value, uitBearerCookie.Value, uitCSRFCookie.Value)
+		sessionValid, sessionExists, err := config.CheckAuthSessionExists(uitSessionIDCookie.Value, reqAddr, uitBasicCookie.Value, uitBearerCookie.Value, uitCSRFCookie.Value)
 		if err != nil {
 			log.Error("Error validating auth session: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
@@ -936,10 +936,10 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 				log.Debug("Auth session not found or expired when attempting to extend session")
 			}
 		} else if sessionExists && strings.TrimSpace(requestPath) == "/logout" {
-			log.Debug("Logging out user and deleting auth session: " + ipPtr.String())
+			log.Debug("Logging out user and deleting auth session: " + reqAddr.String())
 			config.DeleteAuthSession(uitSessionIDCookie.Value)
 			sessionCount := config.RefreshAndGetAuthSessionCount()
-			log.Info("Auth session deleted: " + ipPtr.String() + " (" + strconv.Itoa(int(sessionCount)) + " session(s))")
+			log.Info("Auth session deleted: " + reqAddr.String() + " (" + strconv.Itoa(int(sessionCount)) + " session(s))")
 			http.Redirect(w, req, "/login", http.StatusSeeOther)
 			return
 		} else {

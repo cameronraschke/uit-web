@@ -36,7 +36,7 @@ type AuthFormData struct {
 func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	ipPtr, err := middleware.GetRequestIPFromContext(ctx)
+	reqIP, err := middleware.GetRequestIPFromContext(ctx)
 	if err != nil {
 		log.Warn("Error retrieving request IP from context (WebAuthEndpoint): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -105,7 +105,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	sessionID, basicToken, bearerToken, csrfToken, err := config.CreateAuthSession(*ipPtr)
+	sessionID, basicToken, bearerToken, csrfToken, err := config.CreateAuthSession(reqIP)
 	if err != nil {
 		log.Error("Failed to generate tokens: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)

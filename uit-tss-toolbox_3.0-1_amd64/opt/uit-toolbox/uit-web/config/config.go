@@ -396,15 +396,18 @@ func InitApp() (*AppState, error) {
 
 	// Populate allowed IPs
 	for _, wanIP := range appConfig.AllowedWANIPs {
-		appState.allowedWANIPs.Store(&wanIP, true)
+		wanIPCopy := wanIP
+		appState.allowedWANIPs.Store(&wanIPCopy, true)
 	}
 
 	for _, lanIP := range appConfig.AllowedLANIPs {
-		appState.allowedLANIPs.Store(&lanIP, true)
+		lanIPCopy := lanIP
+		appState.allowedLANIPs.Store(&lanIPCopy, true)
 	}
 
 	for _, allIP := range appConfig.AllAllowedIPs {
-		appState.allAllowedIPs.Store(&allIP, true)
+		allIPCopy := allIP
+		appState.allAllowedIPs.Store(&allIPCopy, true)
 	}
 
 	// Generate server-side secret for HMAC
@@ -535,7 +538,7 @@ func SetDatabaseConn(newDbConn *sql.DB) error {
 }
 
 // IP address checks
-func IsIPAllowed(trafficType string, ipAddr *netip.Addr) (allowed bool, err error) {
+func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error) {
 	appState, err := GetAppState()
 	if err != nil {
 		return false, fmt.Errorf("error getting app state (IsIPAllowed): %w", err)
@@ -544,55 +547,56 @@ func IsIPAllowed(trafficType string, ipAddr *netip.Addr) (allowed bool, err erro
 		return false, fmt.Errorf("app state is not initialized (IsIPAllowed)")
 	}
 
-	if ipAddr == nil || !ipAddr.IsValid() || RequestIPBlocked(ipAddr) {
+	if !ipAddr.IsValid() || RequestIPBlocked(ipAddr) {
 		return false, nil
 	}
+
+	trafficType = strings.TrimSpace(strings.ToLower(trafficType))
 	allowed = false
 	switch trafficType {
 	case "wan":
-		appState.allowedWANIPs.Range(func(k, v any) bool {
-			ipRange, ok := k.(netip.Prefix)
-			if !ok || ipRange == (netip.Prefix{}) {
-				return true
-			}
-			if ipRange.Contains(*ipAddr) {
-				allowed = true
-				return false
-			}
-			return true
-		})
+		allowed, _ = ipAllowedInRanges(ipAddr, &appState.allowedWANIPs)
 	case "lan":
-		appState.allowedLANIPs.Range(func(k, v any) bool {
-			ipRange, ok := k.(netip.Prefix)
-			if !ok || ipRange == (netip.Prefix{}) {
-				return true
-			}
-			if ipRange.Contains(*ipAddr) {
-				allowed = true
-				return false
-			}
-			return true
-		})
+		allowed, _ = ipAllowedInRanges(ipAddr, &appState.allowedLANIPs)
 	case "any":
-		appState.allAllowedIPs.Range(func(k, v any) bool {
-			ipRange, ok := k.(netip.Prefix)
-			if !ok || ipRange == (netip.Prefix{}) {
-				return true
-			}
-			if ipRange.Contains(*ipAddr) {
-				allowed = true
-				return false
-			}
-			return true
-		})
+		var hasAnyRanges bool
+		allowed, hasAnyRanges = ipAllowedInRanges(ipAddr, &appState.allAllowedIPs)
+		if !hasAnyRanges {
+			allowedWAN, _ := ipAllowedInRanges(ipAddr, &appState.allowedWANIPs)
+			allowedLAN, _ := ipAllowedInRanges(ipAddr, &appState.allowedLANIPs)
+			allowed = allowedWAN || allowedLAN
+		}
 	default:
 		return false, errors.New("invalid traffic type, must be 'wan', 'lan', or 'any'")
 	}
 	return allowed, nil
 }
 
-func RequestIPBlocked(ipPtr *netip.Addr) bool {
-	if ipPtr == nil {
+func ipAllowedInRanges(ipAddr netip.Addr, ranges *sync.Map) (allowed bool, hasEntries bool) {
+	if ranges == nil {
+		return false, false
+	}
+	ranges.Range(func(k, v any) bool {
+		hasEntries = true
+		ipRangePtr, ok := k.(*netip.Prefix)
+		if !ok || ipRangePtr == nil {
+			return true
+		}
+		ipRange := *ipRangePtr
+		if ipRange == (netip.Prefix{}) {
+			return true
+		}
+		if ipRange.Contains(ipAddr) {
+			allowed = true
+			return false
+		}
+		return true
+	})
+	return allowed, hasEntries
+}
+
+func RequestIPBlocked(ip netip.Addr) bool {
+	if !ip.IsValid() {
 		return true
 	}
 	as, err := GetAppState()
@@ -600,7 +604,7 @@ func RequestIPBlocked(ipPtr *netip.Addr) bool {
 		return true
 	}
 
-	bannedClient, ok := as.banList.Load().bannedClients.Load(*ipPtr)
+	bannedClient, ok := as.banList.Load().bannedClients.Load(ip)
 	if !ok || bannedClient == nil {
 		return false
 	}
@@ -614,7 +618,7 @@ func RequestIPBlocked(ipPtr *netip.Addr) bool {
 		return true
 	}
 
-	as.banList.Load().bannedClients.Delete(*ipPtr)
+	as.banList.Load().bannedClients.Delete(ip)
 	return false
 }
 
@@ -769,8 +773,12 @@ func GetAllowedLANIPs() ([]netip.Prefix, error) {
 	}
 	var allowedIPs []netip.Prefix
 	appState.allowedLANIPs.Range(func(k, v any) bool {
-		ipRange, ok := k.(netip.Prefix)
-		if !ok || ipRange == (netip.Prefix{}) {
+		ipRangePtr, ok := k.(*netip.Prefix)
+		if !ok || ipRangePtr == nil {
+			return true
+		}
+		ipRange := *ipRangePtr
+		if ipRange == (netip.Prefix{}) {
 			return true
 		}
 		allowedIPs = append(allowedIPs, ipRange)

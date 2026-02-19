@@ -69,27 +69,27 @@ func (rateLimiter *RateLimiter) Get(ipAddr netip.Addr) *rate.Limiter {
 }
 
 func (bannedClients *BanList) Block(ip netip.Addr) {
-	if bannedClients == nil || ip == (netip.Addr{}) {
+	if bannedClients == nil || ip == (netip.Addr{}) || !ip.IsValid() {
 		return
 	}
 	bannedClients.bannedClients.Store(ip, ClientLimiter{LastSeen: time.Now()})
 }
 
-func IsClientRateLimited(limiterType string, ipPtr *netip.Addr) (limited bool, retryAfter time.Duration) {
+func IsClientRateLimited(limiterType string, ipAddr netip.Addr) (limited bool, retryAfter time.Duration) {
 	appState, err := GetAppState()
-	if err != nil || ipPtr == nil {
+	if err != nil || ipAddr == (netip.Addr{}) || !ipAddr.IsValid() {
 		return false, 0
 	}
 
 	// Check if IP is currently blocked
-	if clientMapValue, clientBlocked := appState.banList.Load().bannedClients.Load(*ipPtr); clientBlocked {
+	if clientMapValue, clientBlocked := appState.banList.Load().bannedClients.Load(ipAddr); clientBlocked {
 		if clientLimiter, ok := clientMapValue.(ClientLimiter); ok {
 			blockedUntil := clientLimiter.LastSeen.Add(appState.banList.Load().banPeriod)
 			if curTime := time.Now(); curTime.Before(blockedUntil) {
 				return true, blockedUntil.Sub(curTime)
 			}
 			// If ban has expired, remove from blocked list
-			appState.banList.Load().bannedClients.Delete(*ipPtr)
+			appState.banList.Load().bannedClients.Delete(ipAddr)
 		}
 	}
 
@@ -98,12 +98,12 @@ func IsClientRateLimited(limiterType string, ipPtr *netip.Addr) (limited bool, r
 		return false, 0
 	}
 
-	limiter := rateLimiter.Get(*ipPtr)
+	limiter := rateLimiter.Get(ipAddr)
 
 	// Use Allow() to check if the request can proceed immediately.
 	// If it returns false, the rate limit has been exceeded.
 	if !limiter.Allow() {
-		appState.banList.Load().Block(*ipPtr)
+		appState.banList.Load().Block(ipAddr)
 		return true, appState.banList.Load().banPeriod
 	}
 
