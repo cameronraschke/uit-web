@@ -119,7 +119,7 @@ type ImageManifest struct {
 	ResolutionY       *int64     `json:"resolution_y"`
 	URL               *string    `json:"url"`
 	Hidden            *bool      `json:"hidden"`
-	PrimaryImage      *bool      `json:"primary_image"`
+	Pinned            *bool      `json:"pinned"`
 	Note              *string    `json:"note"`
 	FileType          *string    `json:"file_type"`
 }

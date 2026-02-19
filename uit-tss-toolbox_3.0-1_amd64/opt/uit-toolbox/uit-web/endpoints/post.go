@@ -839,8 +839,8 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		manifest.Tagnumber = inventoryUpdate.Tagnumber
 		manifest.Hidden = new(bool)
 		*manifest.Hidden = false
-		manifest.PrimaryImage = new(bool)
-		*manifest.PrimaryImage = false
+		manifest.Pinned = new(bool)
+		*manifest.Pinned = false
 
 		if err := updateRepo.UpdateClientImages(ctx, transactionUUID, &manifest); err != nil {
 			log.Error("Failed to update inventory image data: " + err.Error() + " (" + fileHeader.Filename + ")")

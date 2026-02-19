@@ -677,7 +677,7 @@ func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumb
 		return nil, fmt.Errorf("tagnumber is nil")
 	}
 
-	const sqlQuery = `SELECT time, tagnumber, uuid, filename, filepath, thumbnail_filepath, mime_type, hidden, primary_image, note FROM client_images WHERE tagnumber = $1;`
+	const sqlQuery = `SELECT time, tagnumber, uuid, filename, filepath, thumbnail_filepath, mime_type, hidden, pinned, note FROM client_images WHERE tagnumber = $1;`
 
 	imageManifests := make([]ImageManifest, 0, 10)
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery, tagnumber)
@@ -700,7 +700,7 @@ func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumb
 			&imageManifest.ThumbnailFilePath,
 			&imageManifest.MimeType,
 			&imageManifest.Hidden,
-			&imageManifest.PrimaryImage,
+			&imageManifest.Pinned,
 			&imageManifest.Note,
 		); err != nil {
 			return nil, fmt.Errorf("error during row scan: %w", err)

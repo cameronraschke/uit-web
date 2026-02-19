@@ -13,7 +13,7 @@ type ImageManifest = {
 	resolution_y: number
 	url: string
 	hidden: boolean
-	primary_image: boolean
+	pinned: boolean
 	note: string
 	file_type: string
 };
@@ -67,8 +67,8 @@ async function fetchManifestData(clientTag: number) : Promise<ImageManifest[]> {
 		});
 
 		manifestArr.sort((a, b) => {
-			if (a.primary_image && !b.primary_image) return -1;
-			if (!a.primary_image && b.primary_image) return 1;
+			if (a.pinned && !b.pinned) return -1;
+			if (!a.pinned && b.pinned) return 1;
 			return 0;
 		});
 		return manifestArr;
@@ -84,7 +84,7 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 		const fileEntry = document.createElement('div');
 		fileEntry.className = 'file-entry';
 		fileEntry.setAttribute('id', `${file.uuid}`);
-		if (file.primary_image) {
+		if (file.pinned) {
 			fileEntry.classList.add('file-entry', 'primary');
 			const pinnedMessage = document.createElement('p');
 			pinnedMessage.textContent = 'Pinned';
@@ -102,7 +102,7 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 
 		const unpinIcon = document.createElement('button');
 		unpinIcon.dataset.uuid = file.uuid;
-		if (file.primary_image) {
+		if (file.pinned) {
 			unpinIcon.classList.add('svg-button', 'pinned');
 			unpinIcon.textContent = 'Unpin Image';
 		} else {

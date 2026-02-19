@@ -312,7 +312,7 @@ func (updateRepo *UpdateRepo) UpdateClientImages(ctx context.Context, transactio
 		resolution_y, 
 		note, 
 		hidden, 
-		primary_image)
+		pinned)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
@@ -330,7 +330,7 @@ func (updateRepo *UpdateRepo) UpdateClientImages(ctx context.Context, transactio
 		ToNullInt64(manifest.ResolutionY),
 		ToNullString(manifest.Note),
 		ToNullBool(manifest.Hidden),
-		ToNullBool(manifest.PrimaryImage),
+		ToNullBool(manifest.Pinned),
 	)
 	if err != nil {
 		return fmt.Errorf("error inserting client image: %w", err)
@@ -434,7 +434,7 @@ func (updateRepo *UpdateRepo) TogglePinImage(ctx context.Context, tagnumber *int
 		}
 	}()
 
-	const sqlQuery = `UPDATE client_images SET primary_image = NOT COALESCE(primary_image, FALSE) WHERE uuid = $1 AND tagnumber = $2;`
+	const sqlQuery = `UPDATE client_images SET pinned = NOT COALESCE(pinned, FALSE) WHERE uuid = $1 AND tagnumber = $2;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlQuery,
 		ToNullString(uuid),
