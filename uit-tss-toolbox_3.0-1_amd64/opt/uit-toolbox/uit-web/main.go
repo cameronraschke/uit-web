@@ -12,23 +12,23 @@ import (
 	"time"
 	config "uit-toolbox/config"
 	"uit-toolbox/database"
-	"uit-toolbox/logger"
 	"uit-toolbox/webserver"
 
 	_ "net/http/pprof"
 )
 
 func main() {
-	bootLog := logger.CreateLogger("console", logger.ParseLogLevel("info"))
+	fmt.Fprintln(os.Stdout, "Starting UIT API...")
+
 	startTime := time.Now()
-	bootLog.Info("Server time: " + startTime.Format("01-02-2006 15:04:05"))
-	bootLog.Info("UIT API Starting...")
+	fmt.Fprintln(os.Stdout, "Server time: "+startTime.Format("01-02-2006 15:04:05"))
+	fmt.Fprintln(os.Stdout, "UIT API Starting...")
 
 	// Recover from panics
 	defer func() {
 		if recoveryErr := recover(); recoveryErr != nil {
-			bootLog.Error("Panic: " + fmt.Sprint(recoveryErr))
-			bootLog.Error("Stack:\n" + string(debug.Stack()))
+			fmt.Fprintln(os.Stderr, "Panic: "+fmt.Sprint(recoveryErr))
+			fmt.Fprintln(os.Stderr, "Stack:\n"+string(debug.Stack()))
 			time.Sleep(10 * time.Millisecond) // Buffer
 			os.Exit(1)
 		}
@@ -36,13 +36,13 @@ func main() {
 
 	// Initialize application
 	if _, err := config.InitApp(); err != nil {
-		bootLog.Error("Failed to initialize application: " + err.Error())
+		fmt.Fprintln(os.Stderr, "Failed to initialize application: "+err.Error())
 		os.Exit(1)
 	}
 
 	log := config.GetLogger()
 	if log == nil {
-		bootLog.Error("Global logger is nil in main")
+		fmt.Fprintln(os.Stderr, "Global logger is nil in main")
 		os.Exit(1)
 	}
 

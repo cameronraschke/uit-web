@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/netip"
 	"net/url"
@@ -262,8 +263,8 @@ func GetRequestUUIDFromContext(ctx context.Context) (uuid string, err error) {
 	return uuid, nil
 }
 
-func withLogger(ctx context.Context, logger logger.Logger) (context.Context, error) {
-	if logger == nil {
+func withLogger(ctx context.Context, logger slog.Logger) (context.Context, error) {
+	if logger == (slog.Logger{}) {
 		return ctx, errors.New("nil logger")
 	}
 	return context.WithValue(ctx, loggerKey, logger), nil

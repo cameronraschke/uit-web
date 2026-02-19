@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -55,8 +56,17 @@ func (chain MiddlewareChain) ThenFunc(finalHandlerFunc http.HandlerFunc) http.Ha
 
 func StoreLoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := config.GetLogger()
-		ctx, err := withLogger(req.Context(), log)
+		logger := config.GetLogger()
+		// httpLogger := logger.
+		logAttrs := []slog.Attr{slog.String("method", req.Method)}
+		logAttrs = append(logAttrs, slog.String("url", req.URL.String()))
+		logAttrs = append(logAttrs, slog.String("remote_addr", req.RemoteAddr))
+
+		if req.Method == "POST" {
+			logAttrs = append(logAttrs, slog.Int("content-length", int(req.ContentLength)))
+		}
+		logger.LogAttrs(req.Context(), slog.LevelInfo, "Received HTTP request", logAttrs...)
+		ctx, err := withLogger(req.Context(), httpLogger)
 		if err != nil {
 			fmt.Println("Error storing logger in context: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)

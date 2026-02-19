@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/netip"
 	"os"
@@ -14,7 +15,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"uit-toolbox/logger"
 )
 
 type ImageUploadConstraints struct {
@@ -109,7 +109,7 @@ type AppState struct {
 	dbConn             atomic.Pointer[sql.DB]
 	authMap            sync.Map
 	authMapEntryCount  atomic.Int64
-	log                atomic.Pointer[logger.Logger]
+	appLogger          atomic.Pointer[slog.Logger]
 	webServerLimiter   atomic.Pointer[RateLimiter]
 	fileLimiter        atomic.Pointer[RateLimiter]
 	apiLimiter         atomic.Pointer[RateLimiter]
@@ -307,9 +307,6 @@ func InitApp() (*AppState, error) {
 	// Set DB connection to nil initially
 	appState.dbConn.Store(nil)
 
-	// Set logger to nil initially
-	appState.log.Store(nil)
-
 	// Store rate limiters in app state
 	appState.webServerLimiter.Store(webRateLimiter.Load())
 	appState.fileLimiter.Store(fileRateLimiter.Load())
@@ -323,11 +320,14 @@ func InitApp() (*AppState, error) {
 	appState.banList.Store(banList)
 
 	// Initialize logger
-	log := logger.CreateLogger("console", logger.ParseLogLevel(os.Getenv("UIT_SERVER_LOG_LEVEL")))
-	if log == nil {
-		return nil, errors.New("failed to create logger")
-	}
-	appState.log.Store(&log)
+
+	// Set logger to nil initially
+	appState.appLogger.Store(nil)
+
+	th := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})
+	logger := slog.NewMultiHandler(th)
+	slog.SetDefault(logger)
+	appState.appLogger.Store(logger)
 
 	// Populate allowed IPs
 	for _, wanIP := range appConfig.AllowedWANIPs {
@@ -403,26 +403,26 @@ func GetAppState() (*AppState, error) {
 }
 
 // Logger access
-func GetLogger() logger.Logger {
+func GetLogger() *slog.Logger {
 	appState, err := GetAppState()
 	if err != nil {
 		fmt.Println("App state not initialized in GetLogger, using default logger")
-		return logger.CreateLogger("console", logger.ParseLogLevel("INFO"))
+		newLogger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+		slog.SetDefault(newLogger)
+		return newLogger
 	}
-
-	if appState.log == (atomic.Pointer[logger.Logger]{}) {
+	if appState.appLogger == (atomic.Pointer[slog.Logger]{}) {
 		fmt.Println("Logger not initialized in GetLogger, using default logger")
-		return logger.CreateLogger("console", logger.ParseLogLevel("INFO"))
+		newLogger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+		return newLogger
 	}
-
-	l := appState.log.Load()
-	if l == nil {
+	logger := appState.appLogger.Load()
+	if logger == nil {
 		fmt.Println("Logger is nil in GetLogger, using default logger")
-		return logger.CreateLogger("console", logger.ParseLogLevel("INFO"))
+		return slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
-	log := *l
 
-	return log
+	return logger
 }
 
 // Database managment
