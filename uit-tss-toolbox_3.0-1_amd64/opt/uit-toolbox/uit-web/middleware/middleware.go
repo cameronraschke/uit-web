@@ -63,7 +63,6 @@ func StoreLoggerMiddleware(next http.Handler) http.Handler {
 			slog.String("url", req.URL.String()),
 			slog.String("remote_addr", justIpAddr),
 		)
-		requestLogger = requestLogger.With(slog.String("func", "StoreLoggerMiddleware"))
 		ctx, err := withLogger(req.Context(), requestLogger)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error storing logger in context in StoreLoggerMiddleware: "+err.Error())
