@@ -940,7 +940,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRo
 		hardware_data.system_manufacturer,
 		hardware_data.system_model,
 		latest_locations.location_formatted AS "location",
-		latest_locations.department_name,
+		latest_locations.department_name_formatted,
 		latest_locations.status_formatted AS "client_status",
 		latest_locations.is_broken,
 		latest_locations.disk_removed,
