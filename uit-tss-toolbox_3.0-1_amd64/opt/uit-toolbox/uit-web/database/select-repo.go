@@ -914,7 +914,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRo
 	const sqlQuery = `WITH latest_locations AS (
 		SELECT DISTINCT ON (locations.tagnumber) locations.time, locations.tagnumber, locations.system_serial, locations.location,
 			locationFormatting(locations.location) AS location_formatted, static_department_info.department_name_formatted, locations.ad_domain,
-			static_client_statuses.status_formatted, locations.is_broken,
+			 static_client_statuses.status_formatted, locations.is_broken,
 			locations.disk_removed
 		FROM locations
 		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status
@@ -985,6 +985,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRo
 			ELSE FALSE
 		END) AS "domain_joined",
 		static_ad_domains.domain_name,
+		static_ad_domains.domain_name_formatted AS "ad_domain_formatted",
 		(CASE 
 			WHEN latest_jobstats.bios_version = static_bios_stats.bios_version THEN TRUE
 			ELSE FALSE
@@ -1066,6 +1067,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRo
 			&row.OSUpdated,
 			&row.DomainJoined,
 			&row.DomainName,
+			&row.DomainNameFormatted,
 			&row.BIOSUpdated,
 			&row.BIOSVersion,
 			&row.CPUUsage,

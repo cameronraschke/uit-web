@@ -214,6 +214,7 @@ type JobQueueTableRow struct {
 	OSUpdated            *bool          `json:"os_updated"`
 	DomainJoined         *bool          `json:"domain_joined"`
 	DomainName           *string        `json:"ad_domain"`
+	DomainNameFormatted  *string        `json:"ad_domain_formatted"`
 	BIOSUpdated          *bool          `json:"bios_updated"`
 	BIOSVersion          *string        `json:"bios_version"`
 	CPUUsage             *float64       `json:"cpu_usage"`

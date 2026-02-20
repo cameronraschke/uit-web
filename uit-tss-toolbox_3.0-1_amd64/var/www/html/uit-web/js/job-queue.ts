@@ -30,6 +30,7 @@ type JobQueueTableRow = {
 	os_updated: boolean | null;
 	domain_joined: boolean | null;
 	ad_domain: string | null;
+	ad_domain_formatted: boolean | null;
 	bios_updated: boolean | null;
 	bios_version: string | null;
 	cpu_usage: number | null;
@@ -213,13 +214,16 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 		// Client identifiers and info
 		const clientIdentifiers = document.createElement('div');
 		clientIdentifiers.className = 'grid-item headers';
-		const tagNum = document.createElement('a');
+		const tagLabel = document.createElement('p');
+		tagLabel.textContent = 'Tag Number: ';
+		const tagAnchor = document.createElement('a');
 		const tagURL = new URL(`/client`, window.location.origin);
 		tagURL.searchParams.append('tagnumber', entry.tagnumber.toString());
-		tagNum.href = tagURL.toString();
-		tagNum.target = '_blank';
-		tagNum.textContent = entry.tagnumber !== null ? entry.tagnumber.toString() : 'N/A';
-		clientIdentifiers.appendChild(tagNum);
+		tagAnchor.href = tagURL.toString();
+		tagAnchor.target = '_blank';
+		tagAnchor.textContent = entry.tagnumber !== null ? `${entry.tagnumber.toString()}` : 'N/A';
+		tagLabel.appendChild(tagAnchor);
+		clientIdentifiers.appendChild(tagLabel);
 		const serialNumber = document.createElement('p');
 		serialNumber.textContent = `Serial Number: ${entry.system_serial || 'N/A'}`;
 		clientIdentifiers.appendChild(serialNumber);
@@ -263,6 +267,23 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 		const jobStatus = document.createElement('p');
 		jobStatus.textContent = `Job Status: ${entry.job_status || 'N/A'}`;
 		jobInfoContainer.appendChild(jobStatus);
+		const clientUptime = document.createElement('p');
+		if (entry.uptime !== null) {
+			const uptimeSec = entry.uptime;
+			const uptimeMins = Math.floor(uptimeSec / 60);
+			const uptimeHours = Math.floor(uptimeMins / 60);
+			const uptimeDays = Math.floor(uptimeHours / 24);
+			if (uptimeDays > 0) {
+				clientUptime.textContent = `Uptime: ${uptimeDays}d ${uptimeHours % 24}h ${uptimeMins % 60}m`;
+			} else if (uptimeHours > 0) {
+				clientUptime.textContent = `Uptime: ${uptimeHours}h ${uptimeMins % 60}m`;
+			} else {
+				clientUptime.textContent = `Uptime: ${uptimeMins}m ${uptimeSec % 60}s`;
+			}
+		} else {
+			clientUptime.textContent = 'Uptime: N/A';
+		}
+		jobInfoContainer.appendChild(clientUptime);
 		const jobSelectContainer = document.createElement('div');
 		jobSelectContainer.classList.add('flex-container-horizontal');
 		const jobSelect = document.createElement('select');
@@ -270,6 +291,8 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 			const defaultOption = document.createElement('option');
 			defaultOption.value = '';
 			defaultOption.textContent = 'Select job to queue';
+			defaultOption.disabled = true;
+			defaultOption.selected = true;
 			jobSelect.appendChild(defaultOption);
 			for (const job of jobs) {
 				if (job.job_hidden) {
@@ -285,26 +308,38 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 		});
 		jobInfoContainer.appendChild(jobSelect);
 		const queueJobButton = document.createElement('button');
-		queueJobButton.textContent = 'Queue Job';
+		if (entry.job_queued) {
+			queueJobButton.textContent = 'Cancel Job';
+			queueJobButton.classList.add('svg-button', 'cancel');
+			queueJobButton.addEventListener('click', async () => {
+				if (entry.tagnumber === null) {
+					alert('tagnumber is null');
+					return;
+				}
+				try {
+					await updateClientJob(entry.tagnumber, "cancel");
+				} catch (error) {
+					console.error('Error canceling job:', error);
+					alert('An error occurred while canceling the job. Please try again.');
+				} finally {
+					await initializeJobQueuePage();
+				}
+			});
+		} else {
+			queueJobButton.textContent = 'Queue Job';
+			queueJobButton.classList.remove('svg-button', 'cancel');
+		}
 		queueJobButton.addEventListener('click', async () => {
-			const selectedJob = jobSelect.value;
+			const selectedJob = jobSelect.value || null;
 			if (!selectedJob) {
 				alert('Please select a job to queue.');
 				return;
 			}
 			try {
-				const response = await fetch('/api/job_queue/update_client_job', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({ tagnumber: entry.tagnumber, job_name: selectedJob }),
-				});
-				if (!response.ok) {
-					throw new Error('Server responded with ' + response.status);
-				} else {
-					alert('Job queued successfully!');
+				if (entry.tagnumber === null || selectedJob === null) {
+					throw new Error('tagnumber or selected job is null');
 				}
+				await updateClientJob(entry.tagnumber, selectedJob);
 			} catch (error) {
 				console.error('Error queueing job:', error);
 				alert('An error occurred while queueing the job. Please try again.');
@@ -314,13 +349,26 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 		});
 		jobSelectContainer.appendChild(jobSelect);
 		jobSelectContainer.appendChild(queueJobButton);
-		jobInfoContainer.appendChild(jobSelectContainer);
+		if (entry.online) jobInfoContainer.appendChild(jobSelectContainer);
 		if (entry.job_queued && entry.queue_position !== null) {
 			jobSelect.value = entry.job_name || '';
 			const queuePosition = document.createElement('p');
 			queuePosition.textContent = `Queue Position: ${entry.queue_position}, last job completed at ${entry.last_job_time ? new Date(entry.last_job_time).toLocaleString() : 'N/A'}`;
 			jobInfoContainer.appendChild(queuePosition);
 		}
+
+		// Software info
+		const softwareInfoContainer = document.createElement('div');
+		softwareInfoContainer.classList.add('grid-item');
+		const osInfo = document.createElement('p');
+		osInfo.textContent = `OS: ${entry.os_name || 'N/A'} ${entry.os_updated ? '(Updated)' : '(Not Updated)'}`;
+		softwareInfoContainer.appendChild(osInfo);
+		const domainJoined = document.createElement('p');
+		domainJoined.textContent = `Domain Joined: ${entry.domain_joined ? 'Yes' : 'No'}${entry.ad_domain ? ` (${entry.ad_domain})` : ''}`;
+		softwareInfoContainer.appendChild(domainJoined);
+		const biosInfo = document.createElement('p');
+		biosInfo.textContent = `BIOS: ${entry.bios_version || 'N/A'} ${entry.bios_updated ? '(Updated)' : '(Not Updated)'}`;
+		softwareInfoContainer.appendChild(biosInfo);
 
 		clientGridContainer.appendChild(clientIdentifiers);		
 		if (entry.online) clientGridContainer.appendChild(liveViewContainer);
@@ -330,12 +378,30 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 		} else {
 			offlineTableFragment.appendChild(clientEntryContainer);
 		}
+		clientGridContainer.appendChild(softwareInfoContainer);
 	}
 	onlineClientsDiv.innerHTML = '';
 	onlineClientsDiv.appendChild(onlineTableFragment);
-	
 	offlineClientsDiv.innerHTML = '';
 	offlineClientsDiv.appendChild(offlineTableFragment);
+}
+
+async function updateClientJob(tagnumber: number, job_name: string) {
+	try {
+		const response = await fetch('/api/job_queue/update_client_job', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({ tagnumber, job_name }),
+		});
+		if (!response.ok) {
+			throw new Error('Server responded with ' + response.status);
+		}
+	} catch (error) {
+		console.error('Error updating client job:', error);
+		alert('An error occurred while updating the client job. Please try again.');
+	}
 }
 
 async function initializeJobQueuePage() {
