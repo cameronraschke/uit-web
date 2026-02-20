@@ -302,12 +302,12 @@ func AllowIPRangeMiddleware(trafficSource string) func(http.Handler) http.Handle
 			}
 			allowed, err := config.IsIPAllowed(trafficSource, reqAddr)
 			if err != nil {
-				log.Error("Error encountered while checking if IP is allowed: " + err.Error())
+				log.Error("Cannot check if IP is allowed: " + err.Error())
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			if !allowed {
-				log.Warn("IP address not in allowed range: " + reqAddr.String())
+				log.Warn("Request IP is not in allowed range: " + reqAddr.String())
 				WriteJsonError(w, http.StatusForbidden)
 				return
 			}
@@ -474,6 +474,26 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func CheckForRedirectsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := GetLoggerFromContext(req.Context())
+		log = log.With(slog.String("func", "CheckForRedirectsMiddleware"))
+		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
+		if err != nil {
+			log.Warn("Error getting endpoint config in CheckForRedirectsMiddleware: " + err.Error())
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		redirectURL, err := config.GetWebEndpointRedirectURL(endpointConfig)
+		if err != nil {
+			next.ServeHTTP(w, req)
+			return
+		}
+		log.Info("Redirecting request to: " + redirectURL)
+		http.Redirect(w, req, redirectURL, http.StatusFound)
+	})
+}
+
 func CheckHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log := GetLoggerFromContext(req.Context())
@@ -636,6 +656,7 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
 		log := GetLoggerFromContext(ctx)
+		log = log.With(slog.String("func", "SetHeadersMiddleware"))
 
 		// SERVER-SIDE CORS CHECKS
 		// Get web server IP for CORS
@@ -717,25 +738,6 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Server", "")
 
 		next.ServeHTTP(w, req)
-	})
-}
-
-func CheckForRedirectsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := GetLoggerFromContext(req.Context())
-		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
-		if err != nil {
-			log.Warn("Error getting endpoint config in CheckForRedirectsMiddleware: " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		redirectURL, err := config.GetWebEndpointRedirectURL(endpointConfig)
-		if err != nil {
-			next.ServeHTTP(w, req)
-			return
-		}
-		log.Info("Redirecting request to: " + redirectURL)
-		http.Redirect(w, req, redirectURL, http.StatusFound)
 	})
 }
 

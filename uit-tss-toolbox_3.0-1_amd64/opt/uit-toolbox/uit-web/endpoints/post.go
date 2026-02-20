@@ -203,6 +203,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
+	log = log.With(slog.String("func", "InsertInventoryUpdateForm"))
 
 	// Parse inventory data
 	appState, err := config.GetAppState()
@@ -279,7 +280,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if !utf8.Valid(jsonBytes) {
-		log.Warn("Invalid UTF-8 in JSON data (InsertInventoryUpdateForm)")
+		log.Warn("Invalid UTF-8 in JSON data")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -287,14 +288,14 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	// Validate and sanitize input data
 	// Tag number (required, 6 numeric digits, 100000-999999)
 	if err := IsTagnumberInt64Valid(inventoryUpdate.Tagnumber); err != nil {
-		log.Warn("Invalid tag number provided (InsertInventoryUpdateForm): " + err.Error())
+		log.Warn("Invalid tag number provided: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	// System serial
 	if inventoryUpdate.SystemSerial == nil {
-		log.Warn("Invalid system serial provided (InsertInventoryUpdateForm)")
+		log.Warn("Invalid system serial provided")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -305,12 +306,12 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.SystemSerial)) < serialMinChars || utf8.RuneCountInString(*inventoryUpdate.SystemSerial) > serialMaxChars {
-		log.Warn("Invalid system serial length provided (InsertInventoryUpdateForm)")
+		log.Warn("Invalid system serial length provided")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.SystemSerial) {
-		log.Warn("Non-printable ASCII characters in system serial field (InsertInventoryUpdateForm)")
+		log.Warn("Non-printable ASCII characters in system serial field")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -318,7 +319,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 	// Location
 	if inventoryUpdate.Location == nil {
-		log.Warn("No location provided (InsertInventoryUpdateForm)")
+		log.Warn("No location provided")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -329,7 +330,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Location)) < locationMinChars || utf8.RuneCountInString(*inventoryUpdate.Location) > locationMaxChars {
-		log.Warn("Invalid location length (InsertInventoryUpdateForm)")
+		log.Warn("Invalid location length")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -349,18 +350,18 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Building)) < buildingMinChars || utf8.RuneCountInString(*inventoryUpdate.Building) > buildingMaxChars {
-			log.Warn("Invalid building length for inventory update")
+			log.Warn("Invalid building length")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.Building) {
-			log.Warn("Invalid UTF-8 in building field for inventory update")
+			log.Warn("Invalid UTF-8 in building field")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		*inventoryUpdate.Building = strings.TrimSpace(*inventoryUpdate.Building)
 	} else {
-		log.Info("No building provided for inventory update")
+		log.Info("No building provided")
 	}
 
 	// Room (optional)
@@ -372,18 +373,18 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Room)) < roomMinChars || utf8.RuneCountInString(*inventoryUpdate.Room) > roomMaxChars {
-			log.Warn("Invalid room length for inventory update")
+			log.Warn("Invalid room length")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.Room) {
-			log.Warn("Invalid UTF-8 in room field for inventory update")
+			log.Warn("Invalid UTF-8 in room field")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		*inventoryUpdate.Room = strings.TrimSpace(*inventoryUpdate.Room)
 	} else {
-		log.Info("No room provided for inventory update")
+		log.Info("No room provided")
 	}
 
 	// System manufacturer (optional, min 1 char, max 24, Unicode chars)
@@ -395,18 +396,18 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.SystemManufacturer)) < systemManufacturerMinChars || utf8.RuneCountInString(*inventoryUpdate.SystemManufacturer) > systemManufacturerMaxChars {
-			log.Warn("Invalid system manufacturer length for inventory update")
+			log.Warn("Invalid system manufacturer length")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.SystemManufacturer) {
-			log.Warn("Non-printable Unicode characters in system manufacturer field for inventory update")
+			log.Warn("Non-printable Unicode characters in system manufacturer field")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		*inventoryUpdate.SystemManufacturer = strings.TrimSpace(*inventoryUpdate.SystemManufacturer)
 	} else {
-		log.Info("No system manufacturer provided for inventory update")
+		log.Info("No system manufacturer provided")
 	}
 
 	// System model (optional, min 1 char, max 64 Unicode chars)
@@ -418,23 +419,23 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.SystemModel)) < systemModelMinChars || utf8.RuneCountInString(*inventoryUpdate.SystemModel) > systemModelMaxChars {
-			log.Warn("Invalid system model length for inventory update")
+			log.Warn("Invalid system model length")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.SystemModel) {
-			log.Warn("Non-printable Unicode characters in system model field for inventory update")
+			log.Warn("Non-printable Unicode characters in system model field")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		*inventoryUpdate.SystemModel = strings.TrimSpace(*inventoryUpdate.SystemModel)
 	} else {
-		log.Info("No system model provided for inventory update")
+		log.Info("No system model provided")
 	}
 
 	// Department (required, min 1 char, max 64 chars, printable ASCII only)
 	if inventoryUpdate.Department == nil {
-		log.Warn("No department_name provided for inventory update")
+		log.Warn("No department_name provided")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -445,12 +446,12 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Department)) < departmentMinChars || utf8.RuneCountInString(*inventoryUpdate.Department) > departmentMaxChars {
-		log.Warn("Invalid department_name length for inventory update")
+		log.Warn("Invalid department_name length")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.Department) {
-		log.Warn("Non-printable ASCII characters in department_name field for inventory update")
+		log.Warn("Non-printable ASCII characters in department_name field")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -458,7 +459,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 	// Domain (required, min 1 char, max 64 chars)
 	if inventoryUpdate.Domain == nil {
-		log.Warn("No domain provided for inventory update")
+		log.Warn("No domain provided")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -469,12 +470,12 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Domain)) < domainMinChars || utf8.RuneCountInString(*inventoryUpdate.Domain) > domainMaxChars {
-		log.Warn("Invalid domain length for inventory update")
+		log.Warn("Invalid domain length")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.Domain) {
-		log.Warn("Non-printable ASCII characters in domain field for inventory update")
+		log.Warn("Non-printable ASCII characters in domain field")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -489,12 +490,12 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.PropertyCustodian)) < propertyCustodianMinChars || utf8.RuneCountInString(*inventoryUpdate.PropertyCustodian) > propertyCustodianMaxChars {
-			log.Warn("Invalid property custodian length for inventory update")
+			log.Warn("Invalid property custodian length")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.PropertyCustodian) {
-			log.Warn("Non-printable Unicode characters in property custodian field for inventory update")
+			log.Warn("Non-printable Unicode characters in property custodian field")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
@@ -506,7 +507,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		acquiredDateUTC := inventoryUpdate.AcquiredDate.UTC()
 		inventoryUpdate.AcquiredDate = &acquiredDateUTC
 	} else {
-		log.Info("No acquired date provided for inventory update")
+		log.Info("No acquired date provided")
 	}
 
 	// Retired date, optional, process as UTC
@@ -514,17 +515,17 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		retiredDateUTC := inventoryUpdate.RetiredDate.UTC()
 		inventoryUpdate.RetiredDate = &retiredDateUTC
 	} else {
-		log.Info("No retired date provided for inventory update")
+		log.Info("No retired date provided")
 	}
 
 	// Broken (optional, bool)
 	if inventoryUpdate.Broken == nil {
-		log.Info("No is_broken bool value provided for inventory update")
+		log.Info("No is_broken bool value provided")
 	}
 
 	// Disk removed (optional, bool)
 	if inventoryUpdate.DiskRemoved == nil {
-		log.Info("No disk_removed bool value provided for inventory update")
+		log.Info("No disk_removed bool value provided")
 	}
 
 	// Last hardware check (optional, process as UTC)
@@ -532,12 +533,12 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		lastHardwareCheckUTC := inventoryUpdate.LastHardwareCheck.UTC()
 		inventoryUpdate.LastHardwareCheck = &lastHardwareCheckUTC
 	} else {
-		log.Info("No last_hardware_check date provided for inventory update")
+		log.Info("No last_hardware_check date provided")
 	}
 
 	// Status (required, min 1, max 24, ASCII printable chars only)
 	if inventoryUpdate.ClientStatus == nil {
-		log.Warn("No status provided for inventory update")
+		log.Warn("No status provided")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -548,12 +549,12 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.ClientStatus)) < clientStatusMinChars || utf8.RuneCountInString(*inventoryUpdate.ClientStatus) > clientStatusMaxChars {
-		log.Warn("Invalid status length for inventory update")
+		log.Warn("Invalid status length")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.ClientStatus) {
-		log.Warn("Non-printable ASCII characters in status field for inventory update")
+		log.Warn("Non-printable ASCII characters in status field")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -569,7 +570,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 	// Checkout date (optional, process as UTC)
 	if checkoutDateMandatory && inventoryUpdate.CheckoutDate == nil {
-		log.Warn("No checkout_date provided for inventory update, not updating inventory entry.")
+		log.Warn("No checkout_date provided, not updating inventory entry.")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -577,12 +578,12 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		checkoutDateUTC := inventoryUpdate.CheckoutDate.UTC()
 		inventoryUpdate.CheckoutDate = &checkoutDateUTC
 	} else {
-		log.Info("No checkout_date provided for inventory update")
+		log.Info("No checkout_date provided")
 	}
 
 	// Return date (optional, process as UTC)
 	if returnDateMandatory && inventoryUpdate.ReturnDate == nil {
-		log.Warn("No return_date provided for inventory update, not updating inventory entry.")
+		log.Warn("No return_date provided, not updating inventory entry.")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -590,11 +591,11 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		returnDateUTC := inventoryUpdate.ReturnDate.UTC()
 		inventoryUpdate.ReturnDate = &returnDateUTC
 	} else {
-		log.Info("No return_date provided for inventory update")
+		log.Info("No return_date provided")
 	}
 
 	if checkoutBoolMandatory && inventoryUpdate.CheckoutBool == nil {
-		log.Warn("No is_checked_out bool value provided for inventory update, not updating inventory entry.")
+		log.Warn("No is_checked_out bool value provided, not updating inventory entry.")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -608,18 +609,18 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Note)) < noteMinChars || utf8.RuneCountInString(*inventoryUpdate.Note) > noteMaxChars {
-			log.Warn("Invalid note length for inventory update")
+			log.Warn("Invalid note length")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.Note) {
-			log.Warn("Non-printable characters in note field for inventory update")
+			log.Warn("Non-printable characters in note field")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 		*inventoryUpdate.Note = strings.TrimSpace(*inventoryUpdate.Note)
 	} else {
-		log.Info("No note provided for inventory update")
+		log.Info("No note provided")
 	}
 
 	// File upload part of form:
@@ -628,7 +629,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 	files := req.MultipartForm.File["inventory-file-input"]
 
-	// Generate transaction UUID for inventory update and associated file uploads
+	// Generate transaction UUID to share between multiple DB tables
 	transactionUUID, err := uuid.NewUUID()
 	if err != nil {
 		log.Error("error generation a transaction UUID (InsertInventoryUpdateForm)")
@@ -644,20 +645,20 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	// Establish DB connection before opening files
 	updateRepo, err := database.NewUpdateRepo()
 	if err != nil {
-		log.Error("No database connection available for inventory update")
+		log.Error("No database connection available")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	minImgFileSize, maxImgFileSize, maxImgFileCount, acceptedImageExtensionsAndMimeTypes, err := appState.GetFileUploadImageConstraints()
 	if err != nil {
-		log.Warn("Error getting file upload image constraints (InsertInventoryUpdateForm): " + err.Error())
+		log.Warn("Error getting file upload image constraints: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	minVideoFileSize, maxVideoFileSize, maxVideoFileCount, acceptedVideoExtensionsAndMimeTypes, err := appState.GetFileUploadVideoConstraints()
 	if err != nil {
-		log.Warn("Error getting file upload video constraints (InsertInventoryUpdateForm): " + err.Error())
+		log.Warn("Error getting file upload video constraints: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -671,10 +672,36 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	for _, fileHeader := range files {
 		var manifest database.ImageManifest
 
+		if !middleware.IsPrintableUnicodeString(fileHeader.Filename) {
+			log.Warn("Non-printable characters in uploaded file name: " + fileHeader.Filename)
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+
+		fileHeader.Filename = filepath.Join(fileHeader.Filename)
+		fileHeader.Filename = filepath.Clean(fileHeader.Filename)
+
+		createNecessaryDirs := func(tagnumber int64) (string, error) {
+			// Create directories if not existing
+			imageDirectoryPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber))
+			if err := os.MkdirAll(imageDirectoryPath, 0755); err != nil {
+				return "", fmt.Errorf("cannot create parent directories for '"+imageDirectoryPath+"': %w", err)
+			}
+
+			// Set file/directory permissions
+			if err := os.Chmod(imageDirectoryPath, 0755); err != nil {
+				return "", fmt.Errorf("cannot set directory permissions for '"+imageDirectoryPath+"': %w", err)
+			}
+			if err := os.Chown(imageDirectoryPath, os.Getuid(), 1001); err != nil { // 1001 = group uit
+				return "", fmt.Errorf("cannot set directory ownership for '"+imageDirectoryPath+"': %w", err)
+			}
+			return imageDirectoryPath, nil
+		}
+
 		// Open uploaded file
 		file, err := fileHeader.Open()
 		if err != nil {
-			log.Warn("Failed to open uploaded file '" + fileHeader.Filename + "' (InsertInventoryUpdateForm): " + err.Error())
+			log.Warn("Failed to open uploaded file '" + fileHeader.Filename + "': " + err.Error())
 			continue
 		}
 
@@ -683,11 +710,11 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		file.Close()
 		if err != nil {
 			if maxBytesErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
-				log.Warn("Uploaded file '" + fileHeader.Filename + "' size exceeds maximum allowed (InsertInventoryUpdateForm): " + maxBytesErr.Error())
+				log.Warn("Uploaded file '" + fileHeader.Filename + "' size exceeds maximum allowed size: " + maxBytesErr.Error())
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
-			log.Warn("Failed to read uploaded file '" + fileHeader.Filename + "' (InsertInventoryUpdateForm): " + err.Error())
+			log.Warn("Failed to read uploaded file '" + fileHeader.Filename + "': " + err.Error())
 			continue
 		}
 
@@ -698,7 +725,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		// MIME type detection
 		mimeType := http.DetectContentType(fileBytes)
 		if mimeType == "application/octet-stream" {
-			log.Warn("Unknown MIME type for file '" + fileHeader.Filename + "' (InsertInventoryUpdateForm)")
+			log.Warn("Unknown MIME type for file '" + fileHeader.Filename + "'")
 			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)
 			return
 		}
@@ -719,17 +746,17 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 
 		if acceptedImageExtensionsAndMimeTypes[ext] == mimeType { // Image file processing
 			if totalImageFileCount >= maxImgFileCount {
-				log.Warn("Number of uploaded image files exceeds maximum allowed (InsertInventoryUpdateForm): " + strconv.Itoa(totalImageFileCount))
+				log.Warn("Number of uploaded image files exceeds maximum allowed: " + strconv.Itoa(totalImageFileCount))
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
 			if fileSize > maxImgFileSize {
-				log.Warn("Uploaded image file '" + fileHeader.Filename + "' too large (InsertInventoryUpdateForm) (" + strconv.FormatInt(int64(fileSize), 10) + " bytes)")
+				log.Warn("Uploaded image file '" + fileHeader.Filename + "' too large (" + strconv.FormatInt(int64(fileSize), 10) + " bytes)")
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
 			if fileSize < minImgFileSize {
-				log.Warn("Uploaded image file too small (InsertInventoryUpdateForm): " + fileHeader.Filename + " (" + strconv.FormatInt(int64(fileSize), 10) + " bytes)")
+				log.Warn("Uploaded image file too small: " + fileHeader.Filename + " (" + strconv.FormatInt(int64(fileSize), 10) + " bytes)")
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
@@ -739,24 +766,24 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			// Rewind and decode image to get image.Image
 			_, err = imageReader.Seek(0, io.SeekStart)
 			if err != nil {
-				log.Error("Failed to seek to start of uploaded image '" + fileHeader.Filename + "' (InsertInventoryUpdateForm): " + err.Error())
+				log.Error("Failed to seek to start of uploaded image '" + fileHeader.Filename + "': " + err.Error())
 				continue
 			}
 			decodedImage, _, err := image.Decode(imageReader)
 			if err != nil {
-				log.Error("Failed to decode thumbnail in InsertInventoryUpdateForm: " + err.Error() + " (" + fileHeader.Filename + ")")
+				log.Error("Failed to decode uploaded image '" + fileHeader.Filename + "': " + err.Error())
 				continue
 			}
 
 			// Rewind and decode image to get image config
 			_, err = imageReader.Seek(0, io.SeekStart)
 			if err != nil {
-				log.Error("Failed to seek to start of uploaded image '" + fileHeader.Filename + "' (InsertInventoryUpdateForm): " + err.Error())
+				log.Error("Failed to seek to start of uploaded image '" + fileHeader.Filename + "': " + err.Error())
 				continue
 			}
 			decodedImageConfig, _, err := image.DecodeConfig(imageReader)
 			if err != nil {
-				log.Error("Failed to decode uploaded image config (InsertInventoryUpdateForm): " + err.Error() + " (" + fileHeader.Filename + ")")
+				log.Error("Failed to decode uploaded image config '" + fileHeader.Filename + "': " + err.Error())
 				continue
 			}
 			resX := int64(decodedImageConfig.Width)
@@ -765,16 +792,22 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			manifest.ResolutionY = &resY
 
 			// Generate jpeg thumbnail
+			imageDirectoryPath, err := createNecessaryDirs(*inventoryUpdate.Tagnumber)
+			if err != nil {
+				log.Error("Failed to create necessary directories for thumbnail of '" + fileHeader.Filename + "': " + err.Error())
+				middleware.WriteJsonError(w, http.StatusInternalServerError)
+				return
+			}
 			strippedFileName := strings.TrimSuffix(fileName, filepath.Ext(fileName))
-			fullThumbnailPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", *inventoryUpdate.Tagnumber), strippedFileName+"-thumbnail.jpeg")
+			fullThumbnailPath := filepath.Join(imageDirectoryPath, strippedFileName+"-thumbnail.jpeg")
 			thumbnailFile, err := os.Create(fullThumbnailPath)
 			if err != nil {
-				log.Error("Failed to create thumbnail file (InsertInventoryUpdateForm): " + err.Error() + " (" + fileHeader.Filename + ")")
+				log.Error("Failed to create thumbnail file '" + fullThumbnailPath + "': " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
 			if err := jpeg.Encode(thumbnailFile, decodedImage, &jpeg.Options{Quality: 50}); err != nil {
-				log.Error("Failed to encode thumbnail image (InsertInventoryUpdateForm): " + err.Error() + " (" + fileHeader.Filename + ")")
+				log.Error("Failed to encode thumbnail image '" + fullThumbnailPath + "': " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
@@ -811,7 +844,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		// Compute SHA256 hash of file
 		fileHash := crypto.SHA256.New()
 		if _, err := fileHash.Write(fileBytes); err != nil {
-			log.Error("Failed to compute hash of uploaded file (InsertInventoryUpdateForm): " + err.Error() + " (" + fileHeader.Filename + ")")
+			log.Error("Failed to compute hash of uploaded file '" + fileHeader.Filename + "': " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -819,24 +852,15 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		fileHashString := fmt.Sprintf("%x", fileHashBytes)
 		manifest.SHA256Hash = &fileHashString
 
-		// Create directories if not existing
-		imageDirectoryPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", *inventoryUpdate.Tagnumber))
-		if err := os.MkdirAll(imageDirectoryPath, 0755); err != nil {
-			log.Error("Failed to create directories for uploaded file (InsertInventoryUpdateForm): " + err.Error())
+		imageDirectoryPath, err := createNecessaryDirs(*inventoryUpdate.Tagnumber)
+		if err != nil {
+			log.Error("Failed to create necessary directories for '" + fileHeader.Filename + "': " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-
-		// Set file/directory permissions
-		if err := os.Chmod(imageDirectoryPath, 0755); err != nil {
-			log.Error("Failed to set directory permissions: " + err.Error() + " (" + fileHeader.Filename + ")")
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
 		fullFilePath := filepath.Join(imageDirectoryPath, fileName)
-		if err := os.WriteFile(fullFilePath, fileBytes, 0644); err != nil {
-			log.Error("Failed to save uploaded file (InsertInventoryUpdateForm): " + err.Error() + " (" + fileHeader.Filename + ")")
+		if err := os.WriteFile(fullFilePath, fileBytes, 0640); err != nil {
+			log.Error("Failed to save uploaded file '" + fullFilePath + "': " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -853,7 +877,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		*manifest.Pinned = false
 
 		if err := updateRepo.UpdateClientImages(ctx, transactionUUID, &manifest); err != nil {
-			log.Error("Failed to update inventory image data: " + err.Error() + " (" + fileHeader.Filename + ")")
+			log.Error("Failed to update inventory image data for '" + fullFilePath + "': " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}

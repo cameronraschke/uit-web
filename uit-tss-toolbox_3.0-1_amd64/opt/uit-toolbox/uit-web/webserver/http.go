@@ -27,9 +27,9 @@ func StartFileServer(ctx context.Context, serverHost string) error {
 		middleware.FileServerTimeoutMiddleware,
 		middleware.HTTPMethodMiddleware,
 		middleware.CheckValidURLMiddleware,
+		middleware.CheckForRedirectsMiddleware,
 		middleware.CheckHeadersMiddleware,
 		middleware.SetHeadersMiddleware,
-		middleware.CheckForRedirectsMiddleware,
 	)
 
 	fileServerChain := httpBaseChain.Append(

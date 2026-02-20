@@ -555,15 +555,26 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 	allowed = false
 	switch trafficType {
 	case "wan":
-		allowed, _ = ipAllowedInRanges(ipAddr, &appState.allowedWANIPs)
+		allowed, err = ipAllowedInRanges(ipAddr, &appState.allowedWANIPs)
+		if err != nil {
+			return false, fmt.Errorf("error checking WAN IP ranges: %w", err)
+		}
 	case "lan":
-		allowed, _ = ipAllowedInRanges(ipAddr, &appState.allowedLANIPs)
+		allowed, err = ipAllowedInRanges(ipAddr, &appState.allowedLANIPs)
+		if err != nil {
+			return false, fmt.Errorf("error checking LAN IP ranges: %w", err)
+		}
 	case "any":
-		var hasAnyRanges bool
-		allowed, hasAnyRanges = ipAllowedInRanges(ipAddr, &appState.allAllowedIPs)
-		if !hasAnyRanges {
-			allowedWAN, _ := ipAllowedInRanges(ipAddr, &appState.allowedWANIPs)
-			allowedLAN, _ := ipAllowedInRanges(ipAddr, &appState.allowedLANIPs)
+		allowed, err = ipAllowedInRanges(ipAddr, &appState.allAllowedIPs)
+		if err != nil {
+			allowedWAN, wanErr := ipAllowedInRanges(ipAddr, &appState.allowedWANIPs)
+			if wanErr != nil {
+				return false, fmt.Errorf("error checking WAN IP ranges: %w", wanErr)
+			}
+			allowedLAN, lanErr := ipAllowedInRanges(ipAddr, &appState.allowedLANIPs)
+			if lanErr != nil {
+				return false, fmt.Errorf("error checking LAN IP ranges: %w", lanErr)
+			}
 			allowed = allowedWAN || allowedLAN
 		}
 	default:
@@ -572,12 +583,11 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 	return allowed, nil
 }
 
-func ipAllowedInRanges(ipAddr netip.Addr, ranges *sync.Map) (allowed bool, hasEntries bool) {
+func ipAllowedInRanges(ipAddr netip.Addr, ranges *sync.Map) (allowed bool, err error) {
 	if ranges == nil {
-		return false, false
+		return false, fmt.Errorf("IP range map is nil")
 	}
 	ranges.Range(func(k, v any) bool {
-		hasEntries = true
 		ipRangePtr, ok := k.(*netip.Prefix)
 		if !ok || ipRangePtr == nil {
 			return true
@@ -592,7 +602,7 @@ func ipAllowedInRanges(ipAddr netip.Addr, ranges *sync.Map) (allowed bool, hasEn
 		}
 		return true
 	})
-	return allowed, hasEntries
+	return allowed, nil
 }
 
 func RequestIPBlocked(ip netip.Addr) bool {
