@@ -546,7 +546,7 @@ func (updateRepo *UpdateRepo) SetClientJob(ctx context.Context, tag *int64, clie
 		}
 	}()
 
-	const sqlCode = `UPDATE job_queue SET job_name = $1, job_queued = TRUE WHERE tagnumber = $2;`
+	const sqlCode = `UPDATE job_queue SET job_queued = $1, job_active = TRUE WHERE tagnumber = $2;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode, ptrStringToString(clientJob), ToNullInt64(tag))
 	if err != nil {

@@ -312,6 +312,9 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 				await initializeJobQueuePage();
 			}
 		});
+		jobSelectContainer.appendChild(jobSelect);
+		jobSelectContainer.appendChild(queueJobButton);
+		jobInfoContainer.appendChild(jobSelectContainer);
 		if (entry.job_queued && entry.queue_position !== null) {
 			jobSelect.value = entry.job_name || '';
 			const queuePosition = document.createElement('p');
