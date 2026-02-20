@@ -27,7 +27,7 @@ type Select interface {
 	GetDashboardInventorySummary(ctx context.Context) ([]DashboardInventorySummary, error)
 	GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*InventoryUpdateForm, error)
 	GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*ImageManifest, error)
-	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][32]byte, error)
+	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
 	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]ImageManifest, error)
 	GetInventoryTableData(ctx context.Context, filterOptions *InventoryAdvSearchOptions) ([]InventoryTableData, error)
 	GetClientBatteryHealth(ctx context.Context, tagnumber *int64) (*ClientBatteryHealth, error)
@@ -701,7 +701,7 @@ func (repo *SelectRepo) GetClientImageFilePathFromUUID(ctx context.Context, uuid
 	return &imageManifest, nil
 }
 
-func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([][32]byte, error) {
+func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error) {
 	if tag == nil {
 		return nil, fmt.Errorf("tag is nil")
 	}
@@ -714,12 +714,12 @@ func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([
 	}
 	defer rows.Close()
 
-	hashes := make([][32]byte, 0, 10)
+	hashes := make([][]uint8, 0, 10)
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var hash [32]byte
+		var hash []uint8
 		if err := rows.Scan(&hash); err != nil {
 			return nil, fmt.Errorf("error during row scan: %w", err)
 		}

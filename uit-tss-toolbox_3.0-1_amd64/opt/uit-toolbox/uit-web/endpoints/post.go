@@ -758,8 +758,8 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		shaSum := fileHash.Sum(nil)
-		fileHashBytes := [32]byte{}
-		copy(fileHashBytes[:], shaSum[:32])
+		fileHashBytes := make([]uint8, 32)
+		copy(fileHashBytes, shaSum[:32])
 		// fileHashString := fmt.Sprintf("%x", fileHashBytes)
 		manifest.SHA256Hash = &fileHashBytes
 
@@ -777,7 +777,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		}
 		hashFound := false
 		for _, hash := range hashes {
-			if bytes.Equal(fileHashBytes[:], hash[:]) {
+			if bytes.Equal(fileHashBytes, hash) {
 				hashFound = true
 				break
 			}
