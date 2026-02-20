@@ -30,6 +30,7 @@
 
 @media (max-width: 768px) {
 	#mobile-nav {
-		display: block;
+		display: grid;
+		row-gap: 1rem;
 	}
 }

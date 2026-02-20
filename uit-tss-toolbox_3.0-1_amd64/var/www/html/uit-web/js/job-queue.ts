@@ -199,6 +199,7 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 	const offlineTableFragment = document.createDocumentFragment();
 
 	for (const entry of data) {
+		if (entry && entry.online !== null && !entry.online) continue;
 		if (!entry.tagnumber) {
 			console.warn("No tagnumber for entry");
 			continue;
@@ -285,7 +286,7 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 		}
 		jobInfoContainer.appendChild(clientUptime);
 		const jobSelectContainer = document.createElement('div');
-		jobSelectContainer.classList.add('flex-container-horizontal');
+		jobSelectContainer.classList.add('flex-container', 'horizontal');
 		const jobSelect = document.createElement('select');
 		fetchAllJobs().then(jobs => {
 			const defaultOption = document.createElement('option');
@@ -364,11 +365,30 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 		osInfo.textContent = `OS: ${entry.os_name || 'N/A'} ${entry.os_updated ? '(Updated)' : '(Not Updated)'}`;
 		softwareInfoContainer.appendChild(osInfo);
 		const domainJoined = document.createElement('p');
-		domainJoined.textContent = `Domain Joined: ${entry.domain_joined ? 'Yes' : 'No'}${entry.ad_domain ? ` (${entry.ad_domain})` : ''}`;
+		domainJoined.textContent = `Domain Joined: ${entry.domain_joined ? 'Yes' : 'No'}${entry.ad_domain_formatted ? ` (${entry.ad_domain_formatted})` : ''}`;
 		softwareInfoContainer.appendChild(domainJoined);
 		const biosInfo = document.createElement('p');
 		biosInfo.textContent = `BIOS: ${entry.bios_version || 'N/A'} ${entry.bios_updated ? '(Updated)' : '(Not Updated)'}`;
 		softwareInfoContainer.appendChild(biosInfo);
+
+		// Hardware info
+		const hardwareInfoContainer = document.createElement('div');
+		hardwareInfoContainer.classList.add('grid-item');
+		const cpuUsage = document.createElement('p');
+		cpuUsage.textContent = `CPU Usage: ${entry.cpu_usage !== null ? entry.cpu_usage.toFixed(2) + '%' : 'N/A'} ${entry.cpu_temp !== null ? `(` + entry.cpu_temp.toFixed(2) + '°C)' : ''}`;
+		hardwareInfoContainer.appendChild(cpuUsage);
+		const ramUsage = document.createElement('p');
+		ramUsage.textContent = `RAM Usage: ${entry.ram_usage !== null && entry.ram_capacity !== null ? entry.ram_usage.toFixed(2) + 'GB / ' + entry.ram_capacity.toFixed(2) + 'GB' : 'N/A'}`;
+		hardwareInfoContainer.appendChild(ramUsage);
+		const diskTemp = document.createElement('p');
+		diskTemp.textContent = `Disk Temp: ${entry.disk_temp !== null ? entry.disk_temp.toFixed(2) + '°C' : 'N/A'}`;
+		hardwareInfoContainer.appendChild(diskTemp);
+		const networkUsage = document.createElement('p');
+		networkUsage.textContent = `Network Usage: ${entry.network_usage !== null ? entry.network_usage.toFixed(2) + 'Mbps' : 'N/A'}`;
+		hardwareInfoContainer.appendChild(networkUsage);
+		const batteryCharge = document.createElement('p');
+		batteryCharge.textContent = `Battery: ${entry.battery_charge !== null ? entry.battery_charge.toFixed(2) + '%' : 'N/A'} ${entry.battery_health ? '(Cap: ' + entry.battery_health?.toFixed(2) + '%' : 'N/A'} ${entry.battery_health_warning ? '(Warning)' : ''})`;
+		hardwareInfoContainer.appendChild(batteryCharge);
 
 		clientGridContainer.appendChild(clientIdentifiers);		
 		if (entry.online) clientGridContainer.appendChild(liveViewContainer);
@@ -379,6 +399,7 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 			offlineTableFragment.appendChild(clientEntryContainer);
 		}
 		clientGridContainer.appendChild(softwareInfoContainer);
+		clientGridContainer.appendChild(hardwareInfoContainer);
 	}
 	onlineClientsDiv.innerHTML = '';
 	onlineClientsDiv.appendChild(onlineTableFragment);
