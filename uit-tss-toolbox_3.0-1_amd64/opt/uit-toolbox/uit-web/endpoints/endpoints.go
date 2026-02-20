@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	mathrand "math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 	"strings"
 	"time"
 	config "uit-toolbox/config"
+	"uit-toolbox/database"
 	middleware "uit-toolbox/middleware"
 	"unicode/utf8"
 
@@ -35,65 +37,54 @@ type ServerTime struct {
 	Time string `json:"server_time"`
 }
 
-func ValidateAuthFormInputSHA256(username, password string) error {
+func ValidateAuthFormInputSHA256(username string, password string) error {
 	username = strings.TrimSpace(username)
-	usernameLength := utf8.RuneCountInString(username)
-	if usernameLength != 64 {
-		return errors.New("invalid SHA hash length for username")
-	}
-
 	password = strings.TrimSpace(password)
-	passwordLength := utf8.RuneCountInString(password)
-	if passwordLength != 64 {
-		return errors.New("invalid SHA hash length for password")
-	}
 
 	if err := middleware.IsSHA256String(username); err != nil {
-		return errors.New("username does not match SHA regex")
+		return fmt.Errorf("username has invalid SHA256 hash: %w", err)
 	}
 	if err := middleware.IsSHA256String(password); err != nil {
-		return errors.New("password does not match SHA regex")
+		return fmt.Errorf("password has invalid SHA256 hash: %w", err)
 	}
-
-	authStr := username + ":" + password
-
-	// Check for non-printable ASCII characters
-	if !middleware.IsPrintableASCII([]byte(authStr)) {
-		return errors.New("credentials contain non-printable ASCII characters")
-	}
-
 	return nil
 }
 
-func CheckAuthCredentials(ctx context.Context, username, password string) (bool, error) {
-	if strings.TrimSpace(username) == "" || strings.TrimSpace(password) == "" {
-		return false, errors.New("username or password is empty")
+func CheckAuthCredentials(ctx context.Context, username string, password string) (bool, error) {
+	username = strings.TrimSpace(username)
+	password = strings.TrimSpace(password)
+	if utf8.RuneCountInString(username) == 0 || utf8.RuneCountInString(password) == 0 {
+		return false, fmt.Errorf("username or password is empty")
 	}
 
-	db, err := config.GetDatabaseConn()
+	selectRepo, err := database.NewSelectRepo()
 	if err != nil {
-		return false, fmt.Errorf("error getting database connection in CheckAuthCredentials: %w", err)
+		return false, fmt.Errorf("cannot create select repo: %w", err)
 	}
-
-	sqlCode := `SELECT password FROM logins WHERE username = $1 LIMIT 1;`
-	var dbBcryptHash sql.NullString
-	if err := db.QueryRowContext(ctx, sqlCode, username).Scan(&dbBcryptHash); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			buffer1 := make([]byte, 32)
+	usernameExists, dbPassword, err := selectRepo.CheckAuthCredentials(ctx, &username, &password)
+	if err != nil || !usernameExists || dbPassword == nil {
+		if errors.Is(err, sql.ErrNoRows) { // timing attacks
+			buffer1 := make([]byte, mathrand.Intn(32)+32)
 			_, _ = rand.Read(buffer1)
-			buffer2 := make([]byte, 32)
+			buffer2 := make([]byte, mathrand.Intn(32)+32)
 			_, _ = rand.Read(buffer2)
-			pass1, _ := bcrypt.GenerateFromPassword(buffer1, bcrypt.DefaultCost)
-			pass2, _ := bcrypt.GenerateFromPassword(buffer2, bcrypt.DefaultCost)
+			pass1, err := bcrypt.GenerateFromPassword(buffer1, bcrypt.DefaultCost)
+			if err != nil {
+				return false, fmt.Errorf("error generating bcrypt hash #1 for timing attack: %w", err)
+			}
+			pass2, err := bcrypt.GenerateFromPassword(buffer2, bcrypt.DefaultCost)
+			if err != nil {
+				return false, fmt.Errorf("error generating bcrypt hash #2 for timing attack: %w", err)
+			}
 			bcrypt.CompareHashAndPassword(pass1, pass2)
-			return false, errors.New("invalid credentials")
+			return false, fmt.Errorf("invalid username or password")
 		}
-		return false, fmt.Errorf("query error in CheckAuthCredentials: %w", err)
+		return false, fmt.Errorf("query error: %w", err)
 	}
 
 	// Compare plaintext password versus stored bcrypt
-	if bcrypt.CompareHashAndPassword([]byte(dbBcryptHash.String), []byte(password)) != nil {
-		return false, errors.New("invalid credentials")
+	if err := bcrypt.CompareHashAndPassword([]byte(*dbPassword), []byte(password)); err != nil {
+		return false, fmt.Errorf("invalid password: %w", err)
 	}
 	return true, nil
 }

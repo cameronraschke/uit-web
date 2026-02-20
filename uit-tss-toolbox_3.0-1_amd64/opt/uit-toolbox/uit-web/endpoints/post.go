@@ -13,6 +13,7 @@ import (
 	"image/jpeg"
 	_ "image/png"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -36,22 +37,23 @@ type AuthFormData struct {
 func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
+	log = log.With(slog.String("func", "WebAuthEndpoint"))
 	reqIP, err := middleware.GetRequestIPFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving request IP from context (WebAuthEndpoint): " + err.Error())
+		log.Warn("Cannot retrieve request IP from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	appState, err := config.GetAppState()
 	if err != nil {
-		log.Warn("Cannot get app state in WebAuthEndpoint: " + err.Error())
+		log.Warn("Cannot retrieve app state: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	maxLoginSizeBytes, _, _, _, _, err := appState.GetLoginFormSizeConstraint()
 	if err != nil {
-		log.Warn("Error retrieving login form constraints: " + err.Error())
+		log.Warn("Cannot retrieve login form constraints: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -61,7 +63,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		if maxBytesErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
-			log.Warn("Login form size exceeds maximum allowed: " + maxBytesErr.Error())
+			log.Warn("Login form size exceeds maximum allowed bytes: " + maxBytesErr.Error())
 			middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 			return
 		}
@@ -70,29 +72,37 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	decoded, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(string(body)))
+	// Decode base64
+	base64Decoded, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(string(body)))
 	if err != nil {
 		log.Warn("Invalid base64 encoding: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-
-	if !utf8.Valid(decoded) {
-		log.Warn("Invalid UTF-8 in decoded data")
+	if len(base64Decoded) == 0 {
+		log.Warn("Empty base64 data")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
+	// Check if decoded base64 is valid UTF-8
+	if !utf8.Valid(base64Decoded) {
+		log.Warn("Invalid UTF-8 in base64 data")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	// Unmarshal JSON from base64 bytes
 	var clientFormAuthData AuthFormData
-	if err := json.Unmarshal(decoded, &clientFormAuthData); err != nil {
-		log.Warn("Invalid JSON structure in WebAuthEndpoint: " + err.Error())
+	if err := json.Unmarshal(base64Decoded, &clientFormAuthData); err != nil {
+		log.Warn("Cannot unmarshal JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	// Validate input data
 	if err := ValidateAuthFormInputSHA256(clientFormAuthData.Username, clientFormAuthData.Password); err != nil {
-		log.Warn("Invalid auth input: " + err.Error())
+		log.Warn("Invalid username/password input: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}

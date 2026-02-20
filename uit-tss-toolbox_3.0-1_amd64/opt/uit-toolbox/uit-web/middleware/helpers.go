@@ -418,11 +418,14 @@ func CountDigits(n int64) int {
 	return count
 }
 
-func IsSHA256String(s string) error {
-	sha256HexRegex := regexp.MustCompile(`^[0-9a-fA-F]{64}$`)
-	s = strings.TrimSpace(s)
-	if !sha256HexRegex.MatchString(s) {
-		return errors.New("invalid digest")
+func IsSHA256String(shaStr string) error {
+	if len(shaStr) != 64 { // ASCII, 1 byte per char
+		return fmt.Errorf("invalid length for SHA256 string: %d chars", len(shaStr))
+	}
+	for _, char := range shaStr {
+		if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f') || (char >= 'A' && char <= 'F')) {
+			return fmt.Errorf("invalid character found in SHA256 string")
+		}
 	}
 	return nil
 }

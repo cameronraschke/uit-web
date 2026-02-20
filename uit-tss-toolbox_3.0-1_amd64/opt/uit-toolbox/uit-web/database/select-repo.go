@@ -14,6 +14,7 @@ type Select interface {
 	GetDepartments(ctx context.Context) ([]Department, error)
 	GetDomains(ctx context.Context) ([]Domain, error)
 	GetManufacturersAndModels(ctx context.Context) ([]ManufacturersAndModels, error)
+	CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error)
 	ClientLookupByTag(ctx context.Context, tag *int64) (*ClientLookup, error)
 	ClientLookupBySerial(ctx context.Context, serial *string) (*ClientLookup, error)
 	GetHardwareIdentifiers(ctx context.Context, tag *int64) (*HardwareData, error)
@@ -221,6 +222,33 @@ func (repo *SelectRepo) GetManufacturersAndModels(ctx context.Context) ([]Manufa
 	}
 
 	return manufacturersAndModels, nil
+}
+
+func (repo *SelectRepo) CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error) {
+	if username == nil || password == nil || strings.TrimSpace(*username) == "" || strings.TrimSpace(*password) == "" {
+		return false, nil, fmt.Errorf("username or password is empty")
+	}
+
+	if ctx.Err() != nil {
+		return false, nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	const sqlQuery = `SELECT password FROM logins WHERE username = $1 LIMIT 1;`
+
+	var dbBcryptHash sql.NullString
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullString(username))
+	if err := row.Scan(&dbBcryptHash); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil, fmt.Errorf("no results from db")
+		}
+		return false, nil, fmt.Errorf("error during row scan: %w", err)
+	}
+
+	if !dbBcryptHash.Valid || strings.TrimSpace(dbBcryptHash.String) == "" {
+		return false, nil, nil
+	}
+
+	return true, &dbBcryptHash.String, nil
 }
 
 func (repo *SelectRepo) ClientLookupByTag(ctx context.Context, tag *int64) (*ClientLookup, error) {

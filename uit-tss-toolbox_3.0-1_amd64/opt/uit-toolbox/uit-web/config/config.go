@@ -465,7 +465,7 @@ func SetAppState(newState *AppState) error {
 func GetAppState() (*AppState, error) {
 	appState := appStateInstance.Load()
 	if appState == nil {
-		return nil, fmt.Errorf("app state is not initialized")
+		return nil, fmt.Errorf("app state is nil (GetAppState)")
 	}
 	return appState, nil
 }
