@@ -165,7 +165,7 @@ func CheckIPBlockedMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		if config.RequestIPBlocked(reqAddr) {
-			log.Warn("Request received from blocked IP")
+			log.Debug("Request received from blocked IP")
 			WriteJsonError(w, http.StatusForbidden)
 			return
 		}

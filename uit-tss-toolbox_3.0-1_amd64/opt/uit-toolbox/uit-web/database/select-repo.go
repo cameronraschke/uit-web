@@ -478,8 +478,8 @@ func (repo *SelectRepo) GetJobQueueOverview(ctx context.Context) (*JobQueueOverv
 
 	const sqlQuery = `SELECT t1.total_queued_jobs, t2.total_active_jobs, t3.total_active_blocking_jobs
 	FROM 
-	(SELECT COUNT(*) AS total_queued_jobs FROM job_queue WHERE job_queued IS NOT NULL AND (NOW() - present < INTERVAL '30 SECOND')) AS t1,
-	(SELECT COUNT(*) AS total_active_jobs FROM job_queue WHERE job_active IS NOT NULL AND job_active = TRUE AND (NOW() - present < INTERVAL '30 SECOND')) AS t2,
+	(SELECT COUNT(*) AS total_queued_jobs FROM job_queue WHERE job_queued IS NOT NULL AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - present)) < 30) AS t1,
+	(SELECT COUNT(*) AS total_active_jobs FROM job_queue WHERE job_active IS NOT NULL AND job_active = TRUE AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - present)) < 30) AS t2,
 	(SELECT COUNT(*) AS total_active_blocking_jobs FROM job_queue WHERE job_active IS NOT NULL AND job_active = TRUE AND job_queued IS NOT NULL AND job_queued IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')) AS t3;`
 
 	var jobQueueOverview JobQueueOverview
@@ -549,7 +549,7 @@ func (repo *SelectRepo) GetDashboardInventorySummary(ctx context.Context) ([]Das
 	joined AS (
 		SELECT systems.system_model,
 			(latest_checkouts.checkout_date IS NOT NULL AND latest_checkouts.return_date IS NULL)
-				OR (latest_checkouts.return_date IS NOT NULL AND latest_checkouts.return_date > NOW()) AS is_checked_out,
+				OR (latest_checkouts.return_date IS NOT NULL AND latest_checkouts.return_date > CURRENT_TIMESTAMP) AS is_checked_out,
 			(latest_locations.department_name IS NOT NULL AND latest_locations.department_name NOT IN ('property', 'pre-property')) AS loc_ok
 		FROM systems
 		LEFT JOIN latest_checkouts ON latest_checkouts.tagnumber = systems.tagnumber
@@ -913,10 +913,12 @@ func (repo *SelectRepo) GetClientBatteryHealth(ctx context.Context, tagnumber *i
 func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, error) {
 	const sqlQuery = `WITH latest_locations AS (
 		SELECT DISTINCT ON (locations.tagnumber) locations.time, locations.tagnumber, locations.system_serial, locations.location,
-			locationFormatting(locations.location) AS location_formatted, locations.department_name, locations.ad_domain,
-			locations.client_status, locations.is_broken,
+			locationFormatting(locations.location) AS location_formatted, static_department_info.department_name_formatted, locations.ad_domain,
+			static_client_statuses.status_formatted, locations.is_broken,
 			locations.disk_removed
 		FROM locations
+		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status
+		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 		ORDER BY locations.tagnumber, locations.time DESC),
 	latest_jobstats AS (
 		SELECT DISTINCT ON (jobstats.tagnumber) jobstats.time, jobstats.tagnumber, 
@@ -939,16 +941,16 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRo
 		hardware_data.system_model,
 		latest_locations.location_formatted AS "location",
 		latest_locations.department_name,
-		latest_locations.client_status,
+		latest_locations.status_formatted AS "client_status",
 		latest_locations.is_broken,
 		latest_locations.disk_removed,
 		FALSE AS "temp_warning",
 		FALSE AS "battery_warning",
-		(CASE WHEN latest_locations.client_status = 'checked_out' THEN TRUE ELSE FALSE END) AS checkout_bool,
+		(CASE WHEN latest_locations.status_formatted = 'checked_out' THEN TRUE ELSE FALSE END) AS checkout_bool,
 		TRUE AS "kernel_updated",
 		job_queue.present AS "last_heard",
 		job_queue.uptime,
-		(CASE WHEN (CURRENT_TIMESTAMP - job_queue.present) < INTERVAL '30 SECONDS' THEN TRUE ELSE FALSE END) AS "online",
+		(CASE WHEN EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.present)) < 30 THEN TRUE ELSE FALSE END) AS "online",
 		job_queue.job_active,
 		(CASE WHEN job_queue.job_queued IS NOT NULL THEN TRUE ELSE FALSE END) AS "job_queued",
 		job_queue.job_queued_position AS "queue_position",

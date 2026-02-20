@@ -22,6 +22,7 @@ type Update interface {
 	TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	SetClientBatteryHealth(ctx context.Context, uuid *string, healthPcnt *int64) (err error)
 	SetAllOnlineClientJobs(ctx context.Context, allJobs *AllJobs) (err error)
+	SetClientJob(ctx context.Context, tag *int64, clientJob *string) (err error)
 }
 
 type UpdateRepo struct {
@@ -518,6 +519,38 @@ func (updateRepo *UpdateRepo) SetAllOnlineClientJobs(ctx context.Context, allJob
 	sqlResult, err = tx.ExecContext(ctx, sqlCode, ptrStringToString(allJobs.JobName))
 	if err != nil {
 		return fmt.Errorf("error while updating job queue: %w", err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+	}
+	return nil
+}
+
+func (updateRepo *UpdateRepo) SetClientJob(ctx context.Context, tag *int64, clientJob *string) (err error) {
+	if tag == nil || clientJob == nil {
+		return fmt.Errorf("tag and clientJob are both required")
+	}
+
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error initializing transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	const sqlCode = `UPDATE job_queue SET job_name = $1, job_queued = TRUE WHERE tagnumber = $2;`
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, sqlCode, ptrStringToString(clientJob), ToNullInt64(tag))
+	if err != nil {
+		return fmt.Errorf("error while updating client job: %w", err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)

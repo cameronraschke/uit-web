@@ -27,40 +27,9 @@
 		</form>
 
 			
-    <div id="online-container" class="flex-container">
-			<table id="online-clients-table">
-				<thead>
-					<tr>
-						<th>Tag <span id="battery_charge_pcnt_online"></span></th>
-						<th>Image</th>
-						<th>Queued Job</th>
-						<th>Location</th>
-						<th>Job Status</th>
-						<th>Last Heard</th>
-					</tr>
-				</thead>
-				<tbody id="online-clients-tbody">
-					<!-- Job rows will be populated here by JS -->
-				</tbody>
-			</table>
-		</div>
+    <div id="online-clients-container" class="flex-container"></div>
 		
-		<div id="offline-container" class="flex-container">
-			<table id="offline-clients-table">
-				<thead>
-					<tr>
-						<th>Tag <span id="battery_charge_pcnt_offline"></span></th>
-						<th>Queued Job</th>
-						<th>Location</th>
-						<th>Job Status</th>
-						<th>Last Heard</th>
-					</tr>
-				</thead>
-				<tbody id="offline-clients-tbody">
-					<!-- Job rows will be populated here by JS -->
-				</tbody>
-			</table>
-		</div>
+		<div id="offline-clients-container" class="flex-container"></div>
 
     <div id="uit-footer" class="flex-container horizontal"></div>
     <script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/footer.js"></script>

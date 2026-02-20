@@ -60,39 +60,41 @@ type AllJobs = {
 	job_hidden: boolean;
 };
 
+type AllJobsCache = {
+	jobs: AllJobs[] | null;
+	timestamp: number;
+};
+
 const updateOnlineJobQueueForm = document.getElementById('update-all-online-jobs-form') as HTMLFormElement | null;
 const updateOnlineJobQueueSelect = document.getElementById('update-all-online-jobs-select') as HTMLSelectElement | null;
 const updateOnlineJobQueueButton = document.getElementById('update-all-online-jobs-submit') as HTMLButtonElement | null;
-const onlineClientsDiv = document.getElementById('online-clients') as HTMLDivElement | null;
-const offlineClientsDiv = document.getElementById('offline-clients') as HTMLDivElement | null;
+const onlineClientsDiv = document.getElementById('online-clients-container') as HTMLDivElement | null;
+const offlineClientsDiv = document.getElementById('offline-clients-container') as HTMLDivElement | null;
 
 let jobQueueInterval: number;
 
-document.addEventListener('DOMContentLoaded', async () => {
-	const allJobs = await getAllJobs();
-	if (updateOnlineJobQueueSelect) {
-		for (const job of allJobs) {
-			if (job.job_hidden) {
-				continue;
+async function fetchAllJobs(purgeCache = false): Promise<AllJobs[]> {
+	const cacheKey = 'uit_all_jobs';
+	const cacheDuration = 5 * 60 * 1000; // 5 minutes in milliseconds
+	const now = Date.now();
+	if (!purgeCache) {
+		const cachedDataString = localStorage.getItem(cacheKey);
+		if (cachedDataString) {
+			try {
+				const cachedData: AllJobsCache = JSON.parse(cachedDataString);
+				if (cachedData && cachedData.jobs && (now - cachedData.timestamp) < cacheDuration) {
+					return cachedData.jobs;
+				}
+			} catch (error) {
+				console.error('Error parsing cached data:', error);
 			}
-			const option = document.createElement('option');
-			option.value = job.job_name;
-			option.textContent = job.job_name_readable;
-			updateOnlineJobQueueSelect.appendChild(option);
 		}
 	}
 
-	// Initial fetch and set interval for realtime updates
-	getJobQueueData();
-	jobQueueInterval = setInterval(() => {
-		getJobQueueData();
-	}, 10000);
-});
-
-async function getAllJobs(): Promise<AllJobs[]> {
 	try {
 		const data: AllJobs[] = await fetchData('/api/job_queue/all_jobs', false);
 		if (Array.isArray(data)) {
+			localStorage.setItem(cacheKey, JSON.stringify({ jobs: data, timestamp: now }));
 			return data;
 		} else {
 			console.error('Expected array but got:', data);
@@ -102,8 +104,7 @@ async function getAllJobs(): Promise<AllJobs[]> {
 		console.error('Error fetching all jobs:', error);
 		return [];
 	}
-}
-		
+}		
 
 if (updateOnlineJobQueueForm && updateOnlineJobQueueSelect && updateOnlineJobQueueButton) {
 	updateOnlineJobQueueSelect.addEventListener('change', () => {
@@ -124,7 +125,7 @@ if (updateOnlineJobQueueForm && updateOnlineJobQueueSelect && updateOnlineJobQue
 		}
 
 		try {
-			const allJobsArr: AllJobs[] = await getAllJobs();
+			const allJobsArr: AllJobs[] = await fetchAllJobs();
 			if (!allJobsArr || !Array.isArray(allJobsArr) || allJobsArr.length === 0) {
 				throw new Error('Failed to get available jobs from ' + '/api/job_queue/all_jobs');
 			}
@@ -163,98 +164,168 @@ if (updateOnlineJobQueueForm && updateOnlineJobQueueSelect && updateOnlineJobQue
 document.addEventListener('visibilitychange', () => {
 	clearInterval(jobQueueInterval);
 	if (document.visibilityState === 'visible') {
-		getJobQueueData();
+		fetchJobQueueData();
 		jobQueueInterval = setInterval(() => {
-			getJobQueueData();
+			fetchJobQueueData();
 		}, 10000);
 	}
 });
 
 
-async function getJobQueueData() {
+async function fetchJobQueueData() : Promise<JobQueueTableRow[] | []> {
 	try {
-		const data = await fetchData('/api/job_queue/overview', false);
-		if (Array.isArray(data)) {
-			updateJobQueueTable(data);
+		const data: JobQueueTableRow[] = await fetchData('/api/job_queue/overview', false);
+		if (Array.isArray(data) && data.length > 0) {
+			return data;
 		} else {
 			console.error('Expected array but got:', data);
+			return [];
 		}
 	} catch (error) {
 		console.error('Error fetching job queue data:', error);
+		return [];
 	}
 }
 
-function updateJobQueueTable(data: JobQueueTableRow[]) {
+function renderJobQueueTable(data: JobQueueTableRow[]) {
+	if (!data || !Array.isArray(data) || data.length === 0) {
+		console.warn('No job queue data to render.');
+		return;
+	}
 	if (!onlineClientsDiv || !offlineClientsDiv) return;
 
 	const onlineTableFragment = document.createDocumentFragment();
 	const offlineTableFragment = document.createDocumentFragment();
 
 	for (const entry of data) {
-		if (!entry.tagnumber) continue;
+		if (!entry.tagnumber) {
+			console.warn("No tagnumber for entry");
+			continue;
+		}
 
-		const clientRow = document.createElement('div');
-		clientRow.id = `client-row-${entry.tagnumber}`;
-		// clientRow.dataset.tagnumber = entry.tagnumber.toString();
-		clientRow.className = 'client-row-container';
+		const clientEntryContainer = document.createElement('div');
+		clientEntryContainer.classList.add('client-row-container');
+		clientEntryContainer.dataset.tagnumber = entry.tagnumber.toString();
 
-		const gridContainer = document.createElement('div');
-		gridContainer.className = 'client-row-grid';
+		const clientGridContainer = document.createElement('div');
+		clientGridContainer.className = 'client-row-grid';
 
-		const col1 = document.createElement('div');
-		col1.className = 'grid-item headers';
-
-		const tagNum = document.createElement('p');
-		tagNum.style.fontWeight = 'bold';
+		// Client identifiers and info
+		const clientIdentifiers = document.createElement('div');
+		clientIdentifiers.className = 'grid-item headers';
+		const tagNum = document.createElement('a');
+		const tagURL = new URL(`/client`, window.location.origin);
+		tagURL.searchParams.append('tagnumber', entry.tagnumber.toString());
+		tagNum.href = tagURL.toString();
+		tagNum.target = '_blank';
 		tagNum.textContent = entry.tagnumber !== null ? entry.tagnumber.toString() : 'N/A';
-		col1.appendChild(tagNum);
+		clientIdentifiers.appendChild(tagNum);
+		const serialNumber = document.createElement('p');
+		serialNumber.textContent = `Serial Number: ${entry.system_serial || 'N/A'}`;
+		clientIdentifiers.appendChild(serialNumber);
+		const manufacturerModel = document.createElement('p');
+		manufacturerModel.textContent = `Manufacturer/Model: ${entry.system_manufacturer || 'N/A'} - ${entry.system_model || 'N/A'}`;
+		clientIdentifiers.appendChild(manufacturerModel);
+		const location = document.createElement('p');
+		location.textContent = `Location: ${entry.location || 'N/A'}`;
+		clientIdentifiers.appendChild(location);
+		const department = document.createElement('p');
+		department.textContent = `Department: ${entry.department_name || 'N/A'}`;
+		clientIdentifiers.appendChild(department);
+		const status = document.createElement('p');
+		status.textContent = `Status: ${entry.client_status || 'N/A'}`;
+		clientIdentifiers.appendChild(status);
 
-		const serialNumberLabel = document.createElement('p');
-		serialNumberLabel.style.fontStyle = 'italic';
-		serialNumberLabel.textContent = 'Serial Number: ';
-		col1.appendChild(serialNumberLabel);
-		const serialNumber = document.createElement('span');
-		serialNumber.textContent = entry.system_serial || 'N/A';
-		serialNumberLabel.appendChild(serialNumber);
+		// Live view
+		const liveViewContainer = document.createElement('div');
+		liveViewContainer.classList.add('grid-item', 'live-view-container');
+		const liveViewHeader = document.createElement('p');
+		liveViewHeader.style.fontStyle = 'italic';
+		liveViewHeader.textContent = 'Live View: ';
+		liveViewContainer.appendChild(liveViewHeader);
+		const liveViewScreenshotContainer = document.createElement('div');
+		liveViewScreenshotContainer.classList.add('image-container');
+		const liveViewOffline = document.createElement('h2');
+		liveViewOffline.textContent = 'Offline';
+		liveViewScreenshotContainer.appendChild(liveViewOffline);
+		liveViewContainer.appendChild(liveViewScreenshotContainer);
+		const lastHeard = document.createElement('p');
+		lastHeard.textContent = entry.last_heard ? `Last Heard: ${new Date(entry.last_heard).toLocaleString()}` : 'Last Heard: N/A';
+		liveViewContainer.appendChild(lastHeard);
+		clientEntryContainer.appendChild(clientGridContainer);
 
-		const manufacturerModelLabel = document.createElement('p');
-		manufacturerModelLabel.style.fontStyle = 'italic';
-		manufacturerModelLabel.textContent = 'Manufacturer/Model: ';
-		col1.appendChild(manufacturerModelLabel);
-		const manufacturerModel = document.createElement('span');
-		manufacturerModel.textContent = `${entry.system_manufacturer || 'N/A'} - ${entry.system_model || 'N/A'}`;
-		manufacturerModelLabel.appendChild(manufacturerModel);
+		// Job info
+		const jobInfoContainer = document.createElement('div');
+		jobInfoContainer.classList.add('grid-item');
+		const jobName = document.createElement('p');
+		jobName.textContent = `Job Queued: ${entry.job_name_readable || 'N/A'}`;
+		jobInfoContainer.appendChild(jobName);
+		const jobStatus = document.createElement('p');
+		jobStatus.textContent = `Job Status: ${entry.job_status || 'N/A'}`;
+		jobInfoContainer.appendChild(jobStatus);
+		const jobSelectContainer = document.createElement('div');
+		jobSelectContainer.classList.add('flex-container-horizontal');
+		const jobSelect = document.createElement('select');
+		fetchAllJobs().then(jobs => {
+			const defaultOption = document.createElement('option');
+			defaultOption.value = '';
+			defaultOption.textContent = 'Select job to queue';
+			jobSelect.appendChild(defaultOption);
+			for (const job of jobs) {
+				if (job.job_hidden) {
+					continue;
+				}
+				const option = document.createElement('option');
+				option.value = job.job_name;
+				option.textContent = job.job_name_readable;
+				jobSelect.appendChild(option);
+			}
+		}).catch(error => {
+			console.error('Error fetching all jobs for select dropdown:', error);
+		});
+		jobInfoContainer.appendChild(jobSelect);
+		const queueJobButton = document.createElement('button');
+		queueJobButton.textContent = 'Queue Job';
+		queueJobButton.addEventListener('click', async () => {
+			const selectedJob = jobSelect.value;
+			if (!selectedJob) {
+				alert('Please select a job to queue.');
+				return;
+			}
+			try {
+				const response = await fetch('/api/job_queue/update_client_job', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ tagnumber: entry.tagnumber, job_name: selectedJob }),
+				});
+				if (!response.ok) {
+					throw new Error('Server responded with ' + response.status);
+				} else {
+					alert('Job queued successfully!');
+				}
+			} catch (error) {
+				console.error('Error queueing job:', error);
+				alert('An error occurred while queueing the job. Please try again.');
+			} finally {
+				await initializeJobQueuePage();
+			}
+		});
+		if (entry.job_queued && entry.queue_position !== null) {
+			jobSelect.value = entry.job_name || '';
+			const queuePosition = document.createElement('p');
+			queuePosition.textContent = `Queue Position: ${entry.queue_position}, last job completed at ${entry.last_job_time ? new Date(entry.last_job_time).toLocaleString() : 'N/A'}`;
+			jobInfoContainer.appendChild(queuePosition);
+		}
 
-		const locationLabel = document.createElement('p');
-		locationLabel.style.fontStyle = 'italic';
-		locationLabel.textContent = 'Location: ';
-		col1.appendChild(locationLabel);
-		const location = document.createElement('span');
-		location.textContent = entry.location || 'N/A';
-		locationLabel.appendChild(location);
-
-		const departmentLabel = document.createElement('p');
-		departmentLabel.style.fontStyle = 'italic';
-		departmentLabel.textContent = 'Department: ';
-		col1.appendChild(departmentLabel);
-		const department = document.createElement('span');
-		department.textContent = entry.department_name || 'N/A';
-		departmentLabel.appendChild(department);
-
-		const statusLabel = document.createElement('p');
-		statusLabel.style.fontStyle = 'italic';
-		statusLabel.textContent = 'Status: ';
-		col1.appendChild(statusLabel);
-		const status = document.createElement('span');
-		status.textContent = entry.client_status || 'N/A';
-		statusLabel.appendChild(status);
-
-		gridContainer.appendChild(col1);
-
+		clientGridContainer.appendChild(clientIdentifiers);		
+		if (entry.online) clientGridContainer.appendChild(liveViewContainer);
+		clientGridContainer.appendChild(jobInfoContainer);
 		if (entry.online) {
-			onlineTableFragment.appendChild(clientRow);
+			onlineTableFragment.appendChild(clientEntryContainer);
 		} else {
-			offlineTableFragment.appendChild(clientRow);
+			offlineTableFragment.appendChild(clientEntryContainer);
 		}
 	}
 	onlineClientsDiv.innerHTML = '';
@@ -263,3 +334,33 @@ function updateJobQueueTable(data: JobQueueTableRow[]) {
 	offlineClientsDiv.innerHTML = '';
 	offlineClientsDiv.appendChild(offlineTableFragment);
 }
+
+async function initializeJobQueuePage() {
+	const allJobs = await fetchAllJobs(true);
+	if (updateOnlineJobQueueSelect) {
+		for (const job of allJobs) {
+			if (job.job_hidden) {
+				continue;
+			}
+			const option = document.createElement('option');
+			option.value = job.job_name;
+			option.textContent = job.job_name_readable;
+			updateOnlineJobQueueSelect.appendChild(option);
+		}
+	}
+
+	// Initial fetch and set interval for realtime updates
+	const jobTable = await fetchJobQueueData();
+	renderJobQueueTable(jobTable);
+	if (jobQueueInterval) {
+		clearInterval(jobQueueInterval);
+	}
+	jobQueueInterval = setInterval(async () => {
+		const jobTable = await fetchJobQueueData();
+		renderJobQueueTable(jobTable);
+	}, 10000);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+	await initializeJobQueuePage();
+});

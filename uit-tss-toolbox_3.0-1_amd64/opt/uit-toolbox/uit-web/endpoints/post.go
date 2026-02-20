@@ -1078,3 +1078,72 @@ func SetAllJobs(w http.ResponseWriter, req *http.Request) {
 	}
 	middleware.WriteJson(w, http.StatusOK, "All jobs set successfully")
 }
+
+func SetClientJob(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx)
+	log = log.With(slog.String("func", "SetClientJob"))
+
+	appState, err := config.GetAppState()
+	if err != nil {
+		log.Warn("Error retrieving application state: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	_, _, maxReqSize, err := appState.GetFileUploadDefaultConstraints()
+	if err != nil {
+		log.Warn("Error retrieving file upload default constraints: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	req.Body = http.MaxBytesReader(w, req.Body, maxReqSize)
+	clientBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Cannot read request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	var clientJson database.JobQueueTableRow
+	if err := json.Unmarshal(clientBody, &clientJson); err != nil {
+		log.Warn("Cannot decode request JSON: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	if err := IsTagnumberInt64Valid(clientJson.Tagnumber); err != nil {
+		log.Warn("Invalid tagnumber: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if clientJson.JobName == nil {
+		log.Warn("Job name is missing")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(*clientJson.JobName)) < 1 || utf8.RuneCountInString(strings.TrimSpace(*clientJson.JobName)) > 64 {
+		log.Warn("Invalid job name length")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	if !middleware.IsASCIIStringPrintable(*clientJson.JobName) {
+		log.Warn("Non-printable ASCII characters in job name field")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	updateRepo, err := database.NewUpdateRepo()
+	if err != nil {
+		log.Error("No database connection available for SetClientJob")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if err = updateRepo.SetClientJob(ctx, clientJson.Tagnumber, clientJson.JobName); err != nil {
+		log.Error("Failed to set client job: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, "Client job set successfully")
+}
