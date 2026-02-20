@@ -719,9 +719,12 @@ func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var hash []uint8
+		var hash = make([]uint8, 32)
 		if err := rows.Scan(&hash); err != nil {
 			return nil, fmt.Errorf("error during row scan: %w", err)
+		}
+		if len(hash) != 32 {
+			return nil, fmt.Errorf("unexpected hash length: got %d, want 32", len(hash))
 		}
 		hashes = append(hashes, hash)
 	}
