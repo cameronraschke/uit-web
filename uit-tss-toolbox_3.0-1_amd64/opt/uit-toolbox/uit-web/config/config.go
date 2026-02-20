@@ -398,16 +398,13 @@ func InitApp() (*AppState, error) {
 	for _, wanIP := range appConfig.AllowedWANIPs {
 		wanIPCopy := wanIP
 		appState.allowedWANIPs.Store(&wanIPCopy, true)
+		appState.allAllowedIPs.Store(&wanIPCopy, true)
 	}
 
 	for _, lanIP := range appConfig.AllowedLANIPs {
 		lanIPCopy := lanIP
 		appState.allowedLANIPs.Store(&lanIPCopy, true)
-	}
-
-	for _, allIP := range appConfig.AllAllowedIPs {
-		allIPCopy := allIP
-		appState.allAllowedIPs.Store(&allIPCopy, true)
+		appState.allAllowedIPs.Store(&lanIPCopy, true)
 	}
 
 	// Generate server-side secret for HMAC
@@ -539,7 +536,6 @@ func SetDatabaseConn(newDbConn *sql.DB) error {
 
 // IP address checks
 func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error) {
-	allowed = false
 	appState, err := GetAppState()
 	if err != nil {
 		return allowed, fmt.Errorf("cannot retrieve app state: %w", err)
@@ -563,15 +559,7 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 	case "any":
 		allowed, err = ipAllowedInRanges(ipAddr, &appState.allAllowedIPs)
 		if err != nil {
-			allowedWAN, wanErr := ipAllowedInRanges(ipAddr, &appState.allowedWANIPs)
-			if wanErr != nil {
-				return allowed, fmt.Errorf("error checking WAN IP ranges: %w", wanErr)
-			}
-			allowedLAN, lanErr := ipAllowedInRanges(ipAddr, &appState.allowedLANIPs)
-			if lanErr != nil {
-				return allowed, fmt.Errorf("error checking LAN IP ranges: %w", lanErr)
-			}
-			allowed = allowedWAN || allowedLAN
+			return allowed, fmt.Errorf("error checking IP ranges: %w", err)
 		}
 	default:
 		return allowed, errors.New("invalid traffic type, must be 'wan', 'lan', or 'any'")
