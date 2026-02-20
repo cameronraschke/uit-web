@@ -165,7 +165,7 @@ INSERT INTO static_battery_stats
 		('X906972', 300),
 		('M1009169', 300),
 		('X910528', 300)
-	ON CONFLICT (battery_model) UPDATE SET battery_charge_cycles = EXCLUDED.battery_charge_cycles
+	ON CONFLICT (battery_model) DO UPDATE SET battery_charge_cycles = EXCLUDED.battery_charge_cycles
 	;
 
 
@@ -211,7 +211,7 @@ VALUES
 	('OptiPlex 5070', '1.31.1'),
 	('OptiPlex 7010', 'A29'),
 	('OptiPlex 7780', '1.36.1')
-ON CONFLICT (system_model) UPDATE SET bios_version = EXCLUDED.bios_version
+ON CONFLICT (system_model) DO UPDATE SET bios_version = EXCLUDED.bios_version
 ;
 
 
