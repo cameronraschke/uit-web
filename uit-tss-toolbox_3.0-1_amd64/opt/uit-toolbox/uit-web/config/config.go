@@ -557,28 +557,28 @@ func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error
 	case "wan":
 		allowed, err = ipAllowedInRanges(ipAddr, &appState.allowedWANIPs)
 		if err != nil {
-			return false, fmt.Errorf("error checking WAN IP ranges: %w", err)
+			return allowed, fmt.Errorf("error checking WAN IP ranges: %w", err)
 		}
 	case "lan":
 		allowed, err = ipAllowedInRanges(ipAddr, &appState.allowedLANIPs)
 		if err != nil {
-			return false, fmt.Errorf("error checking LAN IP ranges: %w", err)
+			return allowed, fmt.Errorf("error checking LAN IP ranges: %w", err)
 		}
 	case "any":
 		allowed, err = ipAllowedInRanges(ipAddr, &appState.allAllowedIPs)
 		if err != nil {
 			allowedWAN, wanErr := ipAllowedInRanges(ipAddr, &appState.allowedWANIPs)
 			if wanErr != nil {
-				return false, fmt.Errorf("error checking WAN IP ranges: %w", wanErr)
+				return allowed, fmt.Errorf("error checking WAN IP ranges: %w", wanErr)
 			}
 			allowedLAN, lanErr := ipAllowedInRanges(ipAddr, &appState.allowedLANIPs)
 			if lanErr != nil {
-				return false, fmt.Errorf("error checking LAN IP ranges: %w", lanErr)
+				return allowed, fmt.Errorf("error checking LAN IP ranges: %w", lanErr)
 			}
 			allowed = allowedWAN || allowedLAN
 		}
 	default:
-		return false, errors.New("invalid traffic type, must be 'wan', 'lan', or 'any'")
+		return allowed, errors.New("invalid traffic type, must be 'wan', 'lan', or 'any'")
 	}
 	return allowed, nil
 }
@@ -587,6 +587,8 @@ func ipAllowedInRanges(ipAddr netip.Addr, ranges *sync.Map) (allowed bool, err e
 	if ranges == nil {
 		return false, fmt.Errorf("IP range map is nil")
 	}
+
+	allowed = false
 	ranges.Range(func(k, v any) bool {
 		ipRangePtr, ok := k.(*netip.Prefix)
 		if !ok || ipRangePtr == nil {
