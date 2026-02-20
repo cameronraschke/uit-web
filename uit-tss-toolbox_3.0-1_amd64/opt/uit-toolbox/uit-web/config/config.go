@@ -539,21 +539,17 @@ func SetDatabaseConn(newDbConn *sql.DB) error {
 
 // IP address checks
 func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error) {
+	allowed = false
 	appState, err := GetAppState()
 	if err != nil {
-		return false, fmt.Errorf("error getting app state (IsIPAllowed): %w", err)
-	}
-	if appState == nil {
-		return false, fmt.Errorf("app state is not initialized (IsIPAllowed)")
+		return allowed, fmt.Errorf("cannot retrieve app state: %w", err)
 	}
 
 	if !ipAddr.IsValid() || RequestIPBlocked(ipAddr) {
-		return false, nil
+		return allowed, fmt.Errorf("request IP is invalid or blocked")
 	}
 
-	trafficType = strings.TrimSpace(strings.ToLower(trafficType))
-	allowed = false
-	switch trafficType {
+	switch strings.TrimSpace(strings.ToLower(trafficType)) {
 	case "wan":
 		allowed, err = ipAllowedInRanges(ipAddr, &appState.allowedWANIPs)
 		if err != nil {
