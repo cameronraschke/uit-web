@@ -27,6 +27,7 @@ type Select interface {
 	GetDashboardInventorySummary(ctx context.Context) ([]DashboardInventorySummary, error)
 	GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*InventoryUpdateForm, error)
 	GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*ImageManifest, error)
+	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][32]byte, error)
 	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]ImageManifest, error)
 	GetInventoryTableData(ctx context.Context, filterOptions *InventoryAdvSearchOptions) ([]InventoryTableData, error)
 	GetClientBatteryHealth(ctx context.Context, tagnumber *int64) (*ClientBatteryHealth, error)
@@ -698,6 +699,39 @@ func (repo *SelectRepo) GetClientImageFilePathFromUUID(ctx context.Context, uuid
 		return nil, fmt.Errorf("error during row scan: %w", err)
 	}
 	return &imageManifest, nil
+}
+
+func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([][32]byte, error) {
+	if tag == nil {
+		return nil, fmt.Errorf("tag is nil")
+	}
+
+	const sqlQuery = `SELECT sha256_hash FROM client_images WHERE tagnumber = $1;`
+
+	rows, err := repo.DB.QueryContext(ctx, sqlQuery, tag)
+	if err != nil {
+		return nil, fmt.Errorf("error during query execution: %w", err)
+	}
+	defer rows.Close()
+
+	hashes := make([][32]byte, 0, 10)
+	for rows.Next() {
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("context error: %w", ctx.Err())
+		}
+		var hash [32]byte
+		if err := rows.Scan(&hash); err != nil {
+			return nil, fmt.Errorf("error during row scan: %w", err)
+		}
+		hashes = append(hashes, hash)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during row iteration: %w", err)
+	}
+	if len(hashes) == 0 {
+		return nil, nil
+	}
+	return hashes, nil
 }
 
 func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]ImageManifest, error) {

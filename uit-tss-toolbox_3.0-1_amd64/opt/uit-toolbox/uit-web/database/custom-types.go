@@ -108,7 +108,7 @@ type ImageManifest struct {
 	Time              *time.Time `json:"time"`
 	Tagnumber         *int64     `json:"tagnumber"`
 	UUID              *string    `json:"uuid"`
-	SHA256Hash        *string    `json:"sha256_hash"`
+	SHA256Hash        *[32]byte  `json:"sha256_hash"`
 	FileName          *string    `json:"filename"`
 	FilePath          *string    `json:"filepath"`
 	ThumbnailFilePath *string    `json:"thumbnail_filepath"`

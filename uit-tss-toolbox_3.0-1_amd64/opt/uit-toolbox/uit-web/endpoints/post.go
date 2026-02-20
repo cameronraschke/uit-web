@@ -730,6 +730,13 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		manifest.MimeType = &mimeType
+		ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+
+		if acceptedImageExtensionsAndMimeTypes[ext] != mimeType && acceptedVideoExtensionsAndMimeTypes[ext] != mimeType {
+			log.Warn("Unsupported file type for file '" + fileHeader.Filename + "': detected MIME type '" + mimeType + "' does not match expected MIME type for file extension '" + ext + "'")
+			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)
+			return
+		}
 
 		// Get upload timestamp
 		fileTimeStamp := time.Now()
@@ -737,12 +744,48 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		manifest.Time = &timeUTC
 
 		// Generate unique file name
-		ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
 		fileTimeStampFormatted := fileTimeStamp.Format("2006-01-02-150405")
 		fileUUID := uuid.New().String()
 		fileName := fileTimeStampFormatted + "-" + fileUUID + ext
 		manifest.FileName = &fileName
 		manifest.UUID = &fileUUID
+
+		// Compute SHA256 hash of file
+		fileHash := crypto.SHA256.New()
+		if _, err := fileHash.Write(fileBytes); err != nil {
+			log.Error("Failed to compute hash of uploaded file '" + fileHeader.Filename + "': " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		shaSum := fileHash.Sum(nil)
+		fileHashBytes := [32]byte{}
+		copy(fileHashBytes[:], shaSum[:32])
+		// fileHashString := fmt.Sprintf("%x", fileHashBytes)
+		manifest.SHA256Hash = &fileHashBytes
+
+		selectRepo, err := database.NewSelectRepo()
+		if err != nil {
+			log.Error("No database connection available for retrieving existing file hashes")
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		hashes, err := selectRepo.GetFileHashesFromTag(ctx, inventoryUpdate.Tagnumber)
+		if err != nil {
+			log.Error("Failed to get file hashes from tag '" + strconv.FormatInt(*inventoryUpdate.Tagnumber, 10) + "': " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		hashFound := false
+		for _, hash := range hashes {
+			if bytes.Equal(fileHashBytes[:], hash[:]) {
+				hashFound = true
+				break
+			}
+		}
+		if hashFound {
+			log.Warn("Duplicate file upload detected for tag '" + strconv.FormatInt(*inventoryUpdate.Tagnumber, 10) + "': file '" + fileHeader.Filename + "' (" + fmt.Sprintf("%x", fileHashBytes) + ") has same hash as existing file, skipping")
+			continue
+		}
 
 		if acceptedImageExtensionsAndMimeTypes[ext] == mimeType { // Image file processing
 			if totalImageFileCount >= maxImgFileCount {
@@ -845,17 +888,6 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			// totalInvalidUploadSize += fileSize
 			return
 		}
-
-		// Compute SHA256 hash of file
-		fileHash := crypto.SHA256.New()
-		if _, err := fileHash.Write(fileBytes); err != nil {
-			log.Error("Failed to compute hash of uploaded file '" + fileHeader.Filename + "': " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		fileHashBytes := fileHash.Sum(nil)
-		fileHashString := fmt.Sprintf("%x", fileHashBytes)
-		manifest.SHA256Hash = &fileHashString
 
 		imageDirectoryPath, err := createNecessaryDirs(*inventoryUpdate.Tagnumber)
 		if err != nil {

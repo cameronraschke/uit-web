@@ -323,7 +323,7 @@ func (updateRepo *UpdateRepo) UpdateClientImages(ctx context.Context, transactio
 		ToNullString(manifest.FilePath),
 		ToNullString(manifest.ThumbnailFilePath),
 		ToNullInt64(manifest.FileSize),
-		ToNullString(manifest.SHA256Hash),
+		manifest.SHA256Hash,
 		ToNullString(manifest.MimeType),
 		ToNullTime(manifest.ExifTimestamp),
 		ToNullInt64(manifest.ResolutionX),
