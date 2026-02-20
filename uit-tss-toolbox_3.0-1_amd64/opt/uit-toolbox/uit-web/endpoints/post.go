@@ -692,7 +692,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			if err := os.Chmod(imageDirectoryPath, 0755); err != nil {
 				return "", fmt.Errorf("cannot set directory permissions for '"+imageDirectoryPath+"': %w", err)
 			}
-			if err := os.Chown(imageDirectoryPath, os.Getuid(), 1001); err != nil { // 1001 = group uit
+			if err := os.Chown(imageDirectoryPath, os.Getuid(), os.Getgid()); err != nil {
 				return "", fmt.Errorf("cannot set directory ownership for '"+imageDirectoryPath+"': %w", err)
 			}
 			return imageDirectoryPath, nil
@@ -803,6 +803,11 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 			thumbnailFile, err := os.Create(fullThumbnailPath)
 			if err != nil {
 				log.Error("Failed to create thumbnail file '" + fullThumbnailPath + "': " + err.Error())
+				middleware.WriteJsonError(w, http.StatusInternalServerError)
+				return
+			}
+			if err := os.Chmod(fullThumbnailPath, 0644); err != nil {
+				log.Error("Failed to set permissions for thumbnail file '" + fullThumbnailPath + "': " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}

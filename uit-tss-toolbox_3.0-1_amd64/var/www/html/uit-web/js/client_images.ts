@@ -41,9 +41,6 @@ async function fetchManifestData(clientTag: number) : Promise<ImageManifest[]> {
 		const response = await fetch(manifestURL.toString());
 		if (!response.ok) {
 			if (response.status === 404) {
-				const noManifestErrorParagraph = document.createElement('p');
-				noManifestErrorParagraph.textContent = `No images found for tag ${clientTag}.`;
-				container.appendChild(noManifestErrorParagraph);
 				return [];
 			}
 			throw new Error (`Error fetching images: ${response.status} ${response.statusText}`);
@@ -54,9 +51,6 @@ async function fetchManifestData(clientTag: number) : Promise<ImageManifest[]> {
 
 		const manifestArr = Array.isArray(imageManifest) ? imageManifest : (imageManifest ? [imageManifest] : []);
     if (manifestArr.length === 0) {
-      const noImagesParagraph = document.createElement('p');
-      noImagesParagraph.textContent = `No images found for tag ${clientTag}.`;
-      container.appendChild(noImagesParagraph);
       return [];
     }
 
@@ -304,21 +298,21 @@ async function initClientImages() {
 	if (!tag) {
 		console.warn('No tagnumber parameter found in URL.');
 		const errorParagraph = document.createElement('p');
-		errorParagraph.textContent = `No images found for client tag: ${tag}`;
+		errorParagraph.textContent = `No images found for tag: ${tag}`;
 		container.appendChild(errorParagraph);
 		return;
 	}
 	const clientTag = parseInt(tag, 10);
 	if (!validateTagInput(clientTag)) {
-		console.warn(`Invalid client tag: ${clientTag}`);
+		console.warn(`Invalid tag: ${clientTag}`);
 		return;
 	}
 	try {
 		const manifestData = await fetchManifestData(clientTag);
 		if (manifestData.length === 0) {
-			console.warn(`No images found for client tag: ${clientTag}`);
+			console.warn(`No images found for tag: ${clientTag}`);
 			const errorParagraph = document.createElement('p');
-			errorParagraph.textContent = `No images found for client tag: ${clientTag}`;
+			errorParagraph.textContent = `No images found for tag: ${clientTag}`;
 			container.appendChild(errorParagraph);
 			return;
 		}
