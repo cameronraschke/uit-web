@@ -86,7 +86,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check if decoded base64 is valid UTF-8
-	if !utf8.Valid(base64Decoded) {
+	if !middleware.IsPrintableUnicode(base64Decoded) {
 		log.Warn("Invalid UTF-8 in base64 data")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -115,9 +115,9 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	sessionID, basicToken, bearerToken, csrfToken, err := config.CreateAuthSession(reqIP)
+	authData, err := config.CreateAuthSession(reqIP)
 	if err != nil {
-		log.Error("Failed to generate tokens: " + err.Error())
+		log.Error("Cannot create auth session: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}

@@ -277,10 +277,10 @@ func GetLoggerFromContext(ctx context.Context) *slog.Logger {
 	return log
 }
 
-func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue, uitCSRFValue string, timeout time.Duration) (*http.Cookie, *http.Cookie, *http.Cookie, *http.Cookie) {
+func GetAuthCookiesForResponse(authSession *config.AuthSession, timeout time.Duration) (*config.AuthSession, error) {
 	sessionIDCookie := &http.Cookie{
 		Name:     "uit_session_id",
-		Value:    uitSessionIDValue,
+		Value:    authSession.SessionID,
 		Path:     "/",
 		Expires:  time.Now().Add(timeout),
 		MaxAge:   int(timeout.Seconds()),
@@ -290,7 +290,7 @@ func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue,
 	}
 	basicCookie := &http.Cookie{
 		Name:     "uit_basic_token",
-		Value:    uitBasicValue,
+		Value:    authSession.BasicToken.Token,
 		Path:     "/",
 		Expires:  time.Now().Add(timeout),
 		MaxAge:   int(timeout.Seconds()),
@@ -300,7 +300,7 @@ func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue,
 	}
 	bearerCookie := &http.Cookie{
 		Name:     "uit_bearer_token",
-		Value:    uitBearerValue,
+		Value:    authSession.BearerToken.Token,
 		Path:     "/",
 		Expires:  time.Now().Add(timeout),
 		MaxAge:   int(timeout.Seconds()),
@@ -310,7 +310,7 @@ func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue,
 	}
 	csrfCookie := &http.Cookie{
 		Name:     "uit_csrf_token",
-		Value:    uitCSRFValue,
+		Value:    authSession.CSRFToken.Token,
 		Path:     "/",
 		Expires:  time.Now().Add(timeout),
 		MaxAge:   int(timeout.Seconds()),
@@ -318,7 +318,17 @@ func GetAuthCookiesForResponse(uitSessionIDValue, uitBasicValue, uitBearerValue,
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 	}
-	return sessionIDCookie, basicCookie, bearerCookie, csrfCookie
+	newAuthSession := new(config.AuthSession)
+	newAuthSession.SessionID = sessionIDCookie.Value
+	newAuthSession.SessionCookie = sessionIDCookie
+	newAuthSession.BasicToken.Token = basicCookie.Value
+	newAuthSession.BasicCookie = basicCookie
+	newAuthSession.BearerToken.Token = bearerCookie.Value
+	newAuthSession.BearerCookie = bearerCookie
+	newAuthSession.CSRFToken.Token = csrfCookie.Value
+	newAuthSession.CSRFCookie = csrfCookie
+
+	return newAuthSession, nil
 }
 
 func validateIPAddress(ipAddr *netip.Addr) error {
@@ -383,6 +393,18 @@ func IsPrintableUnicodeString(s string) bool {
 		return false
 	}
 	for _, char := range s {
+		if !unicode.IsPrint(char) && !unicode.IsSpace(char) {
+			return false
+		}
+	}
+	return true
+}
+
+func IsPrintableUnicode(b []byte) bool {
+	if !utf8.Valid(b) {
+		return false
+	}
+	for _, char := range string(b) {
 		if !unicode.IsPrint(char) && !unicode.IsSpace(char) {
 			return false
 		}

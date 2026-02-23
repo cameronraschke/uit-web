@@ -885,14 +885,10 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 		uitCSRFCookie, _ := req.Cookie("uit_csrf_token")
 
 		if sessionErr != nil || basicErr != nil || bearerErr != nil {
-			if sessionErr != nil && sessionErr != http.ErrNoCookie {
-				log.Warn("Error retrieving UIT auth cookies: " + sessionErr.Error())
-			}
-
-			// IP authentication for LAN IPs
+			// IP authentication for LAN clients (laptops)
 			allowedIPs, err := config.GetAllowedLANIPs()
 			if err != nil {
-				log.Error("Error getting allowed LAN IPs: " + err.Error())
+				log.Error("Error retrieving allowed LAN IPs for IP auth: " + err.Error())
 				WriteJsonError(w, http.StatusInternalServerError)
 				return
 			}
@@ -902,15 +898,14 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 					return
 				}
 			}
-			log.Info("No auth cookies found in request: sessionID error: " + fmt.Sprintf("%v", sessionErr) + ", basic cookie error: " + fmt.Sprintf("%v", basicErr) + ", bearer cookie error: " + fmt.Sprintf("%v", bearerErr))
-			// WriteJsonError(w, http.StatusUnauthorized)
+			log.Warn("Request is missing required cookies, redirecting: " + sessionErr.Error())
 			http.Redirect(w, req, "/login", http.StatusSeeOther)
 			return
 		}
 
 		config.ClearExpiredAuthSessions()
 
-		sessionValid, sessionExists, err := config.CheckAuthSessionExists(uitSessionIDCookie.Value, reqAddr, uitBasicCookie.Value, uitBearerCookie.Value, uitCSRFCookie.Value)
+		newAuthSession, err := config.AuthSessionValid(uitSessionIDCookie.Value, reqAddr, uitBasicCookie.Value, uitBearerCookie.Value, uitCSRFCookie.Value)
 		if err != nil {
 			log.Error("Error validating auth session: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)

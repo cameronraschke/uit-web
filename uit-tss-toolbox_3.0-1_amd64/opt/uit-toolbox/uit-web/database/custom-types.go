@@ -1,6 +1,8 @@
 package database
 
-import "time"
+import (
+	"time"
+)
 
 type NotesTable struct {
 	Time     *time.Time `json:"time"`

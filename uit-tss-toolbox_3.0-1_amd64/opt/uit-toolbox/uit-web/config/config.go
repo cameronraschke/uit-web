@@ -2,6 +2,7 @@ package config
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -408,11 +409,11 @@ func InitApp() (*AppState, error) {
 	}
 
 	// Generate server-side secret for HMAC
-	sessionSecret, err := GenerateSessionToken(64)
-	if err != nil {
+	sessionSecret := make([]byte, 32)
+	if _, err := rand.Read(sessionSecret); err != nil {
 		return nil, fmt.Errorf("failed to generate session secret: %w", err)
 	}
-	appState.sessionSecret = []byte(sessionSecret)
+	appState.sessionSecret = sessionSecret
 
 	// Configure web endpoints
 	if err := InitWebEndpoints(appState); err != nil {
