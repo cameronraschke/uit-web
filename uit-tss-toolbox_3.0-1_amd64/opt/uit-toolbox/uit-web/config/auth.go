@@ -44,6 +44,7 @@ type CSRFToken struct {
 type AuthSession struct {
 	IPAddress     netip.Addr
 	SessionID     string
+	SessionTTL    time.Duration
 	SessionCookie *http.Cookie
 	BasicToken    BasicToken
 	BasicCookie   *http.Cookie
@@ -54,9 +55,10 @@ type AuthSession struct {
 }
 
 const (
-	BasicTTL  = 20 * time.Minute
-	BearerTTL = 20 * time.Minute
-	CSRFTTL   = 20 * time.Minute
+	AuthSessionTTL = 20 * time.Minute
+	BasicTTL       = 20 * time.Minute
+	BearerTTL      = 20 * time.Minute
+	CSRFTTL        = 20 * time.Minute
 )
 
 // Auth for web users
@@ -89,8 +91,8 @@ func GetAuthSessions() map[string]AuthSession {
 	return authSessionsMap
 }
 
-func CreateAuthSession(ipAddress netip.Addr) (*AuthSession, error) {
-	if ipAddress == (netip.Addr{}) || !ipAddress.IsValid() {
+func CreateAuthSession(requestIP netip.Addr) (*AuthSession, error) {
+	if requestIP == (netip.Addr{}) || !requestIP.IsValid() {
 		return nil, errors.New("empty or invalid IP address")
 	}
 	appState, err := GetAppState()
@@ -101,59 +103,93 @@ func CreateAuthSession(ipAddress netip.Addr) (*AuthSession, error) {
 	curTime := time.Now()
 
 	sessionID := rand.Text()
-	basicToken := rand.Text()
-	bearerToken := rand.Text()
-	csrfToken := rand.Text()
 
-	basicMAC, err := HashSessionToken(basicToken)
+	basicToken, err := HashSessionToken(rand.Text())
 	if err != nil {
 		return nil, fmt.Errorf("error hashing basic token: %w", err)
 	}
-	bearerMAC, err := HashSessionToken(bearerToken)
+	bearerToken, err := HashSessionToken(rand.Text())
 	if err != nil {
 		return nil, fmt.Errorf("error hashing bearer token: %w", err)
 	}
-	csrfMAC, err := HashSessionToken(csrfToken)
+	csrfToken, err := HashSessionToken(rand.Text())
 	if err != nil {
 		return nil, fmt.Errorf("error hashing csrf token: %w", err)
 	}
 
 	authSession := AuthSession{
-		SessionID: sessionID,
+		IPAddress:  requestIP,
+		SessionID:  sessionID,
+		SessionTTL: AuthSessionTTL,
+		SessionCookie: &http.Cookie{
+			Name:     "uit_session_id",
+			Value:    sessionID,
+			Path:     "/",
+			Expires:  curTime.Add(AuthSessionTTL),
+			MaxAge:   int(AuthSessionTTL.Seconds()),
+			Secure:   true,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		},
 		BasicToken: BasicToken{
-			Token:     basicMAC,
+			Token:     basicToken,
 			Expiry:    curTime.Add(BasicTTL),
 			NotBefore: curTime,
-			TTL:       BasicTTL.Seconds(),
-			IP:        ipAddress,
+			TTL:       BasicTTL,
+			IP:        requestIP,
 			Valid:     true,
+		},
+		BasicCookie: &http.Cookie{
+			Name:     "uit_basic_token",
+			Value:    basicToken,
+			Path:     "/",
+			Expires:  curTime.Add(BasicTTL),
+			MaxAge:   int(BasicTTL.Seconds()),
+			Secure:   true,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
 		},
 		BearerToken: BearerToken{
-			Token:     bearerMAC,
+			Token:     bearerToken,
 			Expiry:    curTime.Add(BearerTTL),
 			NotBefore: curTime,
-			TTL:       BearerTTL.Seconds(),
-			IP:        ipAddress,
+			TTL:       BearerTTL,
+			IP:        requestIP,
 			Valid:     true,
 		},
+		BearerCookie: &http.Cookie{
+			Name:     "uit_bearer_token",
+			Value:    bearerToken,
+			Path:     "/",
+			Expires:  curTime.Add(BearerTTL),
+			MaxAge:   int(BearerTTL.Seconds()),
+			Secure:   true,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		},
 		CSRFToken: CSRFToken{
-			Token:     csrfMAC,
+			Token:     csrfToken,
 			Expiry:    curTime.Add(CSRFTTL),
 			NotBefore: curTime,
-			TTL:       CSRFTTL.Seconds(),
-			IP:        ipAddress,
+			TTL:       CSRFTTL,
+			IP:        requestIP,
 			Valid:     true,
+		},
+		CSRFCookie: &http.Cookie{
+			Name:     "uit_csrf_token",
+			Value:    csrfToken,
+			Path:     "/",
+			Expires:  curTime.Add(CSRFTTL),
+			MaxAge:   int(CSRFTTL.Seconds()),
+			Secure:   true,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
 		},
 	}
 
-	for i := range 3 {
-		if i > 0 {
-			if _, exists := appState.authMap.Load(authSession.SessionID); !exists {
-				break
-			}
-			newID := rand.Text()
-			authSession.SessionID = newID
-		}
+	for range 3 {
+		newID := rand.Text()
+		authSession.SessionID = newID
 	}
 	appState.authMap.Store(authSession.SessionID, authSession)
 	appState.authMapEntryCount.Add(1)
@@ -263,6 +299,22 @@ func AuthSessionValid(checkedAuthSession *AuthSession) (sessionValid bool, err e
 	return sessionValid, nil
 }
 
+func GetAuthSessionByID(sessionID string) (*AuthSession, error) {
+	appState, err := GetAppState()
+	if err != nil {
+		return nil, fmt.Errorf("error getting app state in GetAuthSessionByID: %w", err)
+	}
+	value, ok := appState.authMap.Load(sessionID)
+	if !ok {
+		return nil, nil
+	}
+	authSession, ok := value.(AuthSession)
+	if !ok {
+		return nil, errors.New("invalid auth session type")
+	}
+	return &authSession, nil
+}
+
 func ExtendAuthSession(sessionID string) (bool, error) {
 	appState, err := GetAppState()
 	if err != nil {
@@ -286,6 +338,19 @@ func ExtendAuthSession(sessionID string) (bool, error) {
 	authSession.CSRFToken.Expiry = curTime.Add(time.Duration(20 * time.Minute))
 	appState.authMap.Store(sessionID, authSession)
 	return true, nil
+}
+
+func UpdateAuthSession(sessionID string, authSession *AuthSession) error {
+	appState, err := GetAppState()
+	if err != nil {
+		return fmt.Errorf("error getting app state in UpdateAuthSession: %w", err)
+	}
+	_, ok := appState.authMap.Load(sessionID)
+	if !ok {
+		return fmt.Errorf("session ID not found: %s", sessionID)
+	}
+	appState.authMap.Store(sessionID, *authSession)
+	return nil
 }
 
 // HashSessionToken returns HMAC-SHA256(token) using a server-side secret key.

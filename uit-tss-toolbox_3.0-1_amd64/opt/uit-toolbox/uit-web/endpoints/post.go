@@ -115,7 +115,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	authData, err := config.CreateAuthSession(reqIP)
+	authSession, err := config.CreateAuthSession(reqIP)
 	if err != nil {
 		log.Error("Cannot create auth session: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -125,12 +125,17 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	sessionCount := config.GetAuthSessionCount()
 	log.Info("New auth session created. Total sessions: " + strconv.Itoa(int(sessionCount)))
 
-	sessionIDCookie, basicTokenCookie, bearerTokenCookie, csrfTokenCookie := middleware.GetAuthCookiesForResponse(sessionID, basicToken, bearerToken, csrfToken, 20*time.Minute)
+	authSessionCookies, err := middleware.UpdateAndGetAuthSession(authSession, config.AuthCookieTTL)
+	if err != nil {
+		log.Error("Cannot get auth cookies for response: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
 
-	http.SetCookie(w, sessionIDCookie)
-	http.SetCookie(w, basicTokenCookie)
-	http.SetCookie(w, bearerTokenCookie)
-	http.SetCookie(w, csrfTokenCookie)
+	http.SetCookie(w, authSessionCookies.SessionID)
+	http.SetCookie(w, authSessionCookies.BasicToken)
+	http.SetCookie(w, authSessionCookies.BearerToken)
+	http.SetCookie(w, authSessionCookies.CSRFToken)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

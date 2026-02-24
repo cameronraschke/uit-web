@@ -279,56 +279,55 @@ func GetLoggerFromContext(ctx context.Context) *slog.Logger {
 	return log
 }
 
-func GetAuthCookiesForResponse(authSession *config.AuthSession, timeout time.Duration) (*config.AuthSession, error) {
-	sessionIDCookie := &http.Cookie{
-		Name:     "uit_session_id",
-		Value:    authSession.SessionID,
-		Path:     "/",
-		Expires:  time.Now().Add(timeout),
-		MaxAge:   int(timeout.Seconds()),
-		Secure:   true,
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+func UpdateAndGetAuthSession(requestAuthSession *config.AuthSession, extendTTL bool) (*config.AuthSession, error) {
+	if requestAuthSession == nil {
+		return nil, errors.New("nil auth session provided to UpdateAndGetAuthSession")
 	}
-	basicCookie := &http.Cookie{
-		Name:     "uit_basic_token",
-		Value:    authSession.BasicToken.Token,
-		Path:     "/",
-		Expires:  time.Now().Add(timeout),
-		MaxAge:   int(timeout.Seconds()),
-		Secure:   true,
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+
+	curTime := time.Now()
+	sessionID := requestAuthSession.SessionID
+	if sessionID == "" {
+		return nil, errors.New("empty session ID in auth session provided to UpdateAndGetAuthSession")
 	}
-	bearerCookie := &http.Cookie{
-		Name:     "uit_bearer_token",
-		Value:    authSession.BearerToken.Token,
-		Path:     "/",
-		Expires:  time.Now().Add(timeout),
-		MaxAge:   int(timeout.Seconds()),
-		Secure:   true,
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+	sessionTTL := config.AuthSessionTTL
+	if !extendTTL {
+		sessionTTL = time.Until(curTime.Add(requestAuthSession.SessionTTL))
 	}
-	csrfCookie := &http.Cookie{
-		Name:     "uit_csrf_token",
-		Value:    authSession.CSRFToken.Token,
-		Path:     "/",
-		Expires:  time.Now().Add(timeout),
-		MaxAge:   int(timeout.Seconds()),
-		Secure:   true,
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
+	basicTTL := config.BasicTTL
+	if !extendTTL {
+		basicTTL = time.Until(requestAuthSession.BasicToken.Expiry)
 	}
+	bearerTTL := config.BearerTTL
+	if !extendTTL {
+		bearerTTL = time.Until(requestAuthSession.BearerToken.Expiry)
+	}
+	csrfTTL := config.CSRFTTL
+	if !extendTTL {
+		csrfTTL = time.Until(requestAuthSession.CSRFToken.Expiry)
+	}
+
 	newAuthSession := new(config.AuthSession)
-	newAuthSession.SessionID = sessionIDCookie.Value
-	newAuthSession.SessionCookie = sessionIDCookie
-	newAuthSession.BasicToken.Token = basicCookie.Value
-	newAuthSession.BasicCookie = basicCookie
-	newAuthSession.BearerToken.Token = bearerCookie.Value
-	newAuthSession.BearerCookie = bearerCookie
-	newAuthSession.CSRFToken.Token = csrfCookie.Value
-	newAuthSession.CSRFCookie = csrfCookie
+	mergedAuthSession := *requestAuthSession
+
+	mergedAuthSession.SessionTTL = sessionTTL
+	mergedAuthSession.SessionCookie.Expires = curTime.Add(sessionTTL)
+	mergedAuthSession.SessionCookie.MaxAge = int(sessionTTL.Seconds())
+
+	mergedAuthSession.BasicToken.Expiry = curTime.Add(basicTTL)
+	mergedAuthSession.BasicCookie.Expires = curTime.Add(basicTTL)
+	mergedAuthSession.BasicCookie.MaxAge = int(basicTTL.Seconds())
+
+	mergedAuthSession.BearerToken.Expiry = curTime.Add(bearerTTL)
+	mergedAuthSession.BearerCookie.Expires = curTime.Add(bearerTTL)
+	mergedAuthSession.BearerCookie.MaxAge = int(bearerTTL.Seconds())
+
+	mergedAuthSession.CSRFToken.Expiry = curTime.Add(csrfTTL)
+	mergedAuthSession.CSRFCookie.Expires = curTime.Add(csrfTTL)
+	mergedAuthSession.CSRFCookie.MaxAge = int(csrfTTL.Seconds())
+
+	*newAuthSession = mergedAuthSession
+
+	config.UpdateAuthSession(sessionID, newAuthSession)
 
 	return newAuthSession, nil
 }

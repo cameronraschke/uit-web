@@ -406,7 +406,7 @@ func LogoutHandler(w http.ResponseWriter, req *http.Request) {
 	config.DeleteAuthSession(sessionID)
 	log.Info("Deleted auth session for logout: " + sessionID + " (" + requestIP.String() + ")")
 	// Clear cookies
-	sessionIDCookie, basicCookie, bearerCookie, csrfCookie := middleware.GetAuthCookiesForResponse("", "", "", "", -time.Hour)
+	sessionIDCookie, basicCookie, bearerCookie, csrfCookie := middleware.UpdateAndGetAuthSession("", "", "", "", -time.Hour)
 	http.SetCookie(w, sessionIDCookie)
 	http.SetCookie(w, basicCookie)
 	http.SetCookie(w, bearerCookie)

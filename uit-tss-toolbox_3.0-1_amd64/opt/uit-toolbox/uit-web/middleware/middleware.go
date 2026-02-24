@@ -903,38 +903,80 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		// Check cookie issues first
+		cookiesToCheck := map[string]*http.Cookie{
+			"uit_session_id":   uitSessionIDCookie,
+			"uit_basic_token":  uitBasicCookie,
+			"uit_bearer_token": uitBearerCookie,
+			"uit_csrf_token":   uitCSRFCookie,
+		}
+		for cookieName, cookie := range cookiesToCheck {
+			if cookie == nil || strings.TrimSpace(cookie.Value) == "" {
+				log.Warn("Missing expected authentication cookie: " + cookieName)
+				config.DeleteAuthSession(uitSessionIDCookie.Value)
+				http.Redirect(w, req, "/login", http.StatusSeeOther)
+				return
+			}
+			if cookie.Expires.Before(time.Now()) {
+				log.Warn("Authentication cookie has expired: " + cookieName)
+				config.DeleteAuthSession(uitSessionIDCookie.Value)
+				http.Redirect(w, req, "/login", http.StatusSeeOther)
+				return
+			}
+			if cookie.MaxAge <= 0 {
+				log.Warn("Authentication cookie has MaxAge <= 0: " + cookieName)
+				config.DeleteAuthSession(uitSessionIDCookie.Value)
+				http.Redirect(w, req, "/login", http.StatusSeeOther)
+				return
+			}
+			if cookie.Secure && req.TLS == nil {
+				log.Warn("Secure authentication cookie sent over non-TLS connection: " + cookieName)
+				config.DeleteAuthSession(uitSessionIDCookie.Value)
+				http.Redirect(w, req, "/login", http.StatusSeeOther)
+				return
+			}
+			if cookie.HttpOnly == false {
+				log.Warn("Authentication cookie is not HttpOnly: " + cookieName)
+				config.DeleteAuthSession(uitSessionIDCookie.Value)
+				http.Redirect(w, req, "/login", http.StatusSeeOther)
+				return
+			}
+			if cookie.SameSite != http.SameSiteStrictMode && cookie.SameSite != http.SameSiteLaxMode {
+				log.Warn("Authentication cookie does not have SameSite=Strict: " + cookieName)
+				config.DeleteAuthSession(uitSessionIDCookie.Value)
+				http.Redirect(w, req, "/login", http.StatusSeeOther)
+				return
+			}
+			if strings.ContainsAny(cookie.Value, "\x00\r\n") {
+				log.Warn("Authentication cookie contains invalid characters: " + cookieName)
+				config.DeleteAuthSession(uitSessionIDCookie.Value)
+				http.Redirect(w, req, "/login", http.StatusSeeOther)
+				return
+			}
+			if len(cookie.Value) > 4096 {
+				log.Warn("Authentication cookie value is too long: " + cookieName + " (" + fmt.Sprintf("%.2f KB", float64(len(cookie.Value))/1024) + ")")
+				config.DeleteAuthSession(uitSessionIDCookie.Value)
+				http.Redirect(w, req, "/login", http.StatusSeeOther)
+				return
+			}
+		}
+
 		config.ClearExpiredAuthSessions()
 
-		uitBasicToken := config.BasicToken{
-			Token:     uitBasicCookie.Value,
-			Expiry:    time.Now().Add(config.BasicTTL),
-			NotBefore: time.Now(),
-			TTL:       config.BasicTTL,
-			IP:        reqAddr,
-			Valid:     true,
+		if uitSessionIDCookie.Expires.Before(time.Now()) || uitBasicCookie.Expires.Before(time.Now()) || uitBearerCookie.Expires.Before(time.Now()) || uitCSRFCookie.Expires.Before(time.Now()) {
+			log.Warn("One or more authentication cookies have expired")
+			http.Redirect(w, req, "/login", http.StatusSeeOther)
+			return
 		}
 
-		uitBearerToken := config.BearerToken{
-			Token:     uitBearerCookie.Value,
-			Expiry:    time.Now().Add(config.BearerTTL),
-			NotBefore: time.Now(),
-			TTL:       config.BearerTTL,
-			IP:        reqAddr,
-			Valid:     true,
+		authSession, err := config.GetAuthSessionByID(uitSessionIDCookie.Value)
+		if err != nil {
+			log.Error("Error retrieving auth session: " + err.Error())
+			WriteJsonError(w, http.StatusInternalServerError)
+			return
 		}
 
-		currentSession := &config.AuthSession{
-			IPAddress:     reqAddr,
-			SessionID:     uitSessionIDCookie.Value,
-			SessionCookie: uitSessionIDCookie,
-			BasicCookie:   uitBasicCookie,
-			BasicToken:    uitBasicToken,
-			BearerToken:   uitBearerToken,
-			BearerCookie:  uitBearerCookie,
-			CSRFCookie:    uitCSRFCookie,
-		}
-
-		sessionValid, err := config.AuthSessionValid(currentSession)
+		sessionValid, err := config.AuthSessionValid(authSession)
 		if err != nil {
 			log.Error("Error validating auth session: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
@@ -942,7 +984,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		if sessionValid && !strings.HasSuffix(requestPath, "/logout") {
-			sessionCookies, err := GetAuthCookiesForResponse(currentSession, config.BasicTTL)
+			authSession, err := UpdateAndGetAuthSession(currentSession, config.BasicTTL)
 			if err != nil {
 				log.Error("Error generating auth cookies for response: " + err.Error())
 				WriteJsonError(w, http.StatusInternalServerError)
