@@ -51,6 +51,8 @@ const (
 	maxQueryKeyLen      = 128
 	maxQueryValueLen    = 512
 	maxQueryParams      = 64
+	minURLPathLen       = 1
+	maxURLPathLen       = 255
 )
 
 var (
@@ -531,31 +533,30 @@ func validateQueryParams(query url.Values) error {
 }
 
 func validateAndCleanURLPath(rawPath string) (string, error) {
-	if len(rawPath) > 255 {
-		return "", fmt.Errorf("URL path too long: %d/%d chars", len(rawPath), 255)
+	if len(rawPath) > maxURLPathLen {
+		return "", fmt.Errorf("URL path too long: %d/%d chars", len(rawPath), maxURLPathLen)
 	}
 
-	rawPath = strings.TrimSpace(rawPath)
+	trimmedPath := strings.TrimSpace(rawPath)
 
-	if rawPath == "" {
-		return "", fmt.Errorf("URL path is empty")
+	if len(trimmedPath) < minURLPathLen {
+		return "", fmt.Errorf("URL path too short: %d/%d chars", len(trimmedPath), minURLPathLen)
 	}
 
-	// ASCII printable characters only (32-126)
-	// This also implicitly checks for valid UTF-8
-	if !IsASCIIStringPrintable(rawPath) {
+	if !IsASCIIStringPrintable(trimmedPath) {
 		return "", fmt.Errorf("URL path contains non-printable or non-ASCII characters")
 	}
 
-	if strings.ContainsAny(rawPath, disallowedPathChars) {
+	if strings.ContainsAny(rawPath, disallowedPathChars) { // Check rawPath here
 		return "", fmt.Errorf("URL path contains disallowed characters")
 	}
 
-	if !path.IsAbs(rawPath) {
+	if !path.IsAbs(trimmedPath) {
 		return "", fmt.Errorf("URL path must start with /")
 	}
 
-	cleanPath := path.Clean(rawPath)
+	joinedPath := path.Join("/", trimmedPath) // Ensure path is rooted and cleaned
+	cleanPath := path.Clean(joinedPath)
 
 	if cleanPath == "." {
 		return "", fmt.Errorf("empty path after cleaning")
@@ -568,27 +569,18 @@ func validateAndCleanURLPath(rawPath string) (string, error) {
 	// validate each path segment
 	segments := strings.Split(strings.Trim(cleanPath, "/"), "/")
 	for _, segment := range segments {
-		if segment == "" {
+		if strings.TrimSpace(segment) == "" {
 			continue
 		}
 
-		if err := validatePathSegment(segment); err != nil {
-			return "", fmt.Errorf("invalid path segment '%s': %w", segment, err)
+		if strings.HasPrefix(segment, ".") {
+			return "", fmt.Errorf("hidden path segment not allowed (starts with dot)")
+		}
+
+		if strings.HasSuffix(segment, ".") {
+			return "", fmt.Errorf("invalid path segment (ends with dot)")
 		}
 	}
 
 	return cleanPath, nil
-}
-
-func validatePathSegment(segment string) error {
-	// Reject hidden files/directories (both prefix and suffix checks)
-	if strings.HasPrefix(segment, ".") {
-		return fmt.Errorf("hidden file/directory not allowed (starts with dot)")
-	}
-
-	if strings.HasSuffix(segment, ".") {
-		return fmt.Errorf("invalid filename (ends with dot)")
-	}
-
-	return nil
 }

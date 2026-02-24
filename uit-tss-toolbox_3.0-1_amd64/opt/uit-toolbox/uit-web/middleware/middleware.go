@@ -905,19 +905,53 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 
 		config.ClearExpiredAuthSessions()
 
-		newAuthSession, err := config.AuthSessionValid(uitSessionIDCookie.Value, reqAddr, uitBasicCookie.Value, uitBearerCookie.Value, uitCSRFCookie.Value)
+		uitBasicToken := config.BasicToken{
+			Token:     uitBasicCookie.Value,
+			Expiry:    time.Now().Add(config.BasicTTL),
+			NotBefore: time.Now(),
+			TTL:       config.BasicTTL,
+			IP:        reqAddr,
+			Valid:     true,
+		}
+
+		uitBearerToken := config.BearerToken{
+			Token:     uitBearerCookie.Value,
+			Expiry:    time.Now().Add(config.BearerTTL),
+			NotBefore: time.Now(),
+			TTL:       config.BearerTTL,
+			IP:        reqAddr,
+			Valid:     true,
+		}
+
+		currentSession := &config.AuthSession{
+			IPAddress:     reqAddr,
+			SessionID:     uitSessionIDCookie.Value,
+			SessionCookie: uitSessionIDCookie,
+			BasicCookie:   uitBasicCookie,
+			BasicToken:    uitBasicToken,
+			BearerToken:   uitBearerToken,
+			BearerCookie:  uitBearerCookie,
+			CSRFCookie:    uitCSRFCookie,
+		}
+
+		sessionValid, err := config.AuthSessionValid(currentSession)
 		if err != nil {
 			log.Error("Error validating auth session: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 
-		if sessionValid && sessionExists && !strings.HasSuffix(requestPath, "/logout") {
-			sessionIDCookie, basicCookie, bearerCookie, csrfCookie := GetAuthCookiesForResponse(uitSessionIDCookie.Value, uitBasicCookie.Value, uitBearerCookie.Value, uitCSRFCookie.Value, 20*time.Minute)
-			http.SetCookie(w, sessionIDCookie)
-			http.SetCookie(w, basicCookie)
-			http.SetCookie(w, bearerCookie)
-			http.SetCookie(w, csrfCookie)
+		if sessionValid && !strings.HasSuffix(requestPath, "/logout") {
+			sessionCookies, err := GetAuthCookiesForResponse(currentSession, config.BasicTTL)
+			if err != nil {
+				log.Error("Error generating auth cookies for response: " + err.Error())
+				WriteJsonError(w, http.StatusInternalServerError)
+				return
+			}
+			http.SetCookie(w, sessionCookies.SessionCookie)
+			http.SetCookie(w, sessionCookies.BasicCookie)
+			http.SetCookie(w, sessionCookies.BearerCookie)
+			http.SetCookie(w, sessionCookies.CSRFCookie)
 
 			sessionExtended, err := config.ExtendAuthSession(uitSessionIDCookie.Value)
 			if err != nil {
@@ -931,7 +965,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			} else {
 				log.Debug("Auth session not found or expired when attempting to extend session")
 			}
-		} else if sessionExists && strings.TrimSpace(requestPath) == "/logout" {
+		} else if strings.TrimSpace(requestPath) == "/logout" {
 			log.Debug("Logging out user and deleting auth session: " + reqAddr.String())
 			config.DeleteAuthSession(uitSessionIDCookie.Value)
 			sessionCount := config.RefreshAndGetAuthSessionCount()

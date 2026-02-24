@@ -15,30 +15,30 @@ import (
 )
 
 type BasicToken struct {
-	Token     string     `json:"token"`
-	Expiry    time.Time  `json:"expiry"`
-	NotBefore time.Time  `json:"not_before"`
-	TTL       float64    `json:"ttl"`
-	IP        netip.Addr `json:"ip"`
-	Valid     bool       `json:"valid"`
+	Token     string        `json:"token"`
+	Expiry    time.Time     `json:"expiry"`
+	NotBefore time.Time     `json:"not_before"`
+	TTL       time.Duration `json:"ttl"`
+	IP        netip.Addr    `json:"ip"`
+	Valid     bool          `json:"valid"`
 }
 
 type BearerToken struct {
-	Token     string     `json:"token"`
-	Expiry    time.Time  `json:"expiry"`
-	NotBefore time.Time  `json:"not_before"`
-	TTL       float64    `json:"ttl"`
-	IP        netip.Addr `json:"ip"`
-	Valid     bool       `json:"valid"`
+	Token     string        `json:"token"`
+	Expiry    time.Time     `json:"expiry"`
+	NotBefore time.Time     `json:"not_before"`
+	TTL       time.Duration `json:"ttl"`
+	IP        netip.Addr    `json:"ip"`
+	Valid     bool          `json:"valid"`
 }
 
 type CSRFToken struct {
-	Token     string     `json:"token"`
-	Expiry    time.Time  `json:"expiry"`
-	NotBefore time.Time  `json:"not_before"`
-	TTL       float64    `json:"ttl"`
-	IP        netip.Addr `json:"ip"`
-	Valid     bool       `json:"valid"`
+	Token     string        `json:"token"`
+	Expiry    time.Time     `json:"expiry"`
+	NotBefore time.Time     `json:"not_before"`
+	TTL       time.Duration `json:"ttl"`
+	IP        netip.Addr    `json:"ip"`
+	Valid     bool          `json:"valid"`
 }
 
 type AuthSession struct {
@@ -54,9 +54,9 @@ type AuthSession struct {
 }
 
 const (
-	basicTTL  = 20 * time.Minute
-	bearerTTL = 20 * time.Minute
-	csrfTTL   = 20 * time.Minute
+	BasicTTL  = 20 * time.Minute
+	BearerTTL = 20 * time.Minute
+	CSRFTTL   = 20 * time.Minute
 )
 
 // Auth for web users
@@ -122,25 +122,25 @@ func CreateAuthSession(ipAddress netip.Addr) (*AuthSession, error) {
 		SessionID: sessionID,
 		BasicToken: BasicToken{
 			Token:     basicMAC,
-			Expiry:    curTime.Add(basicTTL),
+			Expiry:    curTime.Add(BasicTTL),
 			NotBefore: curTime,
-			TTL:       basicTTL.Seconds(),
+			TTL:       BasicTTL.Seconds(),
 			IP:        ipAddress,
 			Valid:     true,
 		},
 		BearerToken: BearerToken{
 			Token:     bearerMAC,
-			Expiry:    curTime.Add(bearerTTL),
+			Expiry:    curTime.Add(BearerTTL),
 			NotBefore: curTime,
-			TTL:       bearerTTL.Seconds(),
+			TTL:       BearerTTL.Seconds(),
 			IP:        ipAddress,
 			Valid:     true,
 		},
 		CSRFToken: CSRFToken{
 			Token:     csrfMAC,
-			Expiry:    curTime.Add(csrfTTL),
+			Expiry:    curTime.Add(CSRFTTL),
 			NotBefore: curTime,
-			TTL:       csrfTTL.Seconds(),
+			TTL:       CSRFTTL.Seconds(),
 			IP:        ipAddress,
 			Valid:     true,
 		},
