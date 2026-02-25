@@ -11,6 +11,7 @@ const passwordInput = document.getElementById("password") as HTMLInputElement;
 const loginButton = document.getElementById("login-button") as HTMLButtonElement;
 const usernameStar = document.getElementById("username-star") as HTMLElement;
 const passwordStar = document.getElementById("password-star") as HTMLElement;
+const errorMsg = document.getElementById("login-error") as HTMLElement;
 
 function checkUsernameValidity(): void {
     const usernameValid = usernameInput.checkValidity();
@@ -45,96 +46,94 @@ passwordInput.addEventListener("keyup", () => {
 });
 
 loginForm.addEventListener("submit", async (event) => {
-    if (loginSubmitInProgress) return;
-    loginSubmitInProgress = true;
-    event.preventDefault();
-    const usernameValid = usernameInput.reportValidity();
-    const passwordValid = passwordInput.reportValidity();
-    const formData = new FormData(loginForm);
-    if (!formData.has("username") || !formData.has("password")) {
-        console.log("Username or password not provided");
-        loginSubmitInProgress = false;
-        return;
-    }
+	if (loginSubmitInProgress) return;
+	loginSubmitInProgress = true;
+	event.preventDefault();
+	const usernameValid = usernameInput.reportValidity();
+	const passwordValid = passwordInput.reportValidity();
+	const formData = new FormData(loginForm);
+	if (!formData.has("username") || !formData.has("password")) {
+		console.log("Username or password not provided");
+		loginSubmitInProgress = false;
+		return;
+	}
 
-		const username: string = (formData.get("username") as string).trim();
-		const password: string = (formData.get("password") as string).trim();
-    if (username === "" || password === "") {
-        console.log("Username or password is empty");
-        loginSubmitInProgress = false;
-        return;
-    }
-    if (username.length > 20 || password.length > 64) {
-        console.log("Username or password is too long");
-        loginSubmitInProgress = false;
-        return;
-    }
-    if (username.length < 3 || password.length < 8) {
-        console.log("Username or password is too short");
-				loginSubmitInProgress = false;
-        return;
-    }
-    if (/\s/.test(username) || /\s/.test(password)) {
-        console.log("Username or password contains whitespace");
-				loginSubmitInProgress = false;
-        return;
-    }
-    if (!usernameValid || !passwordValid) {
-        console.log("Invalid formatting in username or password\nUsername: " + usernameValid + "\nPassword: " + passwordValid);
-				loginSubmitInProgress = false;
-        return;
-    }
+	const username: string = formData.get("username") as string;
+	const password: string = formData.get("password") as string;
+	if (username === "" || password === "") {
+		console.log("Username or password is empty");
+		loginSubmitInProgress = false;
+		return;
+	}
+	if (username.length > 20 || password.length > 64) {
+		console.log("Username or password is too long");
+		loginSubmitInProgress = false;
+		return;
+	}
+	if (username.length < 3 || password.length < 8) {
+		console.log("Username or password is too short");
+		loginSubmitInProgress = false;
+		return;
+	}
+	if (!usernameValid || !passwordValid) {
+		console.log("Invalid formatting in username or password\nUsername: " + usernameValid + "\nPassword: " + passwordValid);
+		loginSubmitInProgress = false;
+		return;
+	}
 
-    try {
-        const jsonArr: LoginInfo = {
-            username: await generateSHA256Hash(username),
-            password: await generateSHA256Hash(password)
-        };
+	try {
+		const jsonObj = {
+			username: await generateSHA256Hash(username),
+			password: await generateSHA256Hash(password)
+		} as LoginInfo
+		if (!jsonObj || jsonObj.username.length !== 64 || jsonObj.password.length !== 64) throw new Error('Missing/invalid data in login request');
 
+		const base64Payload = jsonToBase64(JSON.stringify(jsonObj));
+		if (!base64Payload || base64Payload.length === 0) throw new Error('Failed to encode login payload json to base64');
 
-        const jsonData = JSON.stringify(jsonArr);
-        if (!jsonData || jsonData.length === 0) throw new Error('No data to send to login API');
+		const response = await fetch('/login', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json',
+			'Content-Transfer-Encoding': 'base64'
+			},
+			credentials: "same-origin",
+			body: base64Payload
+		});
 
-        const base64Payload = jsonToBase64(jsonData);
-        if (!base64Payload || base64Payload.length === 0) throw new Error('Failed to encode login payload to base64');
+		if (!response.ok) {
+			if (response.status === 400 || response.status === 401 || response.status === 403) {
+				errorMsg.style.display = "block";
+				errorMsg.innerText = "Invalid username or password.";
+			} else {
+				errorMsg.style.display = "block";
+				errorMsg.innerText = "An unexpected error occurred. Please try again later.";
+			}
+		}
+		const jsonResponse: AuthStatusResponse = await response.json();
+		if (!jsonResponse) throw new Error("Error parsing server response JSON")
+		if (jsonResponse.status?.toLowerCase() !== "authenticated") {
+			errorMsg.style.display = "block";
+			errorMsg.innerText = "Authentication failed. Please check your credentials and try again.";
+			throw new Error("Authentication failed: " + (jsonResponse.status ?? "unknown error"));
+		}
+		if (jsonResponse.expires_at === null || jsonResponse.ttl === null) {
+			errorMsg.style.display = "block";
+			errorMsg.innerText = "Invalid response from server. Please try again later.";
+			throw new Error("Invalid authentication response: missing expires_at or ttl");
+		}
 
-        const response = await fetch('/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json',
-              'Content-Transfer-Encoding': 'base64'
-            },
-            credentials: "same-origin",
-            body: base64Payload
-        });
-
-        if (!response.ok) {
-          const errorMsg = document.getElementById("login-error");
-            if (errorMsg) {
-              if (response.status === 401 || response.status === 403 || response.status === 400) {
-                errorMsg.style.display = "block";
-                errorMsg.innerText = "Invalid username or password.";
-              } else {
-                errorMsg.style.display = "block";
-                errorMsg.innerText = "An unexpected error occurred. Please try again later.";
-              }
-            } else {
-              throw new Error('Network response was not ok: ' + response.statusText);
-            }
-        }
-        const data = await response.json();
-        if (!data || (typeof data === "object" && Object.keys(data).length === 0) || !data.token || data.token.length === 0) {
-            throw new Error('No data returned from login API');
-        }
-
-        await setKeyFromIndexDB("bearerToken", data.token);
-
-        window.location.href = "/dashboard";
-    } catch (error) {
-        console.error('There was a problem with the fetch operation:', error);
-        loginSubmitInProgress = false;
-    } finally {
-        loginSubmitInProgress = false;
-    }
+		const redirectURL = new URL(new URLSearchParams(window.location.search).get("redirect") ?? "", window.location.origin);
+		if (redirectURL.pathname === "/" || !redirectURL.pathname.startsWith("/") || redirectURL.pathname.startsWith("//") || redirectURL.pathname.includes("/login")) {
+			window.location.href = "/dashboard";
+			return;
+		}
+		window.location.href = window.location.origin + redirectURL.pathname + redirectURL.search;
+	} catch (error) {
+		console.error('There was a problem with the fetch operation:', error);
+		return;
+	} finally {
+		loginSubmitInProgress = false;
+	}
 });
 
 async function setKeyFromIndexDB(key: string, value: string): Promise<void> {

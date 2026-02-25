@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -926,6 +927,11 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			}
 		}
 
+		redirectURL := "/login" + "?redirect=" + url.QueryEscape((&url.URL{
+			Path:     requestPath,
+			RawQuery: req.URL.RawQuery,
+		}).String())
+
 		uitSessionIDCookie, sessionErr := req.Cookie("uit_session_id")
 		uitBasicCookie, basicErr := req.Cookie("uit_basic_token")
 		uitBearerCookie, bearerErr := req.Cookie("uit_bearer_token")
@@ -937,7 +943,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			/* errors.Is(csrfErr, http.ErrNoCookie) */
 			// IP authentication for LAN clients (laptops)
 			log.Info("Request is missing required cookies, redirecting")
-			http.Redirect(w, req, "/login", http.StatusSeeOther)
+			http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 			return
 		}
 
@@ -952,7 +958,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			cookieValid, err := IsCookieValid(req, cookie)
 			if err != nil || !cookieValid {
 				log.Warn("Invalid authentication cookie '" + cookieName + "': " + err.Error())
-				http.Redirect(w, req, "/login", http.StatusSeeOther)
+				http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 				return
 			}
 			// log.Debug("Authentication cookie '" + cookieName + "' is valid")
@@ -963,14 +969,14 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 		currentSession, err := config.GetAuthSessionByID(uitSessionIDCookie.Value)
 		if err != nil {
 			log.Error("Error retrieving auth session: " + err.Error())
-			http.Redirect(w, req, "/login", http.StatusSeeOther)
+			http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 			return
 		}
 
 		sessionValid, err := config.IsAuthSessionValid(currentSession, reqAddr)
 		if err != nil || !sessionValid {
 			log.Error("Error validating auth session: " + err.Error())
-			http.Redirect(w, req, "/login", http.StatusSeeOther)
+			http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 			return
 		}
 
@@ -1006,14 +1012,20 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 
 			// Redirect to login page
 			log.Info("Auth session deleted: " + reqAddr.String() + ", active session(s): " + strconv.Itoa(int(config.RefreshAndGetAuthSessionCount())))
-			http.Redirect(w, req, "/login", http.StatusSeeOther)
+			redirectURL := "/login" + "?redirect=" + url.QueryEscape(req.URL.RequestURI())
+			http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 			return
-		case "/api/check_auth":
+		case "/api/check_auth", "/api/login":
+			if req.Method != http.MethodPost {
+				log.Warn("Invalid HTTP method for auth check endpoint: " + req.Method)
+				WriteJsonError(w, http.StatusMethodNotAllowed)
+				return
+			}
 			// Don't extend session TTL for auth check
 			currentSession, err := UpdateAndGetAuthSession(currentSession, false)
 			if err != nil || currentSession == nil {
 				log.Error("Error generating auth cookies for response: " + err.Error())
-				http.Redirect(w, req, "/login", http.StatusSeeOther)
+				http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 				return
 			}
 			var returnedJson = new(AuthStatusResponse)
@@ -1026,7 +1038,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			updatedSession, err := UpdateAndGetAuthSession(currentSession, true)
 			if err != nil || updatedSession == nil {
 				log.Error("Error generating auth cookies for response: " + err.Error())
-				http.Redirect(w, req, "/login", http.StatusSeeOther)
+				http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 				return
 			}
 			if updatedSession.SessionTTL <= 2*time.Minute {

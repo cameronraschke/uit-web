@@ -644,7 +644,7 @@ func CleanupBlockedIPs() {
 }
 
 // Webserver config
-func GetWebServerIPs() (string, string, error) {
+func GetWebServerIPs() (httpIP string, httpsIP string, err error) {
 	appState, err := GetAppState()
 	if err != nil {
 		return "", "", fmt.Errorf("error getting app state in GetWebServerIPs: %w", err)
