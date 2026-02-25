@@ -30,3 +30,10 @@ type MemoryData struct {
 	Type          *string `json:"type"`
 	SpeedMHz      *int64  `json:"speed_mhz"`
 }
+
+type CPUData struct {
+	Tagnumber     *int64   `json:"tagnumber"`
+	SystemSerial  *string  `json:"system_serial"`
+	UsagePercent  *float64 `json:"cpu_usage"`
+	MillidegreesC *float64 `json:"cpu_millidegrees_c"`
+}

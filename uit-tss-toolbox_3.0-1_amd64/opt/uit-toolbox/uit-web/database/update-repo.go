@@ -25,6 +25,8 @@ type Update interface {
 	SetAllOnlineClientJobs(ctx context.Context, allJobs *types.AllJobs) (err error)
 	SetClientJob(ctx context.Context, tag *int64, clientJob *string) (err error)
 	UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryData) (err error)
+	UpdateClientCPUUsage(ctx context.Context, cpuData *types.CPUData) (err error)
+	UpdateClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUData) (err error)
 }
 
 type UpdateRepo struct {
@@ -601,6 +603,89 @@ func (updateRepo *UpdateRepo) UpdateClientMemoryInfo(ctx context.Context, memInf
 	)
 	if err != nil {
 		return fmt.Errorf("error updating memory usage: %w", err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+	}
+	return nil
+}
+
+func (updateRepo *UpdateRepo) UpdateClientCPUUsage(ctx context.Context, cpuData *types.CPUData) (err error) {
+	if cpuData == nil {
+		return fmt.Errorf("CPU data is required")
+	}
+
+	if cpuData.Tagnumber == nil || cpuData.UsagePercent == nil {
+		return fmt.Errorf("both tagnumber and usage percent are required")
+	}
+
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning DB transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	const sqlCode = `INSERT INTO job_queue (tagnumber, cpu_usage) VALUES ($1, $2)
+		ON CONFLICT (tagnumber) DO UPDATE SET cpu_usage = EXCLUDED.cpu_usage;`
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+		ToNullInt64(cpuData.Tagnumber),
+		ToNullFloat64(cpuData.UsagePercent),
+	)
+	if err != nil {
+		return fmt.Errorf("error updating CPU usage: %w", err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+	}
+	return nil
+}
+
+func (updateRepo *UpdateRepo) UpdateClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUData) (err error) {
+	if cpuTempData == nil {
+		return fmt.Errorf("CPU data is required")
+	}
+	if cpuTempData.Tagnumber == nil || cpuTempData.MillidegreesC == nil {
+		return fmt.Errorf("both tagnumber and temperature are required")
+	}
+
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning DB transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	degreesC := float64(*cpuTempData.MillidegreesC) / 1000
+
+	const sqlCode = `INSERT INTO job_queue (tagnumber, cpu_temperature) VALUES ($1, $2)
+		ON CONFLICT (tagnumber) DO UPDATE SET cpu_temperature = EXCLUDED.cpu_temperature;`
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+		ToNullInt64(cpuTempData.Tagnumber),
+		ToNullFloat64(&degreesC),
+	)
+	if err != nil {
+		return fmt.Errorf("error updating CPU temperature: %w", err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)

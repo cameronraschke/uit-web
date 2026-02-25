@@ -992,8 +992,8 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 			ELSE FALSE
 		END) AS "bios_updated",
 		static_bios_stats.bios_version,
-		'0' AS "cpu_usage",
-		'0' AS "cpu_temp",
+		job_queue.cpu_usage,
+		job_queue.cpu_temp,
 		FALSE AS "cpu_temp_warning",
 		job_queue.memory_usage,
 		job_queue.memory_capacity,
