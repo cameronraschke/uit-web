@@ -877,18 +877,18 @@ func IsCookieValid(req *http.Request, cookie *http.Cookie) (bool, error) {
 	if cookie.Secure && req.TLS == nil {
 		return false, fmt.Errorf("secure authentication cookie sent over non-TLS connection: %s", cookie.Name)
 	}
-	if cookie.MaxAge <= 0 { // Expire early to allow for creation of new session
-		return false, fmt.Errorf("authentication cookie has MaxAge <= 0 seconds: %s", cookie.Name)
-	}
-	if cookie.Expires.Before(time.Now()) {
-		return false, fmt.Errorf("authentication cookie has expired: %s", cookie.Name)
-	}
-	if cookie.HttpOnly == false {
-		return false, fmt.Errorf("authentication cookie is not HttpOnly: %s", cookie.Name)
-	}
-	if cookie.SameSite != http.SameSiteStrictMode && cookie.SameSite != http.SameSiteLaxMode {
-		return false, fmt.Errorf("authentication cookie does not have SameSite=Strict or SameSite=Lax: %s", cookie.Name)
-	}
+	// if cookie.MaxAge <= 0 { // Expire early to allow for creation of new session
+	// 	return false, fmt.Errorf("authentication cookie has MaxAge <= 0 seconds: %s", cookie.Name)
+	// }
+	// if cookie.Expires.Before(time.Now()) {
+	// 	return false, fmt.Errorf("authentication cookie has expired: %s", cookie.Name)
+	// }
+	// if cookie.HttpOnly == false {
+	// 	return false, fmt.Errorf("authentication cookie is not HttpOnly: %s", cookie.Name)
+	// }
+	// if cookie.SameSite != http.SameSiteStrictMode && cookie.SameSite != http.SameSiteLaxMode {
+	// 	return false, fmt.Errorf("authentication cookie does not have SameSite=Strict or SameSite=Lax: %s", cookie.Name)
+	// }
 	if strings.TrimSpace(cookie.Value) == "" || len(cookie.Value) > 4096 {
 		return false, fmt.Errorf("authentication cookie value out of range: %s", cookie.Name)
 	}
