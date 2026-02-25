@@ -50,5 +50,8 @@
 	},
 	"/api/client/cpu/usage": {
 		"allowed_methods": ["OPTIONS", "POST"]
+	},
+	"/api/client/network/usage": {
+		"allowed_methods": ["OPTIONS", "POST"]
 	}
 }

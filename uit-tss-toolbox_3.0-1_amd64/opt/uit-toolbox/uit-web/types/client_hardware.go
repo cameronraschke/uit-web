@@ -37,3 +37,10 @@ type CPUData struct {
 	UsagePercent  *float64 `json:"cpu_usage"`
 	MillidegreesC *float64 `json:"cpu_millidegrees_c"`
 }
+
+type NetworkData struct {
+	Tagnumber    *int64  `json:"tagnumber"`
+	SystemSerial *string `json:"system_serial"`
+	NetworkUsage *int64  `json:"network_usage"`
+	LinkSpeed    *int64  `json:"link_speed"`
+}

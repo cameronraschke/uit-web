@@ -27,6 +27,7 @@ type Update interface {
 	UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryData) (err error)
 	UpdateClientCPUUsage(ctx context.Context, cpuData *types.CPUData) (err error)
 	UpdateClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUData) (err error)
+	UpdateClientNetworkUsage(ctx context.Context, networkData *types.NetworkData) (err error)
 }
 
 type UpdateRepo struct {
@@ -644,6 +645,45 @@ func (updateRepo *UpdateRepo) UpdateClientCPUUsage(ctx context.Context, cpuData 
 	)
 	if err != nil {
 		return fmt.Errorf("error updating CPU usage: %w", err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+	}
+	return nil
+}
+
+func (updateRepo *UpdateRepo) UpdateClientNetworkUsage(ctx context.Context, networkData *types.NetworkData) (err error) {
+	if networkData == nil {
+		return fmt.Errorf("network data is required")
+	}
+	if networkData.Tagnumber == nil || networkData.NetworkUsage == nil || networkData.LinkSpeed == nil {
+		return fmt.Errorf("tagnumber, network usage, and link speed are required")
+	}
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning DB transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+	const sqlCode = `INSERT INTO job_queue (tagnumber, network_usage, link_speed) VALUES ($1, $2, $3)
+		ON CONFLICT (tagnumber) DO UPDATE SET network_usage = EXCLUDED.network_usage, link_speed = EXCLUDED.link_speed;`
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+		ToNullInt64(networkData.Tagnumber),
+		ToNullInt64(networkData.NetworkUsage),
+		ToNullInt64(networkData.LinkSpeed),
+	)
+	if err != nil {
+		return fmt.Errorf("error updating network usage: %w", err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)

@@ -258,7 +258,9 @@ CREATE TABLE IF NOT EXISTS job_queue (
 	memory_usage DECIMAL(6, 2) DEFAULT NULL,
 	memory_capacity DECIMAL(6, 2) DEFAULT NULL,
 	cpu_usage DECIMAL(6, 2) DEFAULT NULL,
-	cpu_temp_c DECIMAL(6, 2) DEFAULT NULL
+	cpu_temp_c DECIMAL(6, 2) DEFAULT NULL,
+	network_usage INT DEFAULT NULL,
+	link_speed INT DEFAULT NULL
 );
 
 

@@ -93,6 +93,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("POST /api/client/memory", httpsFullAPIChain.ThenFunc(endpoints.SetClientMemoryInfo))
 	httpsRouter.Handle("POST /api/client/cpu/usage", httpsFullAPIChain.ThenFunc(endpoints.SetClientCPUUsage))
 	httpsRouter.Handle("POST /api/client/cpu/temp", httpsFullAPIChain.ThenFunc(endpoints.SetClientCPUTemperature))
+	httpsRouter.Handle("POST /api/client/network/usage", httpsFullAPIChain.ThenFunc(endpoints.SetClientNetworkUsage))
 
 	// API DELETE endpoints
 	httpsRouter.Handle("DELETE /api/images", httpsFullAPIChain.ThenFunc(endpoints.DeleteImage))

@@ -284,6 +284,51 @@ func SetClientCPUTemperature(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
+func SetClientNetworkUsage(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx)
+	log = log.With(slog.String("func", "SetClientNetworkUsage"))
+	requestBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Cannot read request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if len(requestBody) == 0 {
+		log.Warn("Empty request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if !middleware.IsPrintableUnicode(requestBody) {
+		log.Warn("Invalid UTF-8 in request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	var networkData types.NetworkData
+	if err := json.Unmarshal(requestBody, &networkData); err != nil {
+		log.Warn("Cannot unmarshal JSON: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if networkData.Tagnumber == nil || networkData.NetworkUsage == nil || networkData.LinkSpeed == nil {
+		log.Warn("Missing tag number, network usage, or link speed")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	updateRepo, err := database.NewUpdateRepo()
+	if err != nil {
+		log.Error("No database connection available for updating client network usage")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if err := updateRepo.UpdateClientNetworkUsage(ctx, &networkData); err != nil {
+		log.Error("Failed to update client network usage: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
 func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
