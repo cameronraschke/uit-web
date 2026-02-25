@@ -977,7 +977,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 		switch requestPath {
 		case "/logout":
 			config.DeleteAuthSession(uitSessionIDCookie.Value)
-			log.Info("Deleted auth session (%s), Session(s) active: %d", uitSessionIDCookie.Value, config.GetAuthSessionCount())
+			log.Info(fmt.Sprintf("Deleted auth session (%s), Session(s) active: %d", uitSessionIDCookie.Value, config.GetAuthSessionCount()))
 			// Clear cookies
 			http.SetCookie(w, &http.Cookie{
 				Name:    "uit_session_id",
