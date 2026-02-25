@@ -199,17 +199,25 @@ func InitConfig() (*AppConfiguration, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get addresses for WAN interface: %w", err)
 		}
+		wanIPFound := false
+		lanIPFound := false
 		for _, addr := range addrs {
 			convIP, ok := addr.(*net.IPNet)
 			if !ok {
 				return nil, fmt.Errorf("address is not an IPNet: %v", addr)
 			}
-			if iface.Name == appConfig.WANIfaceName && convIP.IP.String() != appConfig.WANAddr.String() {
-				return nil, fmt.Errorf("WAN interface %s does not have the expected IP address %s", appConfig.WANIfaceName, appConfig.WANAddr.String())
+			if iface.Name == appConfig.WANIfaceName && convIP.IP.String() == appConfig.WANAddr.String() {
+				wanIPFound = true
 			}
-			if iface.Name == appConfig.LANIfaceName && convIP.IP.String() != appConfig.LANAddr.String() {
-				return nil, fmt.Errorf("LAN interface %s does not have the expected IP address %s", appConfig.LANIfaceName, appConfig.LANAddr.String())
+			if iface.Name == appConfig.LANIfaceName && convIP.IP.String() == appConfig.LANAddr.String() {
+				lanIPFound = true
 			}
+		}
+		if iface.Name == appConfig.WANIfaceName && !wanIPFound {
+			return nil, fmt.Errorf("WAN interface %s does not have the expected IP address %s", appConfig.WANIfaceName, appConfig.WANAddr.String())
+		}
+		if iface.Name == appConfig.LANIfaceName && !lanIPFound {
+			return nil, fmt.Errorf("LAN interface %s does not have the expected IP address %s", appConfig.LANIfaceName, appConfig.LANAddr.String())
 		}
 	}
 
