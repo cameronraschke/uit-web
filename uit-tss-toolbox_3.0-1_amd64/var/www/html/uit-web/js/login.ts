@@ -123,7 +123,7 @@ loginForm.addEventListener("submit", async (event) => {
 		}
 
 		const redirectURL = new URL(new URLSearchParams(window.location.search).get("redirect") ?? "", window.location.origin);
-		if (redirectURL.pathname === "/" || !redirectURL.pathname.startsWith("/") || redirectURL.pathname.startsWith("//") || redirectURL.pathname.includes("/login")) {
+		if (redirectURL.pathname === "/" || redirectURL.pathname === "/logout" || !redirectURL.pathname.startsWith("/") || redirectURL.pathname.startsWith("//") || redirectURL.pathname.includes("/login")) {
 			window.location.href = "/dashboard";
 			return;
 		}

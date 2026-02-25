@@ -140,6 +140,60 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, responseJson)
 }
 
+func SetClientMemoryInfo(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx)
+	log = log.With(slog.String("func", "SetClientMemoryInfo"))
+
+	requestBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Cannot read request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if len(requestBody) == 0 {
+		log.Warn("Empty request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if !middleware.IsPrintableUnicode(requestBody) {
+		log.Warn("Invalid UTF-8 in request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	var memoryData types.MemoryData
+	if err := json.Unmarshal(requestBody, &memoryData); err != nil {
+		log.Warn("Cannot unmarshal JSON: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if memoryData.Tagnumber == nil {
+		log.Warn("Missing tag number")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if memoryData.TotalUsage == nil || memoryData.TotalCapacity == nil {
+		log.Warn("Both memory usage and capacity are required")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	updateRepo, err := database.NewUpdateRepo()
+	if err != nil {
+		log.Error("No database connection available for updating client memory info")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	if err := updateRepo.UpdateClientMemoryInfo(ctx, &memoryData); err != nil {
+		log.Error("Failed to update client memory info: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+}
+
 func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)

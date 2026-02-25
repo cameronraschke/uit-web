@@ -24,6 +24,7 @@ type Update interface {
 	SetClientBatteryHealth(ctx context.Context, uuid *string, healthPcnt *int64) (err error)
 	SetAllOnlineClientJobs(ctx context.Context, allJobs *types.AllJobs) (err error)
 	SetClientJob(ctx context.Context, tag *int64, clientJob *string) (err error)
+	UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryData) (err error)
 }
 
 type UpdateRepo struct {
@@ -552,6 +553,54 @@ func (updateRepo *UpdateRepo) SetClientJob(ctx context.Context, tag *int64, clie
 	sqlResult, err = tx.ExecContext(ctx, sqlCode, ptrStringToString(clientJob), ToNullInt64(tag))
 	if err != nil {
 		return fmt.Errorf("error while updating client job: %w", err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+	}
+	return nil
+}
+
+func (updateRepo *UpdateRepo) UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryData) (err error) {
+	if memInfo == nil {
+		return fmt.Errorf("memory data is required")
+	}
+
+	if memInfo.Tagnumber == nil {
+		return fmt.Errorf("tagnumber is required in memory data")
+	}
+	if memInfo.TotalUsage == nil || memInfo.TotalCapacity == nil {
+		return fmt.Errorf("both total usage and total capacity are required")
+	}
+
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning DB transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	memCapacityGB := float64(*memInfo.TotalCapacity) / (1024 * 1024)
+	memUsageGB := float64(*memInfo.TotalUsage) / (1024 * 1024)
+
+	const sqlCode = `INSERT INTO job_queue (tagnumber, memory_capacity, memory_usage) VALUES ($1, $2, $3)
+		ON CONFLICT (tagnumber) DO UPDATE SET memory_capacity = EXCLUDED.memory_capacity, memory_usage = EXCLUDED.memory_usage;`
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+		ToNullInt64(memInfo.Tagnumber),
+		ToNullFloat64(&memCapacityGB),
+		ToNullFloat64(&memUsageGB),
+	)
+	if err != nil {
+		return fmt.Errorf("error updating memory usage: %w", err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)

@@ -41,5 +41,8 @@
 	},
 	"/api/locations": {},
 	"/api/all_statuses": {},
-	"/api/all_device_types": {}
+	"/api/all_device_types": {},
+	"/api/client/memory": {
+		"allowed_methods": ["OPTIONS", "POST"]
+	}
 }

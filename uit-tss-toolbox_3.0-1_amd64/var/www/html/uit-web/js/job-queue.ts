@@ -36,8 +36,8 @@ type JobQueueTableRow = {
 	cpu_usage: number | null;
 	cpu_temp: number | null;
 	cpu_temp_warning: boolean | null;
-	ram_usage: number | null;
-	ram_capacity: number | null;
+	memory_usage: number | null;
+	memory_capacity: number | null;
 	disk_usage: number | null;
 	disk_temp: number | null;
 	disk_type: string | null;
@@ -377,9 +377,9 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 		const cpuUsage = document.createElement('p');
 		cpuUsage.textContent = `CPU Usage: ${entry.cpu_usage !== null ? entry.cpu_usage.toFixed(2) + '%' : 'N/A'} ${entry.cpu_temp !== null ? `(` + entry.cpu_temp.toFixed(2) + '°C)' : ''}`;
 		hardwareInfoContainer.appendChild(cpuUsage);
-		const ramUsage = document.createElement('p');
-		ramUsage.textContent = `RAM Usage: ${entry.ram_usage !== null && entry.ram_capacity !== null ? entry.ram_usage.toFixed(2) + 'GB / ' + entry.ram_capacity.toFixed(2) + 'GB' : 'N/A'}`;
-		hardwareInfoContainer.appendChild(ramUsage);
+		const memoryUsage = document.createElement('p');
+		memoryUsage.textContent = `Memory Usage: ${entry.memory_usage !== null && entry.memory_capacity !== null ? entry.memory_usage.toFixed(2) + 'GB / ' + entry.memory_capacity.toFixed(2) + 'GB' : 'N/A'}`;
+		hardwareInfoContainer.appendChild(memoryUsage);
 		const diskTemp = document.createElement('p');
 		diskTemp.textContent = `Disk Temp: ${entry.disk_temp !== null ? entry.disk_temp.toFixed(2) + '°C' : 'N/A'}`;
 		hardwareInfoContainer.appendChild(diskTemp);

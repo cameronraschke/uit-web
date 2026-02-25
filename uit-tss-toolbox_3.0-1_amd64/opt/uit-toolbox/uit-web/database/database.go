@@ -81,6 +81,12 @@ func ToNullInt64(p *int64) sql.NullInt64 {
 	}
 	return sql.NullInt64{Int64: *p, Valid: true}
 }
+func ToNullFloat64(p *float64) sql.NullFloat64 {
+	if p == nil {
+		return sql.NullFloat64{}
+	}
+	return sql.NullFloat64{Float64: *p, Valid: true}
+}
 func ToNullBool(p *bool) sql.NullBool {
 	if p == nil {
 		return sql.NullBool{}

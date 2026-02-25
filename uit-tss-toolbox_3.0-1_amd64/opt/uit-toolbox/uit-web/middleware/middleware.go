@@ -928,10 +928,16 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			}
 		}
 
-		redirectURL := "/login" + "?redirect=" + url.QueryEscape((&url.URL{
-			Path:     requestPath,
-			RawQuery: req.URL.RawQuery,
-		}).String())
+		var redirectURL string
+		log.Info("REQ PATH: " + requestPath)
+		if requestPath == "/login" || requestPath == "/logout" {
+			redirectURL = "/login" + "?redirect=" + url.QueryEscape("/dashboard")
+		} else {
+			redirectURL = "/login" + "?redirect=" + url.QueryEscape((&url.URL{
+				Path:     requestPath,
+				RawQuery: req.URL.RawQuery,
+			}).String())
+		}
 
 		uitSessionIDCookie, sessionErr := req.Cookie("uit_session_id")
 		uitBasicCookie, basicErr := req.Cookie("uit_basic_token")
@@ -1013,15 +1019,9 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 
 			// Redirect to login page
 			log.Info("Auth session deleted: " + reqAddr.String() + ", active session(s): " + strconv.Itoa(int(config.RefreshAndGetAuthSessionCount())))
-			redirectURL := "/login" + "?redirect=" + url.QueryEscape(req.URL.RequestURI())
 			http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 			return
-		case "/api/check_auth", "/api/login":
-			if req.Method != http.MethodPost {
-				log.Warn("Invalid HTTP method for auth check endpoint: " + req.Method)
-				WriteJsonError(w, http.StatusMethodNotAllowed)
-				return
-			}
+		case "/api/check_auth":
 			// Don't extend session TTL for auth check
 			currentSession, err := UpdateAndGetAuthSession(currentSession, false)
 			if err != nil || currentSession == nil {

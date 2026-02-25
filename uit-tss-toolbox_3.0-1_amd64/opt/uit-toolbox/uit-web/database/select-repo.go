@@ -924,7 +924,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 	latest_jobstats AS (
 		SELECT DISTINCT ON (jobstats.tagnumber) jobstats.time, jobstats.tagnumber, 
 			jobstats.disk_type, jobstats.disk_size AS "disk_capacity",
-			jobstats.battery_health, jobstats.bios_version, jobstats.ram_capacity, jobstats.disk_model, jobstats.disk_temp
+			jobstats.battery_health, jobstats.bios_version, job_queue.memory_capacity, jobstats.disk_model, jobstats.disk_temp
 		FROM jobstats
 		ORDER BY jobstats.tagnumber, jobstats.time DESC),
 	latest_job AS (
@@ -995,8 +995,8 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		'0' AS "cpu_usage",
 		'0' AS "cpu_temp",
 		FALSE AS "cpu_temp_warning",
-		'0' AS ram_usage,
-		latest_jobstats.ram_capacity,
+		job_queue.memory_usage,
+		job_queue.memory_capacity,
 		'0' AS "disk_usage",
 		latest_jobstats.disk_temp,
 		static_disk_stats.disk_type,
@@ -1074,8 +1074,8 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 			&row.CPUUsage,
 			&row.CPUTemp,
 			&row.CPUTempWarning,
-			&row.RAMUsage,
-			&row.RAMCapacity,
+			&row.MemoryUsage,
+			&row.MemoryCapacity,
 			&row.DiskUsage,
 			&row.DiskTemp,
 			&row.DiskType,

@@ -254,7 +254,9 @@ CREATE TABLE IF NOT EXISTS job_queue (
 	disk_temp SMALLINT DEFAULT NULL,
 	max_disk_temp SMALLINT DEFAULT NULL,
 	watts_now SMALLINT DEFAULT NULL,
-	network_speed SMALLINT DEFAULT NULL
+	network_speed SMALLINT DEFAULT NULL,
+	memory_usage INT DEFAULT NULL,
+	memory_capacity INT DEFAULT NULL
 );
 
 

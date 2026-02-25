@@ -21,3 +21,12 @@ type DeviceType struct {
 	DeviceTypeCount     *int64  `json:"device_type_count"`
 	SortOrder           *int64  `json:"sort_order"`
 }
+
+type MemoryData struct {
+	Tagnumber     *int64  `json:"tagnumber"`
+	SystemSerial  *string `json:"system_serial"`
+	TotalCapacity *int64  `json:"mem_capacity"`
+	TotalUsage    *int64  `json:"mem_available"`
+	Type          *string `json:"type"`
+	SpeedMHz      *int64  `json:"speed_mhz"`
+}
