@@ -132,15 +132,18 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	http.SetCookie(w, authSessionCookies.BearerCookie)
 	// http.SetCookie(w, authSessionCookies.CSRFCookie)
 
-	w.Header().Set("Content-Type", "application/json")
+	var response = new(types.AuthStatusResponse)
+	response.Status = "authenticated"
+	response.ExpiresAt = time.Now().Add(authSession.SessionTTL)
+	response.TTL = authSession.SessionTTL
 
-	returnedJson, err := json.Marshal(&types.AuthFormData{ReturnedToken: authSessionCookies.BearerCookie.Value})
+	responseJson, err := json.Marshal(response)
 	if err != nil {
 		log.Error("Failed to marshal JSON response: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	middleware.WriteJson(w, http.StatusOK, returnedJson)
+	middleware.WriteJson(w, http.StatusOK, responseJson)
 }
 
 func InsertNewNote(w http.ResponseWriter, req *http.Request) {

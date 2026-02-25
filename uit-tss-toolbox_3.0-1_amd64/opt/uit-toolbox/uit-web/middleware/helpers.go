@@ -43,12 +43,6 @@ type JsonError struct {
 	ErrorMessage string `json:"error_message"`
 }
 
-type AuthStatusResponse struct {
-	Status    string        `json:"status"`
-	ExpiresAt time.Time     `json:"expires_at"`
-	TTL       time.Duration `json:"ttl"`
-}
-
 const (
 	disallowedQueryChars  = "\x00\r\n<>`:"
 	disallowedHeaderChars = "\x00\r\n"

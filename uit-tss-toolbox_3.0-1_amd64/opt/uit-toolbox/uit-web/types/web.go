@@ -2,6 +2,12 @@ package types
 
 import "time"
 
+type AuthStatusResponse struct {
+	Status    string        `json:"status"`
+	ExpiresAt time.Time     `json:"expires_at"`
+	TTL       time.Duration `json:"ttl"`
+}
+
 type ClientLookup struct {
 	Tagnumber    *int64  `json:"tagnumber"`
 	SystemSerial *string `json:"system_serial"`

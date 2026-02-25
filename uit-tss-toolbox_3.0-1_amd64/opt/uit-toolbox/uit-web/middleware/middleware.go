@@ -18,6 +18,7 @@ import (
 	"time"
 
 	config "uit-toolbox/config"
+	"uit-toolbox/types"
 )
 
 type Middleware func(http.Handler) http.Handler
@@ -1028,7 +1029,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 				http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 				return
 			}
-			var returnedJson = new(AuthStatusResponse)
+			var returnedJson = new(types.AuthStatusResponse)
 			returnedJson.Status = "authenticated"
 			returnedJson.ExpiresAt = time.Now().Add(currentSession.SessionTTL)
 			returnedJson.TTL = currentSession.SessionTTL
