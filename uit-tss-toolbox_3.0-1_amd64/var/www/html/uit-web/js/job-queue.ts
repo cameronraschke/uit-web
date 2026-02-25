@@ -309,34 +309,23 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 		});
 		jobInfoContainer.appendChild(jobSelect);
 		const queueJobButton = document.createElement('button');
-		if (entry.job_queued) {
+		if (entry.job_queued || entry.job_name === "cancel") {
 			queueJobButton.textContent = 'Cancel Job';
 			queueJobButton.classList.add('svg-button', 'cancel');
-			queueJobButton.removeEventListener('click', async () => {});
-			queueJobButton.addEventListener('click', async () => {
-				if (entry.tagnumber === null) {
-					alert('tagnumber is null');
-					return;
-				}
-				try {
-					await updateClientJob(entry.tagnumber, "cancel");
-				} catch (error) {
-					console.error('Error canceling job:', error);
-					alert('An error occurred while canceling the job. Please try again.');
-				} finally {
-					await initializeJobQueuePage();
-				}
-			});
 		} else {
 			queueJobButton.textContent = 'Queue Job';
 			queueJobButton.classList.remove('svg-button', 'cancel');
 		}
+		queueJobButton.removeEventListener('click', async () => {});
 		queueJobButton.addEventListener('click', async () => {
-			const selectedJob = jobSelect.value || null;
-			if (!selectedJob || (!queueJobButton.classList.contains('cancel') && selectedJob === '')) {
+			let selectedJob = jobSelect.value || null;
+			if (queueJobButton.classList.contains('svg-button.cancel')) {
+				selectedJob = "cancel";
+			} else {
 				alert('Please select a job to queue.');
 				return;
 			}
+			
 			try {
 				if (entry.tagnumber === null || selectedJob === null) {
 					throw new Error('tagnumber or selected job is null');
@@ -409,6 +398,16 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 }
 
 async function updateClientJob(tagnumber: number, job_name: string) {
+	if (!tagnumber) {
+		console.warn('tagnumber is null or undefined when trying to update client job');
+		return;
+	}
+
+	if (!job_name) {
+		console.warn('job_name is null or undefined when trying to update client job, defaulting to "cancel"');
+		job_name = "cancel";
+	}
+
 	try {
 		const response = await fetch('/api/job_queue/update_client_job', {
 			method: 'POST',
