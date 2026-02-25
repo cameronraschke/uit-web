@@ -924,7 +924,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 	latest_jobstats AS (
 		SELECT DISTINCT ON (jobstats.tagnumber) jobstats.time, jobstats.tagnumber, 
 			jobstats.disk_type, jobstats.disk_size AS "disk_capacity",
-			jobstats.battery_health, jobstats.bios_version, job_queue.memory_capacity, jobstats.disk_model, jobstats.disk_temp
+			jobstats.battery_health, jobstats.bios_version, jobstats.disk_model, jobstats.disk_temp
 		FROM jobstats
 		ORDER BY jobstats.tagnumber, jobstats.time DESC),
 	latest_job AS (
