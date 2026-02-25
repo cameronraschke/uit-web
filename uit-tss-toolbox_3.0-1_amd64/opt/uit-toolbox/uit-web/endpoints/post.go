@@ -329,6 +329,51 @@ func SetClientNetworkUsage(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
+func SetClientUptime(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx)
+	log = log.With(slog.String("func", "SetClientUptime"))
+	requestBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Cannot read request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if len(requestBody) == 0 {
+		log.Warn("Empty request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if !middleware.IsPrintableUnicode(requestBody) {
+		log.Warn("Invalid UTF-8 in request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	var uptimeData types.ClientUptime
+	if err := json.Unmarshal(requestBody, &uptimeData); err != nil {
+		log.Warn("Cannot unmarshal JSON: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if uptimeData.Tagnumber == nil || uptimeData.ClientAppUptime == nil || uptimeData.SystemUptime == nil {
+		log.Warn("Missing tag number, client app uptime, or system uptime")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	updateRepo, err := database.NewUpdateRepo()
+	if err != nil {
+		log.Error("No database connection available for updating client uptime")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if err := updateRepo.UpdateClientUptime(ctx, &uptimeData); err != nil {
+		log.Error("Failed to update client uptime: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
 func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
@@ -383,6 +428,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
+	middleware.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
 func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {

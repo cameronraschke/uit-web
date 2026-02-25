@@ -732,3 +732,43 @@ func (updateRepo *UpdateRepo) UpdateClientCPUTemperature(ctx context.Context, cp
 	}
 	return nil
 }
+
+func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData *types.ClientUptime) (err error) {
+	if uptimeData == nil {
+		return fmt.Errorf("uptime data is required")
+	}
+	if uptimeData.Tagnumber == nil || uptimeData.ClientAppUptime == nil || uptimeData.SystemUptime == nil {
+		return fmt.Errorf("tagnumber, client app uptime, and system uptime are required")
+	}
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning DB transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	const sqlCode = `INSERT INTO job_queue (tagnumber, client_app_uptime, system_uptime) VALUES ($1, $2, $3)
+		ON CONFLICT (tagnumber) DO UPDATE SET client_app_uptime = EXCLUDED.client_app_uptime, system_uptime = EXCLUDED.system_uptime;`
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+		ToNullInt64(uptimeData.Tagnumber),
+		ToNullInt64(uptimeData.ClientAppUptime),
+		ToNullInt64(uptimeData.SystemUptime),
+	)
+	if err != nil {
+		return fmt.Errorf("error updating client uptime: %w", err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+	}
+	return nil
+}

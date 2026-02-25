@@ -45,7 +45,8 @@ type RealtimeSystemData struct {
 	LastHeardTimestamp *time.Time               `json:"last_heard_timestamp,omitempty"`
 	BootTimestamp      *time.Time               `json:"boot_timestamp,omitempty"`
 	CurrentTimestamp   *time.Time               `json:"current_timestamp,omitempty"`
-	Uptime             time.Duration            `json:"uptime,omitempty"`
+	SystemUptime       time.Duration            `json:"system_uptime,omitempty"`
+	ClientAppUptime    time.Duration            `json:"client_app_uptime,omitempty"`
 	KernelUpdated      *bool                    `json:"kernel_updated,omitempty"`
 	Hardware           *ClientHardwareData      `json:"hardware,omitempty"`
 	Software           *ClientSoftwareData      `json:"software,omitempty"`

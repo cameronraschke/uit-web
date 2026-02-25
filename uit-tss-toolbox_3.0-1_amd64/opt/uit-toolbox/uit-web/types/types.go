@@ -31,7 +31,7 @@ type JobQueueTableRow struct {
 	CheckoutBool         *bool          `json:"checkout_bool"`
 	KernelUpdated        *bool          `json:"kernel_updated"`
 	LastHeard            *time.Time     `json:"last_heard"`
-	Uptime               *time.Duration `json:"uptime"`
+	SystemUptime         *time.Duration `json:"system_uptime"`
 	Online               *bool          `json:"online"`
 	JobActive            *bool          `json:"job_active"`
 	JobQueued            *bool          `json:"job_queued"`

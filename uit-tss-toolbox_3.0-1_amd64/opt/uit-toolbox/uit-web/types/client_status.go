@@ -2,6 +2,12 @@ package types
 
 import "time"
 
+type ClientUptime struct {
+	Tagnumber       *int64 `json:"tagnumber"`
+	ClientAppUptime *int64 `json:"client_app_uptime"`
+	SystemUptime    *int64 `json:"system_uptime"`
+}
+
 type ClientStatus struct {
 	Status          *string `json:"status"`
 	StatusFormatted *string `json:"status_formatted"`

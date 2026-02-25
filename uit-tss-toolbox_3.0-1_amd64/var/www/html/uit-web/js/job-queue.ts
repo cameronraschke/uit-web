@@ -14,7 +14,7 @@ type JobQueueTableRow = {
 	checkout_bool: boolean | null;
 	kernel_updated: boolean | null;
 	last_heard: Date | null;
-	uptime: number | null;
+	system_uptime: number | null;
 	online: boolean | null;
 	job_active: boolean | null;
 	job_queued: boolean | null;
@@ -269,8 +269,8 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 		jobStatus.textContent = `Job Status: ${entry.job_status || 'N/A'}`;
 		jobInfoContainer.appendChild(jobStatus);
 		const clientUptime = document.createElement('p');
-		if (entry.uptime !== null) {
-			const uptimeSec = entry.uptime;
+		if (entry.system_uptime !== null) {
+			const uptimeSec = entry.system_uptime;
 			const uptimeMins = Math.floor(uptimeSec / 60);
 			const uptimeHours = Math.floor(uptimeMins / 60);
 			const uptimeDays = Math.floor(uptimeHours / 24);
