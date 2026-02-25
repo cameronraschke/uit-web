@@ -43,6 +43,12 @@ type JsonError struct {
 	ErrorMessage string `json:"error_message"`
 }
 
+type AuthStatusResponse struct {
+	Status    string        `json:"status"`
+	ExpiresAt time.Time     `json:"expires_at"`
+	TTL       time.Duration `json:"ttl"`
+}
+
 const (
 	disallowedQueryChars  = "\x00\r\n<>`:"
 	disallowedHeaderChars = "\x00\r\n"
@@ -285,8 +291,7 @@ func UpdateAndGetAuthSession(requestAuthSession *config.AuthSession, extendTTL b
 	}
 
 	curTime := time.Now()
-	sessionID := requestAuthSession.SessionID
-	if sessionID == "" {
+	if requestAuthSession.SessionID == "" {
 		return nil, errors.New("empty session ID in auth session provided to UpdateAndGetAuthSession")
 	}
 	sessionTTL := config.AuthSessionTTL
@@ -327,7 +332,7 @@ func UpdateAndGetAuthSession(requestAuthSession *config.AuthSession, extendTTL b
 
 	*newAuthSession = mergedAuthSession
 
-	config.UpdateAuthSession(sessionID, newAuthSession)
+	config.UpdateAuthSession(requestAuthSession.SessionID, newAuthSession)
 
 	return newAuthSession, nil
 }

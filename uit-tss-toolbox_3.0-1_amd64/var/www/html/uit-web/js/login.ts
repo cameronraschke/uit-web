@@ -103,7 +103,7 @@ loginForm.addEventListener("submit", async (event) => {
             headers: { 'Content-Type': 'application/json',
               'Content-Transfer-Encoding': 'base64'
             },
-            credentials: "include",
+            credentials: "same-origin",
             body: base64Payload
         });
 

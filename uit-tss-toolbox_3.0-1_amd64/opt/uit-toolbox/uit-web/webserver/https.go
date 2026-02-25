@@ -76,7 +76,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/client/health/battery", httpsFullAPIChain.ThenFunc(endpoints.GetClientBatteryHealth))
 	httpsRouter.Handle("GET /api/domains", httpsFullAPIChain.ThenFunc(endpoints.GetDomains))
 	httpsRouter.Handle("GET /api/departments", httpsFullAPIChain.ThenFunc(endpoints.GetDepartments))
-	httpsRouter.Handle("GET /api/check_auth", httpsFullAPIChain.ThenFunc(endpoints.CheckAuth))
+	httpsRouter.Handle("GET /api/check_auth", httpsFullAPIChain.ThenFunc(endpoints.RejectRequest))
 	httpsRouter.Handle("GET /api/reports/battery/stats", httpsFullAPIChain.ThenFunc(endpoints.GetBatteryStandardDeviation))
 	httpsRouter.Handle("GET /api/job_queue/all_jobs", httpsFullAPIChain.ThenFunc(endpoints.GetAllJobs))
 	httpsRouter.Handle("GET /api/locations", httpsFullAPIChain.ThenFunc(endpoints.GetAllLocations))
@@ -107,7 +107,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /favicon.png", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 
 	// Logout
-	httpsRouter.Handle("GET /logout", httpsFullLogoutChain.ThenFunc(endpoints.LogoutHandler))
+	httpsRouter.Handle("GET /logout", httpsFullLogoutChain.ThenFunc(endpoints.RejectRequest))
 
 	// Static HTML, CSS, and JS files
 	httpsRouter.Handle("/js/", httpsFullCookieAuthChain.ThenFunc(endpoints.WebServerHandler))

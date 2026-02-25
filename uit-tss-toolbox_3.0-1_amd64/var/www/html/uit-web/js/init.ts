@@ -9,7 +9,8 @@ type TagCache = {
 
 type AuthStatusResponse = {
 	status: string | null;
-	time: string | null;
+	expires_at: Date | null;
+	ttl: number | null;
 };
 
 type DeviceType = {
@@ -184,7 +185,25 @@ async function checkAuthStatus(): Promise<boolean> {
 	try {
 		const url = "/api/check_auth";
 		const response: AuthStatusResponse = await fetchData(url, false);
-		if (response && response.status === "authenticated") {
+		if (response && response.status && response.expires_at && response.ttl) {
+			if (response.status.toLowerCase() !== "authenticated") {
+				console.warn("Auth check failed, status: " + response.status);
+				return false;
+			}
+			const expiresAt = new Date(response.expires_at);
+			const secondsUntilExpiry = (expiresAt.getTime() - Date.now()) / 1000;
+			if (secondsUntilExpiry < 10) {
+				console.warn(`Auth token expiring in ${secondsUntilExpiry.toFixed(1)} seconds, reauthenticating...`);
+				return false;
+			}
+			if (secondsUntilExpiry < 60) {
+				console.warn(`Auth token expiring within 1 minute (in ${secondsUntilExpiry.toFixed(1)}s)`);
+			}
+			const ttlRemainingSeconds = response.ttl / 1_000_000_000;
+			if (ttlRemainingSeconds < 10) {
+				console.warn(`Auth session TTL low (${ttlRemainingSeconds.toFixed(1)}s), reauthenticating...`);
+				return false;
+			}
 			return true;
 		} else {
 			return false;

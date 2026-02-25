@@ -93,8 +93,8 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Unmarshal JSON from base64 bytes
-	var clientFormAuthData AuthFormData
-	if err := json.Unmarshal(base64Decoded, &clientFormAuthData); err != nil {
+	clientFormAuthData := new(AuthFormData)
+	if err := json.Unmarshal(base64Decoded, clientFormAuthData); err != nil {
 		log.Warn("Cannot unmarshal JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -125,28 +125,27 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	sessionCount := config.GetAuthSessionCount()
 	log.Info("New auth session created. Total sessions: " + strconv.Itoa(int(sessionCount)))
 
-	authSessionCookies, err := middleware.UpdateAndGetAuthSession(authSession, config.AuthCookieTTL)
+	authSessionCookies, err := middleware.UpdateAndGetAuthSession(authSession, true)
 	if err != nil {
 		log.Error("Cannot get auth cookies for response: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
-	http.SetCookie(w, authSessionCookies.SessionID)
-	http.SetCookie(w, authSessionCookies.BasicToken)
-	http.SetCookie(w, authSessionCookies.BearerToken)
-	http.SetCookie(w, authSessionCookies.CSRFToken)
+	http.SetCookie(w, authSessionCookies.SessionCookie)
+	http.SetCookie(w, authSessionCookies.BasicCookie)
+	http.SetCookie(w, authSessionCookies.BearerCookie)
+	// http.SetCookie(w, authSessionCookies.CSRFCookie)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 
-	returnedJson, err := json.Marshal(&AuthFormData{ReturnedToken: bearerToken})
+	returnedJson, err := json.Marshal(&AuthFormData{ReturnedToken: authSessionCookies.BearerCookie.Value})
 	if err != nil {
 		log.Error("Failed to marshal JSON response: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	w.Write(returnedJson)
+	middleware.WriteJson(w, http.StatusOK, returnedJson)
 }
 
 func InsertNewNote(w http.ResponseWriter, req *http.Request) {

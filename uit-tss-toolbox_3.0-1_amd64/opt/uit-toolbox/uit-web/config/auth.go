@@ -103,19 +103,9 @@ func CreateAuthSession(requestIP netip.Addr) (*AuthSession, error) {
 	curTime := time.Now()
 
 	sessionID := rand.Text()
-
-	basicToken, err := HashSessionToken(rand.Text())
-	if err != nil {
-		return nil, fmt.Errorf("error hashing basic token: %w", err)
-	}
-	bearerToken, err := HashSessionToken(rand.Text())
-	if err != nil {
-		return nil, fmt.Errorf("error hashing bearer token: %w", err)
-	}
-	csrfToken, err := HashSessionToken(rand.Text())
-	if err != nil {
-		return nil, fmt.Errorf("error hashing csrf token: %w", err)
-	}
+	basicToken := rand.Text()
+	bearerToken := rand.Text()
+	csrfToken := rand.Text()
 
 	authSession := AuthSession{
 		IPAddress:  requestIP,
@@ -187,10 +177,6 @@ func CreateAuthSession(requestIP netip.Addr) (*AuthSession, error) {
 		},
 	}
 
-	for range 3 {
-		newID := rand.Text()
-		authSession.SessionID = newID
-	}
 	appState.authMap.Store(authSession.SessionID, authSession)
 	appState.authMapEntryCount.Add(1)
 
@@ -257,46 +243,53 @@ func RefreshAndGetAuthSessionCount() int64 {
 	return entries
 }
 
-func AuthSessionValid(checkedAuthSession *AuthSession) (sessionValid bool, err error) {
-	if checkedAuthSession == nil {
-		return sessionValid, fmt.Errorf("auth session is nil")
+func IsAuthSessionValid(checkedAuthSession *AuthSession, requestIP netip.Addr) (bool, error) {
+	if checkedAuthSession == nil || checkedAuthSession.SessionID == "" || requestIP == (netip.Addr{}) || !requestIP.IsValid() {
+		return false, fmt.Errorf("auth session and/or request IP is nil or invalid (IsAuthSessionValid)")
 	}
 	appState, err := GetAppState()
 	if err != nil {
-		return sessionValid, fmt.Errorf("cannot retrieve app state (AuthSessionValid): %w", err)
+		return false, fmt.Errorf("cannot retrieve app state (IsAuthSessionValid): %w", err)
 	}
 
 	value, ok := appState.authMap.Load(checkedAuthSession.SessionID)
 	if !ok {
-		return sessionValid, nil
+		return false, nil
 	}
 
 	existingAuthSession, ok := value.(AuthSession)
 	if !ok {
-		return sessionValid, fmt.Errorf("invalid auth session type")
+		return false, fmt.Errorf("invalid auth session type")
 	}
 
-	curTime := time.Now()
-
-	if checkedAuthSession.BasicToken.IP != existingAuthSession.BasicToken.IP || checkedAuthSession.BearerToken.IP != existingAuthSession.BearerToken.IP {
-		return sessionValid, fmt.Errorf("IP address mismatch for session ID: %s", checkedAuthSession.SessionID)
+	if existingAuthSession.SessionTTL <= 0 ||
+		existingAuthSession.BasicToken.TTL <= 0 ||
+		existingAuthSession.BearerToken.TTL <= 0 {
+		// existingAuthSession.CSRFToken.TTL <= 0
+		return false, fmt.Errorf("auth tokens have reached their TTL")
 	}
 
-	if existingAuthSession.BasicToken.IP == (netip.Addr{}) || existingAuthSession.BearerToken.IP == (netip.Addr{}) || strings.TrimSpace(existingAuthSession.BasicToken.Token) == "" || strings.TrimSpace(existingAuthSession.BearerToken.Token) == "" {
-		return sessionValid, fmt.Errorf("empty IP address or token for session ID: %s", checkedAuthSession.SessionID)
+	if existingAuthSession.SessionID != checkedAuthSession.SessionID ||
+		existingAuthSession.BasicToken.Token != checkedAuthSession.BasicToken.Token ||
+		existingAuthSession.BearerToken.Token != checkedAuthSession.BearerToken.Token {
+		// existingAuthSession.CSRFToken.Token != checkedAuthSession.CSRFToken.Token
+		return false, fmt.Errorf("request tokens do not match stored session tokens")
 	}
 
-	if !VerifySessionToken(checkedAuthSession.BasicToken.Token, existingAuthSession.BasicToken.Token) ||
-		!VerifySessionToken(checkedAuthSession.BearerToken.Token, existingAuthSession.BearerToken.Token) {
-		return sessionValid, nil
+	if existingAuthSession.BasicToken.Expiry.Before(time.Now()) ||
+		existingAuthSession.BearerToken.Expiry.Before(time.Now()) {
+		// existingAuthSession.CSRFToken.Expiry.Before(time.Now())
+		return false, fmt.Errorf("auth tokens have expired")
 	}
 
-	if checkedAuthSession.BasicToken.Expiry.Before(curTime) || checkedAuthSession.BearerToken.Expiry.Before(curTime) {
-		return sessionValid, nil
+	if existingAuthSession.IPAddress != requestIP ||
+		existingAuthSession.BasicToken.IP != requestIP ||
+		existingAuthSession.BearerToken.IP != requestIP {
+		// existingAuthSession.CSRFToken.IP != requestIP
+		return false, fmt.Errorf("request IP does not match stored token IP")
 	}
 
-	sessionValid = true
-	return sessionValid, nil
+	return true, nil
 }
 
 func GetAuthSessionByID(sessionID string) (*AuthSession, error) {
@@ -315,31 +308,6 @@ func GetAuthSessionByID(sessionID string) (*AuthSession, error) {
 	return &authSession, nil
 }
 
-func ExtendAuthSession(sessionID string) (bool, error) {
-	appState, err := GetAppState()
-	if err != nil {
-		return false, fmt.Errorf("error getting app state in ExtendAuthSession: %w", err)
-	}
-	value, ok := appState.authMap.Load(sessionID)
-	if !ok {
-		return false, nil
-	}
-	authSession, ok := value.(AuthSession)
-	if !ok {
-		return false, errors.New("invalid auth session type")
-	}
-	curTime := time.Now()
-
-	if authSession.BasicToken.Expiry.Before(curTime) || authSession.BearerToken.Expiry.Before(curTime) {
-		return false, nil
-	}
-	authSession.BasicToken.Expiry = curTime.Add(time.Duration(20 * time.Minute))
-	authSession.BearerToken.Expiry = curTime.Add(time.Duration(20 * time.Minute))
-	authSession.CSRFToken.Expiry = curTime.Add(time.Duration(20 * time.Minute))
-	appState.authMap.Store(sessionID, authSession)
-	return true, nil
-}
-
 func UpdateAuthSession(sessionID string, authSession *AuthSession) error {
 	appState, err := GetAppState()
 	if err != nil {
@@ -353,30 +321,19 @@ func UpdateAuthSession(sessionID string, authSession *AuthSession) error {
 	return nil
 }
 
-// HashSessionToken returns HMAC-SHA256(token) using a server-side secret key.
-func HashSessionToken(clientToken string) (string, error) {
-	serverSecret, err := GetServerSecret()
-	if err != nil {
-		return "", err
-	}
+// SignSessionToken returns HMAC-SHA256(token) using a server-side secret key.
+func SignSessionToken(clientToken string, serverSecret []byte) (string, error) {
 	hmacHash := hmac.New(sha256.New, serverSecret)
 	hmacHash.Write([]byte(clientToken))
 	return hex.EncodeToString(hmacHash.Sum(nil)), nil
 }
 
-// VerifySessionToken checks token against a stored HMAC hex string.
-func VerifySessionToken(clientToken string, storedHex string) bool {
-	serverSecret, err := GetServerSecret()
-	if err != nil {
-		return false
-	}
-	want, err := hex.DecodeString(storedHex)
-	if err != nil {
-		return false
-	}
+// Check SessionToken by hashing the client token and comparing to server-side hash
+func IsSessionTokenValid(clientToken string, serverSecret []byte) bool {
 	hmacHash := hmac.New(sha256.New, serverSecret)
 	hmacHash.Write([]byte(clientToken))
-	return hmac.Equal(hmacHash.Sum(nil), want)
+	computedHash := hmacHash.Sum(nil)
+	return hmac.Equal(computedHash, serverSecret)
 }
 
 func GetServerSecret() ([]byte, error) {

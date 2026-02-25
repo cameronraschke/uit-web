@@ -14,7 +14,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 	config "uit-toolbox/config"
 	"uit-toolbox/database"
 	middleware "uit-toolbox/middleware"
@@ -377,43 +376,6 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), file)
 
 	log.Debug("Served file: " + requestedPath + " to " + requestIP.String())
-}
-
-func LogoutHandler(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	requestIP, err := middleware.GetRequestIPFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving IP address stored in context for LogoutHandler: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	log.Info("Logout request received")
-	// Invalidate cookies
-	requestSessionIDCookie, err := req.Cookie("uit_session_id")
-	if err != nil && err != http.ErrNoCookie {
-		log.Warn("Error retrieving session ID cookie for logout: " + err.Error())
-		http.Redirect(w, req, "/login", http.StatusSeeOther)
-		return
-	}
-	if err == http.ErrNoCookie || requestSessionIDCookie == nil || strings.TrimSpace(requestSessionIDCookie.Value) == "" {
-		log.Info("No session ID cookie provided for logout")
-		http.Redirect(w, req, "/login", http.StatusSeeOther)
-		return
-	}
-	sessionID := strings.TrimSpace(requestSessionIDCookie.Value)
-	config.DeleteAuthSession(sessionID)
-	log.Info("Deleted auth session for logout: " + sessionID + " (" + requestIP.String() + ")")
-	// Clear cookies
-	sessionIDCookie, basicCookie, bearerCookie, csrfCookie := middleware.UpdateAndGetAuthSession("", "", "", "", -time.Hour)
-	http.SetCookie(w, sessionIDCookie)
-	http.SetCookie(w, basicCookie)
-	http.SetCookie(w, bearerCookie)
-	http.SetCookie(w, csrfCookie)
-
-	// Redirect to login page
-	http.Redirect(w, req, "/login", http.StatusSeeOther)
 }
 
 func RejectRequest(w http.ResponseWriter, req *http.Request) {

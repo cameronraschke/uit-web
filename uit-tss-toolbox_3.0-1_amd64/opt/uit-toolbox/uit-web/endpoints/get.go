@@ -31,7 +31,7 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx)
 	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving request query parameters from context for GetClientLookup: "+err.Error())
+		log.Warn("Error retrieving request query parameters from context for GetClientLookup: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -47,14 +47,14 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if tagErr != nil {
-		log.Warn("Cannot convert tagnumber to int64 in GetClientLookup: "+tagErr.Error())
+		log.Warn("Cannot convert tagnumber to int64 in GetClientLookup: " + tagErr.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetClientLookup: "+err.Error())
+		log.Warn("Error creating select repository in GetClientLookup: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -67,7 +67,7 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 		hardwareData, lookupSQLErr = db.ClientLookupBySerial(ctx, systemSerial)
 	}
 	if lookupSQLErr != nil {
-		log.Warn("error querying client in GetClientLookup: "+lookupSQLErr.Error())
+		log.Warn("error querying client in GetClientLookup: " + lookupSQLErr.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -80,13 +80,13 @@ func GetAllTags(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetAllTags: "+err.Error())
+		log.Warn("Error creating select repository in GetAllTags: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	allTags, err := db.AllTags(ctx)
 	if err != nil {
-		log.Warn("Query error in GetAllTags: "+err.Error())
+		log.Warn("Query error in GetAllTags: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -99,26 +99,26 @@ func GetHardwareIdentifiers(w http.ResponseWriter, req *http.Request) {
 
 	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving query parameters from context in GetHardwareIdentifiers: "+err.Error())
+		log.Warn("Error retrieving query parameters from context in GetHardwareIdentifiers: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil || tagnumber == nil {
-		log.Warn("Invalid tagnumber provided in GetHardwareIdentifiers: "+err.Error())
+		log.Warn("Invalid tagnumber provided in GetHardwareIdentifiers: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetHardwareIdentifiers: "+err.Error())
+		log.Warn("Error creating select repository in GetHardwareIdentifiers: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	hardwareData, err := db.GetHardwareIdentifiers(ctx, tagnumber)
 	if err != nil {
-		log.Warn("Query error in GetHardwareIdentifiers: "+err.Error())
+		log.Warn("Query error in GetHardwareIdentifiers: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -130,27 +130,27 @@ func GetBiosData(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx)
 	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetBiosData: "+err.Error())
+		log.Warn("Error retrieving query parameters from context for GetBiosData: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil || tagnumber == nil {
-		log.Warn("Invalid tagnumber provided in GetBiosData: "+err.Error())
+		log.Warn("Invalid tagnumber provided in GetBiosData: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetBiosData: "+err.Error())
+		log.Warn("Error creating select repository in GetBiosData: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	biosData, err := db.GetBiosData(ctx, tagnumber)
 	if err != nil {
-		log.Warn("Query error in GetBiosData: "+err.Error())
+		log.Warn("Query error in GetBiosData: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -162,27 +162,27 @@ func GetOSData(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx)
 	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetOSData: "+err.Error())
+		log.Warn("Error retrieving query parameters from context for GetOSData: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
-		log.Warn("Invalid tagnumber provided in GetOSData: "+err.Error())
+		log.Warn("Invalid tagnumber provided in GetOSData: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetOSData: "+err.Error())
+		log.Warn("Error creating select repository in GetOSData: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	osData, err := db.GetOsData(ctx, tagnumber)
 	if err != nil {
-		log.Warn("Query error in GetOSData: "+err.Error())
+		log.Warn("Query error in GetOSData: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -194,27 +194,27 @@ func GetClientQueuedJobs(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx)
 	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetClientQueuedJobs: "+err.Error())
+		log.Warn("Error retrieving query parameters from context for GetClientQueuedJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
-		log.Warn("Invalid tagnumber provided in GetClientQueuedJobs: "+err.Error())
+		log.Warn("Invalid tagnumber provided in GetClientQueuedJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetClientQueuedJobs: "+err.Error())
+		log.Warn("Error creating select repository in GetClientQueuedJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	activeJobs, err := db.GetActiveJobs(ctx, tagnumber)
 	if err != nil {
-		log.Warn("Query error in GetClientQueuedJobs: "+err.Error())
+		log.Warn("Query error in GetClientQueuedJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -227,27 +227,27 @@ func GetClientAvailableJobs(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx)
 	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetClientAvailableJobs: "+err.Error())
+		log.Warn("Error retrieving query parameters from context for GetClientAvailableJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
-		log.Warn("Invalid tagnumber provided in GetClientAvailableJobs: "+err.Error())
+		log.Warn("Invalid tagnumber provided in GetClientAvailableJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetClientAvailableJobs: "+err.Error())
+		log.Warn("Error creating select repository in GetClientAvailableJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	availableJobs, err := db.GetAvailableJobs(ctx, tagnumber)
 	if err != nil {
-		log.Warn("Query error in GetClientAvailableJobs: "+err.Error())
+		log.Warn("Query error in GetClientAvailableJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -259,7 +259,7 @@ func GetNotes(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx)
 	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetNotes: "+err.Error())
+		log.Warn("Error retrieving query parameters from context for GetNotes: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -271,14 +271,14 @@ func GetNotes(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetNotes: "+err.Error())
+		log.Warn("Error creating select repository in GetNotes: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	notesData, err := db.GetNotes(ctx, &noteType)
 	if err != nil {
-		log.Warn("Query error in GetNotes: "+err.Error())
+		log.Warn("Query error in GetNotes: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -290,7 +290,7 @@ func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx)
 	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetLocationFormData: "+err.Error())
+		log.Warn("Error retrieving query parameters from context for GetLocationFormData: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -307,13 +307,13 @@ func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetLocationFormData: "+err.Error())
+		log.Warn("Error creating select repository in GetLocationFormData: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	locationData, err := db.GetLocationFormData(ctx, tagnumber, &serial)
 	if err != nil {
-		log.Warn("Query error in GetLocationFormData: "+err.Error())
+		log.Warn("Query error in GetLocationFormData: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -325,51 +325,51 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx)
 	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetClientImagesManifest: "+err.Error())
+		log.Warn("Error retrieving query parameters from context for GetClientImagesManifest: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	tagnumber, err := ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
 	if err != nil {
-		log.Warn("Invalid tagnumber provided in request to GetClientImagesManifest: "+err.Error())
+		log.Warn("Invalid tagnumber provided in request to GetClientImagesManifest: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	appState, err := config.GetAppState()
 	if err != nil {
-		log.Warn("Error getting app state in GetClientImagesManifest: "+err.Error())
+		log.Warn("Error getting app state in GetClientImagesManifest: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	minImageSize, maxImageSize, _, acceptedImageExtensionsAndMimeTypes, err := appState.GetFileUploadImageConstraints()
 	if err != nil {
-		log.Warn("Error getting accepted image extensions and mime types in GetClientImagesManifest: "+err.Error())
+		log.Warn("Error getting accepted image extensions and mime types in GetClientImagesManifest: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	minVideoSize, maxVideoSize, _, acceptedVideoExtensionsAndMimeTypes, err := appState.GetFileUploadVideoConstraints()
 	if err != nil {
-		log.Warn("Error getting accepted video extensions and mime types in GetClientImagesManifest: "+err.Error())
+		log.Warn("Error getting accepted video extensions and mime types in GetClientImagesManifest: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetClientImagesManifest: "+err.Error())
+		log.Warn("Error creating select repository in GetClientImagesManifest: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	imageManifests, err := db.GetClientImageManifestByTag(ctx, tagnumber)
 	if err != nil && err != sql.ErrNoRows {
-		log.Warn("Query error in GetClientImagesManifest: "+err.Error())
+		log.Warn("Query error in GetClientImagesManifest: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	if len(imageManifests) == 0 {
-		log.Warn("No image manifest data for client: "+fmt.Sprintf("%d", *tagnumber))
+		log.Warn("No image manifest data for client: " + fmt.Sprintf("%d", *tagnumber))
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
@@ -394,20 +394,20 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		imageManifest.FilePath = nil // Hide actual file path from client
 		urlStr, err := url.JoinPath("/api/images/", fmt.Sprintf("%d", *imageManifest.Tagnumber), fileUUID)
 		if err != nil {
-			log.Warn("Error joining URL paths in GetClientImagesManifest: "+err.Error())
+			log.Warn("Error joining URL paths in GetClientImagesManifest: " + err.Error())
 			continue
 		}
 		imageManifest.URL = &urlStr
 
 		// Check if marked as hidden
 		if imageManifest.Hidden != nil && *imageManifest.Hidden {
-			log.Info("Hidden file requested, but not sent: "+filePath)
+			log.Info("Hidden file requested, but not sent: " + filePath)
 			continue
 		}
 
 		// Check MIME type from DB
 		if imageManifest.MimeType == nil {
-			log.Warn("File '"+fileUUID+"' has a nil MIME type in DB (GetClientImagesManifest)")
+			log.Warn("File '" + fileUUID + "' has a nil MIME type in DB (GetClientImagesManifest)")
 			continue
 		}
 		mimeType := strings.TrimSpace(*imageManifest.MimeType)
@@ -418,7 +418,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		// Open file and read metadata
 		file, err := os.Open(filePath)
 		if err != nil {
-			log.Warn("Cannot open file '"+fileUUID+"' (GetClientImagesManifest): "+err.Error())
+			log.Warn("Cannot open file '" + fileUUID + "' (GetClientImagesManifest): " + err.Error())
 			continue
 		}
 		isValidFile := func() bool {
@@ -428,7 +428,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 
 			imageStat, err := file.Stat()
 			if err != nil {
-				log.Warn("Cannot stat file '"+fileUUID+"' (GetClientImagesManifest): "+err.Error())
+				log.Warn("Cannot stat file '" + fileUUID + "' (GetClientImagesManifest): " + err.Error())
 				return false
 			}
 
@@ -440,43 +440,43 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 			if _, ok := acceptedImageExtensionsAndMimeTypes[fileExtension]; ok {
 				// Check file size from metadata
 				if metadataFileSize < minImageSize || metadataFileSize > maxImageSize {
-					log.Warn("Image file size is out of bounds for file '"+fileUUID+"' in GetClientImagesManifest: File size: "+fmt.Sprintf("%d", metadataFileSize))
+					log.Warn("Image file size is out of bounds for file '" + fileUUID + "' in GetClientImagesManifest: File size: " + fmt.Sprintf("%d", metadataFileSize))
 					return false
 				}
 
 				imageBytes, err := io.ReadAll(io.LimitReader(file, maxImageSize+1))
 				if err != nil {
-					log.Warn("Error reading image file in GetClientImagesManifest: "+filePath+" "+err.Error())
+					log.Warn("Error reading image file in GetClientImagesManifest: " + filePath + " " + err.Error())
 					return false
 				}
 				if len(imageBytes) > int(maxImageSize) {
-					log.Warn("Image file size exceeds maximum after reading in GetClientImagesManifest: "+filePath+" -> File size: "+fmt.Sprintf("%d", len(imageBytes)))
+					log.Warn("Image file size exceeds maximum after reading in GetClientImagesManifest: " + filePath + " -> File size: " + fmt.Sprintf("%d", len(imageBytes)))
 					return false
 				}
 
 				// Get image metadata
 				imageConfig, imageType, err := image.DecodeConfig(bytes.NewReader(imageBytes))
 				if err != nil {
-					log.Warn("Cannot decode image in GetClientImagesManifest: "+filePath+" "+err.Error())
+					log.Warn("Cannot decode image in GetClientImagesManifest: " + filePath + " " + err.Error())
 					return false
 				}
 
 				// Check if MIME type matches file content
 				mt := http.DetectContentType(imageBytes)
 				if mt != mimeType {
-					log.Warn("MIME in type in DB does not match file content for file '"+fileUUID+"' (GetClientImagesManifest): Detected MIME type: "+mt+", MIME type in DB: "+mimeType)
+					log.Warn("MIME in type in DB does not match file content for file '" + fileUUID + "' (GetClientImagesManifest): Detected MIME type: " + mt + ", MIME type in DB: " + mimeType)
 					return false
 				}
 				// Check http's library MIME type against image library's detected type
 				if "image/"+imageType != acceptedImageExtensionsAndMimeTypes[fileExtension] {
-					log.Warn("Image '"+fileUUID+"' has invalid file type in GetClientImagesManifest: Image type: "+"image/"+imageType+", Accepted matched type: "+acceptedImageExtensionsAndMimeTypes[fileExtension]+", File extension: "+fileExtension)
+					log.Warn("Image '" + fileUUID + "' has invalid file type in GetClientImagesManifest: Image type: " + "image/" + imageType + ", Accepted matched type: " + acceptedImageExtensionsAndMimeTypes[fileExtension] + ", File extension: " + fileExtension)
 					return false
 				}
 				imageManifest.MimeType = &mimeType
 
 				// If image has zero width or height, continue
 				if imageConfig.Width == 0 || imageConfig.Height == 0 {
-					log.Warn("Image '"+fileUUID+"' has invalid dimensions in GetClientImagesManifest: "+filePath)
+					log.Warn("Image '" + fileUUID + "' has invalid dimensions in GetClientImagesManifest: " + filePath)
 					return false
 				}
 				resX := int64(imageConfig.Width)
@@ -489,36 +489,36 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 			if _, ok := acceptedVideoExtensionsAndMimeTypes[fileExtension]; ok { // If a video file
 				// Check file size from metadata
 				if metadataFileSize < minVideoSize || metadataFileSize > maxVideoSize {
-					log.Warn("Video file size is out of bounds in GetClientImagesManifest: "+filePath+" -> File size: "+fmt.Sprintf("%d", metadataFileSize))
+					log.Warn("Video file size is out of bounds in GetClientImagesManifest: " + filePath + " -> File size: " + fmt.Sprintf("%d", metadataFileSize))
 					return false
 				}
 
 				videoBytes, err := io.ReadAll(io.LimitReader(file, maxVideoSize+1))
 				if err != nil {
-					log.Warn("Error reading video file in GetClientImagesManifest: "+filePath+" "+err.Error())
+					log.Warn("Error reading video file in GetClientImagesManifest: " + filePath + " " + err.Error())
 					return false
 				}
 				if len(videoBytes) > int(maxVideoSize) {
-					log.Warn("Video file size exceeds maximum after reading in GetClientImagesManifest: "+filePath+" -> File size: "+fmt.Sprintf("%d", len(videoBytes)))
+					log.Warn("Video file size exceeds maximum after reading in GetClientImagesManifest: " + filePath + " -> File size: " + fmt.Sprintf("%d", len(videoBytes)))
 					return false
 				}
 
 				// Check if MIME type matches file content
 				mt := http.DetectContentType(videoBytes)
 				if mt != mimeType {
-					log.Warn("MIME in type in DB does not match file content for file '"+fileUUID+"' (GetClientImagesManifest): Detected MIME type: "+mt+", MIME type in DB: "+mimeType)
+					log.Warn("MIME in type in DB does not match file content for file '" + fileUUID + "' (GetClientImagesManifest): Detected MIME type: " + mt + ", MIME type in DB: " + mimeType)
 					return false
 				}
 				// Check MIME type matches expected MIME type for video extension
 				if acceptedVideoExtensionsAndMimeTypes[fileExtension] != mimeType {
-					log.Warn("Video manifest has mismatched MIME type in GetClientImagesManifest: "+filePath+" -> Detected MIME type: "+mimeType+", Expected MIME type: "+acceptedVideoExtensionsAndMimeTypes[fileExtension])
+					log.Warn("Video manifest has mismatched MIME type in GetClientImagesManifest: " + filePath + " -> Detected MIME type: " + mimeType + ", Expected MIME type: " + acceptedVideoExtensionsAndMimeTypes[fileExtension])
 					return false
 				}
 				imageManifest.MimeType = &mimeType
 				return true
 			}
 
-			log.Warn("File has unsupported extension in GetClientImagesManifest: "+filePath)
+			log.Warn("File has unsupported extension in GetClientImagesManifest: " + filePath)
 			return false
 		}()
 
@@ -531,7 +531,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 
 	// If all manifests were filtered out
 	if len(filteredImageManifests) == 0 {
-		log.Warn("No valid image manifests to return in GetClientImagesManifest for client: "+fmt.Sprintf("%d", *tagnumber))
+		log.Warn("No valid image manifests to return in GetClientImagesManifest for client: " + fmt.Sprintf("%d", *tagnumber))
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
@@ -545,25 +545,25 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx)
 	requestedQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetImage: "+err.Error())
+		log.Warn("Error retrieving query parameters from context for GetImage: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	appState, err := config.GetAppState()
 	if err != nil {
-		log.Warn("Error getting app state (GetImage): "+err.Error())
+		log.Warn("Error getting app state (GetImage): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	_, _, _, acceptedImageExtensionsAndMimeTypes, err := appState.GetFileUploadImageConstraints()
 	if err != nil {
-		log.Warn("Error getting file upload image constraints (GetImage): "+err.Error())
+		log.Warn("Error getting file upload image constraints (GetImage): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	_, _, _, acceptedVideoExtensionsAndMimeTypes, err := appState.GetFileUploadVideoConstraints()
 	if err != nil {
-		log.Warn("Error getting file upload video constraints (GetImage): "+err.Error())
+		log.Warn("Error getting file upload video constraints (GetImage): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -595,38 +595,38 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository (GetImage): "+err.Error())
+		log.Warn("Error creating select repository (GetImage): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
-	log.Debug("Serving image request for: "+imageUUID)
+	log.Debug("Serving image request for: " + imageUUID)
 	imageManifest, err := db.GetClientImageFilePathFromUUID(ctx, &imageUUID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			log.Info("Image not found from UUID lookup (GetImage): "+imageUUID+" "+err.Error())
+			log.Info("Image not found from UUID lookup (GetImage): " + imageUUID + " " + err.Error())
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		log.Info("Client image query error (GetImage): "+imageUUID+" "+err.Error())
+		log.Info("Client image query error (GetImage): " + imageUUID + " " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	if imageManifest == nil {
-		log.Info("No image manifest data found for UUID (GetImage): "+imageUUID)
+		log.Info("No image manifest data found for UUID (GetImage): " + imageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 
 	if imageManifest.Hidden != nil && *imageManifest.Hidden {
-		log.Warn("Attempt to access hidden image (GetImage): "+imageUUID)
+		log.Warn("Attempt to access hidden image (GetImage): " + imageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 
 	if imageManifest.FilePath == nil || strings.TrimSpace(*imageManifest.FilePath) == "" {
-		log.Warn("File path for image is nil or empty (GetImage): "+imageUUID)
+		log.Warn("File path for image is nil or empty (GetImage): " + imageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
@@ -634,11 +634,11 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 	imageFile, err := os.Open(*imageManifest.FilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Warn("Image not found on disk (GetImage): "+imageUUID+" "+err.Error())
+			log.Warn("Image not found on disk (GetImage): " + imageUUID + " " + err.Error())
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		log.Warn("Image cannot be opened (GetImage): "+imageUUID+" "+err.Error())
+		log.Warn("Image cannot be opened (GetImage): " + imageUUID + " " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -654,14 +654,14 @@ func GetJobQueueTable(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository (GetJobQueueTable): "+err.Error())
+		log.Warn("Error creating select repository (GetJobQueueTable): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	jobQueueTable, err := db.GetJobQueueTable(ctx)
 	if err != nil {
-		log.Warn("Query error (GetJobQueueTable): "+err.Error())
+		log.Warn("Query error (GetJobQueueTable): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -675,14 +675,14 @@ func GetJobQueueOverview(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository (GetJobQueueOverview): "+err.Error())
+		log.Warn("Error creating select repository (GetJobQueueOverview): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	jobQueueOverview, err := db.GetJobQueueOverview(ctx)
 	if err != nil {
-		log.Warn("Query error (GetJobQueueOverview): "+err.Error())
+		log.Warn("Query error (GetJobQueueOverview): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -696,14 +696,14 @@ func GetDashboardInventorySummary(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository (GetDashboardInventorySummary): "+err.Error())
+		log.Warn("Error creating select repository (GetDashboardInventorySummary): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	inventorySummary, err := db.GetDashboardInventorySummary(ctx)
 	if err != nil {
-		log.Warn("Query error (GetDashboardInventorySummary): "+err.Error())
+		log.Warn("Query error (GetDashboardInventorySummary): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -715,7 +715,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx)
 	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetInventoryTableData: "+err.Error())
+		log.Warn("Error retrieving query parameters from context for GetInventoryTableData: " + err.Error())
 		if requestQueries != nil {
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
@@ -744,14 +744,14 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository (GetInventoryTableData): "+err.Error())
+		log.Warn("Error creating select repository (GetInventoryTableData): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	inventoryTableData, err := db.GetInventoryTableData(ctx, filterOptions)
 	if err != nil {
-		log.Warn("Query error (GetInventoryTableData): "+err.Error())
+		log.Warn("Query error (GetInventoryTableData): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -759,7 +759,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		log.Debug("CSV file requested in GetInventoryTableData")
 		csvBytes, err := database.ConvertInventoryTableDataToCSV(ctx, inventoryTableData)
 		if err != nil {
-			log.Warn("Error converting inventory table data to CSV in GetInventoryTableData: "+err.Error())
+			log.Warn("Error converting inventory table data to CSV in GetInventoryTableData: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -771,7 +771,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 		w.Header().Set("Content-Disposition", "attachment; filename=\"inventory_table_data-"+time.Now().Format("01-02-2006-150405-MST")+".csv\"")
 		if _, err = w.Write(csvBytes.Bytes()); err != nil {
-			log.Warn("Error writing CSV data to response: "+err.Error())
+			log.Warn("Error writing CSV data to response: " + err.Error())
 		}
 		return
 	} else {
@@ -785,7 +785,7 @@ func GetClientConfig(w http.ResponseWriter, req *http.Request) {
 
 	clientConfig, err := config.GetClientConfig()
 	if err != nil {
-		log.Warn("Error getting client config in GetClientConfig: "+err.Error())
+		log.Warn("Error getting client config in GetClientConfig: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -796,7 +796,7 @@ func GetClientConfig(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(clientConfig); err != nil {
-		log.Warn("Error encoding client config to JSON in GetClientConfig: "+err.Error())
+		log.Warn("Error encoding client config to JSON in GetClientConfig: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -809,14 +809,14 @@ func GetManufacturersAndModels(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetManufacturersAndModels: "+err.Error())
+		log.Warn("Error creating select repository in GetManufacturersAndModels: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	manufacturersAndModels, err := db.GetManufacturersAndModels(ctx)
 	if err != nil {
-		log.Warn("Query error in GetManufacturersAndModels: "+err.Error())
+		log.Warn("Query error in GetManufacturersAndModels: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -828,27 +828,27 @@ func GetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx)
 	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetClientBatteryHealth: "+err.Error())
+		log.Warn("Error retrieving query parameters from context for GetClientBatteryHealth: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
-		log.Warn("Invalid tagnumber provided in GetClientBatteryHealth: "+err.Error())
+		log.Warn("Invalid tagnumber provided in GetClientBatteryHealth: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetClientBatteryHealth: "+err.Error())
+		log.Warn("Error creating select repository in GetClientBatteryHealth: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	batteryHealthData, err := db.GetClientBatteryHealth(ctx, tagnumber)
 	if err != nil {
-		log.Warn("Query error in GetClientBatteryHealth: "+err.Error())
+		log.Warn("Query error in GetClientBatteryHealth: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -862,14 +862,14 @@ func GetDomains(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetDomains: "+err.Error())
+		log.Warn("Error creating select repository in GetDomains: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	domains, err := db.GetDomains(ctx)
 	if err != nil {
-		log.Warn("Query error in GetDomains: "+err.Error())
+		log.Warn("Query error in GetDomains: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -882,35 +882,18 @@ func GetDepartments(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetDepartments: "+err.Error())
+		log.Warn("Error creating select repository in GetDepartments: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	departments, err := db.GetDepartments(ctx)
 	if err != nil {
-		log.Warn("Query error in GetDepartments: "+err.Error())
+		log.Warn("Query error in GetDepartments: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	middleware.WriteJson(w, http.StatusOK, departments)
-}
-
-func CheckAuth(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	if ctx.Err() != nil {
-		log.Info("CheckAuth canceled/timeout")
-		middleware.WriteJsonError(w, http.StatusRequestTimeout)
-		return
-	}
-
-	data := map[string]string{
-		"status": "authenticated",
-		"time":   time.Now().Format(time.RFC3339),
-	}
-
-	middleware.WriteJson(w, http.StatusOK, data)
 }
 
 func GetBatteryStandardDeviation(w http.ResponseWriter, req *http.Request) {
@@ -919,14 +902,14 @@ func GetBatteryStandardDeviation(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetBatteryStandardDeviation: "+err.Error())
+		log.Warn("Error creating select repository in GetBatteryStandardDeviation: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	batteryStdDevData, err := db.GetBatteryStandardDeviation(ctx)
 	if err != nil {
-		log.Warn("Query error in GetBatteryStandardDeviation: "+err.Error())
+		log.Warn("Query error in GetBatteryStandardDeviation: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -939,14 +922,14 @@ func GetAllJobs(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetAllJobs: "+err.Error())
+		log.Warn("Error creating select repository in GetAllJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	allJobs, err := db.GetAllJobs(ctx)
 	if err != nil {
-		log.Warn("Query error in GetAllJobs: "+err.Error())
+		log.Warn("Query error in GetAllJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -959,14 +942,14 @@ func GetAllLocations(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetAllLocations: "+err.Error())
+		log.Warn("Error creating select repository in GetAllLocations: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	allLocations, err := db.GetAllLocations(ctx)
 	if err != nil {
-		log.Warn("Query error in GetAllLocations: "+err.Error())
+		log.Warn("Query error in GetAllLocations: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -979,13 +962,13 @@ func GetAllStatuses(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetAllStatuses: "+err.Error())
+		log.Warn("Error creating select repository in GetAllStatuses: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	allStatuses, err := db.GetAllStatuses(ctx)
 	if err != nil {
-		log.Warn("Query error in GetAllStatuses: "+err.Error())
+		log.Warn("Query error in GetAllStatuses: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -998,14 +981,14 @@ func GetAllDeviceTypes(w http.ResponseWriter, req *http.Request) {
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetAllDeviceTypes: "+err.Error())
+		log.Warn("Error creating select repository in GetAllDeviceTypes: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	allDeviceTypes, err := db.GetAllDeviceTypes(ctx)
 	if err != nil {
-		log.Warn("Query error in GetAllDeviceTypes: "+err.Error())
+		log.Warn("Query error in GetAllDeviceTypes: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
