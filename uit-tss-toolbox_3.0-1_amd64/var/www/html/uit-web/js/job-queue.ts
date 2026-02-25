@@ -312,6 +312,7 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 		if (entry.job_queued) {
 			queueJobButton.textContent = 'Cancel Job';
 			queueJobButton.classList.add('svg-button', 'cancel');
+			queueJobButton.removeEventListener('click', async () => {});
 			queueJobButton.addEventListener('click', async () => {
 				if (entry.tagnumber === null) {
 					alert('tagnumber is null');
@@ -332,7 +333,7 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 		}
 		queueJobButton.addEventListener('click', async () => {
 			const selectedJob = jobSelect.value || null;
-			if (!selectedJob) {
+			if (!selectedJob || (!queueJobButton.classList.contains('cancel') && selectedJob === '')) {
 				alert('Please select a job to queue.');
 				return;
 			}
