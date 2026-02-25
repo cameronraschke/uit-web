@@ -25,8 +25,8 @@ type DeviceType struct {
 type MemoryData struct {
 	Tagnumber     *int64  `json:"tagnumber"`
 	SystemSerial  *string `json:"system_serial"`
-	TotalCapacity *int64  `json:"mem_capacity"`
-	TotalUsage    *int64  `json:"mem_available"`
+	TotalUsage    *int64  `json:"memory_usage"`
+	TotalCapacity *int64  `json:"memory_capacity"`
 	Type          *string `json:"type"`
 	SpeedMHz      *int64  `json:"speed_mhz"`
 }

@@ -929,7 +929,6 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		var redirectURL string
-		log.Info("REQ PATH: " + requestPath)
 		if requestPath == "/login" || requestPath == "/logout" {
 			redirectURL = "/login" + "?redirect=" + url.QueryEscape("/dashboard")
 		} else {
