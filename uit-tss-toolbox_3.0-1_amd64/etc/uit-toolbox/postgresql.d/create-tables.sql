@@ -250,7 +250,6 @@ CREATE TABLE IF NOT EXISTS job_queue (
 	battery_charge SMALLINT DEFAULT NULL,
 	battery_status VARCHAR(20) DEFAULT NULL,
 	uptime INT DEFAULT NULL,
-	cpu_temp SMALLINT DEFAULT NULL,
 	disk_temp SMALLINT DEFAULT NULL,
 	max_disk_temp SMALLINT DEFAULT NULL,
 	watts_now SMALLINT DEFAULT NULL,
@@ -258,7 +257,7 @@ CREATE TABLE IF NOT EXISTS job_queue (
 	memory_usage DECIMAL(6, 2) DEFAULT NULL,
 	memory_capacity DECIMAL(6, 2) DEFAULT NULL,
 	cpu_usage DECIMAL(6, 2) DEFAULT NULL,
-	cpu_temp_c DECIMAL(6, 2) DEFAULT NULL,
+	cpu_temp DECIMAL(6, 2) DEFAULT NULL,
 	network_usage INT DEFAULT NULL,
 	link_speed INT DEFAULT NULL
 );

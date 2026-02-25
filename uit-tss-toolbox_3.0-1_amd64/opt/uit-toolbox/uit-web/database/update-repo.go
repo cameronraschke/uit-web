@@ -717,8 +717,8 @@ func (updateRepo *UpdateRepo) UpdateClientCPUTemperature(ctx context.Context, cp
 
 	degreesC := float64(*cpuTempData.MillidegreesC) / 1000
 
-	const sqlCode = `INSERT INTO job_queue (tagnumber, cpu_temperature) VALUES ($1, $2)
-		ON CONFLICT (tagnumber) DO UPDATE SET cpu_temperature = EXCLUDED.cpu_temperature;`
+	const sqlCode = `INSERT INTO job_queue (tagnumber, cpu_temp) VALUES ($1, $2)
+		ON CONFLICT (tagnumber) DO UPDATE SET cpu_temp = EXCLUDED.cpu_temp;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		ToNullInt64(cpuTempData.Tagnumber),
