@@ -352,8 +352,8 @@ function jsonToBase64(jsonString: string) {
 		const base64JsonData: string = btoa(binaryStr).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 		// Decode json with base64ToJson and double-check that it's correct.
 		const decodedJson = base64ToJson(base64JsonData);
-		if (!base64JsonData || JSON.stringify(jsonParsed) !== decodedJson) {
-			throw new Error(`Encoded json does not match decoded json. \n${base64JsonData}\n${decodedJson}`);
+		if (!base64JsonData || JSON.stringify(jsonParsed) !== JSON.stringify(decodedJson)) {
+			throw new Error(`Encoded json does not match decoded json. \n${base64JsonData}\n${JSON.stringify(decodedJson)}`);
 		}
 		return base64JsonData;
 	} catch (error) {
@@ -385,7 +385,7 @@ function base64ToJson(inputStr: string) {
 		if (jsonParsed && typeof jsonParsed === 'object' && Object.prototype.hasOwnProperty.call(jsonParsed, '__proto__')) {
 			throw new Error(`Prototype pollution detected`);
 		}
-		return JSON.stringify(jsonParsed);
+		return jsonParsed;
 	} catch (error) {
 		console.log("Error decoding base64: " + error);
 		return null;
