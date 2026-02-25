@@ -7,36 +7,37 @@ import (
 	"fmt"
 	"strings"
 	"uit-toolbox/config"
+	"uit-toolbox/types"
 )
 
 type Select interface {
 	AllTags(ctx context.Context) ([]int64, error)
-	GetDepartments(ctx context.Context) ([]Department, error)
-	GetDomains(ctx context.Context) ([]Domain, error)
-	GetManufacturersAndModels(ctx context.Context) ([]ManufacturersAndModels, error)
+	GetDepartments(ctx context.Context) ([]types.Department, error)
+	GetDomains(ctx context.Context) ([]types.Domain, error)
+	GetManufacturersAndModels(ctx context.Context) ([]types.ManufacturersAndModels, error)
 	CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error)
-	ClientLookupByTag(ctx context.Context, tag *int64) (*ClientLookup, error)
-	ClientLookupBySerial(ctx context.Context, serial *string) (*ClientLookup, error)
-	GetHardwareIdentifiers(ctx context.Context, tag *int64) (*HardwareData, error)
-	GetBiosData(ctx context.Context, tag *int64) (*BiosData, error)
-	GetOsData(ctx context.Context, tag *int64) (*OsData, error)
-	GetActiveJobs(ctx context.Context, tag *int64) (*ActiveJobs, error)
-	GetAvailableJobs(ctx context.Context, tag *int64) (*AvailableJobs, error)
-	GetJobQueueOverview(ctx context.Context) (*JobQueueOverview, error)
-	GetNotes(ctx context.Context, noteType *string) (*NotesTable, error)
-	GetDashboardInventorySummary(ctx context.Context) ([]DashboardInventorySummary, error)
-	GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*InventoryUpdateForm, error)
-	GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*ImageManifest, error)
+	ClientLookupByTag(ctx context.Context, tag *int64) (*types.ClientLookup, error)
+	ClientLookupBySerial(ctx context.Context, serial *string) (*types.ClientLookup, error)
+	GetHardwareIdentifiers(ctx context.Context, tag *int64) (*types.HardwareData, error)
+	GetBiosData(ctx context.Context, tag *int64) (*types.BiosData, error)
+	GetOsData(ctx context.Context, tag *int64) (*types.OsData, error)
+	GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error)
+	GetAvailableJobs(ctx context.Context, tag *int64) (*types.AvailableJobs, error)
+	GetJobQueueOverview(ctx context.Context) (*types.JobQueueOverview, error)
+	GetNotes(ctx context.Context, noteType *string) (*types.NotesTable, error)
+	GetDashboardInventorySummary(ctx context.Context) ([]types.DashboardInventorySummary, error)
+	GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryUpdateForm, error)
+	GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifest, error)
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
-	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]ImageManifest, error)
-	GetInventoryTableData(ctx context.Context, filterOptions *InventoryAdvSearchOptions) ([]InventoryTableData, error)
-	GetClientBatteryHealth(ctx context.Context, tagnumber *int64) (*ClientBatteryHealth, error)
-	GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, error)
-	GetBatteryStandardDeviation(ctx context.Context) ([]ClientReport, error)
-	GetAllJobs(ctx context.Context) ([]AllJobs, error)
-	GetAllLocations(ctx context.Context) ([]AllLocations, error)
-	GetAllStatuses(ctx context.Context) ([]ClientStatus, error)
-	GetAllDeviceTypes(ctx context.Context) ([]DeviceType, error)
+	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifest, error)
+	GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableData, error)
+	GetClientBatteryHealth(ctx context.Context, tagnumber *int64) (*types.ClientBatteryHealth, error)
+	GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRow, error)
+	GetBatteryStandardDeviation(ctx context.Context) ([]types.ClientReport, error)
+	GetAllJobs(ctx context.Context) ([]types.AllJobs, error)
+	GetAllLocations(ctx context.Context) ([]types.AllLocations, error)
+	GetAllStatuses(ctx context.Context) ([]types.ClientStatus, error)
+	GetAllDeviceTypes(ctx context.Context) ([]types.DeviceType, error)
 }
 
 type SelectRepo struct {
@@ -65,12 +66,12 @@ func (repo *SelectRepo) AllTags(ctx context.Context) ([]int64, error) {
 	}
 	defer rows.Close()
 
-	var allTags []AllTags
+	var allTags []types.AllTags
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var tag AllTags
+		var tag types.AllTags
 		if err := rows.Scan(&tag.Tagnumber); err != nil {
 			return nil, fmt.Errorf("error scanning row: %w", err)
 		}
@@ -93,7 +94,7 @@ func (repo *SelectRepo) AllTags(ctx context.Context) ([]int64, error) {
 	return allTagsSlice, nil
 }
 
-func (repo *SelectRepo) GetDepartments(ctx context.Context) ([]Department, error) {
+func (repo *SelectRepo) GetDepartments(ctx context.Context) ([]types.Department, error) {
 	const sqlQuery = `SELECT 
 			static_department_info.department_name, 
 			static_department_info.department_name_formatted, 
@@ -111,12 +112,12 @@ func (repo *SelectRepo) GetDepartments(ctx context.Context) ([]Department, error
 	}
 	defer rows.Close()
 
-	var departments []Department
+	var departments []types.Department
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var dept Department
+		var dept types.Department
 		if err := rows.Scan(
 			&dept.DepartmentName,
 			&dept.DepartmentNameFormatted,
@@ -139,7 +140,7 @@ func (repo *SelectRepo) GetDepartments(ctx context.Context) ([]Department, error
 	return departments, nil
 }
 
-func (repo *SelectRepo) GetDomains(ctx context.Context) ([]Domain, error) {
+func (repo *SelectRepo) GetDomains(ctx context.Context) ([]types.Domain, error) {
 	const sqlQuery = `SELECT domain_name, domain_name_formatted 
 		FROM static_ad_domains 
 		ORDER BY domain_sort_order NULLS LAST;`
@@ -149,12 +150,12 @@ func (repo *SelectRepo) GetDomains(ctx context.Context) ([]Domain, error) {
 	}
 	defer rows.Close()
 
-	var domains []Domain
+	var domains []types.Domain
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var domain Domain
+		var domain types.Domain
 		if err := rows.Scan(&domain.DomainName, &domain.DomainNameFormatted); err != nil {
 			return nil, fmt.Errorf("error during row scan: %w", err)
 		}
@@ -170,7 +171,7 @@ func (repo *SelectRepo) GetDomains(ctx context.Context) ([]Domain, error) {
 	return domains, nil
 }
 
-func (repo *SelectRepo) GetManufacturersAndModels(ctx context.Context) ([]ManufacturersAndModels, error) {
+func (repo *SelectRepo) GetManufacturersAndModels(ctx context.Context) ([]types.ManufacturersAndModels, error) {
 	const sqlQuery = `SELECT system_manufacturer, system_model, COUNT(*) AS "system_model_count"
 		FROM hardware_data 
 		WHERE system_manufacturer IS NOT NULL 
@@ -178,7 +179,7 @@ func (repo *SelectRepo) GetManufacturersAndModels(ctx context.Context) ([]Manufa
 		GROUP BY system_manufacturer, system_model 
 		ORDER BY system_manufacturer ASC, system_model ASC;`
 
-	var manufacturersAndModels []ManufacturersAndModels
+	var manufacturersAndModels []types.ManufacturersAndModels
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, fmt.Errorf("cannot execute query: %w", err)
@@ -189,7 +190,7 @@ func (repo *SelectRepo) GetManufacturersAndModels(ctx context.Context) ([]Manufa
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var row ManufacturersAndModels
+		var row types.ManufacturersAndModels
 		if err := rows.Scan(
 			&row.SystemManufacturer,
 			&row.SystemModel,
@@ -252,7 +253,7 @@ func (repo *SelectRepo) CheckAuthCredentials(ctx context.Context, username *stri
 	return true, &dbBcryptHash.String, nil
 }
 
-func (repo *SelectRepo) ClientLookupByTag(ctx context.Context, tag *int64) (*ClientLookup, error) {
+func (repo *SelectRepo) ClientLookupByTag(ctx context.Context, tag *int64) (*types.ClientLookup, error) {
 	if tag == nil {
 		return nil, fmt.Errorf("tagnumber is nil")
 	}
@@ -266,7 +267,7 @@ func (repo *SelectRepo) ClientLookupByTag(ctx context.Context, tag *int64) (*Cli
 		WHERE tagnumber = $1 
 		ORDER BY time DESC NULLS LAST LIMIT 1;`
 
-	var clientLookup ClientLookup
+	var clientLookup types.ClientLookup
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
 	if err := row.Scan(&clientLookup.Tagnumber, &clientLookup.SystemSerial); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -277,7 +278,7 @@ func (repo *SelectRepo) ClientLookupByTag(ctx context.Context, tag *int64) (*Cli
 	return &clientLookup, nil
 }
 
-func (repo *SelectRepo) ClientLookupBySerial(ctx context.Context, serial *string) (*ClientLookup, error) {
+func (repo *SelectRepo) ClientLookupBySerial(ctx context.Context, serial *string) (*types.ClientLookup, error) {
 	if serial == nil || strings.TrimSpace(*serial) == "" {
 		return nil, fmt.Errorf("serial is nil")
 	}
@@ -292,7 +293,7 @@ func (repo *SelectRepo) ClientLookupBySerial(ctx context.Context, serial *string
 		ORDER BY time DESC NULLS LAST LIMIT 1;`
 
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullString(serial))
-	var clientLookup ClientLookup
+	var clientLookup types.ClientLookup
 	if err := row.Scan(&clientLookup.Tagnumber, &clientLookup.SystemSerial); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -302,7 +303,7 @@ func (repo *SelectRepo) ClientLookupBySerial(ctx context.Context, serial *string
 	return &clientLookup, nil
 }
 
-func (repo *SelectRepo) GetHardwareIdentifiers(ctx context.Context, tag *int64) (*HardwareData, error) {
+func (repo *SelectRepo) GetHardwareIdentifiers(ctx context.Context, tag *int64) (*types.HardwareData, error) {
 	if tag == nil {
 		return nil, fmt.Errorf("tagnumber is nil")
 	}
@@ -320,7 +321,7 @@ func (repo *SelectRepo) GetHardwareIdentifiers(ctx context.Context, tag *int64) 
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 	AND locations.tagnumber = $1;`
 
-	var hardwareData HardwareData
+	var hardwareData types.HardwareData
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
 	if err := row.Scan(
 		&hardwareData.Tagnumber,
@@ -343,7 +344,7 @@ func (repo *SelectRepo) GetHardwareIdentifiers(ctx context.Context, tag *int64) 
 	return &hardwareData, nil
 }
 
-func (repo *SelectRepo) GetBiosData(ctx context.Context, tag *int64) (*BiosData, error) {
+func (repo *SelectRepo) GetBiosData(ctx context.Context, tag *int64) (*types.BiosData, error) {
 	if tag == nil {
 		return nil, fmt.Errorf("tagnumber is nil")
 	}
@@ -356,7 +357,7 @@ func (repo *SelectRepo) GetBiosData(ctx context.Context, tag *int64) (*BiosData,
 	client_health.tpm_version 
 	FROM client_health WHERE client_health.tagnumber = $1;`
 
-	var biosData BiosData
+	var biosData types.BiosData
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
 	if err := row.Scan(
 		&biosData.Tagnumber,
@@ -373,7 +374,7 @@ func (repo *SelectRepo) GetBiosData(ctx context.Context, tag *int64) (*BiosData,
 	return &biosData, nil
 }
 
-func (repo *SelectRepo) GetOsData(ctx context.Context, tag *int64) (*OsData, error) {
+func (repo *SelectRepo) GetOsData(ctx context.Context, tag *int64) (*types.OsData, error) {
 	if tag == nil {
 		return nil, fmt.Errorf("tagnumber is nil")
 	}
@@ -390,7 +391,7 @@ func (repo *SelectRepo) GetOsData(ctx context.Context, tag *int64) (*OsData, err
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 	AND locations.tagnumber = $1;`
 
-	var osData OsData
+	var osData types.OsData
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
 	if err := row.Scan(
 		&osData.Tagnumber,
@@ -408,7 +409,7 @@ func (repo *SelectRepo) GetOsData(ctx context.Context, tag *int64) (*OsData, err
 	return &osData, nil
 }
 
-func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*ActiveJobs, error) {
+func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error) {
 	if tag == nil {
 		return nil, fmt.Errorf("tagnumber is nil")
 	}
@@ -423,7 +424,7 @@ func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*ActiveJ
 		ON job_queue.tagnumber = t1.tagnumber
 	WHERE job_queue.tagnumber = $1;`
 
-	var activeJobs ActiveJobs
+	var activeJobs types.ActiveJobs
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
 	if err := row.Scan(
 		&activeJobs.Tagnumber,
@@ -439,7 +440,7 @@ func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*ActiveJ
 	return &activeJobs, nil
 }
 
-func (repo *SelectRepo) GetAvailableJobs(ctx context.Context, tag *int64) (*AvailableJobs, error) {
+func (repo *SelectRepo) GetAvailableJobs(ctx context.Context, tag *int64) (*types.AvailableJobs, error) {
 	if tag == nil {
 		return nil, fmt.Errorf("tagnumber is nil")
 	}
@@ -457,7 +458,7 @@ func (repo *SelectRepo) GetAvailableJobs(ctx context.Context, tag *int64) (*Avai
 	FROM job_queue
 	WHERE job_queue.tagnumber = $1`
 
-	var availableJobs AvailableJobs
+	var availableJobs types.AvailableJobs
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
 	if err := row.Scan(
 		&availableJobs.Tagnumber,
@@ -471,7 +472,7 @@ func (repo *SelectRepo) GetAvailableJobs(ctx context.Context, tag *int64) (*Avai
 	return &availableJobs, nil
 }
 
-func (repo *SelectRepo) GetJobQueueOverview(ctx context.Context) (*JobQueueOverview, error) {
+func (repo *SelectRepo) GetJobQueueOverview(ctx context.Context) (*types.JobQueueOverview, error) {
 	if ctx.Err() != nil {
 		return nil, fmt.Errorf("context error: %w", ctx.Err())
 	}
@@ -482,7 +483,7 @@ func (repo *SelectRepo) GetJobQueueOverview(ctx context.Context) (*JobQueueOverv
 	(SELECT COUNT(*) AS total_active_jobs FROM job_queue WHERE job_active IS NOT NULL AND job_active = TRUE AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - present)) < 30) AS t2,
 	(SELECT COUNT(*) AS total_active_blocking_jobs FROM job_queue WHERE job_active IS NOT NULL AND job_active = TRUE AND job_queued IS NOT NULL AND job_queued IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')) AS t3;`
 
-	var jobQueueOverview JobQueueOverview
+	var jobQueueOverview types.JobQueueOverview
 	row := repo.DB.QueryRowContext(ctx, sqlQuery)
 	if err := row.Scan(
 		&jobQueueOverview.TotalQueuedJobs,
@@ -497,7 +498,7 @@ func (repo *SelectRepo) GetJobQueueOverview(ctx context.Context) (*JobQueueOverv
 	return &jobQueueOverview, nil
 }
 
-func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*NotesTable, error) {
+func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*types.NotesTable, error) {
 	if noteType == nil || strings.TrimSpace(*noteType) == "" {
 		return nil, fmt.Errorf("noteType is nil or empty")
 	}
@@ -511,7 +512,7 @@ func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*NotesT
 		WHERE note_type = $1 
 		ORDER BY time DESC NULLS LAST LIMIT 1;`
 
-	var notesTable NotesTable
+	var notesTable types.NotesTable
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullString(noteType))
 	if err := row.Scan(
 		&notesTable.Time,
@@ -526,7 +527,7 @@ func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*NotesT
 	return &notesTable, nil
 }
 
-func (repo *SelectRepo) GetDashboardInventorySummary(ctx context.Context) ([]DashboardInventorySummary, error) {
+func (repo *SelectRepo) GetDashboardInventorySummary(ctx context.Context) ([]types.DashboardInventorySummary, error) {
 	if ctx.Err() != nil {
 		return nil, fmt.Errorf("context error: %w", ctx.Err())
 	}
@@ -569,12 +570,12 @@ func (repo *SelectRepo) GetDashboardInventorySummary(ctx context.Context) ([]Das
 	}
 	defer rows.Close()
 
-	var dashboardInventorySummary []DashboardInventorySummary
+	var dashboardInventorySummary []types.DashboardInventorySummary
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var summary DashboardInventorySummary
+		var summary types.DashboardInventorySummary
 		if err := rows.Scan(
 			&summary.SystemModel,
 			&summary.SystemModelCount,
@@ -595,7 +596,7 @@ func (repo *SelectRepo) GetDashboardInventorySummary(ctx context.Context) ([]Das
 	return dashboardInventorySummary, nil
 }
 
-func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*InventoryUpdateForm, error) {
+func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryUpdateForm, error) {
 	if tag == nil && (serial == nil || strings.TrimSpace(*serial) == "") {
 		return nil, fmt.Errorf("either tag or serial must be provided")
 	}
@@ -639,7 +640,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		ToNullString(serial),
 	)
 
-	inventoryUpdateForm := new(InventoryUpdateForm)
+	inventoryUpdateForm := new(types.InventoryUpdateForm)
 	if err := row.Scan(
 		&inventoryUpdateForm.Time,
 		&inventoryUpdateForm.Tagnumber,
@@ -671,7 +672,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 	return inventoryUpdateForm, nil
 }
 
-func (repo *SelectRepo) GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*ImageManifest, error) {
+func (repo *SelectRepo) GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifest, error) {
 	if uuid == nil || strings.TrimSpace(*uuid) == "" {
 		return nil, fmt.Errorf("uuid cannot be nil or empty")
 	}
@@ -685,7 +686,7 @@ func (repo *SelectRepo) GetClientImageFilePathFromUUID(ctx context.Context, uuid
 		FROM client_images 
 		WHERE uuid = $1;`
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullString(uuid))
-	var imageManifest ImageManifest
+	var imageManifest types.ImageManifest
 	if err := row.Scan(
 		&imageManifest.Tagnumber,
 		&imageManifest.FileName,
@@ -737,14 +738,14 @@ func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([
 	return hashes, nil
 }
 
-func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]ImageManifest, error) {
+func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifest, error) {
 	if tagnumber == nil {
 		return nil, fmt.Errorf("tagnumber is nil")
 	}
 
 	const sqlQuery = `SELECT time, tagnumber, uuid, filename, filepath, thumbnail_filepath, mime_type, hidden, pinned, note FROM client_images WHERE tagnumber = $1;`
 
-	imageManifests := make([]ImageManifest, 0, 10)
+	imageManifests := make([]types.ImageManifest, 0, 10)
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery, tagnumber)
 	if err != nil {
 		return nil, fmt.Errorf("error during query execution: %w", err)
@@ -755,7 +756,7 @@ func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumb
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var imageManifest ImageManifest
+		var imageManifest types.ImageManifest
 		if err := rows.Scan(
 			&imageManifest.Time,
 			&imageManifest.Tagnumber,
@@ -781,7 +782,7 @@ func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumb
 	return imageManifests, nil
 }
 
-func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions *InventoryAdvSearchOptions) ([]InventoryTableData, error) {
+func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableData, error) {
 	if filterOptions == nil {
 		return nil, fmt.Errorf("filterOptions cannot be nil")
 	}
@@ -835,12 +836,12 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 	}
 	defer rows.Close()
 
-	results := make([]InventoryTableData, 0, approxClientCount)
+	results := make([]types.InventoryTableData, 0, approxClientCount)
 	for rows.Next() {
 		if err := ctx.Err(); err != nil {
 			return nil, fmt.Errorf("context error: %w", err)
 		}
-		var row InventoryTableData
+		var row types.InventoryTableData
 		if err := rows.Scan(
 			&row.Tagnumber,
 			&row.SystemSerial,
@@ -876,7 +877,7 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 	return results, nil
 }
 
-func (repo *SelectRepo) GetClientBatteryHealth(ctx context.Context, tagnumber *int64) (*ClientBatteryHealth, error) {
+func (repo *SelectRepo) GetClientBatteryHealth(ctx context.Context, tagnumber *int64) (*types.ClientBatteryHealth, error) {
 	if tagnumber == nil {
 		return nil, fmt.Errorf("tagnumber cannot be nil (GetClientBatteryHealth)")
 	}
@@ -892,7 +893,7 @@ func (repo *SelectRepo) GetClientBatteryHealth(ctx context.Context, tagnumber *i
 	WHERE jobstats.tagnumber = $1 
 	ORDER BY jobstats.time DESC NULLS LAST LIMIT 1;`
 
-	var batteryHealth ClientBatteryHealth
+	var batteryHealth types.ClientBatteryHealth
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tagnumber))
 	if err := row.Scan(
 		&batteryHealth.Time,
@@ -910,7 +911,7 @@ func (repo *SelectRepo) GetClientBatteryHealth(ctx context.Context, tagnumber *i
 	return &batteryHealth, nil
 }
 
-func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRow, error) {
+func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRow, error) {
 	const sqlQuery = `WITH latest_locations AS (
 		SELECT DISTINCT ON (locations.tagnumber) locations.time, locations.tagnumber, locations.system_serial, locations.location,
 			locationFormatting(locations.location) AS location_formatted, static_department_info.department_name_formatted, locations.ad_domain,
@@ -1030,12 +1031,12 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRo
 	}
 	defer rows.Close()
 
-	jobQueueRows := make([]JobQueueTableRow, 0, approxClientCount) // 560 is the approximate # of clients
+	jobQueueRows := make([]types.JobQueueTableRow, 0, approxClientCount) // 560 is the approximate # of clients
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var row JobQueueTableRow
+		var row types.JobQueueTableRow
 		if err := rows.Scan(
 			&row.Tagnumber,
 			&row.SystemSerial,
@@ -1103,7 +1104,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]JobQueueTableRo
 	return jobQueueRows, nil
 }
 
-func (repo *SelectRepo) GetBatteryStandardDeviation(ctx context.Context) ([]ClientReport, error) {
+func (repo *SelectRepo) GetBatteryStandardDeviation(ctx context.Context) ([]types.ClientReport, error) {
 	const sqlQuery = `SELECT jobstats.time AS "battery_health_timestamp", jobstats.tagnumber, jobstats.battery_health AS "battery_health_pcnt", 
 		ROUND(jobstats.battery_health - AVG(jobstats.battery_health) OVER (), 2) AS "battery_health_stddev"
 	FROM locations
@@ -1113,7 +1114,7 @@ func (repo *SelectRepo) GetBatteryStandardDeviation(ctx context.Context) ([]Clie
 		AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
 	GROUP BY jobstats.tagnumber, jobstats.time, jobstats.battery_health
 	ORDER BY jobstats.time DESC;`
-	var clientReports []ClientReport
+	var clientReports []types.ClientReport
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, err
@@ -1124,7 +1125,7 @@ func (repo *SelectRepo) GetBatteryStandardDeviation(ctx context.Context) ([]Clie
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var clientReport ClientReport
+		var clientReport types.ClientReport
 		if err := rows.Scan(
 			&clientReport.BatteryHealthTimestamp,
 			&clientReport.Tagnumber,
@@ -1144,7 +1145,7 @@ func (repo *SelectRepo) GetBatteryStandardDeviation(ctx context.Context) ([]Clie
 	return clientReports, nil
 }
 
-func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]AllJobs, error) {
+func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]types.AllJobs, error) {
 	const sqlQuery = `SELECT static_job_names.job_name, 
 		static_job_names.job_name_readable, 
 		static_job_names.job_sort_order, 
@@ -1152,7 +1153,7 @@ func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]AllJobs, error) {
 	FROM static_job_names
 	ORDER BY static_job_names.job_sort_order ASC;`
 
-	var allJobs []AllJobs
+	var allJobs []types.AllJobs
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error during query execution: %w", err)
@@ -1163,7 +1164,7 @@ func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]AllJobs, error) {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var job AllJobs
+		var job types.AllJobs
 		if err := rows.Scan(
 			&job.JobName,
 			&job.JobNameReadable,
@@ -1183,7 +1184,7 @@ func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]AllJobs, error) {
 	return allJobs, nil
 }
 
-func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]AllLocations, error) {
+func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocations, error) {
 	const sqlQuery = `WITH latest_locations AS (
 		SELECT DISTINCT ON (tagnumber) location, time, COUNT(location) OVER (PARTITION BY location) AS location_count
 		FROM locations
@@ -1197,7 +1198,7 @@ func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]AllLocations, er
 	GROUP BY location
 	ORDER BY location ASC;`
 
-	var allLocations []AllLocations
+	var allLocations []types.AllLocations
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error during query execution: %w", err)
@@ -1208,7 +1209,7 @@ func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]AllLocations, er
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var location AllLocations
+		var location types.AllLocations
 		if err := rows.Scan(
 			&location.Location,
 			&location.Timestamp,
@@ -1227,7 +1228,7 @@ func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]AllLocations, er
 	return allLocations, nil
 }
 
-func (repo *SelectRepo) GetAllStatuses(ctx context.Context) ([]ClientStatus, error) {
+func (repo *SelectRepo) GetAllStatuses(ctx context.Context) ([]types.ClientStatus, error) {
 	const sqlQuery = `SELECT status, status_formatted, sort_order FROM static_client_statuses ORDER BY sort_order;`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
@@ -1236,12 +1237,12 @@ func (repo *SelectRepo) GetAllStatuses(ctx context.Context) ([]ClientStatus, err
 	}
 	defer rows.Close()
 
-	var allStatuses []ClientStatus
+	var allStatuses []types.ClientStatus
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var status ClientStatus
+		var status types.ClientStatus
 		if err := rows.Scan(
 			&status.Status,
 			&status.StatusFormatted,
@@ -1260,7 +1261,7 @@ func (repo *SelectRepo) GetAllStatuses(ctx context.Context) ([]ClientStatus, err
 	return allStatuses, nil
 }
 
-func (repo *SelectRepo) GetAllDeviceTypes(ctx context.Context) ([]DeviceType, error) {
+func (repo *SelectRepo) GetAllDeviceTypes(ctx context.Context) ([]types.DeviceType, error) {
 	const sqlQuery = `SELECT static_device_types.device_type, 
 			static_device_types.device_type_formatted, 
 			static_device_types.device_meta_category, 
@@ -1277,12 +1278,12 @@ func (repo *SelectRepo) GetAllDeviceTypes(ctx context.Context) ([]DeviceType, er
 	}
 	defer rows.Close()
 
-	var allDeviceTypes []DeviceType
+	var allDeviceTypes []types.DeviceType
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var deviceType DeviceType
+		var deviceType types.DeviceType
 		if err := rows.Scan(
 			&deviceType.DeviceType,
 			&deviceType.DeviceTypeFormatted,

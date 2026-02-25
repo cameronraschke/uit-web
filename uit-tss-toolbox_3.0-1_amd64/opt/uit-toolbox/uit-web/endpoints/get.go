@@ -15,9 +15,10 @@ import (
 	"strings"
 	"time"
 
-	config "uit-toolbox/config"
+	"uit-toolbox/config"
 	"uit-toolbox/database"
-	middleware "uit-toolbox/middleware"
+	"uit-toolbox/middleware"
+	"uit-toolbox/types"
 )
 
 // Per-client functions
@@ -59,7 +60,7 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var hardwareData *database.ClientLookup
+	var hardwareData *types.ClientLookup
 	var lookupSQLErr error
 	if tagnumber != nil {
 		hardwareData, lookupSQLErr = db.ClientLookupByTag(ctx, tagnumber)
@@ -374,7 +375,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var filteredImageManifests []database.ImageManifest
+	var filteredImageManifests []types.ImageManifest
 	for _, imageManifest := range imageManifests {
 		// UUID of file
 		if imageManifest.UUID == nil || strings.TrimSpace(*imageManifest.UUID) == "" {
@@ -726,7 +727,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		requestQueries = new(url.Values)
 	}
 
-	filterOptions := &database.InventoryAdvSearchOptions{
+	filterOptions := &types.InventoryAdvSearchOptions{
 		Tagnumber:          middleware.GetInt64Query(requestQueries, "tagnumber"),
 		SystemSerial:       middleware.GetStrQuery(requestQueries, "system_serial"),
 		Location:           middleware.GetStrQuery(requestQueries, "location"),

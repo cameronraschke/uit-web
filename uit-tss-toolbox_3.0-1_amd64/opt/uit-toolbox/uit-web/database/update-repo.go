@@ -8,20 +8,21 @@ import (
 	"strings"
 	"time"
 	"uit-toolbox/config"
+	"uit-toolbox/types"
 
 	"github.com/google/uuid"
 )
 
 type Update interface {
 	InsertNewNote(ctx context.Context, time *time.Time, noteType *string, note *string) (err error)
-	InsertInventoryUpdateForm(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdateForm *InventoryUpdateForm) (err error)
+	InsertInventoryUpdateForm(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdateForm *types.InventoryUpdateForm) (err error)
 	UpdateHardwareData(ctx context.Context, tagnumber *int64, systemManufacturer *string, systemModel *string) (err error)
-	UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *ImageManifest) (err error)
+	UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *types.ImageManifest) (err error)
 	HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	DeleteClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	SetClientBatteryHealth(ctx context.Context, uuid *string, healthPcnt *int64) (err error)
-	SetAllOnlineClientJobs(ctx context.Context, allJobs *AllJobs) (err error)
+	SetAllOnlineClientJobs(ctx context.Context, allJobs *types.AllJobs) (err error)
 	SetClientJob(ctx context.Context, tag *int64, clientJob *string) (err error)
 }
 
@@ -78,7 +79,7 @@ func (updateRepo *UpdateRepo) InsertNewNote(ctx context.Context, time *time.Time
 	return err
 }
 
-func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdateForm *InventoryUpdateForm) (err error) {
+func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdateForm *types.InventoryUpdateForm) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
 		return fmt.Errorf("generated transaction UUID is nil")
 	}
@@ -270,7 +271,7 @@ func (updateRepo *UpdateRepo) UpdateHardwareData(ctx context.Context, tagnumber 
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *ImageManifest) (err error) {
+func (updateRepo *UpdateRepo) UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *types.ImageManifest) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
 		return fmt.Errorf("transaction UUID is nil")
 	}
@@ -489,7 +490,7 @@ func (updateRepo *UpdateRepo) SetClientBatteryHealth(ctx context.Context, uuid *
 	return nil
 }
 
-func (updateRepo *UpdateRepo) SetAllOnlineClientJobs(ctx context.Context, allJobs *AllJobs) (err error) {
+func (updateRepo *UpdateRepo) SetAllOnlineClientJobs(ctx context.Context, allJobs *types.AllJobs) (err error) {
 	if allJobs == nil {
 		return fmt.Errorf("allJobs structure is nil")
 	}

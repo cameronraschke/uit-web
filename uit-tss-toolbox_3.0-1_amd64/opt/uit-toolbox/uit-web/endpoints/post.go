@@ -20,19 +20,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	config "uit-toolbox/config"
+	"uit-toolbox/config"
 	"uit-toolbox/database"
-	middleware "uit-toolbox/middleware"
+	"uit-toolbox/middleware"
+	"uit-toolbox/types"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
 )
-
-type AuthFormData struct {
-	Username      string `json:"username"`
-	Password      string `json:"password"`
-	ReturnedToken string `json:"token,omitempty"`
-}
 
 func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
@@ -93,7 +88,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Unmarshal JSON from base64 bytes
-	clientFormAuthData := new(AuthFormData)
+	clientFormAuthData := new(types.AuthFormData)
 	if err := json.Unmarshal(base64Decoded, clientFormAuthData); err != nil {
 		log.Warn("Cannot unmarshal JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -139,7 +134,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	returnedJson, err := json.Marshal(&AuthFormData{ReturnedToken: authSessionCookies.BearerCookie.Value})
+	returnedJson, err := json.Marshal(&types.AuthFormData{ReturnedToken: authSessionCookies.BearerCookie.Value})
 	if err != nil {
 		log.Error("Failed to marshal JSON response: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -168,7 +163,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	lr := io.LimitReader(req.Body, noteFormMaxBytes)
 
 	// Parse and validate note data
-	var newNote database.Note
+	var newNote types.Note
 	err = json.NewDecoder(lr).Decode(&newNote)
 	if err != nil {
 		log.Warn("Cannot decode note JSON: " + err.Error())
@@ -277,7 +272,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var inventoryUpdate database.InventoryUpdateForm
+	var inventoryUpdate types.InventoryUpdateForm
 	if err := json.Unmarshal(jsonBytes, &inventoryUpdate); err != nil {
 		log.Warn("Cannot decode JSON (InsertInventoryUpdateForm): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -674,7 +669,7 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	// var totalInvalidFileCount int = 2
 	// var totalInvalidUploadSize int64 = 1 << 10
 	for _, fileHeader := range files {
-		var manifest database.ImageManifest
+		var manifest types.ImageManifest
 
 		if !middleware.IsPrintableUnicodeString(fileHeader.Filename) {
 			log.Warn("Non-printable characters in uploaded file name: " + fileHeader.Filename)
@@ -1062,7 +1057,7 @@ func SetAllJobs(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var clientJson database.AllJobs
+	var clientJson types.AllJobs
 	if err := json.Unmarshal(clientBody, &clientJson); err != nil {
 		log.Warn("Cannot decode SetAllJobs JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -1109,7 +1104,7 @@ func SetClientJob(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var clientJson database.JobQueueTableRow
+	var clientJson types.JobQueueTableRow
 	if err := json.Unmarshal(clientBody, &clientJson); err != nil {
 		log.Warn("Cannot decode request JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
