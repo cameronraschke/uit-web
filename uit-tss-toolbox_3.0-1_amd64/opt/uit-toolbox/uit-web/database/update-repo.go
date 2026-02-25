@@ -28,6 +28,7 @@ type Update interface {
 	UpdateClientCPUUsage(ctx context.Context, cpuData *types.CPUData) (err error)
 	UpdateClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUData) (err error)
 	UpdateClientNetworkUsage(ctx context.Context, networkData *types.NetworkData) (err error)
+	UpdateClientUptime(ctx context.Context, uptimeData *types.ClientUptime) (err error)
 }
 
 type UpdateRepo struct {
