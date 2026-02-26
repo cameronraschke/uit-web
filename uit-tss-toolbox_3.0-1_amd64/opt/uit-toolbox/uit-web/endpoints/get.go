@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"image"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -323,7 +324,7 @@ func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 
 func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetClientImagesManifest"))
 	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
 		log.Warn("Error retrieving query parameters from context for GetClientImagesManifest: " + err.Error())
@@ -343,15 +344,9 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	minImageSize, maxImageSize, _, acceptedImageExtensionsAndMimeTypes, err := appState.GetFileUploadImageConstraints()
+	fileConstraints, err := appState.GetFileUploadConstraints()
 	if err != nil {
-		log.Warn("Error getting accepted image extensions and mime types in GetClientImagesManifest: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	minVideoSize, maxVideoSize, _, acceptedVideoExtensionsAndMimeTypes, err := appState.GetFileUploadVideoConstraints()
-	if err != nil {
-		log.Warn("Error getting accepted video extensions and mime types in GetClientImagesManifest: " + err.Error())
+		log.Warn("Error creating select repository in GetClientImagesManifest: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -393,7 +388,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 
 		// URL to send to client
 		imageManifest.FilePath = nil // Hide actual file path from client
-		urlStr, err := url.JoinPath("/api/images/", fmt.Sprintf("%d", *imageManifest.Tagnumber), fileUUID)
+		urlStr, err := url.JoinPath("/api/files/images/", fmt.Sprintf("%d", *imageManifest.Tagnumber), fileUUID)
 		if err != nil {
 			log.Warn("Error joining URL paths in GetClientImagesManifest: " + err.Error())
 			continue
@@ -438,19 +433,19 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 			imageManifest.FileSize = &metadataFileSize
 
 			// If an image
-			if _, ok := acceptedImageExtensionsAndMimeTypes[fileExtension]; ok {
+			if _, ok := fileConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[fileExtension]; ok {
 				// Check file size from metadata
-				if metadataFileSize < minImageSize || metadataFileSize > maxImageSize {
+				if metadataFileSize < fileConstraints.ImageConstraints.MinFileSize || metadataFileSize > fileConstraints.ImageConstraints.MaxFileSize {
 					log.Warn("Image file size is out of bounds for file '" + fileUUID + "' in GetClientImagesManifest: File size: " + fmt.Sprintf("%d", metadataFileSize))
 					return false
 				}
 
-				imageBytes, err := io.ReadAll(io.LimitReader(file, maxImageSize+1))
+				imageBytes, err := io.ReadAll(io.LimitReader(file, fileConstraints.ImageConstraints.MaxFileSize+1))
 				if err != nil {
 					log.Warn("Error reading image file in GetClientImagesManifest: " + filePath + " " + err.Error())
 					return false
 				}
-				if len(imageBytes) > int(maxImageSize) {
+				if len(imageBytes) > int(fileConstraints.ImageConstraints.MaxFileSize) {
 					log.Warn("Image file size exceeds maximum after reading in GetClientImagesManifest: " + filePath + " -> File size: " + fmt.Sprintf("%d", len(imageBytes)))
 					return false
 				}
@@ -469,8 +464,8 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 					return false
 				}
 				// Check http's library MIME type against image library's detected type
-				if "image/"+imageType != acceptedImageExtensionsAndMimeTypes[fileExtension] {
-					log.Warn("Image '" + fileUUID + "' has invalid file type in GetClientImagesManifest: Image type: " + "image/" + imageType + ", Accepted matched type: " + acceptedImageExtensionsAndMimeTypes[fileExtension] + ", File extension: " + fileExtension)
+				if "image/"+imageType != fileConstraints.ImageConstraints.AcceptedImageExtensionsAndMimeTypes[fileExtension] {
+					log.Warn("Image '" + fileUUID + "' has invalid file type in GetClientImagesManifest: Image type: " + "image/" + imageType + ", Accepted matched type: " + fileConstraints.ImageConstraints.AcceptedImageExtensionsAndMimeTypes[fileExtension] + ", File extension: " + fileExtension)
 					return false
 				}
 				imageManifest.MimeType = &mimeType
@@ -487,19 +482,19 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 				return true
 			}
 
-			if _, ok := acceptedVideoExtensionsAndMimeTypes[fileExtension]; ok { // If a video file
+			if _, ok := fileConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[fileExtension]; ok { // If a video file
 				// Check file size from metadata
-				if metadataFileSize < minVideoSize || metadataFileSize > maxVideoSize {
+				if metadataFileSize < fileConstraints.VideoConstraints.MinFileSize || metadataFileSize > fileConstraints.ImageConstraints.MaxFileSize {
 					log.Warn("Video file size is out of bounds in GetClientImagesManifest: " + filePath + " -> File size: " + fmt.Sprintf("%d", metadataFileSize))
 					return false
 				}
 
-				videoBytes, err := io.ReadAll(io.LimitReader(file, maxVideoSize+1))
+				videoBytes, err := io.ReadAll(io.LimitReader(file, fileConstraints.ImageConstraints.MaxFileSize+1))
 				if err != nil {
 					log.Warn("Error reading video file in GetClientImagesManifest: " + filePath + " " + err.Error())
 					return false
 				}
-				if len(videoBytes) > int(maxVideoSize) {
+				if len(videoBytes) > int(fileConstraints.ImageConstraints.MaxFileSize) {
 					log.Warn("Video file size exceeds maximum after reading in GetClientImagesManifest: " + filePath + " -> File size: " + fmt.Sprintf("%d", len(videoBytes)))
 					return false
 				}
@@ -511,8 +506,8 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 					return false
 				}
 				// Check MIME type matches expected MIME type for video extension
-				if acceptedVideoExtensionsAndMimeTypes[fileExtension] != mimeType {
-					log.Warn("Video manifest has mismatched MIME type in GetClientImagesManifest: " + filePath + " -> Detected MIME type: " + mimeType + ", Expected MIME type: " + acceptedVideoExtensionsAndMimeTypes[fileExtension])
+				if fileConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[fileExtension] != mimeType {
+					log.Warn("Video manifest has mismatched MIME type in GetClientImagesManifest: " + filePath + " -> Detected MIME type: " + mimeType + ", Expected MIME type: " + fileConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[fileExtension])
 					return false
 				}
 				imageManifest.MimeType = &mimeType
@@ -543,7 +538,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 
 func GetImage(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetImage"))
 	requestedQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
 		log.Warn("Error retrieving query parameters from context for GetImage: " + err.Error())
@@ -556,21 +551,15 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	_, _, _, acceptedImageExtensionsAndMimeTypes, err := appState.GetFileUploadImageConstraints()
+	fileConstraints, err := appState.GetFileUploadConstraints()
 	if err != nil {
-		log.Warn("Error getting file upload image constraints (GetImage): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	_, _, _, acceptedVideoExtensionsAndMimeTypes, err := appState.GetFileUploadVideoConstraints()
-	if err != nil {
-		log.Warn("Error getting file upload video constraints (GetImage): " + err.Error())
+		log.Error("Cannot retrieve FileConstraints: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	// local filepath example: inventory-images/{tag}/{date --iso}-{uuid}.{file extension}
-	// incoming request url: /api/images/{tag}/{uuid}.{file extension}
+	// incoming request url: /api/files/images/{tag}/{uuid}.{file extension}
 	uuidInURLQuery := middleware.GetStrQuery(requestedQueries, "uuid")
 	if uuidInURLQuery == nil || strings.TrimSpace(*uuidInURLQuery) == "" {
 		log.Warn("No image UUID provided in request to GetImage")
@@ -578,12 +567,12 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	imageUUID := strings.TrimSpace(strings.ToLower(*uuidInURLQuery))
-	for ext := range acceptedImageExtensionsAndMimeTypes {
+	for ext := range fileConstraints.ImageConstraints.AcceptedImageExtensionsAndMimeTypes {
 		if filepath.Ext(imageUUID) == ext {
 			imageUUID = strings.TrimSuffix(imageUUID, ext)
 		}
 	}
-	for ext := range acceptedVideoExtensionsAndMimeTypes {
+	for ext := range fileConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes {
 		if filepath.Ext(imageUUID) == ext {
 			imageUUID = strings.TrimSuffix(imageUUID, ext)
 		}

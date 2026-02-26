@@ -134,12 +134,6 @@ func ConvertAndVerifyTagnumber(tagStr string) (*int64, error) {
 func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	endpointConfig, err := middleware.GetWebEndpointConfigFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving web endpoint config from context (FileServerHandler): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
 	resolvedPath, err := middleware.GetRequestFileFromContext(ctx)
 	if err != nil {
 		log.Warn("Error retrieving requested file from context (FileServerHandler): " + err.Error())
@@ -168,19 +162,19 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if endpointConfig.EndpointType == "static_file" {
-		if endpointConfig.MaxDownloadSizeMB != 0 {
-			if metadata.Size() > endpointConfig.MaxDownloadSizeMB {
-				log.Warn("Requested file is too large (FileServerHandler): '" + resolvedPath + "' (" + fmt.Sprintf("%.2f", float64(metadata.Size())/1024/1024) + " MB, max allowed: " + fmt.Sprintf("%d", endpointConfig.MaxDownloadSizeMB) + " MB)")
-				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
-				return
-			}
-		} else {
-			log.Warn("Max download size is not set for static file endpoint (FileServerHandler): '" + resolvedPath + "', rejecting request")
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-	}
+	// if endpointConfig.EndpointType == "static_file" {
+	// 	if endpointConfig.MaxDownloadSizeMB != 0 {
+	// 		if metadata.Size() > endpointConfig.MaxDownloadSizeMB {
+	// 			log.Warn("Requested file is too large (FileServerHandler): '" + resolvedPath + "' (" + fmt.Sprintf("%.2f", float64(metadata.Size())/1024/1024) + " MB, max allowed: " + fmt.Sprintf("%d", endpointConfig.MaxDownloadSizeMB) + " MB)")
+	// 			middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
+	// 			return
+	// 		}
+	// 	} else {
+	// 		log.Warn("Max download size is not set for static file endpoint (FileServerHandler): '" + resolvedPath + "', rejecting request")
+	// 		middleware.WriteJsonError(w, http.StatusInternalServerError)
+	// 		return
+	// 	}
+	// }
 
 	// Get file info for headers
 	switch filepath.Ext(resolvedPath) {

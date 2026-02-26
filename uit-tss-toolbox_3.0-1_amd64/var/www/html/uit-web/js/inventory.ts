@@ -160,9 +160,9 @@ async function fetchAllLocations(purgeCache: boolean = false): Promise<AllLocati
 				return cacheEntry.locations;
 			}
 		}
-		const data: AllLocations[] = await fetchData('/api/locations', false);
+		const data: AllLocations[] = await fetchData('/api/overview/all_locations', false);
 		if (!data || !Array.isArray(data)) {
-			throw new Error("No data returned from /api/locations");
+			throw new Error("No data returned from /api/overview/all_locations");
 		}
 		sessionStorage.setItem("uit_all_locations", JSON.stringify({ timestamp: Date.now(), locations: data }));
 		return data;
@@ -217,9 +217,9 @@ async function lookupTagOrSerial(tagnumber: number | null, serial: string | null
     return null;
   }
   try {
-    const data = await fetchData(`/api/lookup?${query.toString()}`);
+    const data = await fetchData(`/api/client/lookup?${query.toString()}`);
     if (!data) {
-      console.log("No data returned from /api/lookup");
+      console.log("No data returned from /api/client/lookup");
 			return null;
     }
 		const jsonResponse: ClientLookupResult = data as ClientLookupResult;
@@ -809,9 +809,9 @@ async function fetchDepartments(purgeCache: boolean = false): Promise<Array<Depa
 				return cacheEntry.departments;
 			}
 		}
-		const data: Array<Department> = await fetchData('/api/departments');
+		const data: Array<Department> = await fetchData('/api/overview/all_departments', false);
 		if (!data || !Array.isArray(data) || data.length === 0) {
-			throw new Error('No data returned from /api/departments');
+			throw new Error('No data returned from /api/overview/all_departments');
 		}
 		const cacheEntry: DepartmentsCache = {
 			timestamp: Date.now(),
@@ -837,7 +837,7 @@ async function fetchAllDeviceTypes(purgeCache: boolean = false): Promise<DeviceT
 				return cacheEntry.deviceTypes;
 			}
 		}
-		const allDeviceTypes: DeviceType[] = await fetchData(`/api/all_device_types`, false);
+		const allDeviceTypes: DeviceType[] = await fetchData(`/api/overview/all_device_types`, false);
 		if (!Array.isArray(allDeviceTypes)) {
 			throw new Error("returned data is not an array.");
 		}
@@ -1037,7 +1037,7 @@ updateForm.addEventListener("submit", async (event) => {
       }
     }
 
-    const response = await fetch("/api/update_inventory", {
+    const response = await fetch("/api/inventory/update", {
       method: "POST",
       headers: {
         "credentials": "include"

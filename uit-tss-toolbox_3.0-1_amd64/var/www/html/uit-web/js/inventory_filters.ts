@@ -149,13 +149,13 @@ async function fetchFilteredInventoryData(csvDownload = false): Promise<Inventor
 	}
 
 	if (csvDownload) {
-		window.location.href = `/api/inventory?csv=true&${apiQuery.toString()}`;
+		window.location.href = `/api/overview/inventory_table?csv=true&${apiQuery.toString()}`;
 		return null;
 	}
 
 	try {
-		const jsonResponse: InventoryRow[] | null = await fetchData(`/api/inventory?${apiQuery.toString()}`, false);
-		if (jsonResponse === null) console.warn("No data returned from /api/inventory");
+		const jsonResponse: InventoryRow[] | null = await fetchData(`/api/overview/inventory_table?${apiQuery.toString()}`, false);
+		if (jsonResponse === null) console.warn("No data returned from /api/overview/inventory_table");
 		return jsonResponse;
 	} catch (error) {
 		console.warn("Error fetching inventory data:", error);
@@ -175,9 +175,9 @@ async function fetchAllManufacturersAndModels(purgeCache: boolean = false): Prom
 			}
 		}
 
-    const data: ManufacturersAndModels[] = await fetchData('/api/models');
+    const data: ManufacturersAndModels[] = await fetchData('/api/overview/all_models');
     if (!data || !Array.isArray(data) || data.length === 0) {
-      throw new Error('No data returned from /api/models');
+      throw new Error('No data returned from /api/overview/all_models');
     }
 		const cacheEntry: ManufacturerAndModelsCache = {
 			timestamp: Date.now(),
@@ -209,7 +209,7 @@ async function populateManufacturerSelect(selectEl: HTMLSelectElement, resetEl: 
 
 	try {
   	const data: ManufacturersAndModels[] = await fetchAllManufacturersAndModels(purgeCache);
-		if (!data || !Array.isArray(data) || data.length === 0) throw new Error('No data returned from /api/models');
+		if (!data || !Array.isArray(data) || data.length === 0) throw new Error('No data returned from /api/overview/all_models');
 
 		// Sort manufacturers array - get unique key
 		const manufacturerMap = new Map<string, ManufacturersAndModels>();
@@ -315,9 +315,9 @@ async function fetchDomains(purgeCache: boolean = false): Promise<Array<Domain> 
 				return cacheEntry.domains;
 			}
 		}
-		const data: Array<Domain> = await fetchData('/api/domains');
+		const data: Array<Domain> = await fetchData('/api/overview/all_domains');
 		if (!data || !Array.isArray(data) || data.length === 0) {
-			throw new Error('No data returned from /api/domains');
+			throw new Error('No data returned from /api/overview/all_domains');
 		}
 		const cacheEntry: DomainCache = {
 			timestamp: Date.now(),
@@ -342,7 +342,7 @@ async function populateDomainSelect(el: HTMLSelectElement, purgeCache: boolean =
 	try {
 		const domainData: Array<Domain> = await fetchDomains(purgeCache);
 		if (!domainData || !Array.isArray(domainData) || domainData.length === 0) {
-			throw new Error('No data returned from /api/domains');
+			throw new Error('No data returned from /api/overview/all_domains');
 		}
 
 		domainData.sort((a, b) => {
@@ -380,7 +380,7 @@ async function populateDepartmentSelect(el: HTMLSelectElement, purgeCache: boole
 	try {
 		const departmentsData: Array<Department> = await fetchDepartments(purgeCache);
 		if (!departmentsData || !Array.isArray(departmentsData) || departmentsData.length === 0) {
-			throw new Error('No data returned from /api/departments');
+			throw new Error('No data returned from /api/overview/all_departments');
 		}
 
 		resetSelectElement(el, 'Department', false, undefined);
@@ -430,9 +430,9 @@ async function fetchStatuses(purgeCache: boolean = false): Promise<Array<Status>
 				return cacheEntry.statuses;
 			}
 		}
-		const data: Array<Status> = await fetchData('/api/all_statuses');
+		const data: Array<Status> = await fetchData('/api/overview/all_statuses');
 		if (!data || !Array.isArray(data) || data.length === 0) {
-			throw new Error('No data returned from /api/all_statuses');
+			throw new Error('No data returned from /api/overview/all_statuses');
 		}
 		const cacheEntry: StatusCache = {
 			timestamp: Date.now(),
@@ -491,7 +491,7 @@ async function populateLocationSelect(el: HTMLSelectElement, purgeCache: boolean
 	try {
 		const locationData: Array<AllLocations> = await fetchAllLocations(purgeCache);
 		if (!locationData || !Array.isArray(locationData) || locationData.length === 0) {
-			throw new Error('No data returned from /api/locations (populateLocationSelect)');
+			throw new Error('No data returned from /api/overview/all_locations (populateLocationSelect)');
 		}
 		locationData.sort((a, b) => { // alpahbetical here, not by timestamp
 			const locA = a.location_formatted || a.location || '';

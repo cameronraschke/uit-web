@@ -26,7 +26,7 @@ type Select interface {
 	GetJobQueueOverview(ctx context.Context) (*types.JobQueueOverview, error)
 	GetNotes(ctx context.Context, noteType *string) (*types.NotesTable, error)
 	GetDashboardInventorySummary(ctx context.Context) ([]types.DashboardInventorySummary, error)
-	GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryUpdateForm, error)
+	GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryUpdate, error)
 	GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifest, error)
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
 	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifest, error)
@@ -596,7 +596,7 @@ func (repo *SelectRepo) GetDashboardInventorySummary(ctx context.Context) ([]typ
 	return dashboardInventorySummary, nil
 }
 
-func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryUpdateForm, error) {
+func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryUpdate, error) {
 	if tag == nil && (serial == nil || strings.TrimSpace(*serial) == "") {
 		return nil, fmt.Errorf("either tag or serial must be provided")
 	}
@@ -640,36 +640,36 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		ptrToNullString(serial),
 	)
 
-	inventoryUpdateForm := new(types.InventoryUpdateForm)
+	inventoryUpdate := new(types.InventoryUpdate)
 	if err := row.Scan(
-		&inventoryUpdateForm.Time,
-		&inventoryUpdateForm.Tagnumber,
-		&inventoryUpdateForm.SystemSerial,
-		&inventoryUpdateForm.Location,
-		&inventoryUpdateForm.Building,
-		&inventoryUpdateForm.Room,
-		&inventoryUpdateForm.SystemManufacturer,
-		&inventoryUpdateForm.SystemModel,
-		&inventoryUpdateForm.DeviceType,
-		&inventoryUpdateForm.Department,
-		&inventoryUpdateForm.Domain,
-		&inventoryUpdateForm.PropertyCustodian,
-		&inventoryUpdateForm.AcquiredDate,
-		&inventoryUpdateForm.RetiredDate,
-		&inventoryUpdateForm.Broken,
-		&inventoryUpdateForm.DiskRemoved,
-		&inventoryUpdateForm.LastHardwareCheck,
-		&inventoryUpdateForm.ClientStatus,
-		&inventoryUpdateForm.CheckoutDate,
-		&inventoryUpdateForm.ReturnDate,
-		&inventoryUpdateForm.Note,
+		&inventoryUpdate.Time,
+		&inventoryUpdate.Tagnumber,
+		&inventoryUpdate.SystemSerial,
+		&inventoryUpdate.Location,
+		&inventoryUpdate.Building,
+		&inventoryUpdate.Room,
+		&inventoryUpdate.SystemManufacturer,
+		&inventoryUpdate.SystemModel,
+		&inventoryUpdate.DeviceType,
+		&inventoryUpdate.Department,
+		&inventoryUpdate.Domain,
+		&inventoryUpdate.PropertyCustodian,
+		&inventoryUpdate.AcquiredDate,
+		&inventoryUpdate.RetiredDate,
+		&inventoryUpdate.Broken,
+		&inventoryUpdate.DiskRemoved,
+		&inventoryUpdate.LastHardwareCheck,
+		&inventoryUpdate.ClientStatus,
+		&inventoryUpdate.CheckoutDate,
+		&inventoryUpdate.ReturnDate,
+		&inventoryUpdate.Note,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("error during row scan: %w", err)
 	}
-	return inventoryUpdateForm, nil
+	return inventoryUpdate, nil
 }
 
 func (repo *SelectRepo) GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifest, error) {

@@ -5,111 +5,138 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"uit-toolbox/types"
 )
 
 type WebEndpointConfig struct {
-	FilePath          string   `json:"file_path"`
-	AllowedMethods    []string `json:"allowed_methods"`
-	TLSRequired       *bool    `json:"tls_required"`
-	AuthRequired      *bool    `json:"auth_required"`
-	MaxUploadSizeKB   int64    `json:"max_upload_size_kb"`
-	MaxDownloadSizeMB int64    `json:"max_download_size_mb"`
-	Requires          []string `json:"requires"`
-	ACLUsers          []string `json:"acl_users"`
-	ACLGroups         []string `json:"acl_groups"`
-	HTTPVersion       string   `json:"http_version"`
-	EndpointType      string   `json:"endpoint_type"`
-	ContentType       string   `json:"content_type"`
-	StatusCode        int      `json:"status_code"`
-	Redirect          *bool    `json:"redirect"`
-	RedirectURL       string   `json:"redirect_url"`
+	FilePath        string   `json:"file_path"`
+	AllowedMethods  []string `json:"allowed_methods"`
+	TLSRequired     *bool    `json:"tls_required"`
+	AuthRequired    *bool    `json:"auth_required"`
+	Requires        []string `json:"requires"`
+	ACLUsers        []string `json:"acl_users"`
+	ACLGroups       []string `json:"acl_groups"`
+	HTTPVersion     string   `json:"http_version"`
+	EndpointType    string   `json:"endpoint_type"`
+	ContentType     string   `json:"content_type"`
+	StatusCode      int      `json:"status_code"`
+	Redirect        *bool    `json:"redirect"`
+	RedirectURL     string   `json:"redirect_url"`
+	MaxUploadSize   *int64   `json:"max_upload_size"`
+	MaxDownloadSize *int64   `json:"max_download_size"`
+}
+
+func (as *AppState) GetFormConstraints() (*types.HTMLFormConstraints, error) {
+	if as == nil {
+		return nil, fmt.Errorf("nil AppState (GetFormConstraints)")
+	}
+	return as.appConfig.Load().FormConstraints.Load(), nil
+}
+
+func (as *AppState) GetFileUploadConstraints() (*types.FileUploadConstraints, error) {
+	if as == nil {
+		return nil, fmt.Errorf("nil AppState (GetFileUploadConstraints)")
+	}
+	return as.appConfig.Load().FileConstraints.Load(), nil
 }
 
 func InitWebEndpoints(as *AppState) error {
 	if as == nil {
 		return fmt.Errorf("app state is nil in InitWebEndpoints")
 	}
-	populatedDefaultEndpoints := make(map[string]WebEndpointConfig)
-	endpointsDirectory := "/etc/uit-toolbox/endpoints/"
-	fileInfo, err := os.Stat(endpointsDirectory)
-	if err != nil || !fileInfo.IsDir() {
+	endpointConfigMap := make(map[string]WebEndpointConfig)
+	configDir := "/etc/uit-toolbox/endpoints/"
+	configDirMetadata, err := os.Stat(configDir)
+	if err != nil || !configDirMetadata.IsDir() {
 		return fmt.Errorf("endpoints directory does not exist, skipping endpoint loading")
 	}
-	files, err := os.ReadDir(endpointsDirectory)
-	if err != nil || len(files) == 0 {
-		return fmt.Errorf("failed to read files in the endpoints directory: %w", err)
+	allFiles, err := os.ReadDir(configDir)
+	if err != nil || len(allFiles) == 0 {
+		return fmt.Errorf("failed to read allFiles in the endpoints directory: %w", err)
 	}
-	for _, file := range files {
+	for _, file := range allFiles {
 		if file.IsDir() || !strings.HasSuffix(file.Name(), ".json") {
 			continue
 		}
-
-		endpointsConfig, err := os.ReadFile(endpointsDirectory + file.Name())
+		endpointConfigFiles, err := os.ReadFile(configDir + file.Name())
 		if err != nil {
 			return fmt.Errorf("failed to read web endpoints config file %s: %w", file.Name(), err)
 		}
 
 		endpoints := make(map[string]WebEndpointConfig)
-		if err := json.Unmarshal(endpointsConfig, &endpoints); err != nil {
+		if err := json.Unmarshal(endpointConfigFiles, &endpoints); err != nil {
 			return fmt.Errorf("failed to unmarshal web endpoints config JSON: %w", err)
 		}
 
 		for endpointPath, endpointData := range endpoints {
-			config := WebEndpointConfig{
-				FilePath:          endpointData.FilePath,
-				AllowedMethods:    endpointData.AllowedMethods,
-				TLSRequired:       endpointData.TLSRequired,
-				AuthRequired:      endpointData.AuthRequired,
-				MaxUploadSizeKB:   endpointData.MaxUploadSizeKB << 10,
-				MaxDownloadSizeMB: endpointData.MaxDownloadSizeMB << 20,
-				Requires:          endpointData.Requires,
-				ACLUsers:          endpointData.ACLUsers,
-				ACLGroups:         endpointData.ACLGroups,
-				HTTPVersion:       endpointData.HTTPVersion,
-				EndpointType:      endpointData.EndpointType,
-				ContentType:       endpointData.ContentType,
-				StatusCode:        endpointData.StatusCode,
-				Redirect:          endpointData.Redirect,
-				RedirectURL:       endpointData.RedirectURL,
+			merged := WebEndpointConfig{
+				FilePath:        endpointData.FilePath,
+				AllowedMethods:  endpointData.AllowedMethods,
+				TLSRequired:     endpointData.TLSRequired,
+				AuthRequired:    endpointData.AuthRequired,
+				Requires:        endpointData.Requires,
+				ACLUsers:        endpointData.ACLUsers,
+				ACLGroups:       endpointData.ACLGroups,
+				HTTPVersion:     endpointData.HTTPVersion,
+				EndpointType:    endpointData.EndpointType,
+				ContentType:     endpointData.ContentType,
+				StatusCode:      endpointData.StatusCode,
+				Redirect:        endpointData.Redirect,
+				RedirectURL:     endpointData.RedirectURL,
+				MaxUploadSize:   endpointData.MaxUploadSize,
+				MaxDownloadSize: endpointData.MaxDownloadSize,
 			}
-			if len(config.AllowedMethods) == 0 {
-				config.AllowedMethods = []string{"OPTIONS", "GET"}
+			if len(merged.AllowedMethods) == 0 {
+				merged.AllowedMethods = []string{"OPTIONS", "GET"}
 			}
-			if config.TLSRequired == nil {
-				config.TLSRequired = new(bool)
-				*config.TLSRequired = true
+			if merged.TLSRequired == nil {
+				merged.TLSRequired = new(bool)
+				*merged.TLSRequired = true
 			}
-			if config.AuthRequired == nil {
-				config.AuthRequired = new(bool)
-				*config.AuthRequired = true
+			if merged.AuthRequired == nil {
+				merged.AuthRequired = new(bool)
+				*merged.AuthRequired = true
 			}
-			if config.MaxUploadSizeKB == 0 {
-				config.MaxUploadSizeKB = 20 << 10 // 20KB default max upload size
+			if merged.Requires == nil {
+				merged.Requires = []string{}
 			}
-			if config.MaxDownloadSizeMB == 0 {
-				config.MaxDownloadSizeMB = 20 << 20 // 20MB default max download size
+			if merged.Redirect == nil {
+				merged.Redirect = new(bool)
+				*merged.Redirect = false
 			}
-			if config.Requires == nil {
-				config.Requires = []string{}
+			if merged.HTTPVersion == "" {
+				merged.HTTPVersion = "HTTP/2.0"
 			}
-			if config.Redirect == nil {
-				config.Redirect = new(bool)
-				*config.Redirect = false
+			if merged.EndpointType == "" {
+				merged.EndpointType = "api"
 			}
-			if config.HTTPVersion == "" {
-				config.HTTPVersion = "HTTP/2.0"
+			if merged.ContentType == "" {
+				merged.ContentType = "application/json; charset=utf-8"
 			}
-			if config.EndpointType == "" {
-				config.EndpointType = "api"
+			if merged.StatusCode == 0 {
+				merged.StatusCode = 200
 			}
-			if config.ContentType == "" {
-				config.ContentType = "application/json; charset=utf-8"
+			if merged.MaxDownloadSize == nil || merged.MaxUploadSize == nil {
+				switch endpointPath {
+				case "/login", "/api/check_auth":
+					merged.MaxUploadSize = new(int64)
+					*merged.MaxUploadSize += as.appConfig.Load().FormConstraints.Load().LoginForm.MaxFormBytes
+				case "/api/overview/note":
+					merged.MaxUploadSize = new(int64)
+					*merged.MaxUploadSize += as.appConfig.Load().FormConstraints.Load().GeneralNote.MaxFormBytes
+				case "/api/inventory/update":
+					maxOverallJSONSize := as.appConfig.Load().FormConstraints.Load().InventoryForm.MaxJSONBytes
+					maxOverallImageSize := as.appConfig.Load().FileConstraints.Load().ImageConstraints.MaxFileSize * int64(as.appConfig.Load().FileConstraints.Load().ImageConstraints.MaxFileCount)
+					maxOverallVideoSize := as.appConfig.Load().FileConstraints.Load().VideoConstraints.MaxFileSize * int64(as.appConfig.Load().FileConstraints.Load().VideoConstraints.MaxFileCount)
+					merged.MaxUploadSize = new(int64)
+					*merged.MaxUploadSize += maxOverallJSONSize + maxOverallImageSize + maxOverallVideoSize
+				default:
+					merged.MaxUploadSize = new(int64)
+					*merged.MaxUploadSize = 0
+				}
 			}
-			if config.StatusCode == 0 {
-				config.StatusCode = 200
-			}
-			populatedDefaultEndpoints[endpointPath] = config
-			as.webEndpoints.Store(endpointPath, &config)
+			endpointConfigMap[endpointPath] = merged
+			as.webEndpoints.Store(endpointPath, &merged)
 		}
 	}
 	return nil

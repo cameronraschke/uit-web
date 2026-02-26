@@ -93,7 +93,7 @@ async function fetchAllJobs(purgeCache = false): Promise<AllJobs[]> {
 	}
 
 	try {
-		const data: AllJobs[] = await fetchData('/api/job_queue/all_jobs', false);
+		const data: AllJobs[] = await fetchData('/api/overview/job_queue/all_jobs', false);
 		if (Array.isArray(data)) {
 			localStorage.setItem(cacheKey, JSON.stringify({ jobs: data, timestamp: now }));
 			return data;
@@ -128,7 +128,7 @@ if (updateOnlineJobQueueForm && updateOnlineJobQueueSelect && updateOnlineJobQue
 		try {
 			const allJobsArr: AllJobs[] = await fetchAllJobs();
 			if (!allJobsArr || !Array.isArray(allJobsArr) || allJobsArr.length === 0) {
-				throw new Error('Failed to get available jobs from ' + '/api/job_queue/all_jobs');
+				throw new Error('Failed to get available jobs from ' + '/api/overview/job_queue/all_jobs');
 			}
 
 			for (const job of allJobsArr) {
@@ -139,7 +139,7 @@ if (updateOnlineJobQueueForm && updateOnlineJobQueueSelect && updateOnlineJobQue
 						job_sort_order: job.job_sort_order,
 						job_hidden: job.job_hidden
 					};
-					const response = await fetch('/api/job_queue/update_all_online_clients', {
+					const response = await fetch('/api/job_queue/all_clients/update_job', {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json',
@@ -175,7 +175,7 @@ document.addEventListener('visibilitychange', () => {
 
 async function fetchJobQueueData() : Promise<JobQueueTableRow[] | []> {
 	try {
-		const data: JobQueueTableRow[] = await fetchData('/api/job_queue/overview', false);
+		const data: JobQueueTableRow[] = await fetchData('/api/overview/job_queue', false);
 		if (Array.isArray(data) && data.length > 0) {
 			return data;
 		} else {
@@ -409,7 +409,7 @@ async function updateClientJob(tagnumber: number, job_name: string) {
 	}
 
 	try {
-		const response = await fetch('/api/job_queue/update_client_job', {
+		const response = await fetch('/api/client/job_queue/update_job', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',

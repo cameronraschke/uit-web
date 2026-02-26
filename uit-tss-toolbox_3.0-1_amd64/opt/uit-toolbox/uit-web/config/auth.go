@@ -12,53 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-)
-
-type BasicToken struct {
-	Token     string        `json:"token"`
-	Expiry    time.Time     `json:"expiry"`
-	NotBefore time.Time     `json:"not_before"`
-	TTL       time.Duration `json:"ttl"`
-	IP        netip.Addr    `json:"ip"`
-	Valid     bool          `json:"valid"`
-}
-
-type BearerToken struct {
-	Token     string        `json:"token"`
-	Expiry    time.Time     `json:"expiry"`
-	NotBefore time.Time     `json:"not_before"`
-	TTL       time.Duration `json:"ttl"`
-	IP        netip.Addr    `json:"ip"`
-	Valid     bool          `json:"valid"`
-}
-
-type CSRFToken struct {
-	Token     string        `json:"token"`
-	Expiry    time.Time     `json:"expiry"`
-	NotBefore time.Time     `json:"not_before"`
-	TTL       time.Duration `json:"ttl"`
-	IP        netip.Addr    `json:"ip"`
-	Valid     bool          `json:"valid"`
-}
-
-type AuthSession struct {
-	IPAddress     netip.Addr
-	SessionID     string
-	SessionTTL    time.Duration
-	SessionCookie *http.Cookie
-	BasicToken    BasicToken
-	BasicCookie   *http.Cookie
-	BearerToken   BearerToken
-	BearerCookie  *http.Cookie
-	CSRFToken     CSRFToken
-	CSRFCookie    *http.Cookie
-}
-
-const (
-	AuthSessionTTL = 20 * time.Minute
-	BasicTTL       = 20 * time.Minute
-	BearerTTL      = 20 * time.Minute
-	CSRFTTL        = 20 * time.Minute
+	"uit-toolbox/types"
 )
 
 // Auth for web users
@@ -74,15 +28,15 @@ func GetAdminCredentials() (string, string, error) {
 }
 
 // Auth session management
-func GetAuthSessions() map[string]AuthSession {
+func GetAuthSessions() map[string]types.AuthSession {
 	appState, err := GetAppState()
 	if err != nil {
 		return nil
 	}
-	authSessionsMap := make(map[string]AuthSession)
+	authSessionsMap := make(map[string]types.AuthSession)
 	appState.authMap.Range(func(k, v any) bool {
 		key, keyExists := k.(string)
-		value, valueExists := v.(AuthSession)
+		value, valueExists := v.(types.AuthSession)
 		if keyExists && valueExists {
 			authSessionsMap[key] = value
 		}
@@ -91,7 +45,7 @@ func GetAuthSessions() map[string]AuthSession {
 	return authSessionsMap
 }
 
-func CreateAuthSession(requestIP netip.Addr) (*AuthSession, error) {
+func CreateAuthSession(requestIP netip.Addr) (*types.AuthSession, error) {
 	if requestIP == (netip.Addr{}) || !requestIP.IsValid() {
 		return nil, errors.New("empty or invalid IP address")
 	}
@@ -107,25 +61,25 @@ func CreateAuthSession(requestIP netip.Addr) (*AuthSession, error) {
 	bearerToken := rand.Text()
 	csrfToken := rand.Text()
 
-	authSession := AuthSession{
+	authSession := types.AuthSession{
 		IPAddress:  requestIP,
 		SessionID:  sessionID,
-		SessionTTL: AuthSessionTTL,
+		SessionTTL: types.AuthSessionTTL,
 		SessionCookie: &http.Cookie{
 			Name:     "uit_session_id",
 			Value:    sessionID,
 			Path:     "/",
-			Expires:  curTime.Add(AuthSessionTTL),
-			MaxAge:   int(AuthSessionTTL.Seconds()),
+			Expires:  curTime.Add(types.AuthSessionTTL),
+			MaxAge:   int(types.AuthSessionTTL.Seconds()),
 			Secure:   true,
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
 		},
-		BasicToken: BasicToken{
+		BasicToken: types.BasicToken{
 			Token:     basicToken,
-			Expiry:    curTime.Add(BasicTTL),
+			Expiry:    curTime.Add(types.BasicTTL),
 			NotBefore: curTime,
-			TTL:       BasicTTL,
+			TTL:       types.BasicTTL,
 			IP:        requestIP,
 			Valid:     true,
 		},
@@ -133,17 +87,17 @@ func CreateAuthSession(requestIP netip.Addr) (*AuthSession, error) {
 			Name:     "uit_basic_token",
 			Value:    basicToken,
 			Path:     "/",
-			Expires:  curTime.Add(BasicTTL),
-			MaxAge:   int(BasicTTL.Seconds()),
+			Expires:  curTime.Add(types.BasicTTL),
+			MaxAge:   int(types.BasicTTL.Seconds()),
 			Secure:   true,
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
 		},
-		BearerToken: BearerToken{
+		BearerToken: types.BearerToken{
 			Token:     bearerToken,
-			Expiry:    curTime.Add(BearerTTL),
+			Expiry:    curTime.Add(types.BearerTTL),
 			NotBefore: curTime,
-			TTL:       BearerTTL,
+			TTL:       types.BearerTTL,
 			IP:        requestIP,
 			Valid:     true,
 		},
@@ -151,17 +105,17 @@ func CreateAuthSession(requestIP netip.Addr) (*AuthSession, error) {
 			Name:     "uit_bearer_token",
 			Value:    bearerToken,
 			Path:     "/",
-			Expires:  curTime.Add(BearerTTL),
-			MaxAge:   int(BearerTTL.Seconds()),
+			Expires:  curTime.Add(types.BearerTTL),
+			MaxAge:   int(types.BearerTTL.Seconds()),
 			Secure:   true,
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
 		},
-		CSRFToken: CSRFToken{
+		CSRFToken: types.CSRFToken{
 			Token:     csrfToken,
-			Expiry:    curTime.Add(CSRFTTL),
+			Expiry:    curTime.Add(types.CSRFTTL),
 			NotBefore: curTime,
-			TTL:       CSRFTTL,
+			TTL:       types.CSRFTTL,
 			IP:        requestIP,
 			Valid:     true,
 		},
@@ -169,8 +123,8 @@ func CreateAuthSession(requestIP netip.Addr) (*AuthSession, error) {
 			Name:     "uit_csrf_token",
 			Value:    csrfToken,
 			Path:     "/",
-			Expires:  curTime.Add(CSRFTTL),
-			MaxAge:   int(CSRFTTL.Seconds()),
+			Expires:  curTime.Add(types.CSRFTTL),
+			MaxAge:   int(types.CSRFTTL.Seconds()),
 			Secure:   true,
 			HttpOnly: true,
 			SameSite: http.SameSiteLaxMode,
@@ -208,7 +162,7 @@ func ClearExpiredAuthSessions() {
 		if !ok {
 			return true
 		}
-		authSession, ok := v.(AuthSession)
+		authSession, ok := v.(types.AuthSession)
 		if !ok {
 			return true
 		}
@@ -243,7 +197,7 @@ func RefreshAndGetAuthSessionCount() int64 {
 	return entries
 }
 
-func IsAuthSessionValid(checkedAuthSession *AuthSession, requestIP netip.Addr) (bool, error) {
+func IsAuthSessionValid(checkedAuthSession *types.AuthSession, requestIP netip.Addr) (bool, error) {
 	if checkedAuthSession == nil || checkedAuthSession.SessionID == "" || requestIP == (netip.Addr{}) || !requestIP.IsValid() {
 		return false, fmt.Errorf("auth session and/or request IP is nil or invalid (IsAuthSessionValid)")
 	}
@@ -257,7 +211,7 @@ func IsAuthSessionValid(checkedAuthSession *AuthSession, requestIP netip.Addr) (
 		return false, nil
 	}
 
-	existingAuthSession, ok := value.(AuthSession)
+	existingAuthSession, ok := value.(types.AuthSession)
 	if !ok {
 		return false, fmt.Errorf("invalid auth session type")
 	}
@@ -292,7 +246,7 @@ func IsAuthSessionValid(checkedAuthSession *AuthSession, requestIP netip.Addr) (
 	return true, nil
 }
 
-func GetAuthSessionByID(sessionID string) (*AuthSession, error) {
+func GetAuthSessionByID(sessionID string) (*types.AuthSession, error) {
 	appState, err := GetAppState()
 	if err != nil {
 		return nil, fmt.Errorf("error getting app state in GetAuthSessionByID: %w", err)
@@ -301,14 +255,14 @@ func GetAuthSessionByID(sessionID string) (*AuthSession, error) {
 	if !ok {
 		return nil, nil
 	}
-	authSession, ok := value.(AuthSession)
+	authSession, ok := value.(types.AuthSession)
 	if !ok {
 		return nil, errors.New("invalid auth session type")
 	}
 	return &authSession, nil
 }
 
-func UpdateAuthSession(sessionID string, authSession *AuthSession) error {
+func UpdateAuthSession(sessionID string, authSession *types.AuthSession) error {
 	appState, err := GetAppState()
 	if err != nil {
 		return fmt.Errorf("error getting app state in UpdateAuthSession: %w", err)

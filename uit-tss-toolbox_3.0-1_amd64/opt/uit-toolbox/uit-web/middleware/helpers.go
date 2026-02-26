@@ -21,6 +21,7 @@ import (
 	"unicode/utf8"
 
 	config "uit-toolbox/config"
+	"uit-toolbox/types"
 )
 
 type ctxClientIPKey struct{}
@@ -279,7 +280,7 @@ func GetLoggerFromContext(ctx context.Context) *slog.Logger {
 	return log
 }
 
-func UpdateAndGetAuthSession(requestAuthSession *config.AuthSession, extendTTL bool) (*config.AuthSession, error) {
+func UpdateAndGetAuthSession(requestAuthSession *types.AuthSession, extendTTL bool) (*types.AuthSession, error) {
 	if requestAuthSession == nil {
 		return nil, errors.New("nil auth session provided to UpdateAndGetAuthSession")
 	}
@@ -288,24 +289,24 @@ func UpdateAndGetAuthSession(requestAuthSession *config.AuthSession, extendTTL b
 	if requestAuthSession.SessionID == "" {
 		return nil, errors.New("empty session ID in auth session provided to UpdateAndGetAuthSession")
 	}
-	sessionTTL := config.AuthSessionTTL
+	sessionTTL := types.AuthSessionTTL
 	if !extendTTL {
 		sessionTTL = time.Until(curTime.Add(requestAuthSession.SessionTTL))
 	}
-	basicTTL := config.BasicTTL
+	basicTTL := types.BasicTTL
 	if !extendTTL {
 		basicTTL = time.Until(requestAuthSession.BasicToken.Expiry)
 	}
-	bearerTTL := config.BearerTTL
+	bearerTTL := types.BearerTTL
 	if !extendTTL {
 		bearerTTL = time.Until(requestAuthSession.BearerToken.Expiry)
 	}
-	csrfTTL := config.CSRFTTL
+	csrfTTL := types.CSRFTTL
 	if !extendTTL {
 		csrfTTL = time.Until(requestAuthSession.CSRFToken.Expiry)
 	}
 
-	newAuthSession := new(config.AuthSession)
+	newAuthSession := new(types.AuthSession)
 	mergedAuthSession := *requestAuthSession
 
 	mergedAuthSession.SessionTTL = sessionTTL

@@ -1,47 +1,47 @@
 {
 	"/api/check_auth": {},
 	"/api/server_time": {},
-	"/api/lookup": {},
-	"/api/all_tags": {},
+	"/api/client/lookup": {},
+	"/api/overview/all_tags": {},
 	"/api/client/hardware/ids": {},
 	"/api/client/bios": {},
 	"/api/client/os": {},
-	"/api/job_queue/overview": {},
-	"/api/job_queue/client/queued_job": {},
-	"/api/job_queue/client/job_available": {},
+	"/api/overview/job_queue": {},
+	"/api/client/job_queue/queued_job": {},
+	"/api/client/job_queue/job_available": {},
 	"/api/client/location_form_data": {},
-	"/api/notes": {
+	"/api/overview/note": {
 		"allowed_methods": ["OPTIONS", "GET", "POST"]
 	},
-	"/api/dashboard/inventory_summary": {},
-	"/api/images/manifest": {},
-	"/api/images": {
+	"/api/reports/inventory": {},
+	"/api/files/images/manifest": {},
+	"/api/files/images": {
 		"allowed_methods": ["OPTIONS", "GET", "DELETE"]
 	},
-	"/api/inventory": {},
-	"/api/update_inventory": {
+	"/api/overview/inventory_table": {},
+	"/api/inventory/update": {
 		"allowed_methods": ["OPTIONS", "POST"]
 	},
-	"/api/images/toggle_pin": {
+	"/api/files/toggle_pin": {
 		"allowed_methods": ["OPTIONS", "POST"]
 	},
-	"/api/models": {},
+	"/api/overview/all_models": {},
 	"/api/client/health/battery": {
 		"allowed_methods": ["OPTIONS", "GET", "POST"]
 	},
-	"/api/domains": {},
-	"/api/departments": {},
-	"/api/reports/battery/stats": {},
-	"/api/job_queue/all_jobs": {},
-	"/api/job_queue/update_all_online_clients": {
+	"/api/overview/all_domains": {},
+	"/api/overview/all_departments": {},
+	"/api/reports/battery": {},
+	"/api/overview/job_queue/all_jobs": {},
+	"/api/job_queue/all_clients/update_job": {
 		"allowed_methods": ["OPTIONS", "POST"]
 	},
-	"/api/job_queue/update_client_job": {
+	"/api/client/job_queue/update_job": {
 		"allowed_methods": ["OPTIONS", "POST"]
 	},
-	"/api/locations": {},
-	"/api/all_statuses": {},
-	"/api/all_device_types": {},
+	"/api/overview/all_locations": {},
+	"/api/overview/all_statuses": {},
+	"/api/overview/all_device_types": {},
 	"/api/client/memory": {
 		"allowed_methods": ["OPTIONS", "POST"]
 	},

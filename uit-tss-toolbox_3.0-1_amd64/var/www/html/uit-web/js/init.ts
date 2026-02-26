@@ -215,21 +215,6 @@ async function checkAuthStatus(): Promise<boolean> {
 	}
 }
 
-// document.body.addEventListener("click", async (event) => {
-// 	if (window.location.pathname === '/login' || window.location.pathname === '/logout') {
-// 		return;
-// 	}
-// 	const target = event.target as HTMLElement;
-// 	// if (target && target.matches(".requires-auth, .requires-auth *")) {
-// 	if (target) {
-// 		const isAuthenticated = await checkAuthStatus();
-// 		if (!isAuthenticated) {
-// 			event.preventDefault();
-// 			window.location.href = "/logout";
-// 		}
-// 	}
-// });
-
 const checkAuthTimeout = 5000; // 5 seconds
 let authCheckTimeout: number;
 authCheckTimeout = setInterval(async () => {
@@ -530,23 +515,23 @@ async function generateSHA256Hash(input: string) {
 async function getTagsFromServer(): Promise<TagCache | null> {
 	let tagObj: TagCache = { tags: [], timestamp: Date.now() };
 
-	const url = "/api/all_tags";
+	const url = "/api/overview/all_tags";
 	try {
 		const data = await fetchData(url, false); // expect JSON array
 		if (!data) {
-			console.warn("No data returned from /api/all_tags");
+			console.warn("No data returned from /api/overview/all_tags");
 			return null;
 		}
 
 		const tagArr: any = data;
 		if (!Array.isArray(tagArr) || tagArr.length === 0) {
-			console.warn("/api/all_tags response is not an array or is empty");
+			console.warn("/api/overview/all_tags response is not an array or is empty");
 			return null;
 		}
 		for (const tag of tagArr) {
 			const tagNum = typeof tag === "number" ? tag : Number(tag);
 			if (!Number.isFinite(tagNum) || !validateTagInput(tagNum)) {
-				console.warn("Invalid tag in /api/all_tags response: " + tag);
+				console.warn("Invalid tag in /api/overview/all_tags response: " + tag);
 				return null;
 			}
 			tagObj.tags.push(tagNum);
@@ -607,7 +592,7 @@ async function getAllTags():  Promise<TagCache | null> {
 			return refreshedTags;
 		}
 	} catch (e) {
-		console.warn("Error parsing /api/all_tags response:", e);
+		console.warn("Error parsing /api/overview/all_tags response:", e);
 		return null;
 	}
 	return null;

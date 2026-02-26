@@ -8,7 +8,7 @@ type AuthFormData struct {
 	ReturnedToken string `json:"token,omitempty"`
 }
 
-type InventoryUpdateForm struct {
+type InventoryUpdate struct {
 	Time               *time.Time `json:"time"`
 	Tagnumber          *int64     `json:"tagnumber"`
 	SystemSerial       *string    `json:"system_serial"`

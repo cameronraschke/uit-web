@@ -11,40 +11,17 @@ import (
 	"net"
 	"net/netip"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+	"uit-toolbox/types"
 )
 
-type ImageUploadConstraints struct {
-	minFileSize                         int64
-	maxFileSize                         int64
-	maxFileCount                        int
-	acceptedImageExtensionsAndMimeTypes map[string]string
-}
-
-type VideoUploadConstraints struct {
-	minFileSize                         int64
-	maxFileSize                         int64
-	maxFileCount                        int
-	acceptedVideoExtensionsAndMimeTypes map[string]string
-}
-
-type FileUploadConstraints struct {
-	imageConstraints        *ImageUploadConstraints
-	videoConstraints        *VideoUploadConstraints
-	defaultAllowedFileRegex *regexp.Regexp
-	defaultMinFileSize      int64
-	defaultMaxFileSize      int64
-}
-
 type AppConfiguration struct {
-	inputConstraints     atomic.Pointer[InputFieldConstraints]
-	formConstraints      atomic.Pointer[HTMLFormConstraints]
-	fileConstraints      atomic.Pointer[FileUploadConstraints]
+	FormConstraints      atomic.Pointer[types.HTMLFormConstraints]
+	FileConstraints      atomic.Pointer[types.FileUploadConstraints]
 	LogLevel             string         `json:"UIT_SERVER_LOG_LEVEL"`
 	AdminPasswd          string         `json:"UIT_SERVER_ADMIN_PASSWD"`
 	DBName               string         `json:"UIT_SERVER_DB_NAME"`
@@ -222,88 +199,94 @@ func InitConfig() (*AppConfiguration, error) {
 	}
 
 	// Set input constraints
-	inputConstraints := &InputFieldConstraints{
-		usernameMinChars:             64,
-		usernameMaxChars:             64,
-		passwordMinChars:             64,
-		passwordMaxChars:             64, // All SHA-256, fixed length
-		tagnumberMinChars:            6,
-		tagnumberMaxChars:            6,
-		systemSerialMinChars:         1,
-		systemSerialMaxChars:         128,
-		locationMinChars:             1,
-		locationMaxChars:             128,
-		buildingMinChars:             1,
-		buildingMaxChars:             128,
-		roomMinChars:                 1,
-		roomMaxChars:                 128,
-		manufacturerMinChars:         1,
-		manufacturerMaxChars:         128,
-		systemModelMinChars:          1,
-		systemModelMaxChars:          128,
-		deviceTypeMinChars:           1,
-		deviceTypeMaxChars:           64,
-		departmentMinChars:           1,
-		departmentMaxChars:           64,
-		domainMinChars:               1,
-		domainMaxChars:               64,
-		propertyCustodianMinChars:    1,
-		propertyCustodianMaxChars:    64,
-		acquiredDateIsMandatory:      false,
-		retiredDateIsMandatory:       false,
-		isFunctionalIsMandatory:      false,
-		diskRemovedIsMandatory:       false,
-		lastHardwareCheckIsMandatory: false,
-		clientStatusMinChars:         1,
-		clientStatusMaxChars:         64,
-		checkoutBoolIsMandatory:      false,
-		checkoutDateIsMandatory:      false,
-		returnDateIsMandatory:        false,
-		clientNoteMinChars:           0,
-		clientNoteMaxChars:           512,
-		noteTypeMinChars:             0,
-		noteTypeMaxChars:             256,
-		noteContentMinChars:          0,
-		noteContentMaxChars:          8192,
+	loginFormConstraints := &types.LoginFormConstraints{
+		MaxFormBytes:     300,
+		UsernameMinChars: 64,
+		UsernameMaxChars: 64,
+		PasswordMinChars: 64,
+		PasswordMaxChars: 64, // All SHA-256, fixed length
 	}
-	appConfig.inputConstraints.Store(inputConstraints)
+
+	generalNoteConstraints := &types.GeneralNoteConstraints{
+		MaxFormBytes:        8192,
+		NoteTypeMinChars:    1,
+		NoteTypeMaxChars:    256,
+		NoteContentMinChars: 0,
+		NoteContentMaxChars: 4096,
+	}
+
+	inventoryFormConstraints := &types.InventoryUpdateFormConstraints{
+		MaxJSONBytes:                 1 << 20,
+		TagnumberMinChars:            6,
+		TagnumberMaxChars:            6,
+		SystemSerialMinChars:         1,
+		SystemSerialMaxChars:         128,
+		LocationMinChars:             1,
+		LocationMaxChars:             128,
+		BuildingMinChars:             1,
+		BuildingMaxChars:             128,
+		RoomMinChars:                 1,
+		RoomMaxChars:                 128,
+		ManufacturerMinChars:         1,
+		ManufacturerMaxChars:         128,
+		SystemModelMinChars:          1,
+		SystemModelMaxChars:          128,
+		DeviceTypeMinChars:           1,
+		DeviceTypeMaxChars:           64,
+		DepartmentMinChars:           1,
+		DepartmentMaxChars:           64,
+		DomainMinChars:               1,
+		DomainMaxChars:               64,
+		PropertyCustodianMinChars:    1,
+		PropertyCustodianMaxChars:    64,
+		AcquiredDateIsMandatory:      false,
+		RetiredDateIsMandatory:       false,
+		IsFunctionalIsMandatory:      false,
+		DiskRemovedIsMandatory:       false,
+		LastHardwareCheckIsMandatory: false,
+		ClientStatusMinChars:         1,
+		ClientStatusMaxChars:         64,
+		CheckoutBoolIsMandatory:      false,
+		CheckoutDateIsMandatory:      false,
+		ReturnDateIsMandatory:        false,
+		ClientNoteMinChars:           0,
+		ClientNoteMaxChars:           512,
+	}
 
 	// Set form constraints
-	formConstraints := &HTMLFormConstraints{
-		maxLoginFormSizeBytes:           512,
-		noteMaxBytes:                    8192,
-		inventoryUpdateFormMaxJsonBytes: 2 << 20,
+	formConstraints := &types.HTMLFormConstraints{
+		LoginForm:     loginFormConstraints,
+		GeneralNote:   generalNoteConstraints,
+		InventoryForm: inventoryFormConstraints,
 	}
-	appConfig.formConstraints.Store(formConstraints)
+	appConfig.FormConstraints.Store(formConstraints)
 
 	// Set file upload constraints
-	imgConstraints := ImageUploadConstraints{
-		minFileSize:  512,
-		maxFileSize:  20 << 20,
-		maxFileCount: 20,
-		acceptedImageExtensionsAndMimeTypes: map[string]string{
+	imgConstraints := types.ImageUploadConstraints{
+		MinFileSize:  512,
+		MaxFileSize:  20 << 20,
+		MaxFileCount: 20,
+		AcceptedImageExtensionsAndMimeTypes: map[string]string{
 			".jpg":  "image/jpeg",
 			".jpeg": "image/jpeg",
 			".png":  "image/png",
 			".jfif": "image/jpeg",
 		},
 	}
-	vidConstraints := VideoUploadConstraints{
-		minFileSize:  512,
-		maxFileSize:  100 << 20,
-		maxFileCount: 5,
-		acceptedVideoExtensionsAndMimeTypes: map[string]string{
+	vidConstraints := types.VideoUploadConstraints{
+		MinFileSize:  512,
+		MaxFileSize:  100 << 20,
+		MaxFileCount: 5,
+		AcceptedVideoExtensionsAndMimeTypes: map[string]string{
 			".mp4": "video/mp4",
 		},
 	}
-	fileConstraints := &FileUploadConstraints{
-		imageConstraints:        &imgConstraints,
-		videoConstraints:        &vidConstraints,
-		defaultAllowedFileRegex: regexp.MustCompile(`^[a-zA-Z0-9.\-_ ()]+\.[a-zA-Z]+$`),
-		defaultMaxFileSize:      300 << 20,
-		defaultMinFileSize:      512,
+	fileConstraints := &types.FileUploadConstraints{
+		ImageConstraints:   &imgConstraints,
+		VideoConstraints:   &vidConstraints,
+		MaxUploadFileSizeLimit: 300 << 20,
 	}
-	appConfig.fileConstraints.Store(fileConstraints)
+	appConfig.FileConstraints.Store(fileConstraints)
 
 	return &appConfig, nil
 }

@@ -47,8 +47,8 @@ async function fetchNotes() {
 	}
 
   try {
-    const response = await fetchData('/api/notes?note_type=general', true);
-    if (!response || response.length === 0) throw new Error('No data received from /api/notes');
+    const response = await fetchData('/api/overview/note?note_type=general', true);
+    if (!response || response.length === 0) throw new Error('No data received from /api/overview/note');
     const jsonParsed = JSON.parse(response);
     if (!jsonParsed || Object.keys(jsonParsed).length === 0 || (jsonParsed && typeof jsonParsed === 'object' && Object.prototype.hasOwnProperty.call(jsonParsed, '__proto__'))) {
       throw new Error('Response JSON is empty or invalid');
@@ -74,7 +74,7 @@ async function postNote() {
     note: noteContent
   };
   try {
-    const response = await fetch('/api/notes', {
+    const response = await fetch('/api/overview/note', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(noteData),
@@ -90,8 +90,7 @@ async function postNote() {
 }
 
 async function fetchInventoryOverview() {
-	return; // Temporarily disable inventory overview fetching
-	// const response = await fetchData('/api/dashboard/inventory_summary', true);
+	return;
 }
 
 async function fetchJobQueueOverview() { return null; }

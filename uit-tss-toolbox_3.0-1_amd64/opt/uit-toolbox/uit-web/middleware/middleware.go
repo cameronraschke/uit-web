@@ -96,8 +96,7 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 
 func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := GetLoggerFromContext(req.Context())
-		log = log.With(slog.String("func", "LimitRequestSizeMiddleware"))
+		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "LimitRequestSizeMiddleware"))
 		if req.Method == http.MethodPost || req.Method == http.MethodPut {
 			log = log.With(slog.Int64("content_length", req.ContentLength))
 		}
@@ -112,18 +111,18 @@ func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		_, _, maxSize, err := appState.GetFileUploadDefaultConstraints()
+		fileUploadConstraints, err := appState.GetFileUploadConstraints()
 		if err != nil {
-			log.Error("Error getting file upload constraints from app state: " + err.Error())
+			log.Error("Error retrieving file upload constraints: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		if req.ContentLength > maxSize {
-			log.Warn("Request content length exceeds limit: " + fmt.Sprintf("%.2fMB", float64(req.ContentLength)/1e6) + "/" + fmt.Sprintf("%.2fMB", float64(maxSize)/1e6))
+		if req.ContentLength > fileUploadConstraints.MaxUploadFileSizeLimit {
+			log.Warn("Request content length exceeds limit: " + fmt.Sprintf("%.2fMB", float64(req.ContentLength)/1e6) + "/" + fmt.Sprintf("%.2fMB", float64(fileUploadConstraints.MaxUploadFileSizeLimit)/1e6))
 			WriteJsonError(w, http.StatusRequestEntityTooLarge)
 			return
 		}
-		req.Body = http.MaxBytesReader(w, req.Body, maxSize)
+		req.Body = http.MaxBytesReader(w, req.Body, fileUploadConstraints.MaxUploadFileSizeLimit)
 		next.ServeHTTP(w, req)
 	})
 }

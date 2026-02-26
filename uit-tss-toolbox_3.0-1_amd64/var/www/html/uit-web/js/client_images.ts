@@ -34,7 +34,7 @@ async function fetchManifestData(clientTag: number) : Promise<ImageManifest[]> {
 		container.appendChild(invalidTagParagraph);
 		return [];
 	}
-	const manifestURL = new URL(`/api/images/manifest`, window.location.origin);
+	const manifestURL = new URL(`/api/files/images/manifest`, window.location.origin);
 	manifestURL.searchParams.set('tagnumber', clientTag.toString());
 
 	try {
@@ -132,7 +132,7 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 		filePreviewContainer.className = 'file-preview';
 
 		// Source URL
-		const imgURL = new URL(`/api/images`, window.location.origin);
+		const imgURL = new URL(`/api/files/images`, window.location.origin);
 		imgURL.searchParams.set('tagnumber', clientTag.toString());
 		imgURL.searchParams.set('uuid', file.uuid);
 
@@ -217,7 +217,7 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 		}
 		const currentURL = new URL(window.location.href);
 		const clientTag = currentURL.searchParams.get("tagnumber") ? parseInt(currentURL.searchParams.get("tagnumber") as string) : null;
-		const unpinURL = new URL(`/api/images/toggle_pin`, window.location.origin);
+		const unpinURL = new URL(`/api/files/toggle_pin`, window.location.origin);
 		try {
 			const unpinRequest = await fetch(unpinURL, {
 				method: 'POST',
@@ -267,7 +267,7 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 		}
 
 		try {
-			const deleteURL = new URL(`/api/images`, window.location.origin);
+			const deleteURL = new URL(`/api/files/images`, window.location.origin);
 			deleteURL.searchParams.set('tagnumber', clientTag.toString());
 			deleteURL.searchParams.set('uuid', uuidToDelete);
 			const deleteResponse = await fetch(deleteURL, {

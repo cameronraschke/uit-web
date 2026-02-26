@@ -15,7 +15,7 @@ import (
 
 type Update interface {
 	InsertNewNote(ctx context.Context, time *time.Time, noteType *string, note *string) (err error)
-	InsertInventoryUpdateForm(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdateForm *types.InventoryUpdateForm) (err error)
+	InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdate *types.InventoryUpdate) (err error)
 	UpdateHardwareData(ctx context.Context, tagnumber *int64, systemManufacturer *string, systemModel *string) (err error)
 	UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *types.ImageManifest) (err error)
 	HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
@@ -84,12 +84,12 @@ func (updateRepo *UpdateRepo) InsertNewNote(ctx context.Context, time *time.Time
 	return err
 }
 
-func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdateForm *types.InventoryUpdateForm) (err error) {
+func (updateRepo *UpdateRepo) InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdate *types.InventoryUpdate) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
 		return fmt.Errorf("generated transaction UUID is nil")
 	}
-	if inventoryUpdateForm == nil || inventoryUpdateForm.Tagnumber == nil {
-		return fmt.Errorf("inventoryUpdateForm is invalid")
+	if inventoryUpdate == nil || inventoryUpdate.Tagnumber == nil {
+		return fmt.Errorf("inventoryUpdate is invalid")
 	}
 
 	if ctx.Err() != nil {
@@ -132,20 +132,20 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, tra
 	var locationsResult sql.Result
 	locationsResult, err = tx.ExecContext(ctx, locationsSql,
 		transactionUUID,
-		ptrToNullInt64(inventoryUpdateForm.Tagnumber),
-		ptrToNullString(inventoryUpdateForm.SystemSerial),
-		ptrToNullString(inventoryUpdateForm.Location),
-		ptrToNullString(inventoryUpdateForm.Building),
-		ptrToNullString(inventoryUpdateForm.Room),
-		ptrToNullString(inventoryUpdateForm.Department),
-		ptrToNullString(inventoryUpdateForm.Domain),
-		ptrToNullString(inventoryUpdateForm.PropertyCustodian),
-		ptrToNullTime(inventoryUpdateForm.AcquiredDate),
-		ptrToNullTime(inventoryUpdateForm.RetiredDate),
-		ptrToNullBool(inventoryUpdateForm.Broken),
-		ptrToNullBool(inventoryUpdateForm.DiskRemoved),
-		ptrToNullString(inventoryUpdateForm.ClientStatus),
-		toNullString(inventoryUpdateForm.Note),
+		ptrToNullInt64(inventoryUpdate.Tagnumber),
+		ptrToNullString(inventoryUpdate.SystemSerial),
+		ptrToNullString(inventoryUpdate.Location),
+		ptrToNullString(inventoryUpdate.Building),
+		ptrToNullString(inventoryUpdate.Room),
+		ptrToNullString(inventoryUpdate.Department),
+		ptrToNullString(inventoryUpdate.Domain),
+		ptrToNullString(inventoryUpdate.PropertyCustodian),
+		ptrToNullTime(inventoryUpdate.AcquiredDate),
+		ptrToNullTime(inventoryUpdate.RetiredDate),
+		ptrToNullBool(inventoryUpdate.Broken),
+		ptrToNullBool(inventoryUpdate.DiskRemoved),
+		ptrToNullString(inventoryUpdate.ClientStatus),
+		toNullString(inventoryUpdate.Note),
 	)
 	if err != nil {
 		return fmt.Errorf("error inserting location data: %w", err)
@@ -170,10 +170,10 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, tra
 	var hardwareDataResult sql.Result
 	hardwareDataResult, err = tx.ExecContext(ctx, hardwareDataSql,
 		transactionUUID,
-		ptrToNullInt64(inventoryUpdateForm.Tagnumber),
-		ptrToNullString(inventoryUpdateForm.SystemManufacturer),
-		ptrToNullString(inventoryUpdateForm.SystemModel),
-		ptrToNullString(inventoryUpdateForm.DeviceType),
+		ptrToNullInt64(inventoryUpdate.Tagnumber),
+		ptrToNullString(inventoryUpdate.SystemManufacturer),
+		ptrToNullString(inventoryUpdate.SystemModel),
+		ptrToNullString(inventoryUpdate.DeviceType),
 	)
 	if err != nil {
 		return fmt.Errorf("error inserting/updating hardware data: %w", err)
@@ -195,8 +195,8 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, tra
 
 	var clientHealthResult sql.Result
 	clientHealthResult, err = tx.ExecContext(ctx, clientHealthSql,
-		ptrToNullInt64(inventoryUpdateForm.Tagnumber),
-		toNullTime(inventoryUpdateForm.LastHardwareCheck),
+		ptrToNullInt64(inventoryUpdate.Tagnumber),
+		toNullTime(inventoryUpdate.LastHardwareCheck),
 		transactionUUID,
 	)
 	if err != nil {
@@ -207,7 +207,7 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, tra
 	}
 
 	// Insert into checkout_log table if necessary fields are present
-	if inventoryUpdateForm.CheckoutDate != nil || inventoryUpdateForm.ReturnDate != nil || (inventoryUpdateForm.CheckoutBool != nil && *inventoryUpdateForm.CheckoutBool) {
+	if inventoryUpdate.CheckoutDate != nil || inventoryUpdate.ReturnDate != nil || (inventoryUpdate.CheckoutBool != nil && *inventoryUpdate.CheckoutBool) {
 		var checkoutLogResult sql.Result
 		const checkoutSql = `INSERT INTO checkout_log
 			(log_entry_time, transaction_uuid, tagnumber, checkout_date, return_date, checkout_bool)
@@ -215,10 +215,10 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, tra
 
 		checkoutLogResult, err = tx.ExecContext(ctx, checkoutSql,
 			transactionUUID,
-			ptrToNullInt64(inventoryUpdateForm.Tagnumber),
-			ptrToNullTime(inventoryUpdateForm.CheckoutDate),
-			ptrToNullTime(inventoryUpdateForm.ReturnDate),
-			ptrToNullBool(inventoryUpdateForm.CheckoutBool),
+			ptrToNullInt64(inventoryUpdate.Tagnumber),
+			ptrToNullTime(inventoryUpdate.CheckoutDate),
+			ptrToNullTime(inventoryUpdate.ReturnDate),
+			ptrToNullBool(inventoryUpdate.CheckoutBool),
 		)
 		if err != nil {
 			return fmt.Errorf("error inserting into checkout_log: %w", err)
