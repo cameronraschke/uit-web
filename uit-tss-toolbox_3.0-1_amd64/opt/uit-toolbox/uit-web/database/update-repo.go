@@ -71,9 +71,9 @@ func (updateRepo *UpdateRepo) InsertNewNote(ctx context.Context, time *time.Time
 
 	sqlCode := `INSERT INTO notes (time, note_type, note) VALUES ($1, $2, $3);`
 	sqlResult, err := tx.ExecContext(ctx, sqlCode,
-		ToNullTime(time),
-		ToNullString(noteType),
-		ToNullString(note),
+		ptrToNullTime(time),
+		ptrToNullString(noteType),
+		ptrToNullString(note),
 	)
 	if err != nil {
 		return fmt.Errorf("error inserting new note: %w", err)
@@ -132,20 +132,20 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, tra
 	var locationsResult sql.Result
 	locationsResult, err = tx.ExecContext(ctx, locationsSql,
 		transactionUUID,
-		ToNullInt64(inventoryUpdateForm.Tagnumber),
-		ToNullString(inventoryUpdateForm.SystemSerial),
-		ToNullString(inventoryUpdateForm.Location),
-		ToNullString(inventoryUpdateForm.Building),
-		ToNullString(inventoryUpdateForm.Room),
-		ToNullString(inventoryUpdateForm.Department),
-		ToNullString(inventoryUpdateForm.Domain),
-		ToNullString(inventoryUpdateForm.PropertyCustodian),
-		ToNullTime(inventoryUpdateForm.AcquiredDate),
-		ToNullTime(inventoryUpdateForm.RetiredDate),
-		ToNullBool(inventoryUpdateForm.Broken),
-		ToNullBool(inventoryUpdateForm.DiskRemoved),
-		ToNullString(inventoryUpdateForm.ClientStatus),
-		ToNullString(inventoryUpdateForm.Note),
+		ptrToNullInt64(inventoryUpdateForm.Tagnumber),
+		ptrToNullString(inventoryUpdateForm.SystemSerial),
+		ptrToNullString(inventoryUpdateForm.Location),
+		ptrToNullString(inventoryUpdateForm.Building),
+		ptrToNullString(inventoryUpdateForm.Room),
+		ptrToNullString(inventoryUpdateForm.Department),
+		ptrToNullString(inventoryUpdateForm.Domain),
+		ptrToNullString(inventoryUpdateForm.PropertyCustodian),
+		ptrToNullTime(inventoryUpdateForm.AcquiredDate),
+		ptrToNullTime(inventoryUpdateForm.RetiredDate),
+		ptrToNullBool(inventoryUpdateForm.Broken),
+		ptrToNullBool(inventoryUpdateForm.DiskRemoved),
+		ptrToNullString(inventoryUpdateForm.ClientStatus),
+		toNullString(inventoryUpdateForm.Note),
 	)
 	if err != nil {
 		return fmt.Errorf("error inserting location data: %w", err)
@@ -170,10 +170,10 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, tra
 	var hardwareDataResult sql.Result
 	hardwareDataResult, err = tx.ExecContext(ctx, hardwareDataSql,
 		transactionUUID,
-		ToNullInt64(inventoryUpdateForm.Tagnumber),
-		ToNullString(inventoryUpdateForm.SystemManufacturer),
-		ToNullString(inventoryUpdateForm.SystemModel),
-		ToNullString(inventoryUpdateForm.DeviceType),
+		ptrToNullInt64(inventoryUpdateForm.Tagnumber),
+		ptrToNullString(inventoryUpdateForm.SystemManufacturer),
+		ptrToNullString(inventoryUpdateForm.SystemModel),
+		ptrToNullString(inventoryUpdateForm.DeviceType),
 	)
 	if err != nil {
 		return fmt.Errorf("error inserting/updating hardware data: %w", err)
@@ -195,8 +195,8 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, tra
 
 	var clientHealthResult sql.Result
 	clientHealthResult, err = tx.ExecContext(ctx, clientHealthSql,
-		ToNullInt64(inventoryUpdateForm.Tagnumber),
-		ToNullTime(inventoryUpdateForm.LastHardwareCheck),
+		ptrToNullInt64(inventoryUpdateForm.Tagnumber),
+		toNullTime(inventoryUpdateForm.LastHardwareCheck),
 		transactionUUID,
 	)
 	if err != nil {
@@ -215,10 +215,10 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdateForm(ctx context.Context, tra
 
 		checkoutLogResult, err = tx.ExecContext(ctx, checkoutSql,
 			transactionUUID,
-			ToNullInt64(inventoryUpdateForm.Tagnumber),
-			ToNullTime(inventoryUpdateForm.CheckoutDate),
-			ToNullTime(inventoryUpdateForm.ReturnDate),
-			ToNullBool(inventoryUpdateForm.CheckoutBool),
+			ptrToNullInt64(inventoryUpdateForm.Tagnumber),
+			ptrToNullTime(inventoryUpdateForm.CheckoutDate),
+			ptrToNullTime(inventoryUpdateForm.ReturnDate),
+			ptrToNullBool(inventoryUpdateForm.CheckoutBool),
 		)
 		if err != nil {
 			return fmt.Errorf("error inserting into checkout_log: %w", err)
@@ -263,9 +263,9 @@ func (updateRepo *UpdateRepo) UpdateHardwareData(ctx context.Context, tagnumber 
 
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		ToNullInt64(tagnumber),
-		ToNullString(systemManufacturer),
-		ToNullString(systemModel),
+		ptrToNullInt64(tagnumber),
+		ptrToNullString(systemManufacturer),
+		ptrToNullString(systemModel),
 	)
 	if err != nil {
 		return fmt.Errorf("error updating hardware data: %w", err)
@@ -323,21 +323,21 @@ func (updateRepo *UpdateRepo) UpdateClientImages(ctx context.Context, transactio
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		ToNullString(manifest.UUID),
-		ToNullTime(manifest.Time),
-		ToNullInt64(manifest.Tagnumber),
-		ToNullString(manifest.FileName),
-		ToNullString(manifest.FilePath),
-		ToNullString(manifest.ThumbnailFilePath),
-		ToNullInt64(manifest.FileSize),
+		ptrToNullString(manifest.UUID),
+		ptrToNullTime(manifest.Time),
+		ptrToNullInt64(manifest.Tagnumber),
+		ptrToNullString(manifest.FileName),
+		ptrToNullString(manifest.FilePath),
+		ptrToNullString(manifest.ThumbnailFilePath),
+		ptrToNullInt64(manifest.FileSize),
 		manifest.SHA256Hash,
-		ToNullString(manifest.MimeType),
-		ToNullTime(manifest.ExifTimestamp),
-		ToNullInt64(manifest.ResolutionX),
-		ToNullInt64(manifest.ResolutionY),
-		ToNullString(manifest.Note),
-		ToNullBool(manifest.Hidden),
-		ToNullBool(manifest.Pinned),
+		ptrToNullString(manifest.MimeType),
+		ptrToNullTime(manifest.ExifTimestamp),
+		ptrToNullInt64(manifest.ResolutionX),
+		ptrToNullInt64(manifest.ResolutionY),
+		ptrToNullString(manifest.Note),
+		ptrToNullBool(manifest.Hidden),
+		ptrToNullBool(manifest.Pinned),
 	)
 	if err != nil {
 		return fmt.Errorf("error inserting client image: %w", err)
@@ -372,8 +372,8 @@ func (updateRepo *UpdateRepo) HideClientImageByUUID(ctx context.Context, tagnumb
 	const sqlQuery = `UPDATE client_images SET hidden = TRUE WHERE tagnumber = $1 AND uuid = $2;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlQuery,
-		ToNullInt64(tagnumber),
-		ToNullString(uuid),
+		ptrToNullInt64(tagnumber),
+		ptrToNullString(uuid),
 	)
 	if err != nil {
 		return fmt.Errorf("error hiding client image: %w", err)
@@ -408,8 +408,8 @@ func (updateRepo *UpdateRepo) DeleteClientImageByUUID(ctx context.Context, tagnu
 	const sqlQuery = `DELETE FROM client_images WHERE tagnumber = $1 AND uuid = $2;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlQuery,
-		ToNullInt64(tagnumber),
-		ToNullString(uuid),
+		ptrToNullInt64(tagnumber),
+		ptrToNullString(uuid),
 	)
 	if err != nil {
 		return fmt.Errorf("error deleting client image: %w", err)
@@ -444,8 +444,8 @@ func (updateRepo *UpdateRepo) TogglePinImage(ctx context.Context, tagnumber *int
 	const sqlQuery = `UPDATE client_images SET pinned = NOT COALESCE(pinned, FALSE) WHERE uuid = $1 AND tagnumber = $2;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlQuery,
-		ToNullString(uuid),
-		ToNullInt64(tagnumber),
+		ptrToNullString(uuid),
+		ptrToNullInt64(tagnumber),
 	)
 	if err != nil {
 		return fmt.Errorf("error toggling pin on client image: %w", err)
@@ -483,8 +483,8 @@ func (updateRepo *UpdateRepo) SetClientBatteryHealth(ctx context.Context, uuid *
 	const sqlCode = `UPDATE jobstats SET battery_health = $1 WHERE uuid = $2;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		ToNullInt64(healthPcnt),
-		ToNullString(uuid),
+		ptrToNullInt64(healthPcnt),
+		ptrToNullString(uuid),
 	)
 	if err != nil {
 		return fmt.Errorf("error updating jobstats battery health: %w", err)
@@ -554,7 +554,7 @@ func (updateRepo *UpdateRepo) SetClientJob(ctx context.Context, tag *int64, clie
 
 	const sqlCode = `UPDATE job_queue SET job_queued = $1, job_active = TRUE WHERE tagnumber = $2;`
 	var sqlResult sql.Result
-	sqlResult, err = tx.ExecContext(ctx, sqlCode, ptrStringToString(clientJob), ToNullInt64(tag))
+	sqlResult, err = tx.ExecContext(ctx, sqlCode, ptrStringToString(clientJob), ptrToNullInt64(tag))
 	if err != nil {
 		return fmt.Errorf("error while updating client job: %w", err)
 	}
@@ -569,10 +569,10 @@ func (updateRepo *UpdateRepo) UpdateClientMemoryInfo(ctx context.Context, memInf
 		return fmt.Errorf("memory data is required")
 	}
 
-	if memInfo.Tagnumber == nil {
+	if memInfo.Tagnumber == 0 {
 		return fmt.Errorf("tagnumber is required in memory data")
 	}
-	if memInfo.TotalUsage == nil || memInfo.TotalCapacity == nil {
+	if memInfo.TotalUsage == nil || memInfo.TotalCapacity == 0 {
 		return fmt.Errorf("both total usage and total capacity are required")
 	}
 
@@ -592,16 +592,16 @@ func (updateRepo *UpdateRepo) UpdateClientMemoryInfo(ctx context.Context, memInf
 		}
 	}()
 
-	memCapacityGB := float64(*memInfo.TotalCapacity) / (1024 * 1024)
+	memCapacityGB := float64(memInfo.TotalCapacity) / (1024 * 1024)
 	memUsageGB := float64(*memInfo.TotalUsage) / (1024 * 1024)
 
 	const sqlCode = `INSERT INTO job_queue (tagnumber, memory_capacity, memory_usage) VALUES ($1, $2, $3)
 		ON CONFLICT (tagnumber) DO UPDATE SET memory_capacity = EXCLUDED.memory_capacity, memory_usage = EXCLUDED.memory_usage;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		ToNullInt64(memInfo.Tagnumber),
-		ToNullFloat64(&memCapacityGB),
-		ToNullFloat64(&memUsageGB),
+		toNullInt64(memInfo.Tagnumber),
+		toNullFloat64(memCapacityGB),
+		toNullFloat64(memUsageGB),
 	)
 	if err != nil {
 		return fmt.Errorf("error updating memory usage: %w", err)
@@ -617,7 +617,7 @@ func (updateRepo *UpdateRepo) UpdateClientCPUUsage(ctx context.Context, cpuData 
 		return fmt.Errorf("CPU data is required")
 	}
 
-	if cpuData.Tagnumber == nil || cpuData.UsagePercent == nil {
+	if cpuData.Tagnumber == 0 || cpuData.UsagePercent == nil {
 		return fmt.Errorf("both tagnumber and usage percent are required")
 	}
 
@@ -641,8 +641,8 @@ func (updateRepo *UpdateRepo) UpdateClientCPUUsage(ctx context.Context, cpuData 
 		ON CONFLICT (tagnumber) DO UPDATE SET cpu_usage = EXCLUDED.cpu_usage;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		ToNullInt64(cpuData.Tagnumber),
-		ToNullFloat64(cpuData.UsagePercent),
+		toNullInt64(cpuData.Tagnumber),
+		ptrToNullFloat64(cpuData.UsagePercent),
 	)
 	if err != nil {
 		return fmt.Errorf("error updating CPU usage: %w", err)
@@ -657,7 +657,7 @@ func (updateRepo *UpdateRepo) UpdateClientNetworkUsage(ctx context.Context, netw
 	if networkData == nil {
 		return fmt.Errorf("network data is required")
 	}
-	if networkData.Tagnumber == nil || networkData.NetworkUsage == nil || networkData.LinkSpeed == nil {
+	if networkData.Tagnumber == 0 || networkData.NetworkUsage == nil || networkData.LinkSpeed == nil {
 		return fmt.Errorf("tagnumber, network usage, and link speed are required")
 	}
 	if ctx.Err() != nil {
@@ -679,9 +679,9 @@ func (updateRepo *UpdateRepo) UpdateClientNetworkUsage(ctx context.Context, netw
 		ON CONFLICT (tagnumber) DO UPDATE SET network_usage = EXCLUDED.network_usage, link_speed = EXCLUDED.link_speed;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		ToNullInt64(networkData.Tagnumber),
-		ToNullInt64(networkData.NetworkUsage),
-		ToNullInt64(networkData.LinkSpeed),
+		toNullInt64(networkData.Tagnumber),
+		ptrToNullInt64(networkData.NetworkUsage),
+		ptrToNullInt64(networkData.LinkSpeed),
 	)
 	if err != nil {
 		return fmt.Errorf("error updating network usage: %w", err)
@@ -696,7 +696,7 @@ func (updateRepo *UpdateRepo) UpdateClientCPUTemperature(ctx context.Context, cp
 	if cpuTempData == nil {
 		return fmt.Errorf("CPU data is required")
 	}
-	if cpuTempData.Tagnumber == nil || cpuTempData.MillidegreesC == nil {
+	if cpuTempData.Tagnumber == 0 || cpuTempData.MillidegreesC == nil {
 		return fmt.Errorf("both tagnumber and temperature are required")
 	}
 
@@ -722,8 +722,8 @@ func (updateRepo *UpdateRepo) UpdateClientCPUTemperature(ctx context.Context, cp
 		ON CONFLICT (tagnumber) DO UPDATE SET cpu_temp = EXCLUDED.cpu_temp;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		ToNullInt64(cpuTempData.Tagnumber),
-		ToNullFloat64(&degreesC),
+		toNullInt64(cpuTempData.Tagnumber),
+		ptrToNullFloat64(&degreesC),
 	)
 	if err != nil {
 		return fmt.Errorf("error updating CPU temperature: %w", err)
@@ -738,7 +738,7 @@ func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData
 	if uptimeData == nil {
 		return fmt.Errorf("uptime data is required")
 	}
-	if uptimeData.Tagnumber == nil || uptimeData.ClientAppUptime == nil || uptimeData.SystemUptime == nil {
+	if uptimeData.Tagnumber == 0 || uptimeData.ClientAppUptime == 0 || uptimeData.SystemUptime == 0 {
 		return fmt.Errorf("tagnumber, client app uptime, and system uptime are required")
 	}
 	if ctx.Err() != nil {
@@ -761,9 +761,9 @@ func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData
 		ON CONFLICT (tagnumber) DO UPDATE SET client_app_uptime = EXCLUDED.client_app_uptime, system_uptime = EXCLUDED.system_uptime;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		ToNullInt64(uptimeData.Tagnumber),
-		ToNullInt64(uptimeData.ClientAppUptime),
-		ToNullInt64(uptimeData.SystemUptime),
+		toNullInt64(uptimeData.Tagnumber),
+		toNullDuration(uptimeData.ClientAppUptime),
+		toNullDuration(uptimeData.SystemUptime),
 	)
 	if err != nil {
 		return fmt.Errorf("error updating client uptime: %w", err)

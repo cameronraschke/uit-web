@@ -168,12 +168,12 @@ func SetClientMemoryInfo(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if memoryData.Tagnumber == nil {
+	if memoryData.Tagnumber == 0 {
 		log.Warn("Missing tag number")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if memoryData.TotalUsage == nil || memoryData.TotalCapacity == nil {
+	if memoryData.TotalUsage == nil || memoryData.TotalCapacity == 0 {
 		log.Warn("Both memory usage and capacity are required")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -220,7 +220,7 @@ func SetClientCPUUsage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if cpuData.Tagnumber == nil || cpuData.UsagePercent == nil {
+	if cpuData.Tagnumber == 0 || cpuData.UsagePercent == nil {
 		log.Warn("Missing tag number or usage percent")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -265,7 +265,7 @@ func SetClientCPUTemperature(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if cpuData.Tagnumber == nil || cpuData.MillidegreesC == nil {
+	if cpuData.Tagnumber == 0 || cpuData.MillidegreesC == nil {
 		log.Warn("Missing tag number or temperature")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -310,7 +310,7 @@ func SetClientNetworkUsage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if networkData.Tagnumber == nil || networkData.NetworkUsage == nil || networkData.LinkSpeed == nil {
+	if networkData.Tagnumber == 0 || networkData.NetworkUsage == nil || networkData.LinkSpeed == nil {
 		log.Warn("Missing tag number, network usage, or link speed")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -355,7 +355,7 @@ func SetClientUptime(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if uptimeData.Tagnumber == nil || uptimeData.ClientAppUptime == nil || uptimeData.SystemUptime == nil {
+	if uptimeData.Tagnumber == 0 || uptimeData.ClientAppUptime == 0 || uptimeData.SystemUptime == 0 {
 		log.Warn("Missing tag number, client app uptime, or system uptime")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -760,9 +760,9 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Last hardware check (optional, process as UTC)
-	if inventoryUpdate.LastHardwareCheck != nil {
+	if !inventoryUpdate.LastHardwareCheck.IsZero() {
 		lastHardwareCheckUTC := inventoryUpdate.LastHardwareCheck.UTC()
-		inventoryUpdate.LastHardwareCheck = &lastHardwareCheckUTC
+		inventoryUpdate.LastHardwareCheck = lastHardwareCheckUTC
 	} else {
 		log.Info("No last_hardware_check date provided")
 	}
@@ -832,24 +832,23 @@ func InsertInventoryUpdateForm(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Note (optional)
-	if inventoryUpdate.Note != nil {
+	if inventoryUpdate.Note != "" {
 		noteMinChars, noteMaxChars, err := appState.GetClientNoteConstraints()
 		if err != nil {
 			log.Warn("Error retrieving client note constraints: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Note)) < noteMinChars || utf8.RuneCountInString(*inventoryUpdate.Note) > noteMaxChars {
+		if utf8.RuneCountInString(strings.TrimSpace(inventoryUpdate.Note)) < noteMinChars || utf8.RuneCountInString(inventoryUpdate.Note) > noteMaxChars {
 			log.Warn("Invalid note length")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
-		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.Note) {
+		if !middleware.IsPrintableUnicodeString(inventoryUpdate.Note) {
 			log.Warn("Non-printable characters in note field")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
-		*inventoryUpdate.Note = strings.TrimSpace(*inventoryUpdate.Note)
 	} else {
 		log.Info("No note provided")
 	}

@@ -238,7 +238,7 @@ func (repo *SelectRepo) CheckAuthCredentials(ctx context.Context, username *stri
 	const sqlQuery = `SELECT password FROM logins WHERE username = $1 LIMIT 1;`
 
 	var dbBcryptHash sql.NullString
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullString(username))
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullString(username))
 	if err := row.Scan(&dbBcryptHash); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil, fmt.Errorf("no results from db")
@@ -268,7 +268,7 @@ func (repo *SelectRepo) ClientLookupByTag(ctx context.Context, tag *int64) (*typ
 		ORDER BY time DESC NULLS LAST LIMIT 1;`
 
 	var clientLookup types.ClientLookup
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
 	if err := row.Scan(&clientLookup.Tagnumber, &clientLookup.SystemSerial); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -292,7 +292,7 @@ func (repo *SelectRepo) ClientLookupBySerial(ctx context.Context, serial *string
 		WHERE system_serial = $1 
 		ORDER BY time DESC NULLS LAST LIMIT 1;`
 
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullString(serial))
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullString(serial))
 	var clientLookup types.ClientLookup
 	if err := row.Scan(&clientLookup.Tagnumber, &clientLookup.SystemSerial); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -322,7 +322,7 @@ func (repo *SelectRepo) GetHardwareIdentifiers(ctx context.Context, tag *int64) 
 	AND locations.tagnumber = $1;`
 
 	var hardwareData types.HardwareData
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
 	if err := row.Scan(
 		&hardwareData.Tagnumber,
 		&hardwareData.SystemSerial,
@@ -358,7 +358,7 @@ func (repo *SelectRepo) GetBiosData(ctx context.Context, tag *int64) (*types.Bio
 	FROM client_health WHERE client_health.tagnumber = $1;`
 
 	var biosData types.BiosData
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
 	if err := row.Scan(
 		&biosData.Tagnumber,
 		&biosData.BiosVersion,
@@ -392,7 +392,7 @@ func (repo *SelectRepo) GetOsData(ctx context.Context, tag *int64) (*types.OsDat
 	AND locations.tagnumber = $1;`
 
 	var osData types.OsData
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
 	if err := row.Scan(
 		&osData.Tagnumber,
 		&osData.OsInstalled,
@@ -425,7 +425,7 @@ func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.A
 	WHERE job_queue.tagnumber = $1;`
 
 	var activeJobs types.ActiveJobs
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
 	if err := row.Scan(
 		&activeJobs.Tagnumber,
 		&activeJobs.QueuedJob,
@@ -459,7 +459,7 @@ func (repo *SelectRepo) GetAvailableJobs(ctx context.Context, tag *int64) (*type
 	WHERE job_queue.tagnumber = $1`
 
 	var availableJobs types.AvailableJobs
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tag))
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
 	if err := row.Scan(
 		&availableJobs.Tagnumber,
 		&availableJobs.JobAvailable,
@@ -513,7 +513,7 @@ func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*types.
 		ORDER BY time DESC NULLS LAST LIMIT 1;`
 
 	var notesTable types.NotesTable
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullString(noteType))
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullString(noteType))
 	if err := row.Scan(
 		&notesTable.Time,
 		&notesTable.NoteType,
@@ -636,8 +636,8 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 	ORDER BY locations.time DESC NULLS LAST
 	LIMIT 1;`
 	row := repo.DB.QueryRowContext(ctx, sqlQuery,
-		ToNullInt64(tag),
-		ToNullString(serial),
+		ptrToNullInt64(tag),
+		ptrToNullString(serial),
 	)
 
 	inventoryUpdateForm := new(types.InventoryUpdateForm)
@@ -685,7 +685,7 @@ func (repo *SelectRepo) GetClientImageFilePathFromUUID(ctx context.Context, uuid
 			filepath, thumbnail_filepath, hidden
 		FROM client_images 
 		WHERE uuid = $1;`
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullString(uuid))
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullString(uuid))
 	var imageManifest types.ImageManifest
 	if err := row.Scan(
 		&imageManifest.Tagnumber,
@@ -819,17 +819,17 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 		ORDER BY locations.time DESC;`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery,
-		ToNullInt64(filterOptions.Tagnumber),
-		ToNullString(filterOptions.SystemSerial),
-		ToNullString(filterOptions.Location),
-		ToNullString(filterOptions.SystemManufacturer),
-		ToNullString(filterOptions.SystemModel),
-		ToNullString(filterOptions.DeviceType),
-		ToNullString(filterOptions.Department),
-		ToNullString(filterOptions.Domain),
-		ToNullString(filterOptions.Status),
-		ToNullBool(filterOptions.Broken),
-		ToNullBool(filterOptions.HasImages),
+		ptrToNullInt64(filterOptions.Tagnumber),
+		ptrToNullString(filterOptions.SystemSerial),
+		ptrToNullString(filterOptions.Location),
+		ptrToNullString(filterOptions.SystemManufacturer),
+		ptrToNullString(filterOptions.SystemModel),
+		ptrToNullString(filterOptions.DeviceType),
+		ptrToNullString(filterOptions.Department),
+		ptrToNullString(filterOptions.Domain),
+		ptrToNullString(filterOptions.Status),
+		ptrToNullBool(filterOptions.Broken),
+		ptrToNullBool(filterOptions.HasImages),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("query error: %w", err)
@@ -894,7 +894,7 @@ func (repo *SelectRepo) GetClientBatteryHealth(ctx context.Context, tagnumber *i
 	ORDER BY jobstats.time DESC NULLS LAST LIMIT 1;`
 
 	var batteryHealth types.ClientBatteryHealth
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ToNullInt64(tagnumber))
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tagnumber))
 	if err := row.Scan(
 		&batteryHealth.Time,
 		&batteryHealth.Tagnumber,

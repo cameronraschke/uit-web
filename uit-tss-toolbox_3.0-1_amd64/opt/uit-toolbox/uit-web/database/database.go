@@ -69,35 +69,70 @@ func ToTimePtr(v sql.NullTime) *time.Time {
 	return nil
 }
 
-func ToNullString(p *string) sql.NullString {
+func ptrToNullString(p *string) sql.NullString {
 	if p == nil {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: *p, Valid: true}
 }
-func ToNullInt64(p *int64) sql.NullInt64 {
+func ptrToNullInt64(p *int64) sql.NullInt64 {
 	if p == nil {
 		return sql.NullInt64{}
 	}
 	return sql.NullInt64{Int64: *p, Valid: true}
 }
-func ToNullFloat64(p *float64) sql.NullFloat64 {
+func ptrToNullFloat64(p *float64) sql.NullFloat64 {
 	if p == nil {
 		return sql.NullFloat64{}
 	}
 	return sql.NullFloat64{Float64: *p, Valid: true}
 }
-func ToNullBool(p *bool) sql.NullBool {
+func ptrToNullBool(p *bool) sql.NullBool {
 	if p == nil {
 		return sql.NullBool{}
 	}
 	return sql.NullBool{Bool: *p, Valid: true}
 }
-func ToNullTime(p *time.Time) sql.NullTime {
+func ptrToNullTime(p *time.Time) sql.NullTime {
 	if p == nil {
 		return sql.NullTime{}
 	}
 	return sql.NullTime{Time: *p, Valid: true}
+}
+
+func toNullString(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: s, Valid: true}
+}
+
+func toNullInt64(i int64) sql.NullInt64 {
+	if i == 0 {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: i, Valid: true}
+}
+
+func toNullFloat64(f float64) sql.NullFloat64 {
+	if f == 0 {
+		return sql.NullFloat64{}
+	}
+	return sql.NullFloat64{Float64: f, Valid: true}
+}
+
+func toNullTime(t time.Time) sql.NullTime {
+	if t.IsZero() {
+		return sql.NullTime{}
+	}
+	return sql.NullTime{Time: t, Valid: true}
+}
+
+func toNullDuration(d time.Duration) sql.NullInt64 {
+	if d == 0 {
+		return sql.NullInt64{}
+	}
+	return sql.NullInt64{Int64: int64(d), Valid: true}
 }
 
 func ptrIntToString(p *int64) string {
@@ -121,11 +156,11 @@ func ptrBoolToString(p *bool) string {
 	return strconv.FormatBool(*p)
 }
 
-func ptrTimeToString(p *time.Time) string {
-	if p == nil {
+func ptrTimeToString(t *time.Time) string {
+	if t == nil || t.IsZero() {
 		return ""
 	}
-	return p.Format("2006-01-02 15:04:05")
+	return t.Format("2006-01-02 15:04:05")
 }
 
 func CreateAdminUser() error {
