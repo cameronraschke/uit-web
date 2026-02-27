@@ -523,7 +523,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	inventoryUpdate, err := types.MapInventoryUpdateRequestToDomain(&inventoryUpdateReq, htmlFormConstraints)
+	inventoryDomain, err := types.CreateInventoryUpdateDTO(&inventoryUpdateReq, htmlFormConstraints)
 	if err != nil {
 		log.Warn("Invalid inventory request payload: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -658,9 +658,9 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		hashes, err := selectRepo.GetFileHashesFromTag(ctx, &inventoryUpdate.Tagnumber)
+		hashes, err := selectRepo.GetFileHashesFromTag(ctx, &inventoryDomain.Tagnumber)
 		if err != nil {
-			log.Error("Failed to get file hashes from tag '" + strconv.FormatInt(inventoryUpdate.Tagnumber, 10) + "': " + err.Error())
+			log.Error("Failed to get file hashes from tag '" + strconv.FormatInt(inventoryDomain.Tagnumber, 10) + "': " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -672,7 +672,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 		if hashFound {
-			log.Warn("Duplicate file upload detected for tag '" + strconv.FormatInt(inventoryUpdate.Tagnumber, 10) + "': file '" + fileHeader.Filename + "' (" + fmt.Sprintf("%x", fileHashBytes) + ") has same hash as existing file, skipping")
+			log.Warn("Duplicate file upload detected for tag '" + strconv.FormatInt(inventoryDomain.Tagnumber, 10) + "': file '" + fileHeader.Filename + "' (" + fmt.Sprintf("%x", fileHashBytes) + ") has same hash as existing file, skipping")
 			continue
 		}
 
@@ -724,7 +724,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			manifest.ResolutionY = &resY
 
 			// Generate jpeg thumbnail
-			imageDirectoryPath, err := createNecessaryDirs(inventoryUpdate.Tagnumber)
+			imageDirectoryPath, err := createNecessaryDirs(inventoryDomain.Tagnumber)
 			if err != nil {
 				log.Error("Failed to create necessary directories for thumbnail of '" + fileHeader.Filename + "': " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -778,7 +778,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		imageDirectoryPath, err := createNecessaryDirs(inventoryUpdate.Tagnumber)
+		imageDirectoryPath, err := createNecessaryDirs(inventoryDomain.Tagnumber)
 		if err != nil {
 			log.Error("Failed to create necessary directories for '" + fileHeader.Filename + "': " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -796,7 +796,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		_ = file.Close()
 
 		// Insert image metadata into database
-		manifest.Tagnumber = &inventoryUpdate.Tagnumber
+		manifest.Tagnumber = &inventoryDomain.Tagnumber
 		manifest.Hidden = new(bool)
 		*manifest.Hidden = false
 		manifest.Pinned = new(bool)
@@ -817,19 +817,36 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Update db
-	inventoryData := types.MapInventoryUpdateDomainToLocationWriteModel(transactionUUID, &inventoryUpdateReq)
+	inventoryData := types.MapInventoryUpdateDomainToLocationWriteModel(transactionUUID, inventoryDomain)
 	if err := updateRepo.InsertInventoryUpdate(ctx, transactionUUID, inventoryData); err != nil {
 		log.Error("Failed to update inventory data: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	clientHardwareData := types.MapInventoryUpdateDomainToHardwareWriteModel(transactionUUID, &inventoryUpdateReq)
+	clientHardwareData := types.MapInventoryUpdateDomainToHardwareWriteModel(transactionUUID, inventoryDomain)
+	if err := updateRepo.UpdateClientHardwareData(ctx, transactionUUID, clientHardwareData); err != nil {
+		log.Error("Failed to update inventory hardware info: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	clientHealthData := types.MapInventoryUpdateDomainToClientHealthWriteModel(transactionUUID, inventoryDomain)
+	if err := updateRepo.UpdateClientHealthUpdate(ctx, transactionUUID, clientHealthData); err != nil {
+		log.Error("Failed to update inventory health info: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	checkoutData := types.MapInventoryUpdateDomainToCheckoutWriteModel(transactionUUID, inventoryDomain)
+	if err := updateRepo.InsertClientCheckoutsUpdate(ctx, transactionUUID, checkoutData); err != nil {
+		log.Error("Failed to update inventory checkout info: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
 
 	var jsonResponse = struct {
 		Tagnumber int64  `json:"tagnumber"`
 		Message   string `json:"message"`
 	}{
-		Tagnumber: inventoryUpdate.Tagnumber,
+		Tagnumber: inventoryDomain.Tagnumber,
 		Message:   "update successful",
 	}
 
@@ -989,7 +1006,7 @@ func SetClientJob(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := IsTagnumberInt64Valid(clientJson.Tagnumber); err != nil {
+	if err := types.IsTagnumberInt64Valid(clientJson.Tagnumber); err != nil {
 		log.Warn("Invalid tagnumber: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return

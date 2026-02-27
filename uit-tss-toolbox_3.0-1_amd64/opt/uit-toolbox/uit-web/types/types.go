@@ -10,6 +10,64 @@ import (
 	"unicode/utf8"
 )
 
+func copyTrimmedStringPtr(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	return &trimmed
+}
+
+func copyStringPtr(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	v := *value
+	return &v
+}
+
+func copyInt64Ptr(value *int64) *int64 {
+	if value == nil {
+		return nil
+	}
+	v := *value
+	return &v
+}
+
+func copyTimePtr(value *time.Time) *time.Time {
+	if value == nil {
+		return nil
+	}
+	v := *value
+	return &v
+}
+
+func timePtrToUTC(value *time.Time) *time.Time {
+	if value == nil {
+		return nil
+	}
+	utc := value.UTC()
+	return &utc
+}
+
+func copyBoolPtr(value *bool) *bool {
+	if value == nil {
+		return nil
+	}
+	v := *value
+	return &v
+}
+
+func int64ToPtr(value int64) *int64 {
+	v := value
+	return &v
+}
+
+func stringToPtr(value string) *string {
+	v := value
+	return &v
+}
+
 func IsTagnumberInt64Valid(i *int64) error {
 	if i == nil {
 		return fmt.Errorf("tagnumber is nil")

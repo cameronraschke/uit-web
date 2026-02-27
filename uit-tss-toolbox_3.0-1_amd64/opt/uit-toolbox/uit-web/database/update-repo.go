@@ -16,7 +16,7 @@ import (
 type Update interface {
 	InsertNewNote(ctx context.Context, time *time.Time, noteType *string, note *string) (err error)
 	InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdate *types.InventoryLocationWriteModel) (err error)
-	InsertClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.InventoryClientHealthWriteModel) (err error)
+	UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.InventoryClientHealthWriteModel) (err error)
 	InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID, checkoutData *types.InventoryCheckoutWriteModel) (err error)
 	UpdateClientHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.InventoryHardwareWriteModel) (err error)
 	UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *types.ImageManifest) (err error)
@@ -86,7 +86,7 @@ func (updateRepo *UpdateRepo) InsertNewNote(ctx context.Context, time *time.Time
 	return err
 }
 
-func (updateRepo *UpdateRepo) InsertClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.InventoryClientHealthWriteModel) (err error) {
+func (updateRepo *UpdateRepo) UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.InventoryClientHealthWriteModel) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
 		return fmt.Errorf("generated transaction UUID is nil")
 	}
@@ -116,7 +116,6 @@ func (updateRepo *UpdateRepo) InsertClientHealthUpdate(ctx context.Context, tran
 		ON CONFLICT (tagnumber)
 		DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
-			tagnumber = EXCLUDED.tagnumber,
 			last_hardware_check = EXCLUDED.last_hardware_check,
 			transaction_uuid = EXCLUDED.transaction_uuid;`
 
@@ -286,19 +285,19 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdate(ctx context.Context, transac
 	var locationsResult sql.Result
 	locationsResult, err = tx.ExecContext(ctx, locationsSql,
 		transactionUUID,
-		ptrToNullInt64(inventoryUpdate.Tagnumber),
-		ptrToNullString(inventoryUpdate.SystemSerial),
-		ptrToNullString(inventoryUpdate.Location),
+		inventoryUpdate.Tagnumber,
+		inventoryUpdate.SystemSerial,
+		inventoryUpdate.Location,
 		ptrToNullString(inventoryUpdate.Building),
 		ptrToNullString(inventoryUpdate.Room),
-		ptrToNullString(inventoryUpdate.Department),
-		ptrToNullString(inventoryUpdate.Domain),
+		inventoryUpdate.Department,
+		inventoryUpdate.Domain,
 		ptrToNullString(inventoryUpdate.PropertyCustodian),
 		ptrToNullTime(inventoryUpdate.AcquiredDate),
 		ptrToNullTime(inventoryUpdate.RetiredDate),
 		ptrToNullBool(inventoryUpdate.Broken),
 		ptrToNullBool(inventoryUpdate.DiskRemoved),
-		ptrToNullString(inventoryUpdate.ClientStatus),
+		inventoryUpdate.ClientStatus,
 		ptrToNullString(inventoryUpdate.Note),
 	)
 	if err != nil {
@@ -308,52 +307,6 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdate(ctx context.Context, transac
 		return fmt.Errorf("error while checking rows affected on locations table insert: %w", err)
 	}
 
-	return nil
-}
-
-func (updateRepo *UpdateRepo) UpdateHardwareData(ctx context.Context, tagnumber *int64, systemManufacturer *string, systemModel *string) (err error) {
-	if tagnumber == nil {
-		return fmt.Errorf("tagnumber is nil")
-	}
-	if systemManufacturer == nil && systemModel == nil {
-		return fmt.Errorf("either system manufacturer or system model must be specified")
-	}
-
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("error beginning transaction: %w", err)
-	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		} else {
-			err = tx.Commit()
-		}
-	}()
-
-	const sqlCode = `INSERT INTO hardware_data (tagnumber, system_manufacturer, system_model) 
-			VALUES ($1, $2, $3)
-			ON CONFLICT (tagnumber) DO 
-			UPDATE SET 
-				system_manufacturer = EXCLUDED.system_manufacturer, 
-				system_model = EXCLUDED.system_model;`
-
-	var sqlResult sql.Result
-	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		ptrToNullInt64(tagnumber),
-		ptrToNullString(systemManufacturer),
-		ptrToNullString(systemModel),
-	)
-	if err != nil {
-		return fmt.Errorf("error updating hardware data: %w", err)
-	}
-	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on hardware_data table update: %w", err)
-	}
 	return nil
 }
 
