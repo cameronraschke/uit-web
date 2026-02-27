@@ -817,13 +817,13 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Update db
-	inventoryData := types.MapInventoryUpdateRequestToInventoryData(&inventoryUpdateReq, htmlFormConstraints)
-	if err := updateRepo.InsertInventoryUpdate(ctx, transactionUUID, inventoryUpdate); err != nil {
+	inventoryData := types.MapInventoryUpdateDomainToLocationWriteModel(transactionUUID, &inventoryUpdateReq)
+	if err := updateRepo.InsertInventoryUpdate(ctx, transactionUUID, inventoryData); err != nil {
 		log.Error("Failed to update inventory data: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	if 
+	clientHardwareData := types.MapInventoryUpdateDomainToHardwareWriteModel(transactionUUID, &inventoryUpdateReq)
 
 	var jsonResponse = struct {
 		Tagnumber int64  `json:"tagnumber"`
