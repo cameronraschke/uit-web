@@ -669,7 +669,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		&inventoryUpdate.CheckoutDate,
 		&inventoryUpdate.ReturnDate,
 		&inventoryUpdate.Note,
-		&inventoryUpdate.ImageCount,
+		&inventoryUpdate.FileCount,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
