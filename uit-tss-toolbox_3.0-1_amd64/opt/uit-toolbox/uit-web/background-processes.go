@@ -10,13 +10,7 @@ import (
 	config "uit-toolbox/config"
 )
 
-func backgroundProcesses(ctx context.Context, errChan chan error) {
-	select {
-	case errChan <- fmt.Errorf("background process error, not starting backgound processes"):
-		return
-	default:
-		break
-	}
+func backgroundProcesses(ctx context.Context) {
 	log := config.GetLogger().With(slog.String("func", "backgroundProcesses"))
 	var wg sync.WaitGroup
 	// Start auth map cleanup goroutine
