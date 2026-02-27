@@ -44,7 +44,7 @@
 		"endpoint_type": "static_file",
 		"content_type": "application/vnd.debian.binary-package"
 	},
-	"/client/api/configs/uit-client": {
+	"/static/client/configs/uit-client": {
 		"file_path": "/srv/uit-toolbox/client/configs/uit-client.conf",
 		"tls_required": true,
 		"auth_required": true,

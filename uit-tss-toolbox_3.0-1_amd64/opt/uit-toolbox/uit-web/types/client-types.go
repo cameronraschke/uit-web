@@ -1,6 +1,4 @@
-//go:build linux && amd64
-
-package config
+package types
 
 import (
 	"encoding/json"
@@ -32,7 +30,6 @@ type ClientData struct {
 	ProductName        *string             `json:"product_name,omitempty"`
 	SKU                *string             `json:"sku,omitempty"`
 	UUID               *string             `json:"uuid,omitempty"`
-	BootDuration       time.Duration       `json:"boot_duration,omitempty"`
 	ConnectedToHost    *bool               `json:"connected_to_host,omitempty"`
 	NTPSynced          *bool               `json:"ntp_synced,omitempty"`
 	Hardware           *ClientHardwareData `json:"hardware_data,omitempty"`
@@ -42,50 +39,63 @@ type ClientData struct {
 }
 
 type RealtimeSystemData struct {
-	LastHeardTimestamp *time.Time               `json:"last_heard_timestamp,omitempty"`
-	BootTimestamp      *time.Time               `json:"boot_timestamp,omitempty"`
-	CurrentTimestamp   *time.Time               `json:"current_timestamp,omitempty"`
-	SystemUptime       time.Duration            `json:"system_uptime,omitempty"`
-	ClientAppUptime    time.Duration            `json:"client_app_uptime,omitempty"`
-	KernelUpdated      *bool                    `json:"kernel_updated,omitempty"`
-	Hardware           *ClientHardwareData      `json:"hardware,omitempty"`
-	Software           *ClientSoftwareData      `json:"software,omitempty"`
-	ResourceUsage      *ClientResourceUsageData `json:"resource_usage,omitempty"`
-	Base64Screenshot   *string                  `json:"base64_screenshot,omitempty"`
+	LastHeardTimestamp *time.Time     `json:"last_heard_timestamp,omitempty"`
+	SystemUptime       time.Duration  `json:"system_uptime,omitempty"`
+	AppUptime          *time.Duration `json:"app_uptime,omitempty"`
+	KernelUpdated      *bool          `json:"kernel_updated,omitempty"`
+	CPU                *CPUUsage      `json:"cpu_usage,omitempty"`
+	Memory             *MemoryUsage   `json:"memory_usage,omitempty"`
+	Network            *NetworkUsage  `json:"network_usage,omitempty"`
+	Energy             *EnergyUsage   `json:"energy_usage,omitempty"`
+}
+
+type MemoryUsage struct {
+	TotalUsage    *int64 `json:"memory_usage"`
+	TotalCapacity int64  `json:"memory_capacity"`
+	Type          string `json:"type"`
+	SpeedMHz      int64  `json:"speed_mhz"`
+}
+
+type NetworkUsage struct {
+	NetworkUsage *int64 `json:"network_usage"`
+	LinkSpeed    *int64 `json:"link_speed"`
+}
+
+type CPUUsage struct {
+	UsagePercent  *float64 `json:"cpu_usage"`
+	MillidegreesC *float64 `json:"cpu_millidegrees_c"`
+}
+
+type EnergyUsage struct {
+	Watts *float64 `json:"watts"`
 }
 
 type JobData struct {
-	UUID               uuid.UUID                `json:"uuid,omitempty"`
-	QueuedRemotely     *bool                    `json:"queued_remotely,omitempty"`
-	Mode               *JobMode                 `json:"mode,omitempty"`
-	SelectedDisk       *string                  `json:"selected_disk,omitempty"`
-	EraseQueued        *bool                    `json:"erase_queued,omitempty"`
-	EraseMode          *string                  `json:"erase_mode,omitempty"`
-	SecureEraseCapable *bool                    `json:"secure_erase_capable,omitempty"`
-	UsedSecureErase    *bool                    `json:"used_secure_erase,omitempty"`
-	EraseVerified      *bool                    `json:"erase_verified,omitempty"`
-	EraseVerifyPcnt    *float64                 `json:"erase_verify_percent,omitempty"`
-	EraseCompleted     *bool                    `json:"erase_completed,omitempty"`
-	CloneQueued        *bool                    `json:"clone_queued,omitempty"`
-	CloneMode          *string                  `json:"clone_mode,omitempty"`
-	CloneImageName     *string                  `json:"clone_image_name,omitempty"`
-	CloneSourceHost    *string                  `json:"clone_source_host,omitempty"`
-	CloneCompleted     *bool                    `json:"clone_completed,omitempty"`
-	Failed             *bool                    `json:"job_failed,omitempty"`
-	FailedMessage      *string                  `json:"job_failed_message,omitempty"`
-	StartTime          *time.Time               `json:"start_time,omitempty"`
-	EndTime            *time.Time               `json:"end_time,omitempty"`
-	Duration           time.Duration            `json:"duration,omitempty"`
-	AvgResourceUsage   *ClientResourceUsageData `json:"avg_resource_usage,omitempty"`
-	Hibernated         *bool                    `json:"hibernated,omitempty"`
-	Realtime           *JobQueueData            `json:"realtime_job_data,omitempty"`
-}
-
-type ClientResourceUsageData struct {
-	EnergyUsage  *float64 `json:"energy_usage,omitempty"`
-	CpuUsage     *float64 `json:"cpu_usage,omitempty"`
-	MemUsage     *float64 `json:"mem_usage,omitempty"`
-	NetworkUsage *float64 `json:"network_usage,omitempty"`
+	UUID               uuid.UUID     `json:"uuid,omitempty"`
+	QueuedRemotely     *bool         `json:"queued_remotely,omitempty"`
+	Type               *JobType      `json:"type,omitempty"` // e.g. clone/erase/erase+clone
+	SelectedDisk       *string       `json:"selected_disk,omitempty"`
+	EraseQueued        *bool         `json:"erase_queued,omitempty"`
+	EraseMode          *string       `json:"erase_mode,omitempty"`
+	SecureEraseCapable *bool         `json:"secure_erase_capable,omitempty"`
+	UsedSecureErase    *bool         `json:"used_secure_erase,omitempty"`
+	EraseVerified      *bool         `json:"erase_verified,omitempty"`
+	EraseVerifyPcnt    *float64      `json:"erase_verify_percent,omitempty"`
+	EraseCompleted     *bool         `json:"erase_completed,omitempty"`
+	CloneQueued        *bool         `json:"clone_queued,omitempty"`
+	CloneMode          *string       `json:"clone_mode,omitempty"`
+	CloneImageName     *string       `json:"clone_image_name,omitempty"`
+	CloneSourceHost    *string       `json:"clone_source_host,omitempty"`
+	CloneCompleted     *bool         `json:"clone_completed,omitempty"`
+	Failed             *bool         `json:"job_failed,omitempty"`
+	FailedMessage      *string       `json:"job_failed_message,omitempty"`
+	StartTime          *time.Time    `json:"start_time,omitempty"`
+	EndTime            *time.Time    `json:"end_time,omitempty"`
+	Duration           time.Duration `json:"duration,omitempty"`
+	AvgCPUUsage        *CPUUsage     `json:"avg_cpu_usage,omitempty"`
+	AvgNetworkUsage    *NetworkUsage `json:"avg_network_usage,omitempty"`
+	Hibernated         *bool         `json:"hibernated,omitempty"`
+	Realtime           *JobQueueData `json:"realtime_job_data,omitempty"`
 }
 
 type JobQueueData struct {
@@ -93,10 +103,9 @@ type JobQueueData struct {
 	JobNameFormatted  *string       `json:"job_name_formatted,omitempty"`
 	JobQueued         *bool         `json:"job_queued,omitempty"`
 	JobRequiresQueue  *bool         `json:"job_requires_queue,omitempty"`
-	JobQueuePosition  *int64        `json:"job_queue_position,omitempty"`
+	JobQueuePosition  *int          `json:"job_queue_position,omitempty"`
 	JobQueuedOverride *bool         `json:"job_queue_override,omitempty"`
 	JobActive         *bool         `json:"job_active,omitempty"`
-	JobAvailable      *bool         `json:"job_available,omitempty"`
 	JobProgress       *float64      `json:"job_progress,omitempty"`
 	JobDuration       time.Duration `json:"job_duration,omitempty"`
 	JobStatusMessage  *string       `json:"job_status_message,omitempty"`
@@ -118,7 +127,7 @@ type MotherboardSoftwareData struct {
 	BIOSFirmwareRevision *string `json:"bios_firmware_revision,omitempty"`
 	UEFIEnabled          *bool   `json:"uefi_enabled,omitempty"`
 	SecureBootEnabled    *bool   `json:"secure_boot_enabled,omitempty"`
-	TPMEnabled           *bool   `json:"tpm,omitempty"`
+	TPMEnabled           *bool   `json:"tpm_enabled,omitempty"`
 }
 
 type ClientHardwareData struct {
@@ -303,17 +312,17 @@ type TPMHardwareData struct {
 	Manufacturer *string `json:"manufacturer,omitempty"`
 }
 
-// --- JobMode enum and JSON marshalling ---
-type JobMode int
+// --- JobType enum and JSON marshalling ---
+type JobType int
 
 const (
-	JobModeNone JobMode = iota + 1
+	JobModeNone JobType = iota + 1
 	JobModeErase
 	JobModeClone
 	JobModeEraseAndClone
 )
 
-var JobModeMap = map[string]JobMode{
+var JobModeMap = map[string]JobType{
 	"None":          JobModeNone,
 	"Erase":         JobModeErase,
 	"Clone":         JobModeClone,
@@ -334,9 +343,9 @@ func normalizeJobMode(s string) string {
 	return b.String()
 }
 
-// ParseJobMode converts a string to a JobMode using JobModeMap with normalization.
+// ParseJobMode converts a string to a JobType using JobModeMap with normalization.
 // Returns a pointer to the parsed value, or an error if invalid.
-func ParseJobMode(modeStr string) (*JobMode, error) {
+func ParseJobMode(modeStr string) (*JobType, error) {
 	// Try exact match for canonical keys
 	if mode, ok := JobModeMap[modeStr]; ok {
 		v := mode
@@ -350,10 +359,10 @@ func ParseJobMode(modeStr string) (*JobMode, error) {
 			return &v, nil
 		}
 	}
-	return nil, fmt.Errorf("invalid JobMode: %s", modeStr)
+	return nil, fmt.Errorf("invalid JobType: %s", modeStr)
 }
 
-func (jm JobMode) IsValid() bool {
+func (jm JobType) IsValid() bool {
 	var jmMin int
 	var jmMax int
 
@@ -371,7 +380,7 @@ func (jm JobMode) IsValid() bool {
 	return true
 }
 
-func (jm JobMode) String() string {
+func (jm JobType) String() string {
 	if !jm.IsValid() {
 		return "Invalid"
 	}
@@ -383,11 +392,11 @@ func (jm JobMode) String() string {
 	return "Invalid"
 }
 
-func (jm JobMode) MarshalJSON() ([]byte, error) {
+func (jm JobType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(jm.String())
 }
 
-func (jm *JobMode) UnmarshalJSON(data []byte) error {
+func (jm *JobType) UnmarshalJSON(data []byte) error {
 	var str string
 	if err := json.Unmarshal(data, &str); err != nil {
 		return err
@@ -396,5 +405,5 @@ func (jm *JobMode) UnmarshalJSON(data []byte) error {
 		*jm = val
 		return nil
 	}
-	return fmt.Errorf("invalid JobMode: %s", str)
+	return fmt.Errorf("invalid JobType: %s", str)
 }

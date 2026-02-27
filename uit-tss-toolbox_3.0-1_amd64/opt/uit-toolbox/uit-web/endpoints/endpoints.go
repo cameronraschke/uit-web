@@ -14,9 +14,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	config "uit-toolbox/config"
+	"uit-toolbox/config"
 	"uit-toolbox/database"
-	middleware "uit-toolbox/middleware"
+	"uit-toolbox/middleware"
 	"unicode/utf8"
 
 	"golang.org/x/crypto/bcrypt"

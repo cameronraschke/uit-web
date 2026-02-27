@@ -282,8 +282,8 @@ func InitConfig() (*AppConfiguration, error) {
 		},
 	}
 	fileConstraints := &types.FileUploadConstraints{
-		ImageConstraints:   &imgConstraints,
-		VideoConstraints:   &vidConstraints,
+		ImageConstraints:       &imgConstraints,
+		VideoConstraints:       &vidConstraints,
 		MaxUploadFileSizeLimit: 300 << 20,
 	}
 	appConfig.FileConstraints.Store(fileConstraints)

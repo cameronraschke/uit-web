@@ -5,39 +5,36 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime"
-	"strconv"
 	"sync"
 	"time"
 	config "uit-toolbox/config"
 )
 
 func backgroundProcesses(ctx context.Context, errChan chan error) {
-	log := config.GetLogger()
+	select {
+	case errChan <- fmt.Errorf("background process error, not starting backgound processes"):
+		return
+	default:
+		break
+	}
+	log := config.GetLogger().With(slog.String("func", "backgroundProcesses"))
 	var wg sync.WaitGroup
 	// Start auth map cleanup goroutine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		startAuthMapCleanup(ctx, log, 15*time.Second)
-	}()
-	// Start IP blocklist cleanup goroutine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		startIPBlocklistCleanup(ctx, log, 5*time.Minute)
-	}()
-	// Start IP limiter cleanup goroutine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		startIPLimiterCleanup(ctx, log, 5*time.Minute)
-	}()
-	// Start memory monitor goroutine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		startMemoryMonitor(ctx, log, 4000*1024*1024, 5*time.Second, errChan) // 4GB limit, check every 5s
-	}()
+	wg.Go(func() {
+		startAuthMapCleanup(ctx, log, 20*time.Minute)
+	})
+	// // Start IP blocklist cleanup goroutine
+	// wg.Go(func() {
+	// 	startIPBlocklistCleanup(ctx, log, 5*time.Minute)
+	// })
+	// // Start IP limiter cleanup goroutine
+	// wg.Go(func() {
+	// 	startIPLimiterCleanup(ctx, log, 5*time.Minute)
+	// })
+	// // Start memory monitor goroutine
+	// wg.Go(func() {
+	// 	startMemoryMonitor(ctx, log, 4000*1024*1024, 5*time.Minute, errChan) // 4GB application memory limit
+	// })
 
 	log.Info("Background processes started")
 	wg.Wait() // Wait for all background goroutines to finish
@@ -53,11 +50,11 @@ func startAuthMapCleanup(ctx context.Context, log *slog.Logger, interval time.Du
 			log.Info("Auth map cleanup stopping...")
 			return
 		case <-ticker.C:
-			originalCount := config.GetAuthSessionCount()
+			originalSessionCount := config.GetAuthSessionCount()
 			config.ClearExpiredAuthSessions()
-			sessionCount := config.RefreshAndGetAuthSessionCount()
-			if originalCount != sessionCount {
-				log.Info("(Background) Auth session cleanup done (Sessions: " + strconv.Itoa(int(sessionCount)) + ")")
+			newSessionCount := config.RefreshAndGetAuthSessionCount()
+			if originalSessionCount != newSessionCount {
+				log.Info("(Background) Auth session cleanup done (Sessions: " + fmt.Sprintf("%d", newSessionCount) + ")")
 			}
 		}
 	}

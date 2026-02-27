@@ -100,7 +100,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("DELETE /api/files/images", httpsFullAPIChain.ThenFunc(endpoints.DeleteImage))
 
 	// Static client files
-	httpsRouter.Handle("GET /client/api/configs/uit-client", httpsFullAPIChain.ThenFunc(endpoints.GetClientConfig))
+	httpsRouter.Handle("GET /static/client/configs/uit-client", httpsFullAPIChain.ThenFunc(endpoints.GetClientConfig))
 	httpsRouter.Handle("GET /client/pkg/uit-client", httpsFullAPIChain.ThenFunc(endpoints.WebServerHandler))
 
 	// Login page and assets, no auth required

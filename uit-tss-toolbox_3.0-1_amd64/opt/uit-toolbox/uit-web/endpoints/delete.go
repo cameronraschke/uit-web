@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"uit-toolbox/database"
-	middleware "uit-toolbox/middleware"
+	"uit-toolbox/middleware"
 )
 
 func DeleteImage(w http.ResponseWriter, req *http.Request) {
@@ -34,7 +34,7 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 
 	tag, err := ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
 	if err != nil {
-		log.Warn("Error parsing tagnumber query parameter for DeleteImage: "+err.Error())
+		log.Warn("Error parsing tagnumber query parameter for DeleteImage: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -61,19 +61,19 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 	}
 	imageManifest, err := selectRepo.GetClientImageFilePathFromUUID(ctx, &requestedImageUUID)
 	if err != nil {
-		log.Error("Error retrieving image file path for DeleteImage: "+err.Error())
+		log.Error("Error retrieving image file path for DeleteImage: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	// Check returned file path
 	if imageManifest == nil || imageManifest.FilePath == nil || strings.TrimSpace(*imageManifest.FilePath) == "" {
-		log.Warn("No image found for provided uuid in DeleteImage: "+requestedImageUUID)
+		log.Warn("No image found for provided uuid in DeleteImage: " + requestedImageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 	// Checked that returned tagnumber matches tagnumber from queries
 	if imageManifest.Tagnumber == nil || *imageManifest.Tagnumber != *tag {
-		log.Warn("Tagnumber mismatch for provided uuid in DeleteImage. Expected tagnumber: "+fmt.Sprintf("%d", *imageManifest.Tagnumber)+" provided tagnumber: "+fmt.Sprintf("%d", *tag))
+		log.Warn("Tagnumber mismatch for provided uuid in DeleteImage. Expected tagnumber: " + fmt.Sprintf("%d", *imageManifest.Tagnumber) + " provided tagnumber: " + fmt.Sprintf("%d", *tag))
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -82,7 +82,7 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 	dbFilePath = filepath.Clean(dbFilePath)
 	resolvedFilePath, err := filepath.EvalSymlinks(dbFilePath)
 	if err != nil {
-		log.Error("Error resolving file path for DeleteImage: "+err.Error())
+		log.Error("Error resolving file path for DeleteImage: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -90,23 +90,23 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 	imageFile, err := os.Open(resolvedFilePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Warn("No image file found for provided uuid and tagnumber in DeleteImage: "+requestedImageUUID)
+			log.Warn("No image file found for provided uuid and tagnumber in DeleteImage: " + requestedImageUUID)
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		log.Error("Error reading image file for DeleteImage: "+err.Error())
+		log.Error("Error reading image file for DeleteImage: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	if imageFile == nil {
-		log.Warn("No image found for provided uuid and tagnumber in DeleteImage: "+requestedImageUUID)
+		log.Warn("No image found for provided uuid and tagnumber in DeleteImage: " + requestedImageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 	imageFile.Close()
 
 	if err := os.Remove(resolvedFilePath); err != nil {
-		log.Error("Error deleting image file for DeleteImage: "+err.Error())
+		log.Error("Error deleting image file for DeleteImage: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -117,13 +117,13 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		resolvedThumbnailPath, err := filepath.EvalSymlinks(thumbnailFilePath)
 		thumbnailFile, err := os.Open(resolvedThumbnailPath)
 		if err != nil {
-			log.Error("Error opening thumbnail file for DeleteImage: "+err.Error())
+			log.Error("Error opening thumbnail file for DeleteImage: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 		thumbnailFile.Close()
 		if err := os.Remove(resolvedThumbnailPath); err != nil {
-			log.Error("Error deleting thumbnail file for DeleteImage: "+err.Error())
+			log.Error("Error deleting thumbnail file for DeleteImage: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}

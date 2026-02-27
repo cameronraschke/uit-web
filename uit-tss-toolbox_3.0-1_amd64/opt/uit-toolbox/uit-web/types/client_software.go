@@ -5,7 +5,7 @@ import "time"
 type BiosData struct {
 	Tagnumber   int64  `json:"tagnumber"`
 	BiosVersion string `json:"bios_version"`
-	BiosUpdated *bool   `json:"bios_updated"`
+	BiosUpdated *bool  `json:"bios_updated"`
 	BiosDate    string `json:"bios_date"`
 	TpmVersion  string `json:"tpm_version"`
 }
