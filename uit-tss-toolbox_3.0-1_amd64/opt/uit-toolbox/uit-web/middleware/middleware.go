@@ -1040,13 +1040,11 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 				http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 				return
 			}
-			if updatedSession.SessionTTL <= 2*time.Minute {
-				log.Debug("Auth session TTL is low (" + updatedSession.SessionTTL.String() + "), sending tokens to client: " + reqAddr.String())
-				http.SetCookie(w, updatedSession.SessionCookie)
-				http.SetCookie(w, updatedSession.BasicCookie)
-				http.SetCookie(w, updatedSession.BearerCookie)
-				// http.SetCookie(w, updatedSession.CSRFCookie)
-			}
+			// log.Debug("Auth session TTL is low (" + updatedSession.SessionTTL.String() + "), sending tokens to client: " + reqAddr.String())
+			http.SetCookie(w, updatedSession.SessionCookie)
+			http.SetCookie(w, updatedSession.BasicCookie)
+			http.SetCookie(w, updatedSession.BearerCookie)
+			// http.SetCookie(w, updatedSession.CSRFCookie)
 			next.ServeHTTP(w, req)
 			return
 		}

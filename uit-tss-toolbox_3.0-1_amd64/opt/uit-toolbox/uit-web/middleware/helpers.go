@@ -284,9 +284,6 @@ func UpdateAndGetAuthSession(requestAuthSession *types.AuthSession, extendTTL bo
 		return nil, errors.New("empty session ID in auth session provided to UpdateAndGetAuthSession")
 	}
 	sessionTTL := types.AuthSessionTTL
-	if !extendTTL {
-		sessionTTL = time.Until(curTime.Add(requestAuthSession.SessionTTL))
-	}
 	basicTTL := types.BasicTTL
 	if !extendTTL {
 		basicTTL = time.Until(requestAuthSession.BasicToken.Expiry)
