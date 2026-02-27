@@ -605,7 +605,11 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		return nil, fmt.Errorf("context error: %w", ctx.Err())
 	}
 
-	const sqlQuery = `SELECT 
+	const sqlQuery = `WITH files AS
+	(
+		SELECT COUNT(client_images.tagnumber) AS file_count from client_images WHERE hidden = FALSE AND tagnumber = $1
+	)
+	SELECT 
 		locations.time, 
 		locations.tagnumber, 
 		locations.system_serial, 
@@ -626,12 +630,14 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		locations.client_status, 
 		checkout_log.checkout_date,
 		checkout_log.return_date,
-		locations.note
+		locations.note,
+		COALESCE(files.file_count, 0) AS file_count
 	FROM locations
 	LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber
 	LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
 	LEFT JOIN checkout_log ON locations.tagnumber = checkout_log.tagnumber AND checkout_log.log_entry_time IN (SELECT MAX(log_entry_time) FROM checkout_log WHERE log_entry_time IS NOT NULL GROUP BY tagnumber)
 	LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
+	LEFT JOIN client_images ON locations.tagnumber = client_images.tagnumber
 	WHERE (locations.tagnumber = $1 OR locations.system_serial = $2)
 	ORDER BY locations.time DESC NULLS LAST
 	LIMIT 1;`
@@ -663,6 +669,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		&inventoryUpdate.CheckoutDate,
 		&inventoryUpdate.ReturnDate,
 		&inventoryUpdate.Note,
+		&inventoryUpdate.ImageCount,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil

@@ -433,7 +433,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 			imageManifest.FileSize = &metadataFileSize
 
 			// If an image
-			if _, ok := fileConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[fileExtension]; ok {
+			if _, ok := fileConstraints.ImageConstraints.AcceptedImageExtensionsAndMimeTypes[fileExtension]; ok {
 				// Check file size from metadata
 				if metadataFileSize < fileConstraints.ImageConstraints.MinFileSize || metadataFileSize > fileConstraints.ImageConstraints.MaxFileSize {
 					log.Warn("Image file size is out of bounds for file '" + fileUUID + "' in GetClientImagesManifest: File size: " + fmt.Sprintf("%d", metadataFileSize))
@@ -484,17 +484,17 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 
 			if _, ok := fileConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[fileExtension]; ok { // If a video file
 				// Check file size from metadata
-				if metadataFileSize < fileConstraints.VideoConstraints.MinFileSize || metadataFileSize > fileConstraints.ImageConstraints.MaxFileSize {
+				if metadataFileSize < fileConstraints.VideoConstraints.MinFileSize || metadataFileSize > fileConstraints.VideoConstraints.MaxFileSize {
 					log.Warn("Video file size is out of bounds in GetClientImagesManifest: " + filePath + " -> File size: " + fmt.Sprintf("%d", metadataFileSize))
 					return false
 				}
 
-				videoBytes, err := io.ReadAll(io.LimitReader(file, fileConstraints.ImageConstraints.MaxFileSize+1))
+				videoBytes, err := io.ReadAll(io.LimitReader(file, fileConstraints.VideoConstraints.MaxFileSize+1))
 				if err != nil {
 					log.Warn("Error reading video file in GetClientImagesManifest: " + filePath + " " + err.Error())
 					return false
 				}
-				if len(videoBytes) > int(fileConstraints.ImageConstraints.MaxFileSize) {
+				if len(videoBytes) > int(fileConstraints.VideoConstraints.MaxFileSize) {
 					log.Warn("Video file size exceeds maximum after reading in GetClientImagesManifest: " + filePath + " -> File size: " + fmt.Sprintf("%d", len(videoBytes)))
 					return false
 				}

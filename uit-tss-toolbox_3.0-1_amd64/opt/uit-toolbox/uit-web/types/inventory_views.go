@@ -48,4 +48,5 @@ type InventoryFormPrefill struct {
 	CheckoutDate       *time.Time `json:"checkout_date"`
 	ReturnDate         *time.Time `json:"return_date"`
 	Note               *string    `json:"note"`
+	FileCount          *int64     `json:"file_count"`
 }
