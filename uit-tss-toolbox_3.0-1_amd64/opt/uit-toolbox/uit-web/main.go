@@ -125,7 +125,7 @@ func main() {
 			}
 		}()
 		log.Info("Starting background processes...")
-		backgroundProcesses(ctx, errChan)
+		backgroundProcesses(ctx)
 	})
 
 	// Wait for shutdown signal
