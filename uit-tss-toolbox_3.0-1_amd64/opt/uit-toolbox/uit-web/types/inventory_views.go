@@ -2,13 +2,30 @@ package types
 
 import "time"
 
-type AuthFormData struct {
-	Username      string `json:"username"`
-	Password      string `json:"password"`
-	ReturnedToken string `json:"token,omitempty"`
+type InventoryTableDBRow struct {
+	Tagnumber           *int64     `json:"tagnumber"`
+	SystemSerial        *string    `json:"system_serial"`
+	Location            *string    `json:"location"`
+	LocationFormatted   *string    `json:"location_formatted"`
+	Building            *string    `json:"building"`
+	Room                *string    `json:"room"`
+	SystemManufacturer  *string    `json:"system_manufacturer"`
+	SystemModel         *string    `json:"system_model"`
+	DeviceType          *string    `json:"device_type"`
+	DeviceTypeFormatted *string    `json:"device_type_formatted"`
+	Department          *string    `json:"department_name"`
+	DepartmentFormatted *string    `json:"department_formatted"`
+	Domain              *string    `json:"ad_domain"`
+	DomainFormatted     *string    `json:"ad_domain_formatted"`
+	OsInstalled         *bool      `json:"os_installed"`
+	OsName              *string    `json:"os_name"`
+	Status              *string    `json:"status"`
+	Broken              *bool      `json:"is_broken"`
+	Note                *string    `json:"note"`
+	LastUpdated         *time.Time `json:"last_updated"`
 }
 
-type InventoryUpdate struct {
+type InventoryFormPrefill struct {
 	Time               *time.Time `json:"time"`
 	Tagnumber          *int64     `json:"tagnumber"`
 	SystemSerial       *string    `json:"system_serial"`

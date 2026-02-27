@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+type AuthRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type BasicToken struct {
 	Token     string        `json:"token"`
 	Expiry    time.Time     `json:"expiry"`

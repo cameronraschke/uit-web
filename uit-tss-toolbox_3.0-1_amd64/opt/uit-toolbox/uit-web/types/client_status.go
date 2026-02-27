@@ -34,9 +34,4 @@ type ClientBatteryHealth struct {
 	BatteryChargeCycles int64     `json:"chargeCycles"`
 }
 
-type ClientReport struct {
-	Tagnumber              int64     `json:"tagnumber"`
-	BatteryHealthPcnt      float64   `json:"battery_health_pcnt"`
-	BatteryHealthStdDev    float64   `json:"battery_health_stddev"`
-	BatteryHealthTimestamp time.Time `json:"battery_health_timestamp"`
-}
+

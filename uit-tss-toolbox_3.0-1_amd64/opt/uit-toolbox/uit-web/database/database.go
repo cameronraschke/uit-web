@@ -216,7 +216,7 @@ func CreateAdminUser() error {
 	return nil
 }
 
-func ConvertInventoryTableDataToCSV(ctx context.Context, dbQueryData []types.InventoryTableData) (*bytes.Buffer, error) {
+func ConvertInventoryTableDataToCSV(ctx context.Context, dbQueryData []types.InventoryTableDBRow) (*bytes.Buffer, error) {
 	if len(dbQueryData) == 0 {
 		return nil, fmt.Errorf("dbQueryData is nil in ConvertInventoryTableDataToCSV")
 	}

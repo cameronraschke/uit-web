@@ -86,7 +86,7 @@ func GetAllTags(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	allTags, err := db.AllTags(ctx)
+	allTags, err := db.GetAllTags(ctx)
 	if err != nil {
 		log.Warn("Query error in GetAllTags: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)

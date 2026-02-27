@@ -11,7 +11,7 @@ import (
 )
 
 type Select interface {
-	AllTags(ctx context.Context) ([]int64, error)
+	GetAllTags(ctx context.Context) ([]int64, error)
 	GetDepartments(ctx context.Context) ([]types.Department, error)
 	GetDomains(ctx context.Context) ([]types.Domain, error)
 	GetManufacturersAndModels(ctx context.Context) ([]types.ManufacturersAndModels, error)
@@ -24,13 +24,13 @@ type Select interface {
 	GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error)
 	GetAvailableJobs(ctx context.Context, tag *int64) (*types.AvailableJobs, error)
 	GetJobQueueOverview(ctx context.Context) (*types.JobQueueOverview, error)
-	GetNotes(ctx context.Context, noteType *string) (*types.NotesTable, error)
+	GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteRow, error)
 	GetDashboardInventorySummary(ctx context.Context) ([]types.DashboardInventorySummary, error)
-	GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryUpdate, error)
+	GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryFormPrefill, error)
 	GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifest, error)
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
 	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifest, error)
-	GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableData, error)
+	GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableDBRow, error)
 	GetClientBatteryHealth(ctx context.Context, tagnumber *int64) (*types.ClientBatteryHealth, error)
 	GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRow, error)
 	GetBatteryStandardDeviation(ctx context.Context) ([]types.ClientReport, error)
@@ -56,7 +56,7 @@ func NewSelectRepo() (Select, error) {
 
 var _ Select = (*SelectRepo)(nil)
 
-func (repo *SelectRepo) AllTags(ctx context.Context) ([]int64, error) {
+func (repo *SelectRepo) GetAllTags(ctx context.Context) ([]int64, error) {
 	const sqlQuery = `SELECT tagnumber FROM (SELECT tagnumber, time, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS
 		row_nums FROM locations WHERE tagnumber IS NOT NULL) t1 WHERE t1.row_nums = 1 ORDER BY t1.time DESC;`
 
@@ -66,12 +66,12 @@ func (repo *SelectRepo) AllTags(ctx context.Context) ([]int64, error) {
 	}
 	defer rows.Close()
 
-	var allTags []types.AllTags
+	var allTags []types.AllTagsRow
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var tag types.AllTags
+		var tag types.AllTagsRow
 		if err := rows.Scan(&tag.Tagnumber); err != nil {
 			return nil, fmt.Errorf("error scanning row: %w", err)
 		}
@@ -498,7 +498,7 @@ func (repo *SelectRepo) GetJobQueueOverview(ctx context.Context) (*types.JobQueu
 	return &jobQueueOverview, nil
 }
 
-func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*types.NotesTable, error) {
+func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteRow, error) {
 	if noteType == nil || strings.TrimSpace(*noteType) == "" {
 		return nil, fmt.Errorf("noteType is nil or empty")
 	}
@@ -512,19 +512,19 @@ func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*types.
 		WHERE note_type = $1 
 		ORDER BY time DESC NULLS LAST LIMIT 1;`
 
-	var notesTable types.NotesTable
+	var generalNoteRow types.GeneralNoteRow
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullString(noteType))
 	if err := row.Scan(
-		&notesTable.Time,
-		&notesTable.NoteType,
-		&notesTable.Note,
+		&generalNoteRow.Time,
+		&generalNoteRow.NoteType,
+		&generalNoteRow.Note,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("error during row scan: %w", err)
 	}
-	return &notesTable, nil
+	return &generalNoteRow, nil
 }
 
 func (repo *SelectRepo) GetDashboardInventorySummary(ctx context.Context) ([]types.DashboardInventorySummary, error) {
@@ -596,7 +596,7 @@ func (repo *SelectRepo) GetDashboardInventorySummary(ctx context.Context) ([]typ
 	return dashboardInventorySummary, nil
 }
 
-func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryUpdate, error) {
+func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryFormPrefill, error) {
 	if tag == nil && (serial == nil || strings.TrimSpace(*serial) == "") {
 		return nil, fmt.Errorf("either tag or serial must be provided")
 	}
@@ -640,7 +640,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		ptrToNullString(serial),
 	)
 
-	inventoryUpdate := new(types.InventoryUpdate)
+	inventoryUpdate := new(types.InventoryFormPrefill)
 	if err := row.Scan(
 		&inventoryUpdate.Time,
 		&inventoryUpdate.Tagnumber,
@@ -782,7 +782,7 @@ func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumb
 	return imageManifests, nil
 }
 
-func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableData, error) {
+func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableDBRow, error) {
 	if filterOptions == nil {
 		return nil, fmt.Errorf("filterOptions cannot be nil")
 	}
@@ -836,12 +836,12 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 	}
 	defer rows.Close()
 
-	results := make([]types.InventoryTableData, 0, approxClientCount)
+	results := make([]types.InventoryTableDBRow, 0, approxClientCount)
 	for rows.Next() {
 		if err := ctx.Err(); err != nil {
 			return nil, fmt.Errorf("context error: %w", err)
 		}
-		var row types.InventoryTableData
+		var row types.InventoryTableDBRow
 		if err := rows.Scan(
 			&row.Tagnumber,
 			&row.SystemSerial,

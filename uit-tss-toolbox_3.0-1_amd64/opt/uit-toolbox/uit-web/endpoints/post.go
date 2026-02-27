@@ -82,7 +82,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Unmarshal JSON from base64 bytes
-	clientFormAuthData := new(types.AuthFormData)
+	clientFormAuthData := new(types.AuthRequest)
 	if err := json.Unmarshal(base64Decoded, clientFormAuthData); err != nil {
 		log.Warn("Cannot unmarshal JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)

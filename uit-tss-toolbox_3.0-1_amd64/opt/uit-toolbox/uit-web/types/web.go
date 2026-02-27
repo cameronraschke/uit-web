@@ -13,7 +13,7 @@ type ClientLookup struct {
 	SystemSerial *string `json:"system_serial"`
 }
 
-type NotesTable struct {
+type GeneralNoteRow struct {
 	Time     *time.Time `json:"time"`
 	NoteType *string    `json:"note_type"`
 	Note     *string    `json:"note"`

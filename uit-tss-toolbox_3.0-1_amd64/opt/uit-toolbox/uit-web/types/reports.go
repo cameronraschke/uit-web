@@ -15,7 +15,7 @@ type DashboardInventorySummary struct {
 	AvailableForCheckout *int64  `json:"available_for_checkout"`
 }
 
-type AllTags struct {
+type AllTagsRow struct {
 	Tagnumber          *int64     `json:"tagnumber"`
 	LastInventoryEntry *time.Time `json:"last_inventory_entry"`
 	LastSeen           *time.Time `json:"last_seen"`
@@ -55,4 +55,11 @@ type AllLocations struct {
 	Location          *string    `json:"location"`
 	LocationFormatted *string    `json:"location_formatted"`
 	LocationCount     *int64     `json:"location_count"`
+}
+
+type ClientReport struct {
+	Tagnumber              int64     `json:"tagnumber"`
+	BatteryHealthPcnt      float64   `json:"battery_health_pcnt"`
+	BatteryHealthStdDev    float64   `json:"battery_health_stddev"`
+	BatteryHealthTimestamp time.Time `json:"battery_health_timestamp"`
 }
