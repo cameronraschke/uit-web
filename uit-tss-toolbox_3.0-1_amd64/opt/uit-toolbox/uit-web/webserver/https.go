@@ -81,7 +81,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/overview/all_locations", httpsFullAPIChain.ThenFunc(endpoints.GetAllLocations))
 	httpsRouter.Handle("GET /api/overview/all_statuses", httpsFullAPIChain.ThenFunc(endpoints.GetAllStatuses))
 	httpsRouter.Handle("GET /api/overview/all_device_types", httpsFullAPIChain.ThenFunc(endpoints.GetAllDeviceTypes))
-	httpsRouter.Handle("GET /api/client/overview", httpsFullAPIChain.ThenFunc(endpoints.FetchClientHardwareOverview))
+	httpsRouter.Handle("GET /api/client/hardware", httpsFullAPIChain.ThenFunc(endpoints.FetchClientHardwareData))
 
 	// API POST endpoints
 	httpsRouter.Handle("POST /api/overview/note", httpsFullAPIChain.ThenFunc(endpoints.InsertNewNote))
@@ -96,6 +96,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("POST /api/client/network/usage", httpsFullAPIChain.ThenFunc(endpoints.SetClientNetworkUsage))
 	httpsRouter.Handle("POST /api/client/uptime", httpsFullAPIChain.ThenFunc(endpoints.SetClientUptime))
 	httpsRouter.Handle("POST /api/client/health/last_hardware_check", httpsFullAPIChain.ThenFunc(endpoints.SetClientLastHardwareCheck))
+	httpsRouter.Handle("POST /api/client/hardware", httpsFullAPIChain.ThenFunc(endpoints.SetClientHardwareData))
 
 	// API DELETE endpoints
 	httpsRouter.Handle("DELETE /api/files/images", httpsFullAPIChain.ThenFunc(endpoints.DeleteImage))

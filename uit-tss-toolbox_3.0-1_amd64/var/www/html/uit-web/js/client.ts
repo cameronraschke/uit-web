@@ -10,7 +10,7 @@ type BatteryHealth = {
 
 async function fetchClientData(): Promise<BatteryHealth[]> {
 	let url = '';
-	const path = '/api/client/overview';
+	const path = '/api/client/hardware';
 	const params = new URLSearchParams(window.location.search);
 	const tagnumber = params.get('tagnumber');
 	if (!tagnumber) {

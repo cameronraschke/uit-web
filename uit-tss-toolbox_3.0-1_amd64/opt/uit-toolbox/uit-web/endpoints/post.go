@@ -824,7 +824,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	clientHardwareData := types.MapInventoryUpdateDomainToHardwareWriteModel(transactionUUID, inventoryDomain)
-	if err := updateRepo.UpdateClientHardwareData(ctx, transactionUUID, clientHardwareData); err != nil {
+	if err := updateRepo.UpdateInventoryHardwareData(ctx, transactionUUID, clientHardwareData); err != nil {
 		log.Error("Failed to update inventory hardware info: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
@@ -1083,4 +1083,39 @@ func SetClientLastHardwareCheck(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	middleware.WriteJson(w, http.StatusOK, "Client last hardware check updated successfully")
+}
+
+func SetClientHardwareData(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "SetClientHardwareData"))
+	clientBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Cannot read request body for SetClientHardwareData: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	var hardwareData types.ClientHardwareView
+	if err := json.Unmarshal(clientBody, &hardwareData); err != nil {
+		log.Warn("Cannot decode SetClientHardwareData JSON: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if err := types.IsTagnumberInt64Valid(hardwareData.Tagnumber); err != nil {
+		log.Warn("Invalid tagnumber: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	updateRepo, err := database.NewUpdateRepo()
+	if err != nil {
+		log.Error("No database connection available for SetClientHardwareData")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	transactionUUID := uuid.New()
+	if err = updateRepo.UpdateClientHardwareData(ctx, transactionUUID, &hardwareData); err != nil {
+		log.Error("Failed to update client hardware data: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, "Client hardware data updated successfully")
 }

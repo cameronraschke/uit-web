@@ -953,9 +953,9 @@ func GetAllDeviceTypes(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, allDeviceTypes)
 }
 
-func FetchClientHardwareOverview(w http.ResponseWriter, req *http.Request) {
+func FetchClientHardwareData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "FetchClientHardwareOverview"))
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "FetchClientHardwareData"))
 	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
 		log.Warn("Error retrieving query parameters from context: " + err.Error())

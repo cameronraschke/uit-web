@@ -18,7 +18,7 @@ type Update interface {
 	InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdate *types.InventoryLocationWriteModel) (err error)
 	UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.InventoryClientHealthWriteModel) (err error)
 	InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID, checkoutData *types.InventoryCheckoutWriteModel) (err error)
-	UpdateClientHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.InventoryHardwareWriteModel) (err error)
+	UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.InventoryHardwareWriteModel) (err error)
 	UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *types.ImageManifest) (err error)
 	HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	DeleteClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
@@ -32,6 +32,7 @@ type Update interface {
 	UpdateClientNetworkUsage(ctx context.Context, networkData *types.NetworkData) (err error)
 	UpdateClientUptime(ctx context.Context, uptimeData *types.ClientUptime) (err error)
 	UpdateClientLastHardwareCheck(ctx context.Context, tagnumber int64, lastCheck time.Time) (err error)
+	UpdateClientHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.ClientHardwareView) (err error)
 }
 
 type UpdateRepo struct {
@@ -183,7 +184,7 @@ func (updateRepo *UpdateRepo) InsertClientCheckoutsUpdate(ctx context.Context, t
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.InventoryHardwareWriteModel) (err error) {
+func (updateRepo *UpdateRepo) UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.InventoryHardwareWriteModel) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
 		return fmt.Errorf("generated transaction UUID is nil")
 	}
@@ -843,5 +844,32 @@ func (updateRepo *UpdateRepo) UpdateClientLastHardwareCheck(ctx context.Context,
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return fmt.Errorf("error while checking rows affected on client_health table update: %w", err)
 	}
+	return nil
+}
+
+func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.ClientHardwareView) (err error) {
+	if hardwareData == nil || hardwareData.Tagnumber == nil || transactionUUID == uuid.Nil {
+		return fmt.Errorf("hardwareData is invalid")
+	}
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning DB transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	const hardwareDataTable = `INSERT INTO 
+	`
+
+	const historicalHardwareDataTable = ``
+
 	return nil
 }
