@@ -188,12 +188,19 @@ async function fetchJobQueueData() : Promise<JobQueueTableRow[] | []> {
 	}
 }
 
-function renderJobQueueTable(data: JobQueueTableRow[]) {
+async function renderJobQueueTable(data: JobQueueTableRow[]) {
 	if (!data || !Array.isArray(data) || data.length === 0) {
 		console.warn('No job queue data to render.');
 		return;
 	}
 	if (!onlineClientsDiv || !offlineClientsDiv) return;
+
+	let jobs: AllJobs[] = [];
+	try {
+		jobs = await fetchAllJobs();
+	} catch (error) {
+		console.error('Error fetching jobs for table render:', error);
+	}
 
 	const onlineTableFragment = document.createDocumentFragment();
 	const offlineTableFragment = document.createDocumentFragment();
@@ -232,7 +239,7 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 		manufacturerModel.textContent = `Manufacturer/Model: ${entry.system_manufacturer || 'N/A'} - ${entry.system_model || 'N/A'}`;
 		clientIdentifiers.appendChild(manufacturerModel);
 		const location = document.createElement('p');
-		location.textContent = `Location: ${entry.location || 'N/A'}`;
+		location.textContent = `Location: '${entry.location || 'N/A'}'`;
 		clientIdentifiers.appendChild(location);
 		const department = document.createElement('p');
 		department.textContent = `Department: ${entry.department_name || 'N/A'}`;
@@ -288,25 +295,23 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 		const jobSelectContainer = document.createElement('div');
 		jobSelectContainer.classList.add('flex-container', 'horizontal');
 		const jobSelect = document.createElement('select');
-		fetchAllJobs().then(jobs => {
-			const defaultOption = document.createElement('option');
-			defaultOption.value = '';
-			defaultOption.textContent = 'Select job to queue';
-			defaultOption.disabled = true;
-			defaultOption.selected = true;
-			jobSelect.appendChild(defaultOption);
-			for (const job of jobs) {
-				if (job.job_hidden) {
-					continue;
-				}
-				const option = document.createElement('option');
-				option.value = job.job_name;
-				option.textContent = job.job_name_readable;
-				jobSelect.appendChild(option);
+		
+		const defaultOption = document.createElement('option');
+		defaultOption.value = '';
+		defaultOption.textContent = 'Select job to queue';
+		defaultOption.disabled = true;
+		defaultOption.selected = true;
+		jobSelect.appendChild(defaultOption);
+		for (const job of jobs) {
+			if (job.job_hidden) {
+				continue;
 			}
-		}).catch(error => {
-			console.error('Error fetching all jobs for select dropdown:', error);
-		});
+			const option = document.createElement('option');
+			option.value = job.job_name;
+			option.textContent = job.job_name_readable;
+			jobSelect.appendChild(option);
+		}
+		
 		jobInfoContainer.appendChild(jobSelect);
 		
 		const queueJobButton = document.createElement('button');
@@ -458,13 +463,13 @@ async function initializeJobQueuePage() {
 
 	// Initial fetch and set interval for realtime updates
 	const jobTable = await fetchJobQueueData();
-	renderJobQueueTable(jobTable);
+	await renderJobQueueTable(jobTable);
 	if (jobQueueInterval) {
 		clearInterval(jobQueueInterval);
 	}
 	jobQueueInterval = setInterval(async () => {
 		const jobTable = await fetchJobQueueData();
-		renderJobQueueTable(jobTable);
+		await renderJobQueueTable(jobTable);
 	}, 10000);
 }
 

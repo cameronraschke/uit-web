@@ -836,10 +836,12 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	checkoutData := types.MapInventoryUpdateDomainToCheckoutWriteModel(transactionUUID, inventoryDomain)
-	if err := updateRepo.InsertClientCheckoutsUpdate(ctx, transactionUUID, checkoutData); err != nil {
-		log.Error("Failed to update inventory checkout info: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
+	if checkoutData != nil {
+		if err := updateRepo.InsertClientCheckoutsUpdate(ctx, transactionUUID, checkoutData); err != nil {
+			log.Error("Failed to update inventory checkout info: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	var jsonResponse = struct {

@@ -834,8 +834,8 @@ func (updateRepo *UpdateRepo) UpdateClientLastHardwareCheck(ctx context.Context,
 		ON CONFLICT (tagnumber) DO UPDATE SET last_hardware_check = EXCLUDED.last_hardware_check;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		ptrToNullTime(&lastCheck),
 		ptrToNullInt64(&tagnumber),
+		ptrToNullTime(&lastCheck),
 	)
 	if err != nil {
 		return fmt.Errorf("error updating last hardware check time: %w", err)
