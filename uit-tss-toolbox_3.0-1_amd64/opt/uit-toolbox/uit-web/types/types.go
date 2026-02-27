@@ -72,6 +72,6 @@ type JobQueueTableRow struct {
 }
 
 type Note struct {
-	NoteType string `json:"note_type"`
-	Content  string `json:"note"`
+	NoteType *string `json:"note_type"`
+	Content  *string `json:"note"`
 }

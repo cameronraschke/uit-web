@@ -145,7 +145,7 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdate(ctx context.Context, transac
 		ptrToNullBool(inventoryUpdate.Broken),
 		ptrToNullBool(inventoryUpdate.DiskRemoved),
 		ptrToNullString(inventoryUpdate.ClientStatus),
-		toNullString(inventoryUpdate.Note),
+		ptrToNullString(inventoryUpdate.Note),
 	)
 	if err != nil {
 		return fmt.Errorf("error inserting location data: %w", err)
@@ -196,7 +196,7 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdate(ctx context.Context, transac
 	var clientHealthResult sql.Result
 	clientHealthResult, err = tx.ExecContext(ctx, clientHealthSql,
 		ptrToNullInt64(inventoryUpdate.Tagnumber),
-		toNullTime(inventoryUpdate.LastHardwareCheck),
+		ptrToNullTime(inventoryUpdate.LastHardwareCheck),
 		transactionUUID,
 	)
 	if err != nil {

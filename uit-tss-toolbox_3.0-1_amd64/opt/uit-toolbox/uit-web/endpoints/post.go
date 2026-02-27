@@ -396,12 +396,17 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	}
 	defer req.Body.Close()
 
-	if utf8.RuneCountInString(strings.TrimSpace(newNote.NoteType)) <= htmlFormConstraints.GeneralNote.NoteTypeMinChars || utf8.RuneCountInString(newNote.NoteType) > htmlFormConstraints.GeneralNote.NoteTypeMaxChars {
+	if newNote.NoteType == nil || newNote.Content == nil {
+		log.Warn("Note type or content is nil, not inserting new note")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(*newNote.NoteType)) <= htmlFormConstraints.GeneralNote.NoteTypeMinChars || utf8.RuneCountInString(*newNote.NoteType) > htmlFormConstraints.GeneralNote.NoteTypeMaxChars {
 		log.Warn("Note type outside of valid length range, not inserting new note")
 		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
 	}
-	if utf8.RuneCountInString(strings.TrimSpace(newNote.Content)) < htmlFormConstraints.GeneralNote.NoteContentMinChars || utf8.RuneCountInString(newNote.Content) > htmlFormConstraints.GeneralNote.NoteContentMaxChars {
+	if utf8.RuneCountInString(strings.TrimSpace(*newNote.Content)) < htmlFormConstraints.GeneralNote.NoteContentMinChars || utf8.RuneCountInString(*newNote.Content) > htmlFormConstraints.GeneralNote.NoteContentMaxChars {
 		log.Warn("Note content outside of valid length range, not inserting new note")
 		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
@@ -415,7 +420,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	curTime := time.Now()
-	err = insertRepo.InsertNewNote(ctx, &curTime, &newNote.NoteType, &newNote.Content)
+	err = insertRepo.InsertNewNote(ctx, &curTime, newNote.NoteType, newNote.Content)
 	if err != nil {
 		log.Error("Failed to insert new note: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -708,9 +713,9 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Last hardware check (optional, process as UTC)
-	if !inventoryUpdate.LastHardwareCheck.IsZero() {
+	if inventoryUpdate.LastHardwareCheck != nil && !inventoryUpdate.LastHardwareCheck.IsZero() {
 		lastHardwareCheckUTC := inventoryUpdate.LastHardwareCheck.UTC()
-		inventoryUpdate.LastHardwareCheck = lastHardwareCheckUTC
+		inventoryUpdate.LastHardwareCheck = &lastHardwareCheckUTC
 	} else {
 		log.Info("No last_hardware_check date provided")
 	}
@@ -765,13 +770,13 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Note (optional)
-	if inventoryUpdate.Note != "" {
-		if utf8.RuneCountInString(strings.TrimSpace(inventoryUpdate.Note)) < htmlFormConstraints.InventoryForm.ClientNoteMinChars || utf8.RuneCountInString(inventoryUpdate.Note) > htmlFormConstraints.InventoryForm.ClientNoteMaxChars {
+	if inventoryUpdate.Note != nil {
+		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Note)) < htmlFormConstraints.InventoryForm.ClientNoteMinChars || utf8.RuneCountInString(*inventoryUpdate.Note) > htmlFormConstraints.InventoryForm.ClientNoteMaxChars {
 			log.Warn("Invalid note length")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
-		if !middleware.IsPrintableUnicodeString(inventoryUpdate.Note) {
+		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.Note) {
 			log.Warn("Non-printable characters in note field")
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
