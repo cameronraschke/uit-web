@@ -30,7 +30,7 @@ type Select interface {
 	GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifest, error)
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
 	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifest, error)
-	GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableDBRow, error)
+	GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableRow, error)
 	GetClientBatteryHealth(ctx context.Context, tagnumber *int64) (*types.ClientBatteryHealth, error)
 	GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRow, error)
 	GetBatteryStandardDeviation(ctx context.Context) ([]types.ClientReport, error)
@@ -790,16 +790,19 @@ func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumb
 	return imageManifests, nil
 }
 
-func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableDBRow, error) {
+func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableRow, error) {
 	if filterOptions == nil {
 		return nil, fmt.Errorf("filterOptions cannot be nil")
 	}
 
-	const sqlQuery = `SELECT locations.tagnumber, locations.system_serial, locations.location, 
+	const sqlQuery = `WITH files AS (
+		SELECT COUNT(tagnumber) AS file_count from client_images WHERE hidden = FALSE AND tagnumber = $1
+	)
+	SELECT locations.tagnumber, locations.system_serial, locations.location, 
 		locationFormatting(locations.location) AS location_formatted, locations.building, locations.room,
 		hardware_data.system_manufacturer, hardware_data.system_model, hardware_data.device_type, static_device_types.device_type_formatted, locations.department_name, static_department_info.department_name_formatted,
 		locations.ad_domain, static_ad_domains.domain_name_formatted, client_health.os_installed, client_health.os_name, static_client_statuses.status_formatted,
-		locations.is_broken, locations.note, locations.time AS last_updated
+		locations.is_broken, locations.note, locations.time AS last_updated, files.file_count
 		FROM locations
 		LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber
 		LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
@@ -807,6 +810,7 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 		LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
 		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status
 		LEFT JOIN static_device_types ON hardware_data.device_type = static_device_types.device_type
+		CROSS JOIN files
 		WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 		AND ($1::bigint IS NULL OR locations.tagnumber = $1)
 		AND ($2::text IS NULL OR locations.system_serial = $2)
@@ -844,12 +848,12 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 	}
 	defer rows.Close()
 
-	results := make([]types.InventoryTableDBRow, 0, approxClientCount)
+	results := make([]types.InventoryTableRow, 0, approxClientCount)
 	for rows.Next() {
 		if err := ctx.Err(); err != nil {
 			return nil, fmt.Errorf("context error: %w", err)
 		}
-		var row types.InventoryTableDBRow
+		var row types.InventoryTableRow
 		if err := rows.Scan(
 			&row.Tagnumber,
 			&row.SystemSerial,
@@ -871,6 +875,7 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 			&row.Broken,
 			&row.Note,
 			&row.LastUpdated,
+			&row.FileCount,
 		); err != nil {
 			return nil, fmt.Errorf("query error: %w", err)
 		}

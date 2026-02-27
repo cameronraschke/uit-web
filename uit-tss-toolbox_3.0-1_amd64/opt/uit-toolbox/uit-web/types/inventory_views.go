@@ -2,7 +2,7 @@ package types
 
 import "time"
 
-type InventoryTableDBRow struct {
+type InventoryTableRow struct {
 	Tagnumber           *int64     `json:"tagnumber"`
 	SystemSerial        *string    `json:"system_serial"`
 	Location            *string    `json:"location"`
@@ -23,6 +23,7 @@ type InventoryTableDBRow struct {
 	Broken              *bool      `json:"is_broken"`
 	Note                *string    `json:"note"`
 	LastUpdated         *time.Time `json:"last_updated"`
+	FileCount           *int64     `json:"file_count"`
 }
 
 type InventoryFormPrefill struct {

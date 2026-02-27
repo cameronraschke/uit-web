@@ -138,7 +138,7 @@ function initializeAdvSearchListeners(filterEl: HTMLSelectElement, resetEl: HTML
 	});
 }
 
-async function fetchFilteredInventoryData(csvDownload = false): Promise<InventoryRow[] | null> {
+async function fetchFilteredInventoryData(csvDownload = false): Promise<InventoryTableRow[] | null> {
 	const currentParams = new URLSearchParams(window.location.search);
 
 	const apiQuery = new URLSearchParams(currentParams); // API query parameters
@@ -154,7 +154,7 @@ async function fetchFilteredInventoryData(csvDownload = false): Promise<Inventor
 	}
 
 	try {
-		const jsonResponse: InventoryRow[] | null = await fetchData(`/api/overview/inventory_table?${apiQuery.toString()}`, false);
+		const jsonResponse: InventoryTableRow[] | null = await fetchData(`/api/overview/inventory_table?${apiQuery.toString()}`, false);
 		if (jsonResponse === null) console.warn("No data returned from /api/overview/inventory_table");
 		return jsonResponse;
 	} catch (error) {

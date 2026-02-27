@@ -23,6 +23,7 @@ type InventoryForm = {
 	checkout_date: Date | null;
 	return_date: Date | null;
 	note: string | null;
+	file_count: number | null;
 };
 
 type Department = {
@@ -463,6 +464,8 @@ function showInventoryUpdateChanges(): void {
 }
 
 async function populateLocationForm(tag?: number, serial?: string): Promise<void> {
+	clientViewPhotos.textContent = "View Photos";
+	clientViewPhotos.style.display = "none";
 	// reset/zero/clear out all fields before processing new data
 	resetInputElement(clientLookupTagInput, "Enter Tag Number", false, undefined);
 	clientLookupTagInput.value = clientLookupTagInput.dataset.initialValue || "";
@@ -615,6 +618,9 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				lastUpdateTime.style.display = "block";
 			}
 		
+			clientViewPhotos.style.display = "inline-block";
+			if (locationFormData.file_count !== null) clientViewPhotos.textContent = `View Photos (${locationFormData.file_count})`;
+
 			if (locationFormData.tagnumber) {
 				clientLookupTagInput.value = locationFormData.tagnumber.toString();
 				clientLookupTagInput.classList.remove("empty-required-input");

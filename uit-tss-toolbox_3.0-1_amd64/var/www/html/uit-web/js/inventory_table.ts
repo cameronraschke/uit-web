@@ -1,4 +1,4 @@
-type InventoryRow = {
+type InventoryTableRow = {
 	tagnumber: number | 0;
 	system_serial: string | "";
 	location_formatted: string | "";
@@ -14,6 +14,7 @@ type InventoryRow = {
 	is_broken: boolean | null;
 	note: string | "";
 	last_updated: string | "";
+	file_count: number | null;
 };
 
 // Table elements
@@ -23,27 +24,27 @@ const inventoryTableSearch = document.getElementById('inventory-table-search') a
 const inventoryTableSortBy = document.getElementById('inventory-table-sort-by') as HTMLSelectElement;
 let inventoryTableSearchDebounce: ReturnType<typeof setTimeout> | null = null;
 
-function createManufacturerModelCell(jsonRow: InventoryRow) {
+function createManufacturerModelCell(inventoryRow: InventoryTableRow) {
   const cell = document.createElement('td');
   
-  if (!jsonRow.system_manufacturer || !jsonRow.system_model) {
+  if (!inventoryRow.system_manufacturer || !inventoryRow.system_model) {
     cell.textContent = 'N/A';
     return cell;
   }
   
-  cell.dataset.system_manufacturer = jsonRow.system_manufacturer;
-  cell.dataset.system_model = jsonRow.system_model;
+  cell.dataset.system_manufacturer = inventoryRow.system_manufacturer;
+  cell.dataset.system_model = inventoryRow.system_model;
   
-	if (jsonRow.system_manufacturer === null) {
-		jsonRow.system_manufacturer = 'Unknown Manufacturer';
-	} else if (jsonRow.system_model === null) {
-		jsonRow.system_model = 'Unknown Model';
+	if (inventoryRow.system_manufacturer === null) {
+		inventoryRow.system_manufacturer = 'Unknown Manufacturer';
+	} else if (inventoryRow.system_model === null) {
+		inventoryRow.system_model = 'Unknown Model';
 	}
 
-  const fullText = `${jsonRow.system_manufacturer}/${jsonRow.system_model}`;
+  const fullText = `${inventoryRow.system_manufacturer}/${inventoryRow.system_model}`;
   
   if (fullText.length > 30) {
-    const truncated = `${jsonRow.system_manufacturer.substring(0, 10)}.../${jsonRow.system_model.substring(0, 17)}...`;
+    const truncated = `${inventoryRow.system_manufacturer.substring(0, 10)}.../${inventoryRow.system_model.substring(0, 17)}...`;
     cell.textContent = truncated;
     cell.title = fullText;
     cell.style.cursor = 'pointer';
@@ -62,18 +63,18 @@ function renderEmptyTable(tableBody: HTMLElement, message: string) {
   rowCountElement.textContent = '0 entries';
   tableBody.innerHTML = '';
   
-  const jsonRow = document.createElement('tr');
+  const inventoryRow = document.createElement('tr');
   const cell = document.createElement('td');
   cell.colSpan = 10;
   cell.textContent = message;
-  jsonRow.appendChild(cell);
-  tableBody.appendChild(jsonRow);
+  inventoryRow.appendChild(cell);
+  tableBody.appendChild(inventoryRow);
 }
 
 async function renderInventoryTable() {
 	updateURLFromFilters(); // necessary, fetchFilteredInventoryData relies on URL parameters
 	try {
-		const tableData = await fetchFilteredInventoryData();
+		const tableData: InventoryTableRow[] | null = await fetchFilteredInventoryData();
 		if (tableData === null) {
 			renderEmptyTable(tableBody, 'Error loading inventory data. Please try again.');
 			return;
@@ -94,17 +95,17 @@ async function renderInventoryTable() {
 		const fragment = document.createDocumentFragment();
 
 		// Table body
-		for (const jsonRow of sortedData) {
+		for (const inventoryRow of sortedData) {
 			const tr = document.createElement('tr');
 
 			// variables & dataset values
-			const lastUpdated = jsonRow.last_updated ? new Date(jsonRow.last_updated).getTime() : '';
-			const tagnumber = jsonRow.tagnumber.toString() || '';
-			const systemSerial = jsonRow.system_serial ? jsonRow.system_serial.trim() : '';
-			const locationFormatted = jsonRow.location_formatted || '';
-			const building = jsonRow.building || '';
-			const room = jsonRow.room || '';
-			const note = jsonRow.note || '';
+			const lastUpdated = inventoryRow.last_updated ? new Date(inventoryRow.last_updated).getTime() : '';
+			const tagnumber = inventoryRow.tagnumber.toString() || '';
+			const systemSerial = inventoryRow.system_serial ? inventoryRow.system_serial.trim() : '';
+			const locationFormatted = inventoryRow.location_formatted || '';
+			const building = inventoryRow.building || '';
+			const room = inventoryRow.room || '';
+			const note = inventoryRow.note || '';
 
 			tr.dataset.lastUpdated = lastUpdated.toString();
 			tr.dataset.tagnumber = tagnumber;
@@ -136,7 +137,8 @@ async function renderInventoryTable() {
 			imagesAnchor.href = imagesURL.toString();
 	
 			editButton.textContent = 'Edit';
-			viewImagesButton.textContent = 'Images';
+
+			if (inventoryRow.file_count !== null) viewImagesButton.textContent = `Images (${inventoryRow.file_count})`;
 
 			tagAnchor.appendChild(editButton);
 			imagesAnchor.appendChild(viewImagesButton);
@@ -193,26 +195,26 @@ async function renderInventoryTable() {
 			deviceTypeContainer.classList.add('flex-container', 'horizontal');
 			manufacturerModelDiv.classList.add('flex-container', 'horizontal', 'smaller-text');
 
-			manufacturerModelCell.dataset.systemManufacturer = jsonRow.system_manufacturer || '';
-			manufacturerModelCell.dataset.systemModel = jsonRow.system_model || '';
-			manufacturerModelCell.dataset.deviceType = jsonRow.device_type || '';
+			manufacturerModelCell.dataset.systemManufacturer = inventoryRow.system_manufacturer || '';
+			manufacturerModelCell.dataset.systemModel = inventoryRow.system_model || '';
+			manufacturerModelCell.dataset.deviceType = inventoryRow.device_type || '';
 
 
 			let deviceTypeText = 'N/A';
-			if (jsonRow.device_type) {
-				deviceTypeText = jsonRow.device_type_formatted || jsonRow.device_type;
+			if (inventoryRow.device_type) {
+				deviceTypeText = inventoryRow.device_type_formatted || inventoryRow.device_type;
 			} else {
 				deviceTypeContainer.style.fontStyle = 'italic';
 			}
 			deviceTypeContainer.textContent = truncateString(deviceTypeText, 20).truncatedString;
 
 			let manufacturerModelText = 'N/A';
-			if (jsonRow.system_manufacturer && jsonRow.system_model) {
-				manufacturerModelText = `${jsonRow.system_manufacturer}/${jsonRow.system_model}`;
-			} else if (jsonRow.system_manufacturer && !jsonRow.system_model) {
-				manufacturerModelText = `${jsonRow.system_manufacturer}/Unknown Model`;
-			} else if (!jsonRow.system_manufacturer && jsonRow.system_model) {
-				manufacturerModelText = `Unknown Manufacturer/${jsonRow.system_model}`;
+			if (inventoryRow.system_manufacturer && inventoryRow.system_model) {
+				manufacturerModelText = `${inventoryRow.system_manufacturer}/${inventoryRow.system_model}`;
+			} else if (inventoryRow.system_manufacturer && !inventoryRow.system_model) {
+				manufacturerModelText = `${inventoryRow.system_manufacturer}/Unknown Model`;
+			} else if (!inventoryRow.system_manufacturer && inventoryRow.system_model) {
+				manufacturerModelText = `Unknown Manufacturer/${inventoryRow.system_model}`;
 			} else {
 				manufacturerModelDiv.style.fontStyle = 'italic';
 			}
@@ -236,19 +238,19 @@ async function renderInventoryTable() {
 			tr.appendChild(manufacturerModelCell);
 
 			// Department
-			tr.appendChild(createTextCell(undefined, 'department', jsonRow.department_formatted, 20, undefined));
+			tr.appendChild(createTextCell(undefined, 'department', inventoryRow.department_formatted, 20, undefined));
 
 			// Domain
-			tr.appendChild(createTextCell(undefined, 'ad_domain', jsonRow.ad_domain_formatted, 20, undefined));
+			tr.appendChild(createTextCell(undefined, 'ad_domain', inventoryRow.ad_domain_formatted, 20, undefined));
 
 			// Status
-			tr.appendChild(createTextCell(undefined, 'status', jsonRow.status, undefined, undefined));
+			tr.appendChild(createTextCell(undefined, 'status', inventoryRow.status, undefined, undefined));
 
 			// Note (truncated)
-			tr.appendChild(createTextCell(undefined, 'note', jsonRow.note, 60, ''));
+			tr.appendChild(createTextCell(undefined, 'note', inventoryRow.note, 60, ''));
 
 			// Last Updated
-			tr.appendChild(createTimestampCell(undefined, 'last_updated', jsonRow.last_updated, undefined));
+			tr.appendChild(createTimestampCell(undefined, 'last_updated', inventoryRow.last_updated, undefined));
 
 			fragment.appendChild(tr);
 		}
