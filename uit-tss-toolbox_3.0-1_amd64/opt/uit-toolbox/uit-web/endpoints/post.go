@@ -419,7 +419,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	curTime := time.Now()
+	curTime := time.Now().UTC()
 	err = insertRepo.InsertNewNote(ctx, &curTime, newNote.NoteType, newNote.Content)
 	if err != nil {
 		log.Error("Failed to insert new note: " + err.Error())
@@ -1040,4 +1040,45 @@ func SetClientJob(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	middleware.WriteJson(w, http.StatusOK, "Client job set successfully")
+}
+
+func SetClientLastHardwareCheck(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "SetClientLastHardwareCheck"))
+
+	clientBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Cannot read request body for SetClientLastHardwareCheck: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	var hardwareCheckData types.ClientHardwareCheck
+	if err := json.Unmarshal(clientBody, &hardwareCheckData); err != nil {
+		log.Warn("Cannot decode SetClientLastHardwareCheck JSON: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if err := types.IsTagnumberInt64Valid(&hardwareCheckData.Tagnumber); err != nil {
+		log.Warn("Invalid tagnumber: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if hardwareCheckData.LastHardwareCheck == nil || hardwareCheckData.LastHardwareCheck.IsZero() {
+		log.Warn("Last hardware check time is missing or zero")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	updateRepo, err := database.NewUpdateRepo()
+	if err != nil {
+		log.Error("No database connection available for SetClientLastHardwareCheck")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if err = updateRepo.UpdateClientLastHardwareCheck(ctx, hardwareCheckData.Tagnumber, (*hardwareCheckData.LastHardwareCheck).UTC()); err != nil {
+		log.Error("Failed to update client last hardware check: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, "Client last hardware check updated successfully")
 }

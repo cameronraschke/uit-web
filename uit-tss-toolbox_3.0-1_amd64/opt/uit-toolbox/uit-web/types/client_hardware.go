@@ -1,5 +1,7 @@
 package types
 
+import "time"
+
 type HardwareData struct {
 	Tagnumber               int64  `json:"tagnumber"`
 	SystemSerial            string `json:"system_serial"`
@@ -12,6 +14,11 @@ type HardwareData struct {
 	MotherboardManufacturer string `json:"motherboard_manufacturer"`
 	MotherboardSerial       string `json:"motherboard_serial"`
 	SystemManufacturer      string `json:"system_manufacturer"`
+}
+
+type ClientHardwareCheck struct {
+	Tagnumber         int64      `json:"tagnumber"`
+	LastHardwareCheck *time.Time `json:"last_hardware_check"`
 }
 
 type DeviceType struct {

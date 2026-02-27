@@ -31,6 +31,7 @@ type Update interface {
 	UpdateClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUData) (err error)
 	UpdateClientNetworkUsage(ctx context.Context, networkData *types.NetworkData) (err error)
 	UpdateClientUptime(ctx context.Context, uptimeData *types.ClientUptime) (err error)
+	UpdateClientLastHardwareCheck(ctx context.Context, tagnumber int64, lastCheck time.Time) (err error)
 }
 
 type UpdateRepo struct {
@@ -804,6 +805,43 @@ func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+	}
+	return nil
+}
+
+func (updateRepo *UpdateRepo) UpdateClientLastHardwareCheck(ctx context.Context, tagnumber int64, lastCheck time.Time) (err error) {
+	if tagnumber == 0 {
+		return fmt.Errorf("tagnumber is required")
+	}
+	if lastCheck.IsZero() {
+		return fmt.Errorf("last hardware check time is required")
+	}
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning DB transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+	const sqlCode = `INSERT INTO client_health (tagnumber, last_hardware_check) VALUES ($1, $2)
+		ON CONFLICT (tagnumber) DO UPDATE SET last_hardware_check = EXCLUDED.last_hardware_check;`
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+		ptrToNullTime(&lastCheck),
+		ptrToNullInt64(&tagnumber),
+	)
+	if err != nil {
+		return fmt.Errorf("error updating last hardware check time: %w", err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on client_health table update: %w", err)
 	}
 	return nil
 }

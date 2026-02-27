@@ -138,7 +138,7 @@ async function renderInventoryTable() {
 	
 			editButton.textContent = 'Edit';
 
-			if (inventoryRow.file_count !== null) viewImagesButton.textContent = `Images (${inventoryRow.file_count})`;
+			viewImagesButton.textContent = `Images (${inventoryRow.file_count || 0})`;
 
 			tagAnchor.appendChild(editButton);
 			imagesAnchor.appendChild(viewImagesButton);
