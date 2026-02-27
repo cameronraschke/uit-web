@@ -26,7 +26,7 @@ type Update interface {
 	SetClientBatteryHealth(ctx context.Context, uuid *string, healthPcnt *int64) (err error)
 	SetAllOnlineClientJobs(ctx context.Context, allJobs *types.AllJobs) (err error)
 	SetClientJob(ctx context.Context, tag *int64, clientJob *string) (err error)
-	UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryData) (err error)
+	UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryDataRequest) (err error)
 	UpdateClientCPUUsage(ctx context.Context, cpuData *types.CPUData) (err error)
 	UpdateClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUData) (err error)
 	UpdateClientNetworkUsage(ctx context.Context, networkData *types.NetworkData) (err error)
@@ -599,7 +599,7 @@ func (updateRepo *UpdateRepo) SetClientJob(ctx context.Context, tag *int64, clie
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryData) (err error) {
+func (updateRepo *UpdateRepo) UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryDataRequest) (err error) {
 	if memInfo == nil {
 		return fmt.Errorf("memory data is required")
 	}

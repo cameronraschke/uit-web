@@ -1,5 +1,5 @@
 // Job Queue TypeScript File
-type JobQueueTableRow = {
+type JobQueueTableRowView = {
 	tagnumber: number | null;
 	system_serial: string | null;
 	system_manufacturer: string | null;
@@ -173,9 +173,9 @@ document.addEventListener('visibilitychange', () => {
 });
 
 
-async function fetchJobQueueData() : Promise<JobQueueTableRow[] | []> {
+async function fetchJobQueueData() : Promise<JobQueueTableRowView[] | []> {
 	try {
-		const data: JobQueueTableRow[] = await fetchData('/api/overview/job_queue', false);
+		const data: JobQueueTableRowView[] = await fetchData('/api/overview/job_queue', false);
 		if (Array.isArray(data) && data.length > 0) {
 			return data;
 		} else {
@@ -188,7 +188,7 @@ async function fetchJobQueueData() : Promise<JobQueueTableRow[] | []> {
 	}
 }
 
-async function renderJobQueueTable(data: JobQueueTableRow[]) {
+async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 	if (!data || !Array.isArray(data) || data.length === 0) {
 		console.warn('No job queue data to render.');
 		return;
@@ -258,9 +258,26 @@ async function renderJobQueueTable(data: JobQueueTableRow[]) {
 		const liveViewScreenshotContainer = document.createElement('div');
 		liveViewScreenshotContainer.classList.add('image-container');
 		const liveViewOffline = document.createElement('h2');
-		liveViewOffline.textContent = 'Offline';
+		liveViewOffline.textContent = `Live View Offline`;
 		liveViewScreenshotContainer.appendChild(liveViewOffline);
 		liveViewContainer.appendChild(liveViewScreenshotContainer);
+		const systemUptime = document.createElement('p');
+		if (entry.system_uptime !== null) {
+			const uptimeSec = entry.system_uptime;
+			const uptimeMins = Math.floor(uptimeSec / 60);
+			const uptimeHours = Math.floor(uptimeMins / 60);
+			const uptimeDays = Math.floor(uptimeHours / 24);
+			if (uptimeDays > 0) {
+				systemUptime.textContent = `Uptime: ${uptimeDays}d ${uptimeHours % 24}h ${uptimeMins % 60}m`;
+			} else if (uptimeHours > 0) {
+				systemUptime.textContent = `Uptime: ${uptimeHours}h ${uptimeMins % 60}m`;
+			} else {
+				systemUptime.textContent = `Uptime: ${uptimeMins}m ${uptimeSec % 60}s`;
+			}
+		} else {
+			systemUptime.textContent = 'Uptime: N/A';
+		}
+		liveViewContainer.appendChild(systemUptime);
 		const lastHeard = document.createElement('p');
 		lastHeard.textContent = entry.last_heard ? `Last Heard: ${new Date(entry.last_heard).toLocaleString()}` : 'Last Heard: N/A';
 		liveViewContainer.appendChild(lastHeard);
@@ -275,23 +292,6 @@ async function renderJobQueueTable(data: JobQueueTableRow[]) {
 		const jobStatus = document.createElement('p');
 		jobStatus.textContent = `Job Status: ${entry.job_status || 'N/A'}`;
 		jobInfoContainer.appendChild(jobStatus);
-		const clientUptime = document.createElement('p');
-		if (entry.system_uptime !== null) {
-			const uptimeSec = entry.system_uptime;
-			const uptimeMins = Math.floor(uptimeSec / 60);
-			const uptimeHours = Math.floor(uptimeMins / 60);
-			const uptimeDays = Math.floor(uptimeHours / 24);
-			if (uptimeDays > 0) {
-				clientUptime.textContent = `Uptime: ${uptimeDays}d ${uptimeHours % 24}h ${uptimeMins % 60}m`;
-			} else if (uptimeHours > 0) {
-				clientUptime.textContent = `Uptime: ${uptimeHours}h ${uptimeMins % 60}m`;
-			} else {
-				clientUptime.textContent = `Uptime: ${uptimeMins}m ${uptimeSec % 60}s`;
-			}
-		} else {
-			clientUptime.textContent = 'Uptime: N/A';
-		}
-		jobInfoContainer.appendChild(clientUptime);
 		const jobSelectContainer = document.createElement('div');
 		jobSelectContainer.classList.add('flex-container', 'horizontal');
 		const jobSelect = document.createElement('select');
@@ -339,9 +339,6 @@ async function renderJobQueueTable(data: JobQueueTableRow[]) {
 			queueJobButton.classList.remove('svg-button', 'cancel');
 			jobSelect.disabled = false;
 			queueJobButton.addEventListener('click', async () => {
-				if (queueJobButton.classList.contains('svg-button.cancel')) {
-					return;
-				}
 				if (!jobSelect.value) {
 					alert('Please select a job to queue.');
 					return;
@@ -399,7 +396,7 @@ async function renderJobQueueTable(data: JobQueueTableRow[]) {
 		networkUsage.textContent = `Network Usage: ${entry.network_usage !== null ? entry.network_usage.toFixed(2) + 'Mbps' : 'N/A'}`;
 		hardwareInfoContainer.appendChild(networkUsage);
 		const batteryCharge = document.createElement('p');
-		batteryCharge.textContent = `Battery: ${entry.battery_charge !== null ? entry.battery_charge.toFixed(2) + '%' : 'N/A'} ${entry.battery_health ? '(Cap: ' + entry.battery_health?.toFixed(2) + '%' : 'N/A'} ${entry.battery_health_warning ? '(Warning)' : ''})`;
+		batteryCharge.textContent = `Battery: ${entry.battery_charge !== null ? entry.battery_charge.toFixed(2) + '%' : 'N/A'} ${entry.battery_health ? '(Max: ' + entry.battery_health?.toFixed(2) + '%' : 'N/A'} ${entry.battery_health_warning ? '(Warning)' : ''})`;
 		hardwareInfoContainer.appendChild(batteryCharge);
 
 		clientGridContainer.appendChild(clientIdentifiers);		

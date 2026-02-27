@@ -156,7 +156,7 @@ func SetClientMemoryInfo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var memoryData types.MemoryData
+	var memoryData types.MemoryDataRequest
 	if err := json.Unmarshal(requestBody, &memoryData); err != nil {
 		log.Warn("Cannot unmarshal JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -1001,7 +1001,7 @@ func SetClientJob(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var clientJson types.JobQueueTableRow
+	var clientJson types.JobQueueTableRowView
 	if err := json.Unmarshal(clientBody, &clientJson); err != nil {
 		log.Warn("Cannot decode request JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)

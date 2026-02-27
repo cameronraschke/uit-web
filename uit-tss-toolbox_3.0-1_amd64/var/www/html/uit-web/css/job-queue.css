@@ -1,4 +1,6 @@
-/* job-queue CSS file */
+h2 {
+	text-align: center;
+}
 
 .client-row-container {
 	display: flex;

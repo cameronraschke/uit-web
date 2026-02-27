@@ -18,7 +18,6 @@ type Select interface {
 	CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error)
 	ClientLookupByTag(ctx context.Context, tag *int64) (*types.ClientLookup, error)
 	ClientLookupBySerial(ctx context.Context, serial *string) (*types.ClientLookup, error)
-	GetHardwareIdentifiers(ctx context.Context, tag *int64) (*types.HardwareData, error)
 	GetBiosData(ctx context.Context, tag *int64) (*types.BiosData, error)
 	GetOsData(ctx context.Context, tag *int64) (*types.OsData, error)
 	GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error)
@@ -32,12 +31,13 @@ type Select interface {
 	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifest, error)
 	GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableRow, error)
 	GetClientBatteryHealth(ctx context.Context, tagnumber *int64) (*types.ClientBatteryHealth, error)
-	GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRow, error)
+	GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	GetBatteryStandardDeviation(ctx context.Context) ([]types.ClientReport, error)
 	GetAllJobs(ctx context.Context) ([]types.AllJobs, error)
 	GetAllLocations(ctx context.Context) ([]types.AllLocations, error)
 	GetAllStatuses(ctx context.Context) ([]types.ClientStatus, error)
 	GetAllDeviceTypes(ctx context.Context) ([]types.DeviceType, error)
+	GetClientHardwareOverview(ctx context.Context, tag int64) ([]types.ClientHardwareView, error)
 }
 
 type SelectRepo struct {
@@ -301,47 +301,6 @@ func (repo *SelectRepo) ClientLookupBySerial(ctx context.Context, serial *string
 		return nil, fmt.Errorf("query error: %w", err)
 	}
 	return &clientLookup, nil
-}
-
-func (repo *SelectRepo) GetHardwareIdentifiers(ctx context.Context, tag *int64) (*types.HardwareData, error) {
-	if tag == nil {
-		return nil, fmt.Errorf("tagnumber is nil")
-	}
-
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	const sqlQuery = `SELECT locations.tagnumber, locations.system_serial, jobstats.etheraddress, hardware_data.wifi_mac,
-	hardware_data.system_model, hardware_data.system_uuid, hardware_data.system_sku, hardware_data.chassis_type, 
-	hardware_data.motherboard_manufacturer, hardware_data.motherboard_serial, hardware_data.system_manufacturer
-	FROM locations
-	LEFT JOIN jobstats ON locations.tagnumber = jobstats.tagnumber AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
-	LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber
-	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-	AND locations.tagnumber = $1;`
-
-	var hardwareData types.HardwareData
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
-	if err := row.Scan(
-		&hardwareData.Tagnumber,
-		&hardwareData.SystemSerial,
-		&hardwareData.EthernetMAC,
-		&hardwareData.WifiMac,
-		&hardwareData.SystemModel,
-		&hardwareData.SystemUUID,
-		&hardwareData.SystemSKU,
-		&hardwareData.ChassisType,
-		&hardwareData.MotherboardManufacturer,
-		&hardwareData.MotherboardSerial,
-		&hardwareData.SystemManufacturer,
-	); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("error during row scan: %w", err)
-	}
-	return &hardwareData, nil
 }
 
 func (repo *SelectRepo) GetBiosData(ctx context.Context, tag *int64) (*types.BiosData, error) {
@@ -924,7 +883,7 @@ func (repo *SelectRepo) GetClientBatteryHealth(ctx context.Context, tagnumber *i
 	return &batteryHealth, nil
 }
 
-func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRow, error) {
+func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error) {
 	const sqlQuery = `WITH latest_locations AS (
 		SELECT DISTINCT ON (locations.tagnumber) locations.time, locations.tagnumber, locations.system_serial, locations.location,
 			locationFormatting(locations.location) AS location_formatted, static_department_info.department_name_formatted, locations.ad_domain,
@@ -978,11 +937,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 			WHEN job_queue.job_active = TRUE AND job_queue.job_queued IS NOT NULL THEN job_queue.erase_mode
 			ELSE 'N/A'
 		END) AS "job_erase_mode",
-		(CASE 
-			WHEN job_queue.job_active = TRUE THEN 'In Progress' || job_queue.status
-			WHEN job_queue.job_queued IS NOT NULL AND job_queue.job_active = FALSE THEN 'Queued' || job_queue.status
-			ELSE 'Idle'
-		END) AS "job_status",
+		job_queue.job_status,
 		(CASE
 			WHEN latest_job.erase_completed = TRUE THEN latest_job.time
 			WHEN latest_job.clone_completed = TRUE THEN latest_job.time
@@ -1044,12 +999,12 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 	}
 	defer rows.Close()
 
-	jobQueueRows := make([]types.JobQueueTableRow, 0, approxClientCount) // 560 is the approximate # of clients
+	jobQueueRows := make([]types.JobQueueTableRowView, 0, approxClientCount) // 560 is the approximate # of clients
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var row types.JobQueueTableRow
+		var row types.JobQueueTableRowView
 		if err := rows.Scan(
 			&row.Tagnumber,
 			&row.SystemSerial,
@@ -1314,4 +1269,61 @@ func (repo *SelectRepo) GetAllDeviceTypes(ctx context.Context) ([]types.DeviceTy
 		return nil, nil
 	}
 	return allDeviceTypes, nil
+}
+
+func (repo *SelectRepo) GetClientHardwareOverview(ctx context.Context, tag int64) ([]types.ClientHardwareView, error) {
+	if tag == 0 {
+		return nil, fmt.Errorf("tagnumer cannot be nil")
+	}
+	const sqlQuery = `WITH latest_hardware_data AS (
+		SELECT ram_speed FROM historical_hardware_data WHERE tagnumber = $1 ORDER BY time DESC NULLS LAST LIMIT 1
+	)
+	SELECT 
+	locations.tagnumber, 
+	locations.system_serial, 
+	hardware_data.ethernet_mac, 
+	hardware_data.wifi_mac,
+	hardware_data.system_manufacturer,
+	hardware_data.system_model,
+	NULL AS "product_family",
+	NULL AS "product_name",
+	hardware_data.system_uuid,
+	hardware_data.system_sku,
+	hardware_data.chassis_type,
+	hardware_data.motherboard_manufacturer,
+	hardware_data.motherboard_serial,
+	hardware_data.device_type,
+	latest_hardware_data.memory_speed_mhz,
+	FROM locations
+	LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber,
+	CROSS JOIN latest_hardware_data
+	WHERE locations.tagnumber = $1
+	ORDER BY locations.time DESC NULLS LAST LIMIT 1
+	`
+
+	var clientHardwareData types.ClientHardwareView
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
+	if err := row.Scan(
+		&clientHardwareData.Tagnumber,
+		&clientHardwareData.SystemSerial,
+		&clientHardwareData.EthernetMAC,
+		&clientHardwareData.WifiMAC,
+		&clientHardwareData.SystemManufacturer,
+		&clientHardwareData.SystemModel,
+		&clientHardwareData.ProductFamily,
+		&clientHardwareData.ProductName,
+		&clientHardwareData.SystemUUID,
+		&clientHardwareData.SystemSKU,
+		&clientHardwareData.ChassisType,
+		&clientHardwareData.MotherboardManufacturer,
+		&clientHardwareData.MotherboardSerial,
+		&clientHardwareData.DeviceType,
+		&clientHardwareData.MemorySpeedMHz,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error during row scan: %w", err)
+	}
+	return []types.ClientHardwareView{clientHardwareData}, nil
 }

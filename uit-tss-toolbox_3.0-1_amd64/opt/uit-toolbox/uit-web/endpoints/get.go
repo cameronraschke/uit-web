@@ -95,38 +95,6 @@ func GetAllTags(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, allTags)
 }
 
-func GetHardwareIdentifiers(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-
-	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving query parameters from context in GetHardwareIdentifiers: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
-	if err != nil || tagnumber == nil {
-		log.Warn("Invalid tagnumber provided in GetHardwareIdentifiers: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository in GetHardwareIdentifiers: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	hardwareData, err := db.GetHardwareIdentifiers(ctx, tagnumber)
-	if err != nil {
-		log.Warn("Query error in GetHardwareIdentifiers: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	middleware.WriteJson(w, http.StatusOK, hardwareData)
-}
-
 func GetBiosData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
@@ -983,4 +951,34 @@ func GetAllDeviceTypes(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	middleware.WriteJson(w, http.StatusOK, allDeviceTypes)
+}
+
+func FetchClientHardwareOverview(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "FetchClientHardwareOverview"))
+	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.Warn("Error retrieving query parameters from context: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
+	if err != nil {
+		log.Warn("Invalid tagnumber provided: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.Warn("Error creating select repository: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	clientOverview, err := db.GetClientHardwareOverview(ctx, *tagnumber)
+	if err != nil {
+		log.Warn("Query error: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, clientOverview)
 }

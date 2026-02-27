@@ -8,9 +8,9 @@ type BatteryHealth = {
 	chargeCycles: number | null;
 };
 
-async function fetchBatteryHealthData(): Promise<BatteryHealth[]> {
+async function fetchClientData(): Promise<BatteryHealth[]> {
 	let url = '';
-	const path = '/api/client/health/battery';
+	const path = '/api/client/overview';
 	const params = new URLSearchParams(window.location.search);
 	const tagnumber = params.get('tagnumber');
 	if (!tagnumber) {
@@ -20,24 +20,24 @@ async function fetchBatteryHealthData(): Promise<BatteryHealth[]> {
 	try {
 		const response = await fetch(url);
 		if (!response.ok) {
-			throw new Error(`Error fetching battery health data: ${response.statusText}`);
+			throw new Error(`Error fetching client data: ${response.statusText}`);
 		}
 		const data: BatteryHealth = await response.json();
 		// Wrap single object in array to match render function expectations
 		return data ? [data] : [];
 	} catch (error) {
-		console.error('Fetch battery health data failed:', error);
+		console.error('Fetch client data failed:', error);
 		return [];
 	}
 }
 
-function renderBatteryHealth(data: BatteryHealth[]) {
+function renderClientData(data: BatteryHealth[]) {
 	if (!batteryContainer) return;
 	batteryContainer.innerHTML = '';
 
 	if (data.length === 0) {
 		const message = document.createElement('p');
-		message.textContent = 'No battery health data available.';
+		message.textContent = 'No client data available.';
 		batteryContainer.appendChild(message);
 		return;
 	}
@@ -77,6 +77,6 @@ function renderBatteryHealth(data: BatteryHealth[]) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-	const batteryData = await fetchBatteryHealthData();
-	renderBatteryHealth(batteryData);
+	const clientData = await fetchClientData();
+	renderClientData(clientData);
 });

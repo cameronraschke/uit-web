@@ -2,6 +2,13 @@ package types
 
 import "time"
 
+type ClientStatusView struct {
+	Tagnumber         *int64     `json:"tagnumber"`
+	ClientStatus      *string    `json:"client_status"`
+	BatteryHealth     *string    `json:"battery_health"`
+	LastHardwareCheck *time.Time `json:"last_hardware_check"`
+}
+
 type ClientUptime struct {
 	Tagnumber       int64         `json:"tagnumber"`
 	ClientAppUptime time.Duration `json:"client_app_uptime"`
@@ -33,5 +40,3 @@ type ClientBatteryHealth struct {
 	ClientHealthBattery string    `json:"clientHealthPcnt"`
 	BatteryChargeCycles int64     `json:"chargeCycles"`
 }
-
-

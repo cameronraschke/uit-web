@@ -3,7 +3,6 @@
 	"/api/server_time": {},
 	"/api/client/lookup": {},
 	"/api/overview/all_tags": {},
-	"/api/client/hardware/ids": {},
 	"/api/client/bios": {},
 	"/api/client/os": {},
 	"/api/overview/job_queue": {},
@@ -59,5 +58,6 @@
 	},
 	"/api/client/health/last_hardware_check": {
 		"allowed_methods": ["OPTIONS", "POST"]
-	}
+	},
+	"/api/client/overview": {}
 }

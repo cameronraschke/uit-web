@@ -60,7 +60,6 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/server_time", httpsFullAPIChain.ThenFunc(endpoints.GetServerTime))
 	httpsRouter.Handle("GET /api/client/lookup", httpsFullAPIChain.ThenFunc(endpoints.GetClientLookup))
 	httpsRouter.Handle("GET /api/overview/all_tags", httpsFullAPIChain.ThenFunc(endpoints.GetAllTags))
-	httpsRouter.Handle("GET /api/client/hardware/ids", httpsFullAPIChain.ThenFunc(endpoints.GetHardwareIdentifiers))
 	httpsRouter.Handle("GET /api/client/bios", httpsFullAPIChain.ThenFunc(endpoints.GetBiosData))
 	httpsRouter.Handle("GET /api/client/os", httpsFullAPIChain.ThenFunc(endpoints.GetOSData))
 	httpsRouter.Handle("GET /api/overview/job_queue", httpsFullAPIChain.ThenFunc(endpoints.GetJobQueueTable))
@@ -82,6 +81,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/overview/all_locations", httpsFullAPIChain.ThenFunc(endpoints.GetAllLocations))
 	httpsRouter.Handle("GET /api/overview/all_statuses", httpsFullAPIChain.ThenFunc(endpoints.GetAllStatuses))
 	httpsRouter.Handle("GET /api/overview/all_device_types", httpsFullAPIChain.ThenFunc(endpoints.GetAllDeviceTypes))
+	httpsRouter.Handle("GET /api/client/overview", httpsFullAPIChain.ThenFunc(endpoints.FetchClientHardwareOverview))
 
 	// API POST endpoints
 	httpsRouter.Handle("POST /api/overview/note", httpsFullAPIChain.ThenFunc(endpoints.InsertNewNote))

@@ -246,7 +246,7 @@ type InventoryAdvSearchOptions struct {
 	HasImages          *bool   `json:"has_images"`
 }
 
-type JobQueueTableRow struct {
+type JobQueueTableRowView struct {
 	Tagnumber            *int64         `json:"tagnumber"`
 	SystemSerial         *string        `json:"system_serial"`
 	SystemManufacturer   *string        `json:"system_manufacturer"`
