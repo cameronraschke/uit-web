@@ -308,36 +308,53 @@ function renderJobQueueTable(data: JobQueueTableRow[]) {
 			console.error('Error fetching all jobs for select dropdown:', error);
 		});
 		jobInfoContainer.appendChild(jobSelect);
+		
 		const queueJobButton = document.createElement('button');
+		queueJobButton.removeEventListener('click', async () => {});
 		if (entry.job_queued || entry.job_name === "cancel") {
 			queueJobButton.textContent = 'Cancel Job';
 			queueJobButton.classList.add('svg-button', 'cancel');
+			jobSelect.value = entry.job_name || '';
+			jobSelect.disabled = true;
+			queueJobButton.addEventListener('click', async () => {
+				try {
+						if (entry.tagnumber === null) {
+							throw new Error('tagnumber is null');
+						}
+						await updateClientJob(entry.tagnumber, "cancel");
+					} catch (error) {
+						console.error('Error canceling job:', error);
+						alert('An error occurred while canceling the job. Please try again.');
+					} finally {
+						await initializeJobQueuePage();
+					}
+				});
 		} else {
 			queueJobButton.textContent = 'Queue Job';
 			queueJobButton.classList.remove('svg-button', 'cancel');
-		}
-		queueJobButton.removeEventListener('click', async () => {});
-		queueJobButton.addEventListener('click', async () => {
-			let selectedJob = jobSelect.value || null;
-			if (queueJobButton.classList.contains('svg-button.cancel')) {
-				selectedJob = "cancel";
-			} else {
-				alert('Please select a job to queue.');
-				return;
-			}
-			
-			try {
-				if (entry.tagnumber === null || selectedJob === null) {
-					throw new Error('tagnumber or selected job is null');
+			jobSelect.disabled = false;
+			queueJobButton.addEventListener('click', async () => {
+				if (queueJobButton.classList.contains('svg-button.cancel')) {
+					return;
 				}
-				await updateClientJob(entry.tagnumber, selectedJob);
-			} catch (error) {
-				console.error('Error queueing job:', error);
-				alert('An error occurred while queueing the job. Please try again.');
-			} finally {
-				await initializeJobQueuePage();
-			}
-		});
+				if (!jobSelect.value) {
+					alert('Please select a job to queue.');
+					return;
+				}
+					
+				try {
+					if (entry.tagnumber === null || !jobSelect.value) {
+						throw new Error('tagnumber or selected job is null');
+					}
+					await updateClientJob(entry.tagnumber, jobSelect.value);
+				} catch (error) {
+					console.error('Error queueing job:', error);
+					alert('An error occurred while queueing the job. Please try again.');
+				} finally {
+					await initializeJobQueuePage();
+				}
+			});
+		}
 		jobSelectContainer.appendChild(jobSelect);
 		jobSelectContainer.appendChild(queueJobButton);
 		if (entry.online) jobInfoContainer.appendChild(jobSelectContainer);
