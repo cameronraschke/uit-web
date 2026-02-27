@@ -796,7 +796,7 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 	}
 
 	const sqlQuery = `WITH files AS (
-		SELECT COUNT(tagnumber) AS file_count from client_images WHERE hidden = FALSE AND tagnumber = $1
+		SELECT tagnumber, COUNT(*) AS file_count from client_images WHERE hidden = FALSE GROUP BY tagnumber
 	)
 	SELECT locations.tagnumber, locations.system_serial, locations.location, 
 		locationFormatting(locations.location) AS location_formatted, locations.building, locations.room,
@@ -810,7 +810,7 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 		LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
 		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status
 		LEFT JOIN static_device_types ON hardware_data.device_type = static_device_types.device_type
-		CROSS JOIN files
+		LEFT JOIN files ON locations.tagnumber = files.tagnumber
 		WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 		AND ($1::bigint IS NULL OR locations.tagnumber = $1)
 		AND ($2::text IS NULL OR locations.system_serial = $2)
