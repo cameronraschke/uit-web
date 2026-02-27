@@ -15,8 +15,10 @@ import (
 
 type Update interface {
 	InsertNewNote(ctx context.Context, time *time.Time, noteType *string, note *string) (err error)
-	InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdate *types.InventoryUpdate) (err error)
-	UpdateHardwareData(ctx context.Context, tagnumber *int64, systemManufacturer *string, systemModel *string) (err error)
+	InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdate *types.InventoryLocationWriteModel) (err error)
+	InsertClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.InventoryClientHealthWriteModel) (err error)
+	InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID, checkoutData *types.InventoryCheckoutWriteModel) (err error)
+	UpdateClientHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.InventoryHardwareWriteModel) (err error)
 	UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *types.ImageManifest) (err error)
 	HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	DeleteClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
@@ -84,11 +86,163 @@ func (updateRepo *UpdateRepo) InsertNewNote(ctx context.Context, time *time.Time
 	return err
 }
 
-func (updateRepo *UpdateRepo) InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdate *types.InventoryUpdate) (err error) {
+func (updateRepo *UpdateRepo) InsertClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.InventoryClientHealthWriteModel) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
 		return fmt.Errorf("generated transaction UUID is nil")
 	}
-	if inventoryUpdate == nil || inventoryUpdate.Tagnumber == nil {
+	if clientHealthData == nil || clientHealthData.Tagnumber == 0 {
+		return fmt.Errorf("clientHealthData is invalid")
+	}
+
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+	// Insert/update client_health table
+	const clientHealthSql = `INSERT INTO client_health
+		(time, tagnumber, last_hardware_check, transaction_uuid) VALUES
+		(CURRENT_TIMESTAMP, $1, $2, $3)
+		ON CONFLICT (tagnumber)
+		DO UPDATE SET
+			time = CURRENT_TIMESTAMP,
+			tagnumber = EXCLUDED.tagnumber,
+			last_hardware_check = EXCLUDED.last_hardware_check,
+			transaction_uuid = EXCLUDED.transaction_uuid;`
+
+	var clientHealthResult sql.Result
+	clientHealthResult, err = tx.ExecContext(ctx, clientHealthSql,
+		clientHealthData.Tagnumber,
+		ptrToNullTime(clientHealthData.LastHardwareCheck),
+		transactionUUID,
+	)
+	if err != nil {
+		return fmt.Errorf("error inserting/updating client health data: %w", err)
+	}
+	if err := VerifyRowsAffected(clientHealthResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on client_health table insert/update: %w", err)
+	}
+
+	return nil
+}
+
+func (updateRepo *UpdateRepo) InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID, checkoutData *types.InventoryCheckoutWriteModel) (err error) {
+	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
+		return fmt.Errorf("generated transaction UUID is nil")
+	}
+	if checkoutData == nil || checkoutData.Tagnumber == 0 {
+		return fmt.Errorf("checkoutData is invalid")
+	}
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+	// Insert into checkout_log table if necessary fields are present
+	if checkoutData.CheckoutDate != nil || checkoutData.ReturnDate != nil || (checkoutData.CheckoutBool != nil && *checkoutData.CheckoutBool) {
+		var checkoutLogResult sql.Result
+		const checkoutSql = `INSERT INTO checkout_log
+			(log_entry_time, transaction_uuid, tagnumber, checkout_date, return_date, checkout_bool)
+			VALUES (CURRENT_TIMESTAMP, $1, $2, $3, $4, $5);`
+
+		checkoutLogResult, err = tx.ExecContext(ctx, checkoutSql,
+			transactionUUID,
+			checkoutData.Tagnumber,
+			ptrToNullTime(checkoutData.CheckoutDate),
+			ptrToNullTime(checkoutData.ReturnDate),
+			ptrToNullBool(checkoutData.CheckoutBool),
+		)
+		if err != nil {
+			return fmt.Errorf("error inserting into checkout_log: %w", err)
+		}
+		if err := VerifyRowsAffected(checkoutLogResult, 1); err != nil {
+			return fmt.Errorf("error while checking rows affected on checkout_log table insert: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.InventoryHardwareWriteModel) (err error) {
+	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
+		return fmt.Errorf("generated transaction UUID is nil")
+	}
+	if hardwareData == nil || hardwareData.Tagnumber == 0 {
+		return fmt.Errorf("hardwareData is invalid")
+	}
+
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	// Insert/update hardware_data table
+	const hardwareDataSql = `INSERT INTO hardware_data
+		(time, transaction_uuid, tagnumber, system_manufacturer, system_model, device_type) 
+		VALUES (CURRENT_TIMESTAMP, $1, $2, $3, $4, $5)
+		ON CONFLICT (tagnumber)
+		DO UPDATE SET
+			time = CURRENT_TIMESTAMP,
+			transaction_uuid = EXCLUDED.transaction_uuid,
+			tagnumber = EXCLUDED.tagnumber,
+			system_manufacturer = EXCLUDED.system_manufacturer,
+			system_model = EXCLUDED.system_model,
+			device_type = EXCLUDED.device_type;`
+
+	var hardwareDataResult sql.Result
+	hardwareDataResult, err = tx.ExecContext(ctx, hardwareDataSql,
+		transactionUUID,
+		hardwareData.Tagnumber,
+		ptrToNullString(hardwareData.SystemManufacturer),
+		ptrToNullString(hardwareData.SystemModel),
+		ptrToNullString(hardwareData.DeviceType),
+	)
+	if err != nil {
+		return fmt.Errorf("error inserting/updating hardware data: %w", err)
+	}
+	if err := VerifyRowsAffected(hardwareDataResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on hardware_data table insert/update: %w", err)
+	}
+
+	return nil
+}
+
+func (updateRepo *UpdateRepo) InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdate *types.InventoryLocationWriteModel) (err error) {
+	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
+		return fmt.Errorf("generated transaction UUID is nil")
+	}
+	if inventoryUpdate == nil || inventoryUpdate.Tagnumber == 0 {
 		return fmt.Errorf("inventoryUpdate is invalid")
 	}
 
@@ -154,79 +308,6 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdate(ctx context.Context, transac
 		return fmt.Errorf("error while checking rows affected on locations table insert: %w", err)
 	}
 
-	// Insert/update hardware_data table
-	const hardwareDataSql = `INSERT INTO hardware_data
-		(time, transaction_uuid, tagnumber, system_manufacturer, system_model, device_type) 
-		VALUES (CURRENT_TIMESTAMP, $1, $2, $3, $4, $5)
-		ON CONFLICT (tagnumber)
-		DO UPDATE SET
-			time = CURRENT_TIMESTAMP,
-			transaction_uuid = EXCLUDED.transaction_uuid,
-			tagnumber = EXCLUDED.tagnumber,
-			system_manufacturer = EXCLUDED.system_manufacturer,
-			system_model = EXCLUDED.system_model,
-			device_type = EXCLUDED.device_type;`
-
-	var hardwareDataResult sql.Result
-	hardwareDataResult, err = tx.ExecContext(ctx, hardwareDataSql,
-		transactionUUID,
-		ptrToNullInt64(inventoryUpdate.Tagnumber),
-		ptrToNullString(inventoryUpdate.SystemManufacturer),
-		ptrToNullString(inventoryUpdate.SystemModel),
-		ptrToNullString(inventoryUpdate.DeviceType),
-	)
-	if err != nil {
-		return fmt.Errorf("error inserting/updating hardware data: %w", err)
-	}
-	if err := VerifyRowsAffected(hardwareDataResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on hardware_data table insert/update: %w", err)
-	}
-
-	// Insert/update client_health table
-	const clientHealthSql = `INSERT INTO client_health
-		(time, tagnumber, last_hardware_check, transaction_uuid) VALUES
-		(CURRENT_TIMESTAMP, $1, $2, $3)
-		ON CONFLICT (tagnumber)
-		DO UPDATE SET
-			time = CURRENT_TIMESTAMP,
-			tagnumber = EXCLUDED.tagnumber,
-			last_hardware_check = EXCLUDED.last_hardware_check,
-			transaction_uuid = EXCLUDED.transaction_uuid;`
-
-	var clientHealthResult sql.Result
-	clientHealthResult, err = tx.ExecContext(ctx, clientHealthSql,
-		ptrToNullInt64(inventoryUpdate.Tagnumber),
-		ptrToNullTime(inventoryUpdate.LastHardwareCheck),
-		transactionUUID,
-	)
-	if err != nil {
-		return fmt.Errorf("error inserting/updating client health data: %w", err)
-	}
-	if err := VerifyRowsAffected(clientHealthResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on client_health table insert/update: %w", err)
-	}
-
-	// Insert into checkout_log table if necessary fields are present
-	if inventoryUpdate.CheckoutDate != nil || inventoryUpdate.ReturnDate != nil || (inventoryUpdate.CheckoutBool != nil && *inventoryUpdate.CheckoutBool) {
-		var checkoutLogResult sql.Result
-		const checkoutSql = `INSERT INTO checkout_log
-			(log_entry_time, transaction_uuid, tagnumber, checkout_date, return_date, checkout_bool)
-			VALUES (CURRENT_TIMESTAMP, $1, $2, $3, $4, $5);`
-
-		checkoutLogResult, err = tx.ExecContext(ctx, checkoutSql,
-			transactionUUID,
-			ptrToNullInt64(inventoryUpdate.Tagnumber),
-			ptrToNullTime(inventoryUpdate.CheckoutDate),
-			ptrToNullTime(inventoryUpdate.ReturnDate),
-			ptrToNullBool(inventoryUpdate.CheckoutBool),
-		)
-		if err != nil {
-			return fmt.Errorf("error inserting into checkout_log: %w", err)
-		}
-		if err := VerifyRowsAffected(checkoutLogResult, 1); err != nil {
-			return fmt.Errorf("error while checking rows affected on checkout_log table insert: %w", err)
-		}
-	}
 	return nil
 }
 

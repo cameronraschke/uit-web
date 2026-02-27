@@ -75,7 +75,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check if decoded base64 is valid UTF-8
-	if !middleware.IsPrintableUnicode(base64Decoded) {
+	if !types.IsPrintableUnicode(base64Decoded) {
 		log.Warn("Invalid UTF-8 in base64 data")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -150,7 +150,7 @@ func SetClientMemoryInfo(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !middleware.IsPrintableUnicode(requestBody) {
+	if !types.IsPrintableUnicode(requestBody) {
 		log.Warn("Invalid UTF-8 in request body")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -203,7 +203,7 @@ func SetClientCPUUsage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !middleware.IsPrintableUnicode(requestBody) {
+	if !types.IsPrintableUnicode(requestBody) {
 		log.Warn("Invalid UTF-8 in request body")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -248,7 +248,7 @@ func SetClientCPUTemperature(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !middleware.IsPrintableUnicode(requestBody) {
+	if !types.IsPrintableUnicode(requestBody) {
 		log.Warn("Invalid UTF-8 in request body")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -293,7 +293,7 @@ func SetClientNetworkUsage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !middleware.IsPrintableUnicode(requestBody) {
+	if !types.IsPrintableUnicode(requestBody) {
 		log.Warn("Invalid UTF-8 in request body")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -338,7 +338,7 @@ func SetClientUptime(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !middleware.IsPrintableUnicode(requestBody) {
+	if !types.IsPrintableUnicode(requestBody) {
 		log.Warn("Invalid UTF-8 in request body")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -511,8 +511,8 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var inventoryUpdate types.InventoryUpdate
-	if err := json.Unmarshal(jsonBytes, &inventoryUpdate); err != nil {
+	var inventoryUpdateReq types.InventoryUpdateRequest
+	if err := json.Unmarshal(jsonBytes, &inventoryUpdateReq); err != nil {
 		log.Warn("Cannot decode JSON (InsertInventoryUpdate): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -523,266 +523,11 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Validate and sanitize input data
-	// Tag number (required, 6 numeric digits, 100000-999999)
-	if err := IsTagnumberInt64Valid(inventoryUpdate.Tagnumber); err != nil {
-		log.Warn("Invalid tag number provided: " + err.Error())
+	inventoryUpdate, err := types.MapInventoryUpdateRequestToDomain(&inventoryUpdateReq, htmlFormConstraints)
+	if err != nil {
+		log.Warn("Invalid inventory request payload: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
-	}
-
-	// System serial
-	if inventoryUpdate.SystemSerial == nil {
-		log.Warn("Invalid system serial provided")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.SystemSerial)) < htmlFormConstraints.InventoryForm.SystemSerialMinChars || utf8.RuneCountInString(*inventoryUpdate.SystemSerial) > htmlFormConstraints.InventoryForm.SystemSerialMaxChars {
-		log.Warn("Invalid system serial length provided")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.SystemSerial) {
-		log.Warn("Non-printable ASCII characters in system serial field")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	*inventoryUpdate.SystemSerial = strings.TrimSpace(*inventoryUpdate.SystemSerial)
-
-	// Location
-	if inventoryUpdate.Location == nil {
-		log.Warn("No location provided")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Location)) < htmlFormConstraints.InventoryForm.LocationMinChars || utf8.RuneCountInString(*inventoryUpdate.Location) > htmlFormConstraints.InventoryForm.LocationMaxChars {
-		log.Warn("Invalid location length")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if !middleware.IsPrintableUnicodeString(*inventoryUpdate.Location) {
-		log.Warn("Invalid UTF-8 in location field for inventory update")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	*inventoryUpdate.Location = strings.TrimSpace(*inventoryUpdate.Location)
-
-	// Building (optional)
-	if inventoryUpdate.Building != nil {
-		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Building)) < htmlFormConstraints.InventoryForm.BuildingMinChars || utf8.RuneCountInString(*inventoryUpdate.Building) > htmlFormConstraints.InventoryForm.BuildingMaxChars {
-			log.Warn("Invalid building length")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.Building) {
-			log.Warn("Invalid UTF-8 in building field")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		*inventoryUpdate.Building = strings.TrimSpace(*inventoryUpdate.Building)
-	} else {
-		log.Info("No building provided")
-	}
-
-	// Room (optional)
-	if inventoryUpdate.Room != nil {
-		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Room)) < htmlFormConstraints.InventoryForm.RoomMinChars || utf8.RuneCountInString(*inventoryUpdate.Room) > htmlFormConstraints.InventoryForm.RoomMaxChars {
-			log.Warn("Invalid room length")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.Room) {
-			log.Warn("Invalid UTF-8 in room field")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		*inventoryUpdate.Room = strings.TrimSpace(*inventoryUpdate.Room)
-	} else {
-		log.Info("No room provided")
-	}
-
-	// System manufacturer (optional, min 1 char, max 24, Unicode chars)
-	if inventoryUpdate.SystemManufacturer != nil {
-		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.SystemManufacturer)) < htmlFormConstraints.InventoryForm.ManufacturerMinChars || utf8.RuneCountInString(*inventoryUpdate.SystemManufacturer) > htmlFormConstraints.InventoryForm.ManufacturerMaxChars {
-			log.Warn("Invalid system manufacturer length")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.SystemManufacturer) {
-			log.Warn("Non-printable Unicode characters in system manufacturer field")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		*inventoryUpdate.SystemManufacturer = strings.TrimSpace(*inventoryUpdate.SystemManufacturer)
-	} else {
-		log.Info("No system manufacturer provided")
-	}
-
-	// System model (optional, min 1 char, max 64 Unicode chars)
-	if inventoryUpdate.SystemModel != nil {
-		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.SystemModel)) < htmlFormConstraints.InventoryForm.SystemModelMinChars || utf8.RuneCountInString(*inventoryUpdate.SystemModel) > htmlFormConstraints.InventoryForm.SystemModelMaxChars {
-			log.Warn("Invalid system model length")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.SystemModel) {
-			log.Warn("Non-printable Unicode characters in system model field")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		*inventoryUpdate.SystemModel = strings.TrimSpace(*inventoryUpdate.SystemModel)
-	} else {
-		log.Info("No system model provided")
-	}
-
-	// Department (required, min 1 char, max 64 chars, printable ASCII only)
-	if inventoryUpdate.Department == nil {
-		log.Warn("No department_name provided")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Department)) < htmlFormConstraints.InventoryForm.DepartmentMinChars || utf8.RuneCountInString(*inventoryUpdate.Department) > htmlFormConstraints.InventoryForm.DepartmentMaxChars {
-		log.Warn("Invalid department_name length")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.Department) {
-		log.Warn("Non-printable ASCII characters in department_name field")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	*inventoryUpdate.Department = strings.TrimSpace(*inventoryUpdate.Department)
-
-	// Domain (required, min 1 char, max 64 chars)
-	if inventoryUpdate.Domain == nil {
-		log.Warn("No domain provided")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Domain)) < htmlFormConstraints.InventoryForm.DomainMinChars || utf8.RuneCountInString(*inventoryUpdate.Domain) > htmlFormConstraints.InventoryForm.DomainMaxChars {
-		log.Warn("Invalid domain length")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.Domain) {
-		log.Warn("Non-printable ASCII characters in domain field")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	*inventoryUpdate.Domain = strings.TrimSpace(*inventoryUpdate.Domain)
-
-	// Property custodian (optional, min 1 char, max 64 Unicode chars)
-	if inventoryUpdate.PropertyCustodian != nil {
-		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.PropertyCustodian)) < htmlFormConstraints.InventoryForm.PropertyCustodianMinChars || utf8.RuneCountInString(*inventoryUpdate.PropertyCustodian) > htmlFormConstraints.InventoryForm.PropertyCustodianMaxChars {
-			log.Warn("Invalid property custodian length")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.PropertyCustodian) {
-			log.Warn("Non-printable Unicode characters in property custodian field")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		*inventoryUpdate.PropertyCustodian = strings.TrimSpace(*inventoryUpdate.PropertyCustodian)
-	}
-
-	// Acquired date, optional, process as UTC
-	if inventoryUpdate.AcquiredDate != nil {
-		acquiredDateUTC := inventoryUpdate.AcquiredDate.UTC()
-		inventoryUpdate.AcquiredDate = &acquiredDateUTC
-	} else {
-		log.Info("No acquired date provided")
-	}
-
-	// Retired date, optional, process as UTC
-	if inventoryUpdate.RetiredDate != nil {
-		retiredDateUTC := inventoryUpdate.RetiredDate.UTC()
-		inventoryUpdate.RetiredDate = &retiredDateUTC
-	} else {
-		log.Info("No retired date provided")
-	}
-
-	// Broken (optional, bool)
-	if inventoryUpdate.Broken == nil {
-		log.Info("No is_broken bool value provided")
-	}
-
-	// Disk removed (optional, bool)
-	if inventoryUpdate.DiskRemoved == nil {
-		log.Info("No disk_removed bool value provided")
-	}
-
-	// Last hardware check (optional, process as UTC)
-	if inventoryUpdate.LastHardwareCheck != nil && !inventoryUpdate.LastHardwareCheck.IsZero() {
-		lastHardwareCheckUTC := inventoryUpdate.LastHardwareCheck.UTC()
-		inventoryUpdate.LastHardwareCheck = &lastHardwareCheckUTC
-	} else {
-		log.Info("No last_hardware_check date provided")
-	}
-
-	// Status (required, min 1, max 24, ASCII printable chars only)
-	if inventoryUpdate.ClientStatus == nil {
-		log.Warn("No status provided")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.ClientStatus)) < htmlFormConstraints.InventoryForm.ClientStatusMinChars || utf8.RuneCountInString(*inventoryUpdate.ClientStatus) > htmlFormConstraints.InventoryForm.ClientStatusMaxChars {
-		log.Warn("Invalid status length")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if !middleware.IsASCIIStringPrintable(*inventoryUpdate.ClientStatus) {
-		log.Warn("Non-printable ASCII characters in status field")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	*inventoryUpdate.ClientStatus = strings.TrimSpace(*inventoryUpdate.ClientStatus)
-
-	// Checkout bool (optional, bool)
-	if htmlFormConstraints.InventoryForm.CheckoutBoolIsMandatory && inventoryUpdate.CheckoutBool == nil {
-		log.Warn("No is_checked_out bool value provided, not updating inventory entry.")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	// Checkout date (optional, process as UTC)
-	if htmlFormConstraints.InventoryForm.CheckoutBoolIsMandatory && inventoryUpdate.CheckoutDate == nil {
-		log.Warn("No checkout_date provided, not updating inventory entry.")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if inventoryUpdate.CheckoutDate != nil {
-		checkoutDateUTC := inventoryUpdate.CheckoutDate.UTC()
-		inventoryUpdate.CheckoutDate = &checkoutDateUTC
-	} else {
-		log.Info("No checkout_date provided")
-	}
-	// Return date (optional, process as UTC)
-	if htmlFormConstraints.InventoryForm.ReturnDateIsMandatory && inventoryUpdate.ReturnDate == nil {
-		log.Warn("No return_date provided, not updating inventory entry.")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if inventoryUpdate.ReturnDate != nil {
-		returnDateUTC := inventoryUpdate.ReturnDate.UTC()
-		inventoryUpdate.ReturnDate = &returnDateUTC
-	} else {
-		log.Info("No return_date provided")
-	}
-
-	// Note (optional)
-	if inventoryUpdate.Note != nil {
-		if utf8.RuneCountInString(strings.TrimSpace(*inventoryUpdate.Note)) < htmlFormConstraints.InventoryForm.ClientNoteMinChars || utf8.RuneCountInString(*inventoryUpdate.Note) > htmlFormConstraints.InventoryForm.ClientNoteMaxChars {
-			log.Warn("Invalid note length")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		if !middleware.IsPrintableUnicodeString(*inventoryUpdate.Note) {
-			log.Warn("Non-printable characters in note field")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-	} else {
-		log.Info("No note provided")
 	}
 
 	// File upload part of form:
@@ -821,7 +566,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	for _, fileHeader := range files {
 		var manifest types.ImageManifest
 
-		if !middleware.IsPrintableUnicodeString(fileHeader.Filename) {
+		if !types.IsPrintableUnicodeString(fileHeader.Filename) {
 			log.Warn("Non-printable characters in uploaded file name: " + fileHeader.Filename)
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
@@ -913,9 +658,9 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		hashes, err := selectRepo.GetFileHashesFromTag(ctx, inventoryUpdate.Tagnumber)
+		hashes, err := selectRepo.GetFileHashesFromTag(ctx, &inventoryUpdate.Tagnumber)
 		if err != nil {
-			log.Error("Failed to get file hashes from tag '" + strconv.FormatInt(*inventoryUpdate.Tagnumber, 10) + "': " + err.Error())
+			log.Error("Failed to get file hashes from tag '" + strconv.FormatInt(inventoryUpdate.Tagnumber, 10) + "': " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -927,7 +672,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 		if hashFound {
-			log.Warn("Duplicate file upload detected for tag '" + strconv.FormatInt(*inventoryUpdate.Tagnumber, 10) + "': file '" + fileHeader.Filename + "' (" + fmt.Sprintf("%x", fileHashBytes) + ") has same hash as existing file, skipping")
+			log.Warn("Duplicate file upload detected for tag '" + strconv.FormatInt(inventoryUpdate.Tagnumber, 10) + "': file '" + fileHeader.Filename + "' (" + fmt.Sprintf("%x", fileHashBytes) + ") has same hash as existing file, skipping")
 			continue
 		}
 
@@ -979,7 +724,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			manifest.ResolutionY = &resY
 
 			// Generate jpeg thumbnail
-			imageDirectoryPath, err := createNecessaryDirs(*inventoryUpdate.Tagnumber)
+			imageDirectoryPath, err := createNecessaryDirs(inventoryUpdate.Tagnumber)
 			if err != nil {
 				log.Error("Failed to create necessary directories for thumbnail of '" + fileHeader.Filename + "': " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -1033,7 +778,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		imageDirectoryPath, err := createNecessaryDirs(*inventoryUpdate.Tagnumber)
+		imageDirectoryPath, err := createNecessaryDirs(inventoryUpdate.Tagnumber)
 		if err != nil {
 			log.Error("Failed to create necessary directories for '" + fileHeader.Filename + "': " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -1051,7 +796,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		_ = file.Close()
 
 		// Insert image metadata into database
-		manifest.Tagnumber = inventoryUpdate.Tagnumber
+		manifest.Tagnumber = &inventoryUpdate.Tagnumber
 		manifest.Hidden = new(bool)
 		*manifest.Hidden = false
 		manifest.Pinned = new(bool)
@@ -1072,17 +817,19 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Update db
-	if err := updateRepo.InsertInventoryUpdate(ctx, transactionUUID, &inventoryUpdate); err != nil {
+	inventoryData := types.MapInventoryUpdateRequestToInventoryData(&inventoryUpdateReq, htmlFormConstraints)
+	if err := updateRepo.InsertInventoryUpdate(ctx, transactionUUID, inventoryUpdate); err != nil {
 		log.Error("Failed to update inventory data: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
+	if 
 
 	var jsonResponse = struct {
 		Tagnumber int64  `json:"tagnumber"`
 		Message   string `json:"message"`
 	}{
-		Tagnumber: *inventoryUpdate.Tagnumber,
+		Tagnumber: inventoryUpdate.Tagnumber,
 		Message:   "update successful",
 	}
 
@@ -1258,7 +1005,7 @@ func SetClientJob(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if !middleware.IsASCIIStringPrintable(*clientJson.JobName) {
+	if !types.IsASCIIStringPrintable(*clientJson.JobName) {
 		log.Warn("Non-printable ASCII characters in job name field")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return

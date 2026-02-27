@@ -17,6 +17,7 @@ import (
 	"uit-toolbox/config"
 	"uit-toolbox/database"
 	"uit-toolbox/middleware"
+	"uit-toolbox/types"
 	"unicode/utf8"
 
 	"golang.org/x/crypto/bcrypt"
@@ -40,10 +41,10 @@ func ValidateAuthFormInputSHA256(username string, password string) error {
 	username = strings.TrimSpace(username)
 	password = strings.TrimSpace(password)
 
-	if err := middleware.IsSHA256String(username); err != nil {
+	if err := types.IsSHA256String(username); err != nil {
 		return fmt.Errorf("username has invalid SHA256 hash: %w", err)
 	}
-	if err := middleware.IsSHA256String(password); err != nil {
+	if err := types.IsSHA256String(password); err != nil {
 		return fmt.Errorf("password has invalid SHA256 hash: %w", err)
 	}
 	return nil
@@ -86,49 +87,6 @@ func CheckAuthCredentials(ctx context.Context, username string, password string)
 		return false, fmt.Errorf("invalid password: %w", err)
 	}
 	return true, nil
-}
-
-func IsTagnumberInt64Valid(i *int64) error {
-	if i == nil {
-		return fmt.Errorf("tagnumber is nil")
-	}
-	if *i < 100000 || *i > 999999 {
-		return fmt.Errorf("tagnumber is out of valid numeric range")
-	}
-	return nil
-}
-
-func IsTagnumberStringValid(b []byte) error {
-	if len(b) == 0 {
-		return fmt.Errorf("tagnumber is nil")
-	}
-	if !middleware.IsNumericAscii(b) {
-		return fmt.Errorf("tagnumber contains non-numeric ASCII characters")
-	}
-	if utf8.RuneCount(b) != 6 {
-		return fmt.Errorf("tagnumber does not contain exactly 6 characters")
-	}
-	return nil
-}
-
-func ConvertAndVerifyTagnumber(tagStr string) (*int64, error) {
-	trimmedTagStr := strings.TrimSpace(tagStr)
-	if trimmedTagStr == "" {
-		return nil, fmt.Errorf("tagnumber string is empty")
-	}
-	validStringErr := IsTagnumberStringValid([]byte(trimmedTagStr))
-	if validStringErr != nil {
-		return nil, fmt.Errorf("invalid tagnumber string: %v", validStringErr)
-	}
-	tag, err := strconv.ParseInt(trimmedTagStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("cannot parse tagnumber: %v", err)
-	}
-	validInt64Err := IsTagnumberInt64Valid(&tag)
-	if validInt64Err != nil {
-		return nil, fmt.Errorf("invalid tagnumber: %v", validInt64Err)
-	}
-	return &tag, nil
 }
 
 func FileServerHandler(w http.ResponseWriter, req *http.Request) {
@@ -328,7 +286,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 
 			if slices.Contains(endpointConfig.Requires, "client_tag") {
 				urlTag := req.URL.Query().Get("tagnumber")
-				tagnumber, err := ConvertAndVerifyTagnumber(urlTag)
+				tagnumber, err := types.ConvertAndVerifyTagnumber(urlTag)
 				if err != nil {
 					log.Warn("Invalid tagnumber in URL: " + urlTag + " (" + err.Error() + ")")
 					middleware.WriteJsonError(w, http.StatusBadRequest)

@@ -1,6 +1,178 @@
 package types
 
-import "time"
+import (
+	"fmt"
+	"net/netip"
+	"strconv"
+	"strings"
+	"time"
+	"unicode"
+	"unicode/utf8"
+)
+
+func IsTagnumberInt64Valid(i *int64) error {
+	if i == nil {
+		return fmt.Errorf("tagnumber is nil")
+	}
+	if *i < 100000 || *i > 999999 {
+		return fmt.Errorf("tagnumber is out of valid numeric range")
+	}
+	return nil
+}
+
+func IsTagnumberStringValid(b []byte) error {
+	if len(b) == 0 {
+		return fmt.Errorf("tagnumber is nil")
+	}
+	if !IsNumericAscii(b) {
+		return fmt.Errorf("tagnumber contains non-numeric ASCII characters")
+	}
+	if utf8.RuneCount(b) != 6 {
+		return fmt.Errorf("tagnumber does not contain exactly 6 characters")
+	}
+	return nil
+}
+
+func ValidateIPAddress(ipAddr *netip.Addr) error {
+	if ipAddr == nil {
+		return fmt.Errorf("nil IP address")
+	}
+	if ipAddr.IsUnspecified() || !ipAddr.IsValid() {
+		return fmt.Errorf("unspecified or invalid IP address: %s", ipAddr.String())
+	}
+	if ipAddr.IsInterfaceLocalMulticast() || ipAddr.IsLinkLocalMulticast() || ipAddr.IsMulticast() {
+		return fmt.Errorf("multicast IP address not allowed: %s", ipAddr.String())
+	}
+	return nil
+}
+
+func ConvertAndCheckIPStr(ipPtr *string) (ipAddr *netip.Addr, isLoopback bool, isLocal bool, err error) {
+	if ipPtr == nil {
+		return nil, false, false, fmt.Errorf("nil IP address")
+	}
+
+	ipStr := strings.TrimSpace(*ipPtr)
+	if ipStr == "" {
+		return nil, false, false, fmt.Errorf("empty IP address")
+	}
+
+	ip, err := netip.ParseAddr(ipStr)
+	if err != nil {
+		return nil, false, false, fmt.Errorf("failed to parse IP address: %w", err)
+	}
+
+	if err := ValidateIPAddress(&ip); err != nil {
+		return nil, false, false, fmt.Errorf("invalid IP address: %w", err)
+	}
+
+	return &ip, ip.IsLoopback(), ip.IsPrivate(), nil
+}
+
+func IsPrintableASCII(b []byte) bool {
+	for i := range b {
+		char := b[i]
+		if char < 0x20 || char > 0x7E { // Space (0x20) to tilde (0x7E)
+			return false
+		}
+	}
+	return true
+}
+
+func IsASCIIStringPrintable(s string) bool {
+	if !utf8.ValidString(s) {
+		return false
+	}
+	for _, char := range s {
+		if char < 32 || char > 126 {
+			return false
+		}
+	}
+	return true
+}
+
+func IsPrintableUnicodeString(s string) bool {
+	if !utf8.ValidString(s) {
+		return false
+	}
+	for _, char := range s {
+		if !unicode.IsPrint(char) && !unicode.IsSpace(char) {
+			return false
+		}
+	}
+	return true
+}
+
+func IsPrintableUnicode(b []byte) bool {
+	if !utf8.Valid(b) {
+		return false
+	}
+	for _, char := range string(b) {
+		if !unicode.IsPrint(char) && !unicode.IsSpace(char) {
+			return false
+		}
+	}
+	return true
+}
+
+func IsNumericAscii(b []byte) bool {
+	if len(b) == 0 {
+		return false
+	}
+	if !utf8.Valid(b) {
+		return false
+	}
+	for i := range b {
+		char := b[i]
+		if char < '0' || char > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func CountDigits(n int64) int {
+	if n == 0 {
+		return 1
+	}
+	count := 0
+	for n != 0 {
+		n /= 10
+		count++
+	}
+	return count
+}
+
+func IsSHA256String(shaStr string) error {
+	if len(shaStr) != 64 { // ASCII, 1 byte per char
+		return fmt.Errorf("invalid length for SHA256 string: %d chars", len(shaStr))
+	}
+	for _, char := range shaStr {
+		if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f') || (char >= 'A' && char <= 'F')) {
+			return fmt.Errorf("invalid character found in SHA256 string")
+		}
+	}
+	return nil
+}
+
+func ConvertAndVerifyTagnumber(tagStr string) (*int64, error) {
+	trimmedTagStr := strings.TrimSpace(tagStr)
+	if trimmedTagStr == "" {
+		return nil, fmt.Errorf("tagnumber string is empty")
+	}
+	validStringErr := IsTagnumberStringValid([]byte(trimmedTagStr))
+	if validStringErr != nil {
+		return nil, fmt.Errorf("invalid tagnumber string: %v", validStringErr)
+	}
+	tag, err := strconv.ParseInt(trimmedTagStr, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse tagnumber: %v", err)
+	}
+	validInt64Err := IsTagnumberInt64Valid(&tag)
+	if validInt64Err != nil {
+		return nil, fmt.Errorf("invalid tagnumber: %v", validInt64Err)
+	}
+	return &tag, nil
+}
 
 type InventoryAdvSearchOptions struct {
 	Tagnumber          *int64  `json:"tagnumber"`

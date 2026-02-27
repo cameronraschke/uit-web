@@ -138,7 +138,7 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		reqAddr, _, _, err := convertAndCheckIPStr(&ipStr)
+		reqAddr, _, _, err := types.ConvertAndCheckIPStr(&ipStr)
 		if err != nil {
 			log.Warn("Cannot convert request IP: " + err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
@@ -870,7 +870,7 @@ func IsCookieValid(req *http.Request, cookie *http.Cookie) (bool, error) {
 	if err := cookie.Valid(); err != nil {
 		return false, fmt.Errorf("invalid authentication cookie format: %w", err)
 	}
-	if strings.TrimSpace(cookie.Name) == "" || len(cookie.Name) > 255 || !IsASCIIStringPrintable(cookie.Name) {
+	if strings.TrimSpace(cookie.Name) == "" || len(cookie.Name) > 255 || !types.IsASCIIStringPrintable(cookie.Name) {
 		return false, fmt.Errorf("invalid authentication cookie name")
 	}
 	if cookie.Secure && req.TLS == nil {
@@ -891,7 +891,7 @@ func IsCookieValid(req *http.Request, cookie *http.Cookie) (bool, error) {
 	if strings.TrimSpace(cookie.Value) == "" || len(cookie.Value) > 4096 {
 		return false, fmt.Errorf("authentication cookie value out of range: %s", cookie.Name)
 	}
-	if !IsASCIIStringPrintable(cookie.Value) {
+	if !types.IsASCIIStringPrintable(cookie.Value) {
 		return false, fmt.Errorf("authentication cookie contains invalid characters: %s", cookie.Name)
 	}
 	return true, nil

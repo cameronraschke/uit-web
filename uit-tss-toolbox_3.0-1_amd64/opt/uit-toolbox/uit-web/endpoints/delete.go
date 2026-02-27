@@ -8,6 +8,7 @@ import (
 	"strings"
 	"uit-toolbox/database"
 	"uit-toolbox/middleware"
+	"uit-toolbox/types"
 )
 
 func DeleteImage(w http.ResponseWriter, req *http.Request) {
@@ -32,7 +33,7 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	tag, err := ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
+	tag, err := types.ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
 	if err != nil {
 		log.Warn("Error parsing tagnumber query parameter for DeleteImage: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)

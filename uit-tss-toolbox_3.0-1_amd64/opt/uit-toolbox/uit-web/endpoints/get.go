@@ -39,7 +39,7 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// No consequence for missing tag, acceptable if lookup by serial
-	var tagnumber, tagErr = ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
+	var tagnumber, tagErr = types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	var systemSerial = middleware.GetStrQuery(urlQueries, "system_serial")
 
 	if tagErr != nil && systemSerial == nil {
@@ -61,19 +61,19 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var hardwareData *types.ClientLookup
+	var clientLookup *types.ClientLookup
 	var lookupSQLErr error
 	if tagnumber != nil {
-		hardwareData, lookupSQLErr = db.ClientLookupByTag(ctx, tagnumber)
+		clientLookup, lookupSQLErr = db.ClientLookupByTag(ctx, tagnumber)
 	} else if systemSerial != nil {
-		hardwareData, lookupSQLErr = db.ClientLookupBySerial(ctx, systemSerial)
+		clientLookup, lookupSQLErr = db.ClientLookupBySerial(ctx, systemSerial)
 	}
 	if lookupSQLErr != nil {
 		log.Warn("error querying client in GetClientLookup: " + lookupSQLErr.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	middleware.WriteJson(w, http.StatusOK, hardwareData)
+	middleware.WriteJson(w, http.StatusOK, clientLookup)
 }
 
 func GetAllTags(w http.ResponseWriter, req *http.Request) {
@@ -105,7 +105,7 @@ func GetHardwareIdentifiers(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil || tagnumber == nil {
 		log.Warn("Invalid tagnumber provided in GetHardwareIdentifiers: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -136,7 +136,7 @@ func GetBiosData(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil || tagnumber == nil {
 		log.Warn("Invalid tagnumber provided in GetBiosData: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -168,7 +168,7 @@ func GetOSData(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
 		log.Warn("Invalid tagnumber provided in GetOSData: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -200,7 +200,7 @@ func GetClientQueuedJobs(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
 		log.Warn("Invalid tagnumber provided in GetClientQueuedJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -233,7 +233,7 @@ func GetClientAvailableJobs(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
 		log.Warn("Invalid tagnumber provided in GetClientAvailableJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -298,7 +298,7 @@ func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 	}
 
 	serial := strings.TrimSpace(requestQueries.Get("system_serial"))
-	tagnumber, tagErr := ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
+	tagnumber, tagErr := types.ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
 	if tagErr != nil {
 		if serial == "" {
 			log.Warn("No or invalid tagnumber and no system_serial provided in GetLocationFormData")
@@ -331,7 +331,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	tagnumber, err := ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
+	tagnumber, err := types.ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
 	if err != nil {
 		log.Warn("Invalid tagnumber provided in request to GetClientImagesManifest: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -822,7 +822,7 @@ func GetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	tagnumber, err := ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
 		log.Warn("Invalid tagnumber provided in GetClientBatteryHealth: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
