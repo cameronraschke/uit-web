@@ -909,24 +909,24 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			$18
 		) ON CONFLICT (tagnumber)
 		 DO UPDATE SET
-		 	transaction_uuid = COALESCE(EXCLUDED.transaction_uuid),
+		 	transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, hardware_data.transaction_uuid),
 			time = CURRENT_TIMESTAMP,
-			system_serial = COALESCE(EXCLUDED.system_serial),
-			system_uuid = COALESCE(EXCLUDED.system_uuid),
-			system_manufacturer = COALESCE(EXCLUDED.system_manufacturer),
-			system_model = COALESCE(EXCLUDED.system_model),
-			system_sku = COALESCE(EXCLUDED.system_sku),
-			device_type = COALESCE(EXCLUDED.device_type),
-			chassis_type = COALESCE(EXCLUDED.chassis_type),
-			motherboard_serial = COALESCE(EXCLUDED.motherboard_serial, motherboard_serial),
-			motherboard_manufacturer = COALESCE(EXCLUDED.motherboard_manufacturer, motherboard_manufacturer),
-			cpu_manufacturer = COALESCE(EXCLUDED.cpu_manufacturer, cpu_manufacturer),
-			cpu_model = COALESCE(EXCLUDED.cpu_model, cpu_model),
-			cpu_max_speed_mhz = COALESCE(EXCLUDED.cpu_max_speed_mhz, cpu_max_speed_mhz),
-			cpu_core_count = COALESCE(EXCLUDED.cpu_core_count, cpu_core_count),
-			cpu_thread_count = COALESCE(EXCLUDED.cpu_thread_count, cpu_thread_count),
-			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, ethernet_mac),
-			wifi_mac = COALESCE(EXCLUDED.wifi_mac, wifi_mac)
+			system_serial = COALESCE(EXCLUDED.system_serial, hardware_data.system_serial),
+			system_uuid = COALESCE(EXCLUDED.system_uuid, hardware_data.system_uuid),
+			system_manufacturer = COALESCE(EXCLUDED.system_manufacturer, hardware_data.system_manufacturer),
+			system_model = COALESCE(EXCLUDED.system_model, hardware_data.system_model),
+			system_sku = COALESCE(EXCLUDED.system_sku, hardware_data.system_sku),
+			device_type = COALESCE(EXCLUDED.device_type, hardware_data.device_type),
+			chassis_type = COALESCE(EXCLUDED.chassis_type, hardware_data.chassis_type),
+			motherboard_serial = COALESCE(EXCLUDED.motherboard_serial, hardware_data.motherboard_serial),
+			motherboard_manufacturer = COALESCE(EXCLUDED.motherboard_manufacturer, hardware_data.motherboard_manufacturer),
+			cpu_manufacturer = COALESCE(EXCLUDED.cpu_manufacturer, hardware_data.cpu_manufacturer),
+			cpu_model = COALESCE(EXCLUDED.cpu_model, hardware_data.cpu_model),
+			cpu_max_speed_mhz = COALESCE(EXCLUDED.cpu_max_speed_mhz, hardware_data.cpu_max_speed_mhz),
+			cpu_core_count = COALESCE(EXCLUDED.cpu_core_count, hardware_data.cpu_core_count),
+			cpu_thread_count = COALESCE(EXCLUDED.cpu_thread_count, hardware_data.cpu_thread_count),
+			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, hardware_data.ethernet_mac),
+			wifi_mac = COALESCE(EXCLUDED.wifi_mac, hardware_data.wifi_mac)
 			;
 	`
 	var hardwareResult sql.Result
