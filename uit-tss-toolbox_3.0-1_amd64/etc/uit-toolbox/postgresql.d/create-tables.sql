@@ -63,35 +63,36 @@ CREATE TABLE IF NOT EXISTS jobstats (
 );
 
 CREATE TABLE IF NOT EXISTS historical_hardware_data (
-	uuid VARCHAR(64) UNIQUE NOT NULL,
+	transaction_uuid VARCHAR(64) UNIQUE NOT NULL,
+	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
 	tagnumber INTEGER NOT NULL PRIMARY KEY,
-	system_serial VARCHAR(64) DEFAULT NULL,
+	system_serial VARCHAR(128) DEFAULT NULL,
 	ethernet_mac VARCHAR(17) DEFAULT NULL,
 	wifi_mac VARCHAR(17) DEFAULT NULL,
 	disk_model VARCHAR(36) DEFAULT NULL,
 	disk_type VARCHAR(4) DEFAULT NULL,
-	disk_size SMALLINT DEFAULT NULL,
+	disk_size INTEGER DEFAULT NULL,
 	disk_serial VARCHAR(32) DEFAULT NULL,
-	disk_writes DECIMAL(5,2) DEFAULT NULL,
-	disk_reads DECIMAL(5,2) DEFAULT NULL,
+	disk_writes INTEGER DEFAULT NULL,
+	disk_reads INTEGER DEFAULT NULL,
 	disk_power_on_hours INTEGER DEFAULT NULL,
-	disk_errors INT DEFAULT NULL,
+	disk_errors INTEGER DEFAULT NULL,
 	disk_power_cycles INTEGER DEFAULT NULL,
-	disk_temp SMALLINT DEFAULT NULL,
+	disk_temp SMALLINT DEFAULT NULL, -- unused
 	disk_firmware VARCHAR(10) DEFAULT NULL,
 	battery_model VARCHAR(16) DEFAULT NULL,
 	battery_serial VARCHAR(16) DEFAULT NULL,
 	battery_health SMALLINT DEFAULT NULL,
 	battery_charge_cycles SMALLINT DEFAULT NULL,
-	battery_capacity INTEGER DEFAULT NULL,
-	battery_manufacturedate DATE DEFAULT NULL,
+	battery_current_max_capacity INTEGER DEFAULT NULL,
+	battery_design_capacity INTEGER DEFAULT NULL,
+	battery_manufacture_date DATE DEFAULT NULL,
 	bios_version VARCHAR(24) DEFAULT NULL,
-	bios_date VARCHAR(12) DEFAULT NULL,
+	bios_release_date VARCHAR(12) DEFAULT NULL,
 	bios_firmware VARCHAR(8) DEFAULT NULL,
 	memory_serial VARCHAR(128) DEFAULT NULL,
 	memory_capacity INTEGER DEFAULT NULL,
-	memory_speed_mhz SMALLINT DEFAULT NULL,
-	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL
+	memory_speed_mhz SMALLINT DEFAULT NULL
 );
 
 -- INSERT INTO historical_hardware_data (
@@ -374,11 +375,12 @@ CREATE TABLE IF NOT EXISTS logins (
 
 CREATE TABLE IF NOT EXISTS hardware_data (
 	tagnumber INTEGER UNIQUE NOT NULL,
+	system_serial VARCHAR(128) DEFAULT NULL,
+	system_uuid VARCHAR(64) DEFAULT NULL,
 	ethernet_mac VARCHAR(17) DEFAULT NULL,
 	wifi_mac VARCHAR(17) DEFAULT NULL,
 	system_manufacturer VARCHAR(24) DEFAULT NULL,
 	system_model VARCHAR(64) DEFAULT NULL,
-	system_uuid VARCHAR(64) DEFAULT NULL,
 	system_sku VARCHAR(20) DEFAULT NULL,
 	chassis_type VARCHAR(16) DEFAULT NULL,
 	device_type VARCHAR(64) REFERENCES static_device_types(device_type) DEFAULT NULL,

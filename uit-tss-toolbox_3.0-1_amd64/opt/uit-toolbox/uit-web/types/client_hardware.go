@@ -3,21 +3,48 @@ package types
 import "time"
 
 type ClientHardwareView struct {
+	TransactionUUID          string  `json:"transaction_uuid"`
 	Tagnumber               *int64  `json:"tagnumber"`
 	SystemSerial            *string `json:"system_serial"`
-	EthernetMAC             *string `json:"ethernet_mac"`
-	WifiMAC                 *string `json:"wifi_mac"`
+	SystemUUID              *string `json:"system_uuid"`
 	SystemManufacturer      *string `json:"system_manufacturer"`
 	SystemModel             *string `json:"system_model"`
+	SystemSKU               *string `json:"system_sku"`
 	ProductFamily           *string `json:"product_family,omitempty"`
 	ProductName             *string `json:"product_name,omitempty"`
-	SystemUUID              *string `json:"system_uuid"`
-	SystemSKU               *string `json:"system_sku"`
-	ChassisType             *string `json:"chassis_type"`
-	MotherboardManufacturer *string `json:"motherboard_manufacturer"`
-	MotherboardSerial       *string `json:"motherboard_serial"`
 	DeviceType              *string `json:"device_type"`
-	MemorySpeedMHz          *int64  `json:"memory_speed_mhz"`
+	ChassisType             *string `json:"chassis_type"`
+	MotherboardSerial       *string `json:"motherboard_serial"`
+	MotherboardManufacturer *string `json:"motherboard_manufacturer"`
+	CPUManufacturer *string `json:"cpu_manufacturer"`
+	CPUModel *string `json:"cpu_model"`
+	CPUMaxSpeedMhz *string `json:"cpu_max_speed_mhz"`
+	CPUCoreCount *int64 `json:"cpu_core_count"`
+	CPUThreadCount *int64 `json:"cpu_thread_count"`
+	EthernetMAC             *string `json:"ethernet_mac"`
+	WifiMAC                 *string `json:"wifi_mac"`
+	DiskModel		*string `json:"disk_model"`
+	DiskType *string `json:"disk_type"`
+	DiskSize *int64 `json:"disk_size"`
+	DiskSerial *string `json:"disk_serial"`
+	DiskWrites *int64 `json:"disk_writes"`
+	DiskReads *int64 `json:"disk_reads"`
+	DiskPowerOnHours *int64 `json:"disk_power_on_hours"`
+	DiskErrors *int64 `json:"disk_errors"`
+	DiskPowerCycles *int64 `json:"disk_power_cycles"`
+	DiskFirmware *string `json:"disk_firmware"`
+	BatteryModel *string `json:"battery_model"`
+	BatterySerial *string `json:"battery_serial"`
+	BatteryChargeCycles *int64 `json:"battery_charge_cycles"`
+	BatteryCurrentMaxCapacity *float64 `json:"battery_current_max_capacity"`
+	BatteryDesignCapacity *float64 `json:"battery_design_capacity"`
+	BatteryManufactureDate *string `json:"battery_manufacture_date"`
+	BiosVersion						 *string `json:"bios_version"`
+	BiosReleaseDate				 *string `json:"bios_release_date"`
+	BiosFirmware *string `json:"bios_firmware"`
+	MemorySerial *string `json:"memory_serial"`
+	MemoryCapacity *int64 `json:"memory_capacity"`
+	MemorySpeedMHz *int64 `json:"memory_speed_mhz"`
 }
 
 type ClientHardwareCheck struct {

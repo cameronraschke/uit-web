@@ -847,10 +847,11 @@ func (updateRepo *UpdateRepo) UpdateClientLastHardwareCheck(ctx context.Context,
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.ClientHardwareView) (err error) {
-	if hardwareData == nil || hardwareData.Tagnumber == nil || transactionUUID == uuid.Nil {
+func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error) {
+	if hardwareData == nil || hardwareData.Tagnumber == nil || hardwareData.TransactionUUID == nil {
 		return fmt.Errorf("hardwareData is invalid")
 	}
+	transactionUUIDStr := newUUID(hardwareData.TransactionUUID)
 	if ctx.Err() != nil {
 		return fmt.Errorf("context error: %w", ctx.Err())
 	}
@@ -866,10 +867,224 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, tran
 		}
 	}()
 
-	const hardwareDataTable = `INSERT INTO 
+	const hardwareDataTable = `INSERT INTO hardware_data
+		(
+			transaction_uuid,
+			time,
+			tagnumber,
+			system_serial,
+			system_uuid,
+			system_manufacturer,
+			system_model,
+			system_sku,
+			device_type,
+			chassis_type,
+			motherboard_serial,
+			motherboard_manufacturer,
+			cpu_manufacturer,
+			cpu_model,
+			cpu_max_speed_mhz,
+			cpu_core_count,
+			cpu_thread_count,
+			ethernet_mac,
+			wifi_mac
+		) VALUES (
+			$1,
+			CURRENT_TIMESTAMP,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10,
+			$11,
+			$12,
+			$13,
+			$14,
+			$15,
+			$16,
+			$17,
+			$18
+		) ON CONFLICT (tagnumber)
+		 DO UPDATE SET
+		 	transaction_uuid = COALESCE(EXCLUDED.transaction_uuid),
+			time = CURRENT_TIMESTAMP,
+			system_serial = COALESCE(EXCLUDED.system_serial),
+			system_uuid = COALESCE(EXCLUDED.system_uuid),
+			system_manufacturer = COALESCE(EXCLUDED.system_manufacturer),
+			system_model = COALESCE(EXCLUDED.system_model),
+			system_sku = COALESCE(EXCLUDED.system_sku),
+			device_type = COALESCE(EXCLUDED.device_type),
+			chassis_type = COALESCE(EXCLUDED.chassis_type),
+			motherboard_serial = COALESCE(EXCLUDED.motherboard_serial, motherboard_serial),
+			motherboard_manufacturer = COALESCE(EXCLUDED.motherboard_manufacturer, motherboard_manufacturer),
+			cpu_manufacturer = COALESCE(EXCLUDED.cpu_manufacturer, cpu_manufacturer),
+			cpu_model = COALESCE(EXCLUDED.cpu_model, cpu_model),
+			cpu_max_speed_mhz = COALESCE(EXCLUDED.cpu_max_speed_mhz, cpu_max_speed_mhz),
+			cpu_core_count = COALESCE(EXCLUDED.cpu_core_count, cpu_core_count),
+			cpu_thread_count = COALESCE(EXCLUDED.cpu_thread_count, cpu_thread_count),
+			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, ethernet_mac),
+			wifi_mac = COALESCE(EXCLUDED.wifi_mac, wifi_mac)
+			;
 	`
+	var hardwareResult sql.Result
+	hardwareResult, err = tx.ExecContext(ctx, hardwareDataTable,
+		ptrToNullString(&transactionUUIDStr),
+		ptrToNullInt64(hardwareData.Tagnumber),
+		ptrToNullString(hardwareData.SystemSerial),
+		ptrToNullString(hardwareData.SystemUUID),
+		ptrToNullString(hardwareData.SystemManufacturer),
+		ptrToNullString(hardwareData.SystemModel),
+		ptrToNullString(hardwareData.SystemSKU),
+		ptrToNullString(hardwareData.DeviceType),
+		ptrToNullString(hardwareData.ChassisType),
+		ptrToNullString(hardwareData.MotherboardSerial),
+		ptrToNullString(hardwareData.MotherboardManufacturer),
+		ptrToNullString(hardwareData.CPUManufacturer),
+		ptrToNullString(hardwareData.CPUModel),
+		ptrToNullInt64(hardwareData.CPUMaxSpeedMHz),
+		ptrToNullInt64(hardwareData.CPUCoreCount),
+		ptrToNullInt64(hardwareData.CPUThreadCount),
+		ptrToNullString(hardwareData.EthernetMAC),
+		ptrToNullString(hardwareData.WiFiMAC),
+	)	
+	if err != nil {
+		return fmt.Errorf("error inserting/updating hardware data: %w", err)
+	}
+	if err := VerifyRowsAffected(hardwareResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on hardware_data table insert/update: %w", err)
+	}
 
-	const historicalHardwareDataTable = ``
+	const historicalHardwareDataTable = `INSERT INTO historical_hardware_data 
+		(
+			transaction_uuid,
+			time,
+			tagnumber, 
+			system_serial, 
+			ethernet_mac, 
+			wifi_mac, 
+			disk_model,
+			disk_type,
+			disk_size,
+			disk_serial,
+			disk_writes,
+			disk_reads,
+			disk_power_on_hours,
+			disk_errors,
+			disk_power_cycles,
+			disk_firmware,
+			battery_model,
+			battery_serial,
+			battery_charge_cycles,
+			battery_current_max_capacity,
+			battery_design_capacity,
+			battery_manufacture_date,
+			bios_version,
+			bios_release_date,
+			bios_firmware,
+			memory_serial,
+			memory_capacity,
+			memory_speed_mhz,
+		)
+		VALUES (
+			$1,
+			CURRENT_TIMESTAMP,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10,
+			$11,
+			$12,
+			$13,
+			$14,
+			$15,
+			$16,
+			$17,
+			$18,
+			$19,
+			$20,
+			$21,
+			$22,
+			$23,
+			$24,
+			$25,
+			$26,
+			$27
+		) ON CONFLICT (transaction_uuid) 
+		DO UPDATE SET
+			time = CURRENT_TIMESTAMP
+			tagnumber =  COALESCE(EXCLUDED.tagnumber, tagnumber),
+			system_serial = COALESCE(EXCLUDED.system_serial, system_serial),
+			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, ethernet_mac),
+			wifi_mac =  COALESCE(EXCLUDED.wifi_mac, wifi_mac),
+			disk_model = COALESCE(EXCLUDED.disk_model, disk_model),
+			disk_type = COALESCE(EXCLUDED.disk_type, disk_type),
+			disk_size = COALESCE(EXCLUDED.disk_size, disk_size),
+			disk_serial = COALESCE(EXCLUDED.disk_serial, disk_serial),
+			disk_writes = COALESCE(EXCLUDED.disk_writes, disk_writes),
+			disk_reads = COALESCE(EXCLUDED.disk_reads, disk_reads),
+			disk_power_on_hours = COALESCE(EXCLUDED.disk_power_on_hours, disk_power_on_hours),
+			disk_errors = COALESCE(EXCLUDED.disk_errors, disk_errors),
+			disk_power_cycles = COALESCE(EXCLUDED.disk_power_cycles, disk_power_cycles),
+			disk_firmware = COALESCE(EXCLUDED.disk_firmware, disk_firmware),
+			battery_model = COALESCE(EXCLUDED.battery_model, battery_model),
+			battery_serial = COALESCE(EXCLUDED.battery_serial, battery_serial),
+			battery_charge_cycles = COALESCE(EXCLUDED.battery_charge_cycles, battery_charge_cycles),
+			battery_current_max_capacity = COALESCE(EXCLUDED.battery_current_max_capacity, battery_current_max_capacity),
+			battery_design_capacity = COALESCE(EXCLUDED.battery_design_capacity, battery_design_capacity),
+			battery_manufacture_date = COALESCE(EXCLUDED.battery_manufacture_date, battery_manufacture_date),
+			bios_version = COALESCE(EXCLUDED.bios_version, bios_version),
+			bios_release_date = COALESCE(EXCLUDED.bios_release_date, bios_release_date),
+			bios_firmware = COALESCE(EXCLUDED.bios_firmware, bios_firmware),
+			memory_serial = COALESCE(EXCLUDED.memory_serial, memory_serial),
+			memory_capacity = COALESCE(EXCLUDED.memory_capacity, memory_capacity),
+			memory_speed_mhz = COALESCE(EXCLUDED.memory_speed_mhz, memory_speed_mhz)
+			;
+		`
 
+	var hardwareHistoryResult sql.Result
+	hardwareHistoryResult, err = tx.ExecContext(ctx, historicalHardwareDataTable,
+		ptrToNullString(&transactionUUIDStr),
+		ptrToNullInt64(hardwareData.Tagnumber),
+		ptrToNullString(hardwareData.SystemSerial),
+		ptrToNullString(hardwareData.EthernetMAC),
+		ptrToNullString(hardwareData.WiFiMAC),
+		ptrToNullString(hardwareData.DiskModel),
+		ptrToNullString(hardwareData.DiskType),
+		ptrToNullInt64(hardwareData.DiskSize),
+		ptrToNullString(hardwareData.DiskSerial),
+		ptrToNullInt64(hardwareData.DiskWrites),
+		ptrToNullInt64(hardwareData.DiskReads),
+		ptrToNullInt64(hardwareData.DiskPowerOnHours),
+		ptrToNullInt64(hardwareData.DiskErrors),
+		ptrToNullInt64(hardwareData.DiskPowerCycles),
+		ptrToNullString(hardwareData.DiskFirmware),
+		ptrToNullString(hardwareData.BatteryModel),
+		ptrToNullString(hardwareData.BatterySerial),
+		ptrToNullInt64(hardwareData.BatteryChargeCycles),
+		ptrToNullFloat64(hardwareData.BatteryCurrentMaxCapacity),
+		ptrToNullFloat64(hardwareData.BatteryDesignCapacity),
+		ptrToNullString(hardwareData.BatteryManufactureDate),
+		ptrToNullString(hardwareData.BiosVersion),
+		ptrToNullString(hardwareData.BiosReleaseDate),
+		ptrToNullString(hardwareData.BiosFirmware),
+		ptrToNullString(hardwareData.MemorySerial),
+		ptrToNullInt64(hardwareData.MemoryCapacity),
+		ptrToNullInt64(hardwareData.MemorySpeedMHz),
+	)
+	if err != nil {
+		return fmt.Errorf("error updating last hardware check time: %w", err)
+	}
+	if err := VerifyRowsAffected(hardwareHistoryResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on client_health table update: %w", err)
+	}
 	return nil
 }
