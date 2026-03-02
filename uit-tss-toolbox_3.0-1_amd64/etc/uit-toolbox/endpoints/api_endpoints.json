@@ -59,5 +59,7 @@
 	"/api/client/health/last_hardware_check": {
 		"allowed_methods": ["OPTIONS", "POST"]
 	},
-	"/api/client/hardware": {}
+	"/api/client/hardware": {
+		"allowed_methods": ["OPTIONS", "GET", "POST"]
+	}
 }
