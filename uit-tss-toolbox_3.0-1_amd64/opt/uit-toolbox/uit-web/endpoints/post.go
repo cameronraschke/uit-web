@@ -1111,8 +1111,22 @@ func SetClientHardwareData(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	transactionUUID := uuid.New()
-	if err = updateRepo.UpdateClientHardwareData(ctx, transactionUUID, &hardwareData); err != nil {
+	if hardwareData == (types.ClientHardwareView{}) {
+		log.Warn("Empty hardware data provided in SetClientHardwareData")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if hardwareData.Tagnumber == nil || *hardwareData.Tagnumber == 0 {
+		log.Warn("Tagnumber is missing or zero in SetClientHardwareData")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(hardwareData.TransactionUUID) == "" {
+		log.Warn("Transaction UUID is missing or nil in SetClientHardwareData")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if err = updateRepo.UpdateClientHardwareData(ctx, &hardwareData); err != nil {
 		log.Error("Failed to update client hardware data: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return

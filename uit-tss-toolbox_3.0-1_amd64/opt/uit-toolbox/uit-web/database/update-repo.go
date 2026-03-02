@@ -32,7 +32,7 @@ type Update interface {
 	UpdateClientNetworkUsage(ctx context.Context, networkData *types.NetworkData) (err error)
 	UpdateClientUptime(ctx context.Context, uptimeData *types.ClientUptime) (err error)
 	UpdateClientLastHardwareCheck(ctx context.Context, tagnumber int64, lastCheck time.Time) (err error)
-	UpdateClientHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.ClientHardwareView) (err error)
+	UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error)
 }
 
 type UpdateRepo struct {
@@ -848,10 +848,9 @@ func (updateRepo *UpdateRepo) UpdateClientLastHardwareCheck(ctx context.Context,
 }
 
 func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error) {
-	if hardwareData == nil || hardwareData.Tagnumber == nil || hardwareData.TransactionUUID == nil {
+	if hardwareData == nil || hardwareData.Tagnumber == nil || strings.TrimSpace(hardwareData.TransactionUUID) == "" {
 		return fmt.Errorf("hardwareData is invalid")
 	}
-	transactionUUIDStr := newUUID(hardwareData.TransactionUUID)
 	if ctx.Err() != nil {
 		return fmt.Errorf("context error: %w", ctx.Err())
 	}
@@ -932,7 +931,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 	`
 	var hardwareResult sql.Result
 	hardwareResult, err = tx.ExecContext(ctx, hardwareDataTable,
-		ptrToNullString(&transactionUUIDStr),
+		ptrToNullString(&hardwareData.TransactionUUID),
 		ptrToNullInt64(hardwareData.Tagnumber),
 		ptrToNullString(hardwareData.SystemSerial),
 		ptrToNullString(hardwareData.SystemUUID),
@@ -945,12 +944,12 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		ptrToNullString(hardwareData.MotherboardManufacturer),
 		ptrToNullString(hardwareData.CPUManufacturer),
 		ptrToNullString(hardwareData.CPUModel),
-		ptrToNullInt64(hardwareData.CPUMaxSpeedMHz),
+		ptrToNullInt64(hardwareData.CPUMaxSpeedMhz),
 		ptrToNullInt64(hardwareData.CPUCoreCount),
 		ptrToNullInt64(hardwareData.CPUThreadCount),
 		ptrToNullString(hardwareData.EthernetMAC),
 		ptrToNullString(hardwareData.WiFiMAC),
-	)	
+	)
 	if err != nil {
 		return fmt.Errorf("error inserting/updating hardware data: %w", err)
 	}
@@ -1052,7 +1051,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 
 	var hardwareHistoryResult sql.Result
 	hardwareHistoryResult, err = tx.ExecContext(ctx, historicalHardwareDataTable,
-		ptrToNullString(&transactionUUIDStr),
+		ptrToNullString(&hardwareData.TransactionUUID),
 		ptrToNullInt64(hardwareData.Tagnumber),
 		ptrToNullString(hardwareData.SystemSerial),
 		ptrToNullString(hardwareData.EthernetMAC),

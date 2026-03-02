@@ -1307,7 +1307,7 @@ func (repo *SelectRepo) GetClientHardwareOverview(ctx context.Context, tag int64
 		&clientHardwareData.Tagnumber,
 		&clientHardwareData.SystemSerial,
 		&clientHardwareData.EthernetMAC,
-		&clientHardwareData.WifiMAC,
+		&clientHardwareData.WiFiMAC,
 		&clientHardwareData.SystemManufacturer,
 		&clientHardwareData.SystemModel,
 		&clientHardwareData.ProductFamily,
