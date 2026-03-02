@@ -986,9 +986,8 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			bios_firmware,
 			memory_serial,
 			memory_capacity,
-			memory_speed_mhz,
-		)
-		VALUES (
+			memory_speed_mhz
+		) VALUES (
 			$1,
 			CURRENT_TIMESTAMP,
 			$2,
@@ -1019,33 +1018,33 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			$27
 		) ON CONFLICT (transaction_uuid) 
 		DO UPDATE SET
-			time = CURRENT_TIMESTAMP
-			tagnumber =  COALESCE(EXCLUDED.tagnumber, tagnumber),
-			system_serial = COALESCE(EXCLUDED.system_serial, system_serial),
-			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, ethernet_mac),
-			wifi_mac =  COALESCE(EXCLUDED.wifi_mac, wifi_mac),
-			disk_model = COALESCE(EXCLUDED.disk_model, disk_model),
-			disk_type = COALESCE(EXCLUDED.disk_type, disk_type),
-			disk_size = COALESCE(EXCLUDED.disk_size, disk_size),
-			disk_serial = COALESCE(EXCLUDED.disk_serial, disk_serial),
-			disk_writes = COALESCE(EXCLUDED.disk_writes, disk_writes),
-			disk_reads = COALESCE(EXCLUDED.disk_reads, disk_reads),
-			disk_power_on_hours = COALESCE(EXCLUDED.disk_power_on_hours, disk_power_on_hours),
-			disk_errors = COALESCE(EXCLUDED.disk_errors, disk_errors),
-			disk_power_cycles = COALESCE(EXCLUDED.disk_power_cycles, disk_power_cycles),
-			disk_firmware = COALESCE(EXCLUDED.disk_firmware, disk_firmware),
-			battery_model = COALESCE(EXCLUDED.battery_model, battery_model),
-			battery_serial = COALESCE(EXCLUDED.battery_serial, battery_serial),
-			battery_charge_cycles = COALESCE(EXCLUDED.battery_charge_cycles, battery_charge_cycles),
-			battery_current_max_capacity = COALESCE(EXCLUDED.battery_current_max_capacity, battery_current_max_capacity),
-			battery_design_capacity = COALESCE(EXCLUDED.battery_design_capacity, battery_design_capacity),
-			battery_manufacture_date = COALESCE(EXCLUDED.battery_manufacture_date, battery_manufacture_date),
-			bios_version = COALESCE(EXCLUDED.bios_version, bios_version),
-			bios_release_date = COALESCE(EXCLUDED.bios_release_date, bios_release_date),
-			bios_firmware = COALESCE(EXCLUDED.bios_firmware, bios_firmware),
-			memory_serial = COALESCE(EXCLUDED.memory_serial, memory_serial),
-			memory_capacity = COALESCE(EXCLUDED.memory_capacity, memory_capacity),
-			memory_speed_mhz = COALESCE(EXCLUDED.memory_speed_mhz, memory_speed_mhz)
+			time = CURRENT_TIMESTAMP,
+			tagnumber =  COALESCE(EXCLUDED.tagnumber, historical_hardware_data.tagnumber),
+			system_serial = COALESCE(EXCLUDED.system_serial, historical_hardware_data.system_serial),
+			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, historical_hardware_data.ethernet_mac),
+			wifi_mac =  COALESCE(EXCLUDED.wifi_mac, historical_hardware_data.wifi_mac),
+			disk_model = COALESCE(EXCLUDED.disk_model, historical_hardware_data.disk_model),
+			disk_type = COALESCE(EXCLUDED.disk_type, historical_hardware_data.disk_type),
+			disk_size = COALESCE(EXCLUDED.disk_size, historical_hardware_data.disk_size),
+			disk_serial = COALESCE(EXCLUDED.disk_serial, historical_hardware_data.disk_serial),
+			disk_writes = COALESCE(EXCLUDED.disk_writes, historical_hardware_data.disk_writes),
+			disk_reads = COALESCE(EXCLUDED.disk_reads, historical_hardware_data.disk_reads),
+			disk_power_on_hours = COALESCE(EXCLUDED.disk_power_on_hours, historical_hardware_data.disk_power_on_hours),
+			disk_errors = COALESCE(EXCLUDED.disk_errors, historical_hardware_data.disk_errors),
+			disk_power_cycles = COALESCE(EXCLUDED.disk_power_cycles, historical_hardware_data.disk_power_cycles),
+			disk_firmware = COALESCE(EXCLUDED.disk_firmware, historical_hardware_data.disk_firmware),
+			battery_model = COALESCE(EXCLUDED.battery_model, historical_hardware_data.battery_model),
+			battery_serial = COALESCE(EXCLUDED.battery_serial, historical_hardware_data.battery_serial),
+			battery_charge_cycles = COALESCE(EXCLUDED.battery_charge_cycles, historical_hardware_data.battery_charge_cycles),
+			battery_current_max_capacity = COALESCE(EXCLUDED.battery_current_max_capacity, historical_hardware_data.battery_current_max_capacity),
+			battery_design_capacity = COALESCE(EXCLUDED.battery_design_capacity, historical_hardware_data.battery_design_capacity),
+			battery_manufacture_date = COALESCE(EXCLUDED.battery_manufacture_date, historical_hardware_data.battery_manufacture_date),
+			bios_version = COALESCE(EXCLUDED.bios_version, historical_hardware_data.bios_version),
+			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_hardware_data.bios_release_date),
+			bios_firmware = COALESCE(EXCLUDED.bios_firmware, historical_hardware_data.bios_firmware),
+			memory_serial = COALESCE(EXCLUDED.memory_serial, historical_hardware_data.memory_serial),
+			memory_capacity = COALESCE(EXCLUDED.memory_capacity, historical_hardware_data.memory_capacity),
+			memory_speed_mhz = COALESCE(EXCLUDED.memory_speed_mhz, historical_hardware_data.memory_speed_mhz)
 			;
 		`
 
@@ -1080,10 +1079,10 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		ptrToNullInt64(hardwareData.MemorySpeedMHz),
 	)
 	if err != nil {
-		return fmt.Errorf("error updating last hardware check time: %w", err)
+		return fmt.Errorf("error updating client hardware data: %w", err)
 	}
 	if err := VerifyRowsAffected(hardwareHistoryResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on client_health table update: %w", err)
+		return fmt.Errorf("error while checking rows affected on client hardware data table update: %w", err)
 	}
 	return nil
 }
