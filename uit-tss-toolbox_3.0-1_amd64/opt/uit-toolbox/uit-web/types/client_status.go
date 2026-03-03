@@ -1,6 +1,10 @@
 package types
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type ClientStatusView struct {
 	Tagnumber         *int64     `json:"tagnumber"`
@@ -39,4 +43,23 @@ type ClientBatteryHealth struct {
 	JobstatsBattery     string    `json:"jobstatsHealthPcnt"`
 	ClientHealthBattery string    `json:"clientHealthPcnt"`
 	BatteryChargeCycles int64     `json:"chargeCycles"`
+}
+
+type ClientHealth struct {
+	Time               *time.Time `json:"time"`
+	Tagnumber          int64      `json:"tagnumber"`
+	SystemSerial       *string    `json:"system_serial"`
+	TPMVersion         *string    `json:"tpm_version"`
+	BIOSUpdated        *bool      `json:"bios_updated"`
+	OSName             *string    `json:"os_name"`
+	OSInstalled        *bool      `json:"os_installed"`
+	DiskHealth         *float64   `json:"disk_health"`
+	BatteryHealth      *float64   `json:"battery_health"`
+	AvgEraseTime       *float64   `json:"avg_erase_time"`
+	AvgCloneTime       *float64   `json:"avg_clone_time"`
+	LastCloneJobTime   *time.Time `json:"last_clone_job_time"`
+	LastEraseJobTime   *time.Time `json:"last_erase_job_time"`
+	TotalJobsCompleted *int64     `json:"total_jobs_completed"`
+	LastHardwareCheck  *time.Time `json:"last_hardware_check"`
+	TransactionUUID    *uuid.UUID `json:"transaction_uuid"`
 }

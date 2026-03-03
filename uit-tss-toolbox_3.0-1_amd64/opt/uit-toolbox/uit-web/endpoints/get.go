@@ -24,13 +24,25 @@ import (
 
 // Per-client functions
 func GetServerTime(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetServerTime"))
+	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
+	if err != nil {
+		log.Warn("Error retrieving request query parameters from context for GetClientLookup: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	format := middleware.GetStrQuery(urlQueries, "format")
 	curTime := time.Now().Format(time.RFC3339)
+	if format != nil && *format == "unix" {
+		curTime = time.Now().Format(time.UnixDate)
+	}
 	middleware.WriteJson(w, http.StatusOK, ServerTime{Time: curTime})
 }
 
 func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetClientLookup"))
 	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
 	if err != nil {
 		log.Warn("Error retrieving request query parameters from context for GetClientLookup: " + err.Error())

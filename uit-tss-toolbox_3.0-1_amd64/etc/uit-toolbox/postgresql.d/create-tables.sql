@@ -310,22 +310,24 @@ ON CONFLICT (system_model) DO UPDATE SET bios_version = EXCLUDED.bios_version
 ;
 
 
+
 CREATE TABLE IF NOT EXISTS client_health (
 	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
 	tagnumber INTEGER UNIQUE NOT NULL,
 	system_serial VARCHAR(128) DEFAULT NULL,
 	tpm_version VARCHAR(24) DEFAULT NULL,
-	bios_version VARCHAR(24) DEFAULT NULL,
+	bios_version VARCHAR(24) DEFAULT NULL, --remove
 	bios_updated BOOLEAN DEFAULT NULL,
 	os_name VARCHAR(24) DEFAULT NULL,
 	os_installed BOOLEAN DEFAULT NULL,
-	disk_type VARCHAR(4) DEFAULT NULL, 
+	disk_type VARCHAR(4) DEFAULT NULL, --remove
 	disk_health NUMERIC(6,3) DEFAULT NULL, 
 	battery_health NUMERIC(6,3) DEFAULT NULL, 
 	avg_erase_time SMALLINT DEFAULT NULL, 
 	avg_clone_time SMALLINT DEFAULT NULL, 
-	last_imaged_time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
-	all_jobs SMALLINT DEFAULT NULL,
+	last_clone_job_time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL, -- rename from last_imaged_time to last_clone_job_time
+	last_erase_job_time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL, -- add last_erase_job_time
+	total_jobs_completed SMALLINT DEFAULT NULL, -- rename from all_jobs to total_jobs_completed
 	last_hardware_check TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
 	transaction_uuid UUID DEFAULT NULL
 );
