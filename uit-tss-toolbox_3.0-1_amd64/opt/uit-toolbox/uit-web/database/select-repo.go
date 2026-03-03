@@ -893,12 +893,13 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status
 		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 		ORDER BY locations.tagnumber, locations.time DESC),
-	latest_jobstats AS (
-		SELECT DISTINCT ON (jobstats.tagnumber) jobstats.time, jobstats.tagnumber, 
-			jobstats.disk_type, jobstats.disk_size AS "disk_capacity",
-			jobstats.battery_health, jobstats.bios_version, jobstats.disk_model, jobstats.disk_temp
-		FROM jobstats
-		ORDER BY jobstats.tagnumber, jobstats.time DESC),
+	latest_historical_hardware_data AS (
+		SELECT DISTINCT ON (historical_hardware_data.tagnumber) historical_hardware_data.time, historical_hardware_data.tagnumber, 
+			historical_hardware_data.disk_type, historical_hardware_data.disk_size AS "disk_capacity",
+			historical_hardware_data.bios_version, historical_hardware_data.disk_model,
+			historical_hardware_data.battery_design_capacity, historical_hardware_data.battery_current_max_capacity
+		FROM historical_hardware_data
+		ORDER BY historical_hardware_data.tagnumber, historical_hardware_data.time DESC),
 	latest_job AS (
 		SELECT DISTINCT ON (jobstats.tagnumber) jobstats.time, jobstats.tagnumber,
 			jobstats.erase_completed, jobstats.erase_mode, jobstats.erase_time, 
@@ -956,7 +957,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		static_ad_domains.domain_name,
 		static_ad_domains.domain_name_formatted AS "ad_domain_formatted",
 		(CASE 
-			WHEN latest_jobstats.bios_version = static_bios_stats.bios_version THEN TRUE
+			WHEN latest_historical_hardware_data.bios_version = static_bios_stats.bios_version THEN TRUE
 			ELSE FALSE
 		END) AS "bios_updated",
 		static_bios_stats.bios_version,
@@ -966,9 +967,9 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		job_queue.memory_usage_kb,
 		job_queue.memory_capacity_kb,
 		'0' AS "disk_usage",
-		latest_jobstats.disk_temp,
+		job_queue.disk_temp,
 		static_disk_stats.disk_type,
-		latest_jobstats.disk_capacity AS "disk_size",
+		latest_historical_hardware_data.disk_capacity AS "disk_size",
 		'80' AS "max_disk_temp",
 		FALSE AS "disk_temp_warning",
 		'UP' AS "network_link_status",
@@ -976,19 +977,19 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		'0' AS "network_usage",
 		job_queue.battery_charge,
 		job_queue.battery_status,
-		latest_jobstats.battery_health,
+		(latest_historical_hardware_data.battery_current_max_capacity / latest_historical_hardware_data.battery_design_capacity) AS "battery_health",
 		NULL AS "plugged_in",
 		job_queue.watts_now AS "power_usage"
 	FROM locations
 	LEFT JOIN job_queue ON locations.tagnumber = job_queue.tagnumber
 	LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber
 	LEFT JOIN latest_locations ON locations.tagnumber = latest_locations.tagnumber
-	LEFT JOIN latest_jobstats ON locations.tagnumber = latest_jobstats.tagnumber
+	LEFT JOIN latest_historical_hardware_data ON locations.tagnumber = latest_historical_hardware_data.tagnumber
 	LEFT JOIN latest_job ON locations.tagnumber = latest_job.tagnumber
 	LEFT JOIN static_image_names ON latest_job.clone_image = static_image_names.image_name
 	LEFT JOIN static_job_names ON job_queue.job_queued = static_job_names.job_name
 	LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
-	LEFT JOIN static_disk_stats ON latest_jobstats.disk_model = static_disk_stats.disk_model
+	LEFT JOIN static_disk_stats ON latest_historical_hardware_data.disk_model = static_disk_stats.disk_model
 	LEFT JOIN static_ad_domains ON latest_locations.ad_domain = static_ad_domains.domain_name
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 	ORDER BY locations.tagnumber;`

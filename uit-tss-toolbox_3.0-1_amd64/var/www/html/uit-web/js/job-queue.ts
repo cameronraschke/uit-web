@@ -395,9 +395,13 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		const networkUsage = document.createElement('p');
 		networkUsage.textContent = `Network Usage: ${entry.network_usage !== null ? entry.network_usage.toFixed(2) + 'Mbps' : 'N/A'}`;
 		hardwareInfoContainer.appendChild(networkUsage);
-		const batteryCharge = document.createElement('p');
-		batteryCharge.textContent = `Battery: ${entry.battery_charge !== null ? entry.battery_charge.toFixed(2) + '%' : 'N/A'} ${entry.battery_health ? '(Max: ' + entry.battery_health?.toFixed(2) + '%' : 'N/A'} ${entry.battery_health_warning ? '(Warning)' : ''})`;
-		hardwareInfoContainer.appendChild(batteryCharge);
+		const batteryInfo = document.createElement('p');
+		const batteryInfoText = document.createTextNode('Battery: ');
+		if (entry.battery_charge !== null) batteryInfoText.appendData(`${entry.battery_charge.toFixed(2)}%`); else batteryInfoText.appendData('N/A%');
+		if (entry.battery_health !== null) batteryInfoText.appendData(` (Health: ${entry.battery_health?.toFixed(2)}%)`);;
+		if (entry.battery_health_warning) batteryInfoText.appendData(' (Warning)');
+		batteryInfo.appendChild(batteryInfoText);
+		hardwareInfoContainer.appendChild(batteryInfo);
 
 		clientGridContainer.appendChild(clientIdentifiers);		
 		if (entry.online) clientGridContainer.appendChild(liveViewContainer);
