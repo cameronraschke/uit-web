@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	bios_release_date VARCHAR(12) DEFAULT NULL,
 	bios_firmware VARCHAR(8) DEFAULT NULL,
 	memory_serial VARCHAR(128) DEFAULT NULL,
-	memory_capacity INTEGER DEFAULT NULL,
+	memory_capacity_kb BIGINT DEFAULT NULL,
 	memory_speed_mhz SMALLINT DEFAULT NULL
 );
 
@@ -352,8 +352,8 @@ CREATE TABLE IF NOT EXISTS job_queue (
 	max_disk_temp SMALLINT DEFAULT NULL,
 	watts_now SMALLINT DEFAULT NULL,
 	network_speed SMALLINT DEFAULT NULL,
-	memory_usage DECIMAL(6, 2) DEFAULT NULL,
-	memory_capacity DECIMAL(6, 2) DEFAULT NULL,
+	memory_usage_kb BIGINT DEFAULT NULL,
+	memory_capacity_kb BIGINT DEFAULT NULL,
 	cpu_usage DECIMAL(6, 2) DEFAULT NULL,
 	cpu_temp DECIMAL(6, 2) DEFAULT NULL,
 	network_usage INT DEFAULT NULL,

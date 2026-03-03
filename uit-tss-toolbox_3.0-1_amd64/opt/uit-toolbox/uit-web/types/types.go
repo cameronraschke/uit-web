@@ -283,8 +283,8 @@ type JobQueueTableRowView struct {
 	CPUUsage             *float64       `json:"cpu_usage"`
 	CPUTemp              *float64       `json:"cpu_temp"`
 	CPUTempWarning       *bool          `json:"cpu_temp_warning"`
-	MemoryUsage          *float64       `json:"memory_usage"`
-	MemoryCapacity       *float64       `json:"memory_capacity"`
+	MemoryUsageKB        *int64         `json:"memory_usage_kb"`
+	MemoryCapacityKB     *int64         `json:"memory_capacity_kb"`
 	DiskUsage            *float64       `json:"disk_usage"`
 	DiskTemp             *float64       `json:"disk_temp"`
 	DiskType             *string        `json:"disk_type"`

@@ -167,7 +167,7 @@ func SetClientMemoryInfo(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if memoryData.TotalUsage == nil || memoryData.TotalCapacity == 0 {
+	if memoryData.TotalUsageKB == nil || memoryData.TotalCapacityKB == nil {
 		log.Warn("Both memory usage and capacity are required")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return

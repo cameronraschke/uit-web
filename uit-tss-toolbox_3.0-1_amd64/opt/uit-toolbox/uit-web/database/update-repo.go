@@ -608,7 +608,7 @@ func (updateRepo *UpdateRepo) UpdateClientMemoryInfo(ctx context.Context, memInf
 	if memInfo.Tagnumber == 0 {
 		return fmt.Errorf("tagnumber is required in memory data")
 	}
-	if memInfo.TotalUsage == nil || memInfo.TotalCapacity == 0 {
+	if memInfo.TotalUsageKB == nil || memInfo.TotalCapacityKB == nil {
 		return fmt.Errorf("both total usage and total capacity are required")
 	}
 
@@ -628,16 +628,13 @@ func (updateRepo *UpdateRepo) UpdateClientMemoryInfo(ctx context.Context, memInf
 		}
 	}()
 
-	memCapacityGB := float64(memInfo.TotalCapacity) / (1024 * 1024)
-	memUsageGB := float64(*memInfo.TotalUsage) / (1024 * 1024)
-
-	const sqlCode = `INSERT INTO job_queue (tagnumber, memory_capacity, memory_usage) VALUES ($1, $2, $3)
-		ON CONFLICT (tagnumber) DO UPDATE SET memory_capacity = EXCLUDED.memory_capacity, memory_usage = EXCLUDED.memory_usage;`
+	const sqlCode = `INSERT INTO job_queue (tagnumber, memory_capacity_kb, memory_usage_kb) VALUES ($1, $2, $3)
+		ON CONFLICT (tagnumber) DO UPDATE SET memory_capacity_kb = EXCLUDED.memory_capacity_kb, memory_usage_kb = EXCLUDED.memory_usage_kb;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		toNullInt64(memInfo.Tagnumber),
-		toNullFloat64(memCapacityGB),
-		toNullFloat64(memUsageGB),
+		toNullInt64(*memInfo.TotalCapacityKB),
+		toNullInt64(*memInfo.TotalUsageKB),
 	)
 	if err != nil {
 		return fmt.Errorf("error updating memory usage: %w", err)
@@ -985,7 +982,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			bios_release_date,
 			bios_firmware,
 			memory_serial,
-			memory_capacity,
+			memory_capacity_kb,
 			memory_speed_mhz
 		) VALUES (
 			$1,
@@ -1043,7 +1040,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_hardware_data.bios_release_date),
 			bios_firmware = COALESCE(EXCLUDED.bios_firmware, historical_hardware_data.bios_firmware),
 			memory_serial = COALESCE(EXCLUDED.memory_serial, historical_hardware_data.memory_serial),
-			memory_capacity = COALESCE(EXCLUDED.memory_capacity, historical_hardware_data.memory_capacity),
+			memory_capacity_kb = COALESCE(EXCLUDED.memory_capacity_kb, historical_hardware_data.memory_capacity_kb),
 			memory_speed_mhz = COALESCE(EXCLUDED.memory_speed_mhz, historical_hardware_data.memory_speed_mhz)
 			;
 		`
@@ -1075,7 +1072,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		ptrToNullString(hardwareData.BiosReleaseDate),
 		ptrToNullString(hardwareData.BiosFirmware),
 		ptrToNullString(hardwareData.MemorySerial),
-		ptrToNullInt64(hardwareData.MemoryCapacity),
+		ptrToNullInt64(hardwareData.MemoryCapacityKB),
 		ptrToNullInt64(hardwareData.MemorySpeedMHz),
 	)
 	if err != nil {

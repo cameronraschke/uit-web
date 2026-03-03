@@ -43,7 +43,7 @@ type ClientHardwareView struct {
 	BiosReleaseDate           *string  `json:"bios_release_date"`
 	BiosFirmware              *string  `json:"bios_firmware"`
 	MemorySerial              *string  `json:"memory_serial"`
-	MemoryCapacity            *int64   `json:"memory_capacity"`
+	MemoryCapacityKB          *int64   `json:"memory_capacity_kb"`
 	MemorySpeedMHz            *int64   `json:"memory_speed_mhz"`
 }
 
@@ -61,11 +61,11 @@ type DeviceType struct {
 }
 
 type MemoryDataRequest struct {
-	Tagnumber     int64  `json:"tagnumber"`
-	TotalUsage    *int64 `json:"memory_usage"`
-	TotalCapacity int64  `json:"memory_capacity"`
-	Type          string `json:"type"`
-	SpeedMHz      int64  `json:"speed_mhz"`
+	Tagnumber       int64  `json:"tagnumber"`
+	TotalUsageKB    *int64 `json:"memory_usage_kb"`
+	TotalCapacityKB *int64 `json:"memory_capacity_kb"`
+	Type            string `json:"type"`
+	SpeedMHz        int64  `json:"speed_mhz"`
 }
 
 type CPUData struct {
