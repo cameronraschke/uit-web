@@ -27,8 +27,8 @@ type ClientHardwareView struct {
 	DiskType                  *string  `json:"disk_type"`
 	DiskSize                  *int64   `json:"disk_size"`
 	DiskSerial                *string  `json:"disk_serial"`
-	DiskWrites                *int64   `json:"disk_writes"`
-	DiskReads                 *int64   `json:"disk_reads"`
+	DiskWritesKB              *int64   `json:"disk_writes_kb"`
+	DiskReadsKB               *int64   `json:"disk_reads_kb"`
 	DiskPowerOnHours          *int64   `json:"disk_power_on_hours"`
 	DiskErrors                *int64   `json:"disk_errors"`
 	DiskPowerCycles           *int64   `json:"disk_power_cycles"`
