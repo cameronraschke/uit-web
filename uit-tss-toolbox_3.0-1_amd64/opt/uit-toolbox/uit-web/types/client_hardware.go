@@ -38,6 +38,7 @@ type ClientHardwareView struct {
 	BatteryChargeCycles       *int64   `json:"battery_charge_cycles"`
 	BatteryCurrentMaxCapacity *float64 `json:"battery_current_max_capacity"`
 	BatteryDesignCapacity     *float64 `json:"battery_design_capacity"`
+	BatteryManufacturer       *string  `json:"battery_manufacturer"`
 	BatteryManufactureDate    *string  `json:"battery_manufacture_date"`
 	BiosVersion               *string  `json:"bios_version"`
 	BiosReleaseDate           *string  `json:"bios_release_date"`

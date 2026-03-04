@@ -937,6 +937,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			battery_charge_cycles,
 			battery_current_max_capacity,
 			battery_design_capacity,
+			battery_manufacturer,
 			battery_manufacture_date,
 			bios_version,
 			bios_release_date,
@@ -972,7 +973,8 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			$24,
 			$25,
 			$26,
-			$27
+			$27,
+			$28
 		) ON CONFLICT (transaction_uuid) 
 		DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
@@ -995,6 +997,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			battery_charge_cycles = COALESCE(EXCLUDED.battery_charge_cycles, historical_hardware_data.battery_charge_cycles),
 			battery_current_max_capacity = COALESCE(EXCLUDED.battery_current_max_capacity, historical_hardware_data.battery_current_max_capacity),
 			battery_design_capacity = COALESCE(EXCLUDED.battery_design_capacity, historical_hardware_data.battery_design_capacity),
+			battery_manufacturer = COALESCE(EXCLUDED.battery_manufacturer, historical_hardware_data.battery_manufacturer),
 			battery_manufacture_date = COALESCE(EXCLUDED.battery_manufacture_date, historical_hardware_data.battery_manufacture_date),
 			bios_version = COALESCE(EXCLUDED.bios_version, historical_hardware_data.bios_version),
 			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_hardware_data.bios_release_date),
@@ -1028,6 +1031,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		ptrToNullFloat64(hardwareData.BatteryCurrentMaxCapacity),
 		ptrToNullFloat64(hardwareData.BatteryDesignCapacity),
 		ptrToNullString(hardwareData.BatteryManufactureDate),
+		ptrToNullString(hardwareData.BatteryManufacturer),
 		ptrToNullString(hardwareData.BiosVersion),
 		ptrToNullString(hardwareData.BiosReleaseDate),
 		ptrToNullString(hardwareData.BiosFirmware),

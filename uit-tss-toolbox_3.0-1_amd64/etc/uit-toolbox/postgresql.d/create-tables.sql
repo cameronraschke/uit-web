@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	battery_charge_cycles SMALLINT DEFAULT NULL,
 	battery_current_max_capacity INTEGER DEFAULT NULL,
 	battery_design_capacity INTEGER DEFAULT NULL,
+	battery_manufacturer VARCHAR(64) DEFAULT NULL,
 	battery_manufacture_date VARCHAR(32) DEFAULT NULL,
 	bios_version VARCHAR(24) DEFAULT NULL,
 	bios_release_date VARCHAR(32) DEFAULT NULL,
