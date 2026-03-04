@@ -17,7 +17,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -1080,8 +1079,8 @@ func SetClientHardwareData(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if hardwareData.BatteryManufactureDate != nil {
-		USAMatched, _ := regexp.MatchString(types.USADateRegex.String(), *hardwareData.BatteryManufactureDate)
-		ISOMatched, _ := regexp.MatchString(types.ISOdateRegex.String(), *hardwareData.BatteryManufactureDate)
+		USAMatched := types.USADateRegex.MatchString(*hardwareData.BatteryManufactureDate)
+		ISOMatched := types.ISODateRegex.MatchString(*hardwareData.BatteryManufactureDate)
 		if !USAMatched && !ISOMatched {
 			*hardwareData.BatteryManufactureDate = ""
 		}

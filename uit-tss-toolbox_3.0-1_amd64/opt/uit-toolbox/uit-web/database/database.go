@@ -100,7 +100,7 @@ func ptrToNullTime(p *time.Time) sql.NullTime {
 	return sql.NullTime{Time: *p, Valid: true}
 }
 
-func ptrToNullDateString(p *string) sql.NullTime {
+func ptrToNullDate(p *string) sql.NullTime {
 	if p == nil || strings.TrimSpace(*p) == "" {
 		return sql.NullTime{}
 	}

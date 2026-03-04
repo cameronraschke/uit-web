@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	ISOdateRegex = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+	ISODateRegex = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 	USADateRegex = regexp.MustCompile(`^\d{2}/\d{2}/\d{4}$`)
 )
 
