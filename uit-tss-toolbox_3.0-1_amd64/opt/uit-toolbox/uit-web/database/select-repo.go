@@ -1040,30 +1040,44 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 
 func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.ClientReport, error) {
 	const sqlQuery = `
-
 	WITH avg_battery_health AS (
-		SELECT AVG(avg_battery_health_pcnt) AS "avg_battery_health_pcnt" 
+		SELECT system_model, AVG(avg_battery_health_pcnt) AS "avg_battery_health_pcnt" 
 		FROM (
-			SELECT (historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100) AS "avg_battery_health_pcnt" 
+			SELECT hardware_data.system_model, (historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100) AS "avg_battery_health_pcnt" 
 			FROM 
 				historical_hardware_data 
+			LEFT JOIN 
+				hardware_data ON historical_hardware_data.tagnumber = hardware_data.tagnumber
 			WHERE 
 				historical_hardware_data.battery_design_capacity IS NOT NULL 
 				AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
 			GROUP BY 
+				hardware_data.system_model,
 				historical_hardware_data.tagnumber, 
 				historical_hardware_data.battery_current_max_capacity, 
 				historical_hardware_data.battery_design_capacity
 		)
+		GROUP BY system_model
+	),
+	current_battery_health AS (
+		SELECT 
+			tagnumber, ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt"
+		FROM 
+			historical_hardware_data
+		WHERE 
+			historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY tagnumber)
+			AND historical_hardware_data.battery_design_capacity IS NOT NULL 
+			AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
 	)
 	SELECT 
 		historical_hardware_data.time AS "battery_health_timestamp", 
 		historical_hardware_data.tagnumber, 
-		ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt", 
-		avg_battery_health.avg_battery_health_pcnt AS "battery_health_variance"
+		current_battery_health.battery_health_pcnt AS "battery_health_pcnt", 
+		ROUND(avg_battery_health.avg_battery_health_pcnt - current_battery_health.battery_health_pcnt, 2) AS "battery_health_variance"
 	FROM historical_hardware_data
-	CROSS JOIN avg_battery_health
 	LEFT JOIN hardware_data ON historical_hardware_data.tagnumber = hardware_data.tagnumber
+	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
+	LEFT JOIN current_battery_health ON historical_hardware_data.tagnumber = current_battery_health.tagnumber
 	WHERE 
 		historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY tagnumber)
 		AND historical_hardware_data.battery_design_capacity IS NOT NULL 
@@ -1073,6 +1087,7 @@ func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.Cli
 		historical_hardware_data.tagnumber, 
 		historical_hardware_data.time, 
 		avg_battery_health.avg_battery_health_pcnt,
+		current_battery_health.battery_health_pcnt,
 		historical_hardware_data.battery_current_max_capacity,
 		historical_hardware_data.battery_design_capacity
 	ORDER BY historical_hardware_data.time DESC;
