@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	disk_firmware VARCHAR(10) DEFAULT NULL,
 	battery_model VARCHAR(16) DEFAULT NULL,
 	battery_serial VARCHAR(16) DEFAULT NULL,
-	battery_health SMALLINT DEFAULT NULL,
+	battery_health SMALLINT DEFAULT NULL, -- unused
 	battery_charge_cycles SMALLINT DEFAULT NULL,
 	battery_current_max_capacity INTEGER DEFAULT NULL,
 	battery_design_capacity INTEGER DEFAULT NULL,
@@ -322,7 +322,7 @@ CREATE TABLE IF NOT EXISTS client_health (
 	os_installed BOOLEAN DEFAULT NULL,
 	disk_type VARCHAR(4) DEFAULT NULL, --remove
 	disk_health NUMERIC(6,3) DEFAULT NULL, 
-	battery_health NUMERIC(6,3) DEFAULT NULL, 
+	battery_health_pcnt NUMERIC(6,3) DEFAULT NULL, 
 	avg_erase_time SMALLINT DEFAULT NULL, 
 	avg_clone_time SMALLINT DEFAULT NULL, 
 	last_clone_job_time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL, -- rename from last_imaged_time to last_clone_job_time

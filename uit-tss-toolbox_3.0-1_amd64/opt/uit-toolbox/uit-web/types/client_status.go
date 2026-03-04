@@ -9,7 +9,7 @@ import (
 type ClientStatusView struct {
 	Tagnumber         *int64     `json:"tagnumber"`
 	ClientStatus      *string    `json:"client_status"`
-	BatteryHealth     *string    `json:"battery_health"`
+	BatteryHealthPcnt *string    `json:"battery_health_pcnt"`
 	LastHardwareCheck *time.Time `json:"last_hardware_check"`
 }
 
@@ -54,7 +54,7 @@ type ClientHealth struct {
 	OSName             *string    `json:"os_name"`
 	OSInstalled        *bool      `json:"os_installed"`
 	DiskHealth         *float64   `json:"disk_health"`
-	BatteryHealth      *float64   `json:"battery_health"`
+	BatteryHealthPcnt  *float64   `json:"battery_health_pcnt"`
 	AvgEraseTime       *float64   `json:"avg_erase_time"`
 	AvgCloneTime       *float64   `json:"avg_clone_time"`
 	LastCloneJobTime   *time.Time `json:"last_clone_job_time"`

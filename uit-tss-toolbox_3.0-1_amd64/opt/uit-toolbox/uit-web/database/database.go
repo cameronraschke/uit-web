@@ -100,6 +100,13 @@ func ptrToNullTime(p *time.Time) sql.NullTime {
 	return sql.NullTime{Time: *p, Valid: true}
 }
 
+func ptrToNullDateString(p *string) sql.NullString {
+	if p == nil || strings.TrimSpace(*p) == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: *p, Valid: true}
+}
+
 func toNullString(s string) sql.NullString {
 	if s == "" {
 		return sql.NullString{}

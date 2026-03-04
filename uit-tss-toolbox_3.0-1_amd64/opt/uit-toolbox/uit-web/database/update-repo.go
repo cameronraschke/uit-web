@@ -23,7 +23,6 @@ type Update interface {
 	HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	DeleteClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err error)
-	SetClientBatteryHealth(ctx context.Context, uuid *string, healthPcnt *int64) (err error)
 	SetAllOnlineClientJobs(ctx context.Context, allJobs *types.AllJobs) (err error)
 	SetClientJob(ctx context.Context, tag *int64, clientJob *string) (err error)
 	UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryDataRequest) (err error)
@@ -488,45 +487,6 @@ func (updateRepo *UpdateRepo) TogglePinImage(ctx context.Context, tagnumber *int
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return fmt.Errorf("error while checking rows affected on client_images table update: %w", err)
-	}
-	return nil
-}
-
-func (updateRepo *UpdateRepo) SetClientBatteryHealth(ctx context.Context, uuid *string, healthPcnt *int64) (err error) {
-	if uuid == nil || strings.TrimSpace(*uuid) == "" {
-		return fmt.Errorf("UUID is required")
-	}
-	if healthPcnt == nil {
-		return fmt.Errorf("health percentage is required")
-	}
-
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("error beginning transaction: %w", err)
-	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		} else {
-			err = tx.Commit()
-		}
-	}()
-
-	const sqlCode = `UPDATE jobstats SET battery_health = $1 WHERE uuid = $2;`
-	var sqlResult sql.Result
-	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		ptrToNullInt64(healthPcnt),
-		ptrToNullString(uuid),
-	)
-	if err != nil {
-		return fmt.Errorf("error updating jobstats battery health: %w", err)
-	}
-	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on jobstats table update: %w", err)
 	}
 	return nil
 }
@@ -1067,7 +1027,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		ptrToNullInt64(hardwareData.BatteryChargeCycles),
 		ptrToNullFloat64(hardwareData.BatteryCurrentMaxCapacity),
 		ptrToNullFloat64(hardwareData.BatteryDesignCapacity),
-		ptrToNullString(hardwareData.BatteryManufactureDate),
+		ptrToNullDateString(hardwareData.BatteryManufactureDate),
 		ptrToNullString(hardwareData.BiosVersion),
 		ptrToNullString(hardwareData.BiosReleaseDate),
 		ptrToNullString(hardwareData.BiosFirmware),
@@ -1076,10 +1036,10 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		ptrToNullInt64(hardwareData.MemorySpeedMHz),
 	)
 	if err != nil {
-		return fmt.Errorf("error updating client hardware data: %w", err)
+		return fmt.Errorf("error inserting/updating historical hardware data: %w", err)
 	}
 	if err := VerifyRowsAffected(hardwareHistoryResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on client hardware data table update: %w", err)
+		return fmt.Errorf("error while checking rows affected on historical hardware data table update: %w", err)
 	}
 	return nil
 }

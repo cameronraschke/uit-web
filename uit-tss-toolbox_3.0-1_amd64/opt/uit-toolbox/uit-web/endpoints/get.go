@@ -793,39 +793,6 @@ func GetManufacturersAndModels(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, manufacturersAndModels)
 }
 
-func GetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetClientBatteryHealth: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
-	if err != nil {
-		log.Warn("Invalid tagnumber provided in GetClientBatteryHealth: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository in GetClientBatteryHealth: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	batteryHealthData, err := db.GetClientBatteryHealth(ctx, tagnumber)
-	if err != nil {
-		log.Warn("Query error in GetClientBatteryHealth: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	middleware.WriteJson(w, http.StatusOK, batteryHealthData)
-}
-
 func GetDomains(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)

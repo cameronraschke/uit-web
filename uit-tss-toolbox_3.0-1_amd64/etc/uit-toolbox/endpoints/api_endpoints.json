@@ -28,9 +28,6 @@
 	"/api/client/health": {
 		"allowed_methods": ["OPTIONS", "GET", "POST"]
 	},
-	"/api/client/health/battery": {
-		"allowed_methods": ["OPTIONS", "GET", "POST"]
-	},
 	"/api/overview/all_domains": {},
 	"/api/overview/all_departments": {},
 	"/api/reports/battery": {},

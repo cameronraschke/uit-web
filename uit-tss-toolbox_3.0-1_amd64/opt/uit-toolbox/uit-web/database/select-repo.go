@@ -30,9 +30,8 @@ type Select interface {
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
 	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifest, error)
 	GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableRow, error)
-	GetClientBatteryHealth(ctx context.Context, tagnumber *int64) (*types.ClientBatteryHealth, error)
 	GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
-	GetBatteryStandardDeviation(ctx context.Context) ([]types.ClientReport, error)
+	GetClientBatteryReport(ctx context.Context) ([]types.ClientReport, error)
 	GetAllJobs(ctx context.Context) ([]types.AllJobs, error)
 	GetAllLocations(ctx context.Context) ([]types.AllLocations, error)
 	GetAllStatuses(ctx context.Context) ([]types.ClientStatus, error)
@@ -849,40 +848,6 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 	return results, nil
 }
 
-func (repo *SelectRepo) GetClientBatteryHealth(ctx context.Context, tagnumber *int64) (*types.ClientBatteryHealth, error) {
-	if tagnumber == nil {
-		return nil, fmt.Errorf("tagnumber cannot be nil (GetClientBatteryHealth)")
-	}
-
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	const sqlQuery = `SELECT jobstats.time, jobstats.tagnumber, jobstats.battery_health, client_health.battery_health, 
-	jobstats.battery_charge_cycles
-	FROM jobstats 
-	LEFT JOIN client_health ON jobstats.tagnumber = client_health.tagnumber
-	WHERE jobstats.tagnumber = $1 
-	ORDER BY jobstats.time DESC NULLS LAST LIMIT 1;`
-
-	var batteryHealth types.ClientBatteryHealth
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tagnumber))
-	if err := row.Scan(
-		&batteryHealth.Time,
-		&batteryHealth.Tagnumber,
-		&batteryHealth.JobstatsBattery,
-		&batteryHealth.ClientHealthBattery,
-		&batteryHealth.BatteryChargeCycles,
-	); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("query error: %w", err)
-	}
-
-	return &batteryHealth, nil
-}
-
 func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error) {
 	const sqlQuery = `WITH latest_locations AS (
 		SELECT DISTINCT ON (locations.tagnumber) locations.time, locations.tagnumber, locations.system_serial, locations.location,
@@ -977,7 +942,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		'0' AS "network_usage",
 		job_queue.battery_charge,
 		job_queue.battery_status,
-		(latest_historical_hardware_data.battery_current_max_capacity / latest_historical_hardware_data.battery_design_capacity) AS "battery_health",
+		ROUND((battery_current_max_capacity::decimal / battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt",
 		NULL AS "plugged_in",
 		job_queue.watts_now AS "power_usage"
 	FROM locations
@@ -1056,7 +1021,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 			&row.NetworkUsage,
 			&row.BatteryCharge,
 			&row.BatteryStatus,
-			&row.BatteryHealth,
+			&row.BatteryHealthPcnt,
 			&row.PluggedIn,
 			&row.PowerUsage,
 		); err != nil {
@@ -1073,16 +1038,45 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 	return jobQueueRows, nil
 }
 
-func (repo *SelectRepo) GetBatteryStandardDeviation(ctx context.Context) ([]types.ClientReport, error) {
-	const sqlQuery = `SELECT jobstats.time AS "battery_health_timestamp", jobstats.tagnumber, jobstats.battery_health AS "battery_health_pcnt", 
-		ROUND(jobstats.battery_health - AVG(jobstats.battery_health) OVER (), 2) AS "battery_health_stddev"
-	FROM locations
-	LEFT JOIN jobstats ON locations.tagnumber = jobstats.tagnumber AND locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-	WHERE locations.department_name NOT IN ('property')
-		AND jobstats.battery_health IS NOT NULL
-		AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
-	GROUP BY jobstats.tagnumber, jobstats.time, jobstats.battery_health
-	ORDER BY jobstats.time DESC;`
+func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.ClientReport, error) {
+	const sqlQuery = `
+
+	WITH avg_battery_health AS (
+		SELECT AVG(avg_battery_health_pcnt) AS "avg_battery_health_pcnt" 
+		FROM (
+			SELECT (historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100) AS "avg_battery_health_pcnt" 
+			FROM 
+				historical_hardware_data 
+			WHERE 
+				historical_hardware_data.battery_design_capacity IS NOT NULL 
+				AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
+			GROUP BY 
+				historical_hardware_data.tagnumber, 
+				historical_hardware_data.battery_current_max_capacity, 
+				historical_hardware_data.battery_design_capacity
+		)
+	)
+	SELECT 
+		historical_hardware_data.time AS "battery_health_timestamp", 
+		historical_hardware_data.tagnumber, 
+		ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt", 
+		avg_battery_health.avg_battery_health_pcnt AS "battery_health_variance"
+	FROM historical_hardware_data
+	CROSS JOIN avg_battery_health
+	LEFT JOIN hardware_data ON historical_hardware_data.tagnumber = hardware_data.tagnumber
+	WHERE 
+		historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY tagnumber)
+		AND historical_hardware_data.battery_design_capacity IS NOT NULL 
+		AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
+	GROUP BY 
+		hardware_data.system_model,
+		historical_hardware_data.tagnumber, 
+		historical_hardware_data.time, 
+		avg_battery_health.avg_battery_health_pcnt,
+		historical_hardware_data.battery_current_max_capacity,
+		historical_hardware_data.battery_design_capacity
+	ORDER BY historical_hardware_data.time DESC;
+	`
 	var clientReports []types.ClientReport
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {

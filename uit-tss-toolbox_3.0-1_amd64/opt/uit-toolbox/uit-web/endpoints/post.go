@@ -903,54 +903,6 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, "Image pin toggled successfully")
 }
 
-func SetClientBatteryHealth(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving URL queries from context for SetClientBatteryHealth: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	if req.Method != http.MethodPost {
-		log.Warn("Invalid HTTP method for SetClientBatteryHealth")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	uuid := strings.TrimSpace(requestQueries.Get("uuid"))
-	if uuid == "" {
-		log.Warn("No UUID provided for SetClientBatteryHealth")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	var body struct {
-		BatteryHealth int64 `json:"battery_health"`
-	}
-
-	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
-		log.Warn("Cannot decode SetClientBatteryHealth JSON: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	// if body.BatteryHealth < 0 || body.BatteryHealth > 100 {
-	// 	log.Warn("Invalid battery health percentage provided for SetClientBatteryHealth")
-	// 	middleware.WriteJsonError(w, http.StatusBadRequest)
-	// 	return
-	// }
-	updateRepo, err := database.NewUpdateRepo()
-	if err != nil {
-		log.Error("No database connection available for SetClientBatteryHealth")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	if err = updateRepo.SetClientBatteryHealth(ctx, &uuid, &body.BatteryHealth); err != nil {
-		log.Error("Failed to set client battery health: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	middleware.WriteJson(w, http.StatusOK, "Battery health updated successfully")
-}
-
 func SetAllJobs(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
@@ -1123,6 +1075,11 @@ func SetClientHardwareData(w http.ResponseWriter, req *http.Request) {
 	}
 	if strings.TrimSpace(hardwareData.TransactionUUID) == "" {
 		log.Warn("Transaction UUID is missing or nil in SetClientHardwareData")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if hardwareData.BatteryManufactureDate != nil && hardwareData.BatteryManufactureDate.IsZero() {
+		log.Warn("Battery manufacture date is zero in SetClientHardwareData")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}

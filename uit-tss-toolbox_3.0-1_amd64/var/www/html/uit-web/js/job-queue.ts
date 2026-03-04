@@ -49,7 +49,7 @@ type JobQueueTableRowView = {
 	network_usage: number | null;
 	battery_charge: number | null;
 	battery_status: string | null;
-	battery_health: number | null;
+	battery_health_pcnt: number | null;
 	plugged_in: boolean | null;
 	power_usage: number | null;
 };
@@ -398,7 +398,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		const batteryInfo = document.createElement('p');
 		const batteryInfoText = document.createTextNode('Battery: ');
 		if (entry.battery_charge !== null) batteryInfoText.appendData(`${entry.battery_charge.toFixed(2)}%`); else batteryInfoText.appendData('N/A%');
-		if (entry.battery_health !== null) batteryInfoText.appendData(` (Health: ${entry.battery_health?.toFixed(2)}%)`);;
+		if (entry.battery_health_pcnt !== null) batteryInfoText.appendData(` (Health: ${entry.battery_health_pcnt?.toFixed(2)}%)`);;
 		if (entry.battery_health_warning) batteryInfoText.appendData(' (Warning)');
 		batteryInfo.appendChild(batteryInfoText);
 		hardwareInfoContainer.appendChild(batteryInfo);
