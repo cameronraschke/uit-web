@@ -75,7 +75,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/overview/all_domains", httpsFullAPIChain.ThenFunc(endpoints.GetDomains))
 	httpsRouter.Handle("GET /api/overview/all_departments", httpsFullAPIChain.ThenFunc(endpoints.GetDepartments))
 	httpsRouter.Handle("GET /api/check_auth", httpsFullAPIChain.ThenFunc(endpoints.RejectRequest))
-	httpsRouter.Handle("GET /api/reports/battery", httpsFullAPIChain.ThenFunc(endpoints.GetBatteryStandardDeviation))
+	httpsRouter.Handle("GET /api/reports/battery", httpsFullAPIChain.ThenFunc(endpoints.FetchBatteryStandardDeviation))
 	httpsRouter.Handle("GET /api/overview/job_queue/all_jobs", httpsFullAPIChain.ThenFunc(endpoints.GetAllJobs))
 	httpsRouter.Handle("GET /api/overview/all_locations", httpsFullAPIChain.ThenFunc(endpoints.GetAllLocations))
 	httpsRouter.Handle("GET /api/overview/all_statuses", httpsFullAPIChain.ThenFunc(endpoints.GetAllStatuses))

@@ -100,11 +100,15 @@ func ptrToNullTime(p *time.Time) sql.NullTime {
 	return sql.NullTime{Time: *p, Valid: true}
 }
 
-func ptrToNullDateString(p *string) sql.NullString {
+func ptrToNullDateString(p *string) sql.NullTime {
 	if p == nil || strings.TrimSpace(*p) == "" {
-		return sql.NullString{}
+		return sql.NullTime{}
 	}
-	return sql.NullString{String: *p, Valid: true}
+	parsedTime, err := time.Parse("2006-01-02", *p)
+	if err != nil {
+		return sql.NullTime{}
+	}
+	return sql.NullTime{Time: parsedTime, Valid: true}
 }
 
 func toNullString(s string) sql.NullString {

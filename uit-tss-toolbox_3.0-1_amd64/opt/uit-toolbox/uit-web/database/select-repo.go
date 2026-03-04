@@ -1093,7 +1093,7 @@ func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.Cli
 			&clientReport.BatteryHealthTimestamp,
 			&clientReport.Tagnumber,
 			&clientReport.BatteryHealthPcnt,
-			&clientReport.BatteryHealthStdDev,
+			&clientReport.BatteryHealthVariance,
 		); err != nil {
 			return nil, err
 		}

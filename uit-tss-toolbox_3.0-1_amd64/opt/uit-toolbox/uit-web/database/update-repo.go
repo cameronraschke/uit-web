@@ -1027,7 +1027,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		ptrToNullInt64(hardwareData.BatteryChargeCycles),
 		ptrToNullFloat64(hardwareData.BatteryCurrentMaxCapacity),
 		ptrToNullFloat64(hardwareData.BatteryDesignCapacity),
-		ptrToNullDateString(hardwareData.BatteryManufactureDate),
+		ptrToNullDateString(hardwareData.BatteryManufactureDate), // Gets converted to time.Time with date format the in helper function
 		ptrToNullString(hardwareData.BiosVersion),
 		ptrToNullString(hardwareData.BiosReleaseDate),
 		ptrToNullString(hardwareData.BiosFirmware),

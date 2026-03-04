@@ -3,11 +3,17 @@ package types
 import (
 	"fmt"
 	"net/netip"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
 	"unicode/utf8"
+)
+
+var (
+	ISOdateRegex = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+	USADateRegex = regexp.MustCompile(`^\d{2}/\d{2}/\d{4}$`)
 )
 
 func copyTrimmedStringPtr(value *string) *string {

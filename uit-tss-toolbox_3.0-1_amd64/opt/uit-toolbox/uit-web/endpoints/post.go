@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -1078,10 +1079,21 @@ func SetClientHardwareData(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if hardwareData.BatteryManufactureDate != nil && hardwareData.BatteryManufactureDate.IsZero() {
-		log.Warn("Battery manufacture date is zero in SetClientHardwareData")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
+	if hardwareData.BatteryManufactureDate != nil {
+		USAMatched, _ := regexp.MatchString(types.USADateRegex.String(), *hardwareData.BatteryManufactureDate)
+		ISOMatched, _ := regexp.MatchString(types.ISOdateRegex.String(), *hardwareData.BatteryManufactureDate)
+		if !USAMatched && !ISOMatched {
+			*hardwareData.BatteryManufactureDate = ""
+		}
+		if USAMatched {
+			parsedTime, err := time.Parse("01/02/2006", *hardwareData.BatteryManufactureDate)
+			if err != nil {
+				log.Warn("Failed to parse battery manufacture date in MM/DD/YYYY format: " + err.Error())
+				*hardwareData.BatteryManufactureDate = ""
+			} else {
+				*hardwareData.BatteryManufactureDate = parsedTime.Format("2006-01-02")
+			}
+		}
 	}
 	if err = updateRepo.UpdateClientHardwareData(ctx, &hardwareData); err != nil {
 		log.Error("Failed to update client hardware data: " + err.Error())
