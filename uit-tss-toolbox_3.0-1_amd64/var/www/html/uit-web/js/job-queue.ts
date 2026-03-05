@@ -33,6 +33,7 @@ type JobQueueTableRowView = {
 	bios_updated: boolean | null;
 	bios_version: string | null;
 	cpu_usage: number | null;
+	cpu_mhz: number | null;
 	cpu_temp: number | null;
 	cpu_temp_warning: boolean | null;
 	memory_usage_kb: number | null;
@@ -395,7 +396,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		const hardwareInfoContainer = document.createElement('div');
 		hardwareInfoContainer.classList.add('grid-item');
 		const cpuUsage = document.createElement('p');
-		cpuUsage.textContent = `CPU Usage: ${entry.cpu_usage !== null ? entry.cpu_usage.toFixed(2) + '%' : 'N/A'} ${entry.cpu_temp !== null ? `(` + entry.cpu_temp.toFixed(2) + '°C)' : ''}`;
+		cpuUsage.textContent = `CPU Usage: ${entry.cpu_usage !== null ? entry.cpu_usage.toFixed(2) + '%' : 'N/A'} ${entry.cpu_temp !== null ? `(` + entry.cpu_temp.toFixed(0) + '°C)' : ''} ${entry.cpu_mhz !== null ? `@ ${(entry.cpu_mhz / 1000).toFixed(2)}GHz` : ''}`;
 		hardwareInfoContainer.appendChild(cpuUsage);
 		const memoryUsage = document.createElement('p');
 		memoryUsage.textContent = `Memory Usage: ${entry.memory_usage_kb !== null && entry.memory_capacity_kb !== null ? (entry.memory_usage_kb / 1024 / 1024).toFixed(2) + 'GB / ' + (entry.memory_capacity_kb / 1024 / 1024).toFixed(2) + 'GB' : 'N/A'}`;

@@ -90,6 +90,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("POST /api/client/job_queue/update_job", httpsFullAPIChain.ThenFunc(endpoints.SetClientJob))
 	httpsRouter.Handle("POST /api/client/memory", httpsFullAPIChain.ThenFunc(endpoints.SetClientMemoryInfo))
 	httpsRouter.Handle("POST /api/client/cpu/usage", httpsFullAPIChain.ThenFunc(endpoints.SetClientCPUUsage))
+	httpsRouter.Handle("POST /api/client/cpu/mhz", httpsFullAPIChain.ThenFunc(endpoints.SetClientCPUMHz))
 	httpsRouter.Handle("POST /api/client/cpu/temp", httpsFullAPIChain.ThenFunc(endpoints.SetClientCPUTemperature))
 	httpsRouter.Handle("POST /api/client/network/usage", httpsFullAPIChain.ThenFunc(endpoints.SetClientNetworkUsage))
 	httpsRouter.Handle("POST /api/client/uptime", httpsFullAPIChain.ThenFunc(endpoints.SetClientUptime))

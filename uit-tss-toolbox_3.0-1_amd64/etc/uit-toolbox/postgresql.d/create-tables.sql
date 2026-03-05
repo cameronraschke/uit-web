@@ -356,6 +356,7 @@ CREATE TABLE IF NOT EXISTS job_queue (
 	memory_usage_kb BIGINT DEFAULT NULL,
 	memory_capacity_kb BIGINT DEFAULT NULL,
 	cpu_usage DECIMAL(6, 2) DEFAULT NULL,
+	cpu_mhz INTEGER DEFAULT NULL,
 	cpu_temp DECIMAL(6, 2) DEFAULT NULL,
 	network_usage INT DEFAULT NULL,
 	link_speed INT DEFAULT NULL

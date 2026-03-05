@@ -72,6 +72,7 @@ type MemoryDataRequest struct {
 type CPUData struct {
 	Tagnumber     int64    `json:"tagnumber"`
 	UsagePercent  *float64 `json:"cpu_usage"`
+	MHz           *float64 `json:"cpu_mhz"`
 	MillidegreesC *float64 `json:"cpu_millidegrees_c"`
 }
 

@@ -32,6 +32,7 @@ type Update interface {
 	UpdateClientUptime(ctx context.Context, uptimeData *types.ClientUptime) (err error)
 	UpdateClientLastHardwareCheck(ctx context.Context, tagnumber int64, lastCheck time.Time) (err error)
 	UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error)
+	UpdateClientCPUMHz(ctx context.Context, cpuData *types.CPUData) (err error)
 }
 
 type UpdateRepo struct {
@@ -642,6 +643,45 @@ func (updateRepo *UpdateRepo) UpdateClientCPUUsage(ctx context.Context, cpuData 
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+	}
+	return nil
+}
+
+func (updateRepo *UpdateRepo) UpdateClientCPUMHz(ctx context.Context, cpuData *types.CPUData) (err error) {
+	if cpuData == nil {
+		return fmt.Errorf("CPU data is required")
+	}
+	if cpuData.Tagnumber == 0 || cpuData.MHz == nil {
+		return fmt.Errorf("both tagnumber and CPU MHz are required")
+	}
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning DB transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	const sqlCode = `INSERT INTO job_queue (tagnumber, cpu_mhz) VALUES ($1, $2)
+		ON CONFLICT (tagnumber) DO UPDATE SET cpu_mhz = EXCLUDED.cpu_mhz;`
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+		toNullInt64(cpuData.Tagnumber),
+		ptrToNullFloat64(cpuData.MHz),
+	)
+	if err != nil {
+		return fmt.Errorf("error updating CPU MHz: %w", err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on CPU MHz update: %w", err)
 	}
 	return nil
 }
