@@ -263,7 +263,6 @@ type JobQueueTableRowView struct {
 	IsBroken              *bool          `json:"is_broken"`
 	DiskRemoved           *bool          `json:"disk_removed"`
 	TempWarning           *bool          `json:"temp_warning"`
-	BatteryHealthVariance *bool          `json:"battery_health_variance"`
 	CheckoutBool          *bool          `json:"checkout_bool"`
 	KernelUpdated         *bool          `json:"kernel_updated"`
 	LastHeard             *time.Time     `json:"last_heard"`
@@ -302,6 +301,7 @@ type JobQueueTableRowView struct {
 	NetworkUsage          *float64       `json:"network_usage"`
 	BatteryCharge         *int64         `json:"battery_charge"`
 	BatteryStatus         *string        `json:"battery_status"`
+	BatteryHealthVariance *float64       `json:"battery_health_variance"`
 	BatteryHealthPcnt     *float64       `json:"battery_health_pcnt"`
 	PluggedIn             *bool          `json:"plugged_in"`
 	PowerUsage            *float64       `json:"power_usage"`
