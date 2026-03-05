@@ -849,7 +849,37 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 }
 
 func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error) {
-	const sqlQuery = `WITH latest_locations AS (
+	const sqlQuery = `
+	WITH avg_battery_health AS (
+		SELECT system_model, AVG(avg_battery_health_pcnt) AS "avg_battery_health_pcnt" 
+		FROM (
+			SELECT hardware_data.system_model, (historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100) AS "avg_battery_health_pcnt" 
+			FROM 
+				historical_hardware_data 
+			LEFT JOIN 
+				hardware_data ON historical_hardware_data.tagnumber = hardware_data.tagnumber
+			WHERE 
+				historical_hardware_data.battery_design_capacity IS NOT NULL 
+				AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
+			GROUP BY 
+				hardware_data.system_model,
+				historical_hardware_data.tagnumber, 
+				historical_hardware_data.battery_current_max_capacity, 
+				historical_hardware_data.battery_design_capacity
+		)
+		GROUP BY system_model
+	),
+	current_battery_health AS (
+		SELECT 
+			tagnumber, ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt"
+		FROM 
+			historical_hardware_data
+		WHERE 
+			historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY tagnumber)
+			AND historical_hardware_data.battery_design_capacity IS NOT NULL 
+			AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
+	),
+	latest_locations AS (
 		SELECT DISTINCT ON (locations.tagnumber) locations.time, locations.tagnumber, locations.system_serial, locations.location,
 			locationFormatting(locations.location) AS location_formatted, static_department_info.department_name_formatted, locations.ad_domain,
 			 static_client_statuses.status_formatted, locations.is_broken,
@@ -884,7 +914,6 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		latest_locations.is_broken,
 		latest_locations.disk_removed,
 		FALSE AS "temp_warning",
-		FALSE AS "battery_warning",
 		(CASE WHEN latest_locations.status_formatted = 'checked_out' THEN TRUE ELSE FALSE END) AS checkout_bool,
 		TRUE AS "kernel_updated",
 		job_queue.last_heard,
@@ -943,6 +972,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		job_queue.battery_charge,
 		job_queue.battery_status,
 		ROUND((battery_current_max_capacity::decimal / battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt",
+		ROUND(avg_battery_health.avg_battery_health_pcnt - current_battery_health.battery_health_pcnt, 2) AS "battery_health_variance",
 		NULL AS "plugged_in",
 		job_queue.watts_now AS "power_usage"
 	FROM locations
@@ -950,6 +980,8 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 	LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber
 	LEFT JOIN latest_locations ON locations.tagnumber = latest_locations.tagnumber
 	LEFT JOIN latest_historical_hardware_data ON locations.tagnumber = latest_historical_hardware_data.tagnumber
+	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
+	LEFT JOIN current_battery_health ON locations.tagnumber = current_battery_health.tagnumber
 	LEFT JOIN latest_job ON locations.tagnumber = latest_job.tagnumber
 	LEFT JOIN static_image_names ON latest_job.clone_image = static_image_names.image_name
 	LEFT JOIN static_job_names ON job_queue.job_queued = static_job_names.job_name
@@ -982,7 +1014,6 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 			&row.IsBroken,
 			&row.DiskRemoved,
 			&row.TempWarning,
-			&row.BatteryHealthWarning,
 			&row.CheckoutBool,
 			&row.KernelUpdated,
 			&row.LastHeard,
@@ -1022,6 +1053,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 			&row.BatteryCharge,
 			&row.BatteryStatus,
 			&row.BatteryHealthPcnt,
+			&row.BatteryHealthVariance,
 			&row.PluggedIn,
 			&row.PowerUsage,
 		); err != nil {

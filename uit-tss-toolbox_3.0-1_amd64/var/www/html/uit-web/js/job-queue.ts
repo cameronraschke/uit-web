@@ -10,7 +10,6 @@ type JobQueueTableRowView = {
 	is_broken: boolean | null;
 	disk_removed: boolean | null;
 	temp_warning: boolean | null;
-	battery_health_warning: boolean | null;
 	checkout_bool: boolean | null;
 	kernel_updated: boolean | null;
 	last_heard: Date | null;
@@ -49,6 +48,7 @@ type JobQueueTableRowView = {
 	network_usage: number | null;
 	battery_charge: number | null;
 	battery_status: string | null;
+	battery_health_variance: boolean | null;
 	battery_health_pcnt: number | null;
 	plugged_in: boolean | null;
 	power_usage: number | null;
@@ -408,9 +408,10 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		hardwareInfoContainer.appendChild(networkUsage);
 		const batteryInfo = document.createElement('p');
 		const batteryInfoText = document.createTextNode('Battery: ');
-		if (entry.battery_charge !== null) batteryInfoText.appendData(`${entry.battery_charge.toFixed(2)}%`); else batteryInfoText.appendData('N/A%');
-		if (entry.battery_health_pcnt !== null) batteryInfoText.appendData(` (Health: ${entry.battery_health_pcnt?.toFixed(2)}%)`);;
-		if (entry.battery_health_warning) batteryInfoText.appendData(' (Warning)');
+		if (entry.battery_charge !== null) batteryInfoText.appendData(`${entry.battery_charge.toFixed(0)}%`); else batteryInfoText.appendData('N/A%');
+		if (entry.battery_health_pcnt !== null) batteryInfoText.appendData(` (Health: ${entry.battery_health_pcnt?.toFixed(2)}%`);;
+		if (entry.battery_health_variance) batteryInfoText.appendData(`, ${entry.battery_health_variance}% variance)`);
+		batteryInfoText.appendData(')');
 		batteryInfo.appendChild(batteryInfoText);
 		hardwareInfoContainer.appendChild(batteryInfo);
 
