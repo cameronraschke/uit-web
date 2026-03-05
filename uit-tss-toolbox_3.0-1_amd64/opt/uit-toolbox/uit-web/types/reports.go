@@ -60,6 +60,6 @@ type AllLocations struct {
 type ClientReport struct {
 	Tagnumber              int64     `json:"tagnumber"`
 	BatteryHealthPcnt      float64   `json:"battery_health_pcnt"`
-	BatteryHealthVariance  float64   `json:"battery_health_variance"`
+	BatteryHealthDeviation  float64   `json:"battery_health_deviation"`
 	BatteryHealthTimestamp time.Time `json:"battery_health_timestamp"`
 }

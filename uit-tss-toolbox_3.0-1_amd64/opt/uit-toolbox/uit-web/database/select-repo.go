@@ -972,7 +972,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		job_queue.battery_charge,
 		job_queue.battery_status,
 		ROUND((battery_current_max_capacity::decimal / battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt",
-		ROUND(avg_battery_health.avg_battery_health_pcnt - current_battery_health.battery_health_pcnt, 2) AS "battery_health_variance",
+		ROUND(avg_battery_health.avg_battery_health_pcnt - current_battery_health.battery_health_pcnt, 2) AS "battery_health_deviation",
 		NULL AS "plugged_in",
 		job_queue.watts_now AS "power_usage"
 	FROM locations
@@ -1053,7 +1053,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 			&row.BatteryCharge,
 			&row.BatteryStatus,
 			&row.BatteryHealthPcnt,
-			&row.BatteryHealthVariance,
+			&row.BatteryHealthDeviation,
 			&row.PluggedIn,
 			&row.PowerUsage,
 		); err != nil {
@@ -1105,7 +1105,7 @@ func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.Cli
 		historical_hardware_data.time AS "battery_health_timestamp", 
 		historical_hardware_data.tagnumber, 
 		current_battery_health.battery_health_pcnt AS "battery_health_pcnt", 
-		ROUND(avg_battery_health.avg_battery_health_pcnt - current_battery_health.battery_health_pcnt, 2) AS "battery_health_variance"
+		ROUND(avg_battery_health.avg_battery_health_pcnt - current_battery_health.battery_health_pcnt, 2) AS "battery_health_deviation"
 	FROM historical_hardware_data
 	LEFT JOIN hardware_data ON historical_hardware_data.tagnumber = hardware_data.tagnumber
 	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
@@ -1140,7 +1140,7 @@ func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.Cli
 			&clientReport.BatteryHealthTimestamp,
 			&clientReport.Tagnumber,
 			&clientReport.BatteryHealthPcnt,
-			&clientReport.BatteryHealthVariance,
+			&clientReport.BatteryHealthDeviation,
 		); err != nil {
 			return nil, err
 		}

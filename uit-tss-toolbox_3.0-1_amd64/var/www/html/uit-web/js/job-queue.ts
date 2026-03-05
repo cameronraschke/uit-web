@@ -48,7 +48,7 @@ type JobQueueTableRowView = {
 	network_usage: number | null;
 	battery_charge: number | null;
 	battery_status: string | null;
-	battery_health_variance: boolean | null;
+	battery_health_deviation: number | null;
 	battery_health_pcnt: number | null;
 	plugged_in: boolean | null;
 	power_usage: number | null;
@@ -409,8 +409,15 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		const batteryInfo = document.createElement('p');
 		const batteryInfoText = document.createTextNode('Battery: ');
 		if (entry.battery_charge !== null) batteryInfoText.appendData(`${entry.battery_charge.toFixed(0)}%`); else batteryInfoText.appendData('N/A%');
-		if (entry.battery_health_pcnt !== null) batteryInfoText.appendData(` (Health: ${entry.battery_health_pcnt?.toFixed(2)}%`);;
-		if (entry.battery_health_variance) batteryInfoText.appendData(`, ${entry.battery_health_variance}% variance)`);
+		if (entry.battery_health_pcnt !== null) batteryInfoText.appendData(` (Max Capacity: ${entry.battery_health_pcnt?.toFixed(2)}%`);
+		if (entry.battery_health_deviation !== null) {
+			if (entry.battery_health_deviation) batteryInfoText.appendData(', X-μ=');
+			if (entry.battery_health_deviation > 0) {
+				if (entry.battery_health_deviation) batteryInfoText.appendData(`, +${entry.battery_health_deviation.toFixed(2)}`);
+			} else if (entry.battery_health_deviation < 0) {
+				if (entry.battery_health_deviation) batteryInfoText.appendData(`, ${entry.battery_health_deviation.toFixed(2)}`);
+			}
+		}
 		batteryInfoText.appendData(')');
 		batteryInfo.appendChild(batteryInfoText);
 		hardwareInfoContainer.appendChild(batteryInfo);
