@@ -195,6 +195,17 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 	}
 	if (!onlineClientsDiv || !offlineClientsDiv) return;
 
+	data.sort((a, b) => {
+		if (a.online === b.online) {
+			if (a.system_uptime !== null && b.system_uptime !== null) {
+				const diff = a.system_uptime - b.system_uptime;
+				if (diff !== 0) return diff;
+			}
+			return (a.tagnumber ?? 0) - (b.tagnumber ?? 0);
+		}
+		return a.online ? -1 : 1;
+	});
+
 	let jobs: AllJobs[] = [];
 	try {
 		jobs = await fetchAllJobs();

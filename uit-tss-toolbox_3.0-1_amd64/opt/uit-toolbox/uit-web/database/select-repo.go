@@ -378,7 +378,7 @@ func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.A
 
 	const sqlQuery = `SELECT job_queue.tagnumber, job_queue.job_queued, job_queue.job_active, t1.queue_position
 	FROM job_queue
-	LEFT JOIN (SELECT tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY present DESC) AS queue_position FROM job_queue) AS t1 
+	LEFT JOIN (SELECT tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY last_heard DESC) AS queue_position FROM job_queue) AS t1 
 		ON job_queue.tagnumber = t1.tagnumber
 	WHERE job_queue.tagnumber = $1;`
 
@@ -437,8 +437,8 @@ func (repo *SelectRepo) GetJobQueueOverview(ctx context.Context) (*types.JobQueu
 
 	const sqlQuery = `SELECT t1.total_queued_jobs, t2.total_active_jobs, t3.total_active_blocking_jobs
 	FROM 
-	(SELECT COUNT(*) AS total_queued_jobs FROM job_queue WHERE job_queued IS NOT NULL AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - present)) < 30) AS t1,
-	(SELECT COUNT(*) AS total_active_jobs FROM job_queue WHERE job_active IS NOT NULL AND job_active = TRUE AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - present)) < 30) AS t2,
+	(SELECT COUNT(*) AS total_queued_jobs FROM job_queue WHERE job_queued IS NOT NULL AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_heard)) < 30) AS t1,
+	(SELECT COUNT(*) AS total_active_jobs FROM job_queue WHERE job_active IS NOT NULL AND job_active = TRUE AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_heard)) < 30) AS t2,
 	(SELECT COUNT(*) AS total_active_blocking_jobs FROM job_queue WHERE job_active IS NOT NULL AND job_active = TRUE AND job_queued IS NOT NULL AND job_queued IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')) AS t3;`
 
 	var jobQueueOverview types.JobQueueOverview
@@ -887,9 +887,9 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		FALSE AS "battery_warning",
 		(CASE WHEN latest_locations.status_formatted = 'checked_out' THEN TRUE ELSE FALSE END) AS checkout_bool,
 		TRUE AS "kernel_updated",
-		job_queue.present AS "last_heard",
+		job_queue.last_heard,
 		job_queue.system_uptime,
-		(CASE WHEN EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.present)) < 30 THEN TRUE ELSE FALSE END) AS "online",
+		(CASE WHEN EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.last_heard)) < 30 THEN TRUE ELSE FALSE END) AS "online",
 		job_queue.job_active,
 		(CASE WHEN job_queue.job_queued IS NOT NULL THEN TRUE ELSE FALSE END) AS "job_queued",
 		job_queue.job_queued_position AS "queue_position",
@@ -957,7 +957,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 	LEFT JOIN static_disk_stats ON latest_historical_hardware_data.disk_model = static_disk_stats.disk_model
 	LEFT JOIN static_ad_domains ON latest_locations.ad_domain = static_ad_domains.domain_name
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-	ORDER BY locations.tagnumber;`
+	;`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
