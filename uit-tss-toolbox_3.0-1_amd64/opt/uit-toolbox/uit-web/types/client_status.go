@@ -1,9 +1,9 @@
 package types
 
 import (
+	"fmt"
+	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type ClientStatusView struct {
@@ -45,21 +45,68 @@ type ClientBatteryHealth struct {
 	BatteryChargeCycles int64     `json:"chargeCycles"`
 }
 
-type ClientHealth struct {
-	Time               *time.Time `json:"time"`
-	Tagnumber          int64      `json:"tagnumber"`
-	SystemSerial       *string    `json:"system_serial"`
-	TPMVersion         *string    `json:"tpm_version"`
-	BIOSUpdated        *bool      `json:"bios_updated"`
-	OSName             *string    `json:"os_name"`
-	OSInstalled        *bool      `json:"os_installed"`
-	DiskHealth         *float64   `json:"disk_health"`
-	BatteryHealthPcnt  *float64   `json:"battery_health_pcnt"`
-	AvgEraseTime       *float64   `json:"avg_erase_time"`
-	AvgCloneTime       *float64   `json:"avg_clone_time"`
-	LastCloneJobTime   *time.Time `json:"last_clone_job_time"`
-	LastEraseJobTime   *time.Time `json:"last_erase_job_time"`
-	TotalJobsCompleted *int64     `json:"total_jobs_completed"`
-	LastHardwareCheck  *time.Time `json:"last_hardware_check"`
-	TransactionUUID    *uuid.UUID `json:"transaction_uuid"`
+type ClientHealthUpdateRequest struct {
+	Tagnumber         int64      `json:"tagnumber"`
+	TransactionUUID   string     `json:"transaction_uuid"`
+	SystemSerial      *string    `json:"system_serial"`
+	TPMVersion        *string    `json:"tpm_version"`
+	BIOSVersion       *string    `json:"bios_updated"`
+	EraseCompleted    *bool      `json:"erase_completed"`
+	CloneCompleted    *bool      `json:"clone_completed"`
+	LastHardwareCheck *time.Time `json:"last_hardware_check"`
+}
+
+type ClientHealthDTO struct {
+	Time               *time.Time
+	Tagnumber          int64
+	TransactionUUID    string
+	SystemSerial       *string
+	TPMVersion         *string
+	BIOSVersion        *string
+	BIOSUpdated        *bool
+	OSInstalled        *bool
+	OSName             *string
+	DiskHealthPcnt     *float64
+	BatteryHealthPcnt  *float64
+	AvgEraseTime       *float64
+	AvgCloneTime       *float64
+	LastCloneJobTime   *time.Time
+	LastEraseJobTime   *time.Time
+	TotalJobsCompleted *int64
+	LastHardwareCheck  *time.Time
+}
+
+func CreatePartialClientHealthUpdateRequestDTO(request *ClientHealthUpdateRequest) (*ClientHealthDTO, error) {
+	// Some of this mapping will have to be done in the database itself (aggregated, specific data)
+	if request == nil {
+		return nil, fmt.Errorf("nil input")
+	}
+	if request.Tagnumber == 0 || strings.TrimSpace(request.TransactionUUID) == "" {
+		return nil, fmt.Errorf("missing tagnumber or transaction UUID")
+	}
+	dto := new(ClientHealthDTO)
+	utcTime := time.Now().UTC()
+	dto.Time = &utcTime
+	dto.Tagnumber = request.Tagnumber
+	dto.TransactionUUID = request.TransactionUUID
+	if request.SystemSerial != nil && strings.TrimSpace(*request.SystemSerial) != "" {
+		dto.SystemSerial = request.SystemSerial
+	}
+	if request.TPMVersion != nil && strings.TrimSpace(*request.TPMVersion) != "" {
+		dto.TPMVersion = request.TPMVersion
+	}
+	if request.BIOSVersion != nil && strings.TrimSpace(*request.BIOSVersion) != "" {
+		dto.BIOSVersion = request.BIOSVersion
+	}
+	if request.EraseCompleted != nil && *request.EraseCompleted {
+		dto.LastEraseJobTime = &utcTime
+		*dto.OSInstalled = false // order matters
+	}
+	if request.CloneCompleted != nil && *request.CloneCompleted {
+		dto.LastCloneJobTime = &utcTime
+		*dto.OSInstalled = true // order matters
+	}
+	dto.LastHardwareCheck = request.LastHardwareCheck
+
+	return dto, nil
 }

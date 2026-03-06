@@ -33,6 +33,7 @@ type Update interface {
 	UpdateClientLastHardwareCheck(ctx context.Context, tagnumber int64, lastCheck time.Time) (err error)
 	UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error)
 	UpdateClientCPUMHz(ctx context.Context, cpuData *types.CPUData) (err error)
+	UpdateClientHealth(ctx context.Context, clientHealth *types.ClientHealthDTO) (err error)
 }
 
 type UpdateRepo struct {
@@ -1086,4 +1087,82 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		return fmt.Errorf("error while checking rows affected on historical hardware data table update: %w", err)
 	}
 	return nil
+}
+
+func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHealth *types.ClientHealthDTO) (err error) {
+	if clientHealth == nil || clientHealth.Tagnumber == 0 || strings.TrimSpace(clientHealth.TransactionUUID) == "" {
+		return fmt.Errorf("hardwareData is invalid")
+	}
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning DB transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	const sqlCode = `
+	INSERT INTO client_health (
+		time,
+		tagnumber,
+		transaction_uuid,
+		system_serial,
+		tpm_version,
+		bios_updated,
+		os_installed,
+		os_name,
+		disk_health_pcnt,
+		battery_health_pcnt,
+		avg_erase_time,
+		avg_clone_time,
+		last_erase_job_time,
+		last_clone_job_time,
+		total_jobs_completed,
+		last_hardware_check
+	)
+	SELECT
+		$1,
+		$2,
+		$3,
+		$4,
+		$5,
+		CASE (
+			WHEN $6 = static_bios_stats.bios_version THEN TRUE
+			ELSE FALSE
+			END
+		) AS "bios_updated",
+		$7,
+		$8,
+		$9,
+	FROM 
+		hardware_data
+	LEFT JOIN 
+		static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
+	
+	ON CONFLICT (tagnumber)
+	 DO UPDATE SET
+		time = EXCLUDED.time,
+		transaction_uuid = EXCLUDED.transaction_uuid,
+		system_serial = EXCLUDED.system_serial,
+		tpm_version = EXCLUDED.tpm_version,
+		bios_updated = EXCLUDED.bios_updated,
+		os_installed = EXCLUDED.os_installed,
+		os_name = EXCLUDED.os_name,
+		disk_health_pcnt = EXCLUDED.disk_health_pcnt,
+		battery_health_pcnt = EXCLUDED.battery_health_pcnt,
+		avg_erase_time = EXCLUDED.avg_erase_time,
+		avg_clone_time = EXCLUDED.avg_clone_time,
+		last_erase_job_time = EXCLUDED.last_erase_job_time,
+		last_clone_job_time = EXCLUDED.last_clone_job_time,
+		total_jobs_completed = EXCLUDED.total_jobs_completed,
+		last_hardware_check = EXCLUDED.last_hardware_check,
+
+	`
 }

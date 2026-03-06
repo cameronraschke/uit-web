@@ -322,7 +322,7 @@ CREATE TABLE IF NOT EXISTS client_health (
 	os_name VARCHAR(24) DEFAULT NULL,
 	os_installed BOOLEAN DEFAULT NULL,
 	disk_type VARCHAR(4) DEFAULT NULL, --remove
-	disk_health NUMERIC(6,3) DEFAULT NULL, 
+	disk_health_pcnt NUMERIC(6,3) DEFAULT NULL, 
 	battery_health_pcnt NUMERIC(6,3) DEFAULT NULL, 
 	avg_erase_time SMALLINT DEFAULT NULL, 
 	avg_clone_time SMALLINT DEFAULT NULL, 
