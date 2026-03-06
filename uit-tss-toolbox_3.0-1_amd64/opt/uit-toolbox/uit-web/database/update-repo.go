@@ -1142,11 +1142,10 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 		$3 AS "transaction_uuid",
 		$4 AS "system_serial",
 		$5 AS "tpm_version",
-		CASE (
+		CASE 
 			WHEN $6 = static_bios_stats.bios_version THEN TRUE
 			ELSE FALSE
-			END
-		) AS "bios_updated",
+		END AS "bios_updated",
 		$7 AS "os_installed",
 		static_image_names.image_name_readable AS "os_name",
 		NULL AS "disk_health_pcnt",
