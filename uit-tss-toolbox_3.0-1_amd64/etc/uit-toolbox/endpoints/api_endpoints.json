@@ -59,9 +59,6 @@
 	"/api/client/uptime": {
 		"allowed_methods": ["OPTIONS", "POST"]
 	},
-	"/api/client/health/last_hardware_check": {
-		"allowed_methods": ["OPTIONS", "POST"]
-	},
 	"/api/client/hardware": {
 		"allowed_methods": ["OPTIONS", "GET", "POST"]
 	}
