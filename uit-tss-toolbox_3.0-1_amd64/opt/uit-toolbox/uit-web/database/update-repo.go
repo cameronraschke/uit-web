@@ -1163,7 +1163,7 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 			ELSE FALSE
 		END AS "os_installed",
 		static_image_names.image_name_readable AS "os_name",
-		(((historical_hardware_data.disk_power_on_hours::decimal / static_disk_stats.disk_mtbf::decimal) + (historical_hardware_data.disk_writes_kb::decimal / static_disk_stats.disk_tbw::decimal)) / 2) AS "disk_health_pcnt",
+		(100 - ((historical_hardware_data.disk_power_on_hours::decimal / static_disk_stats.disk_mtbf::decimal) + (historical_hardware_data.disk_writes_kb::decimal / 100000000 / static_disk_stats.disk_tbw::decimal)) / 2) AS "disk_health_pcnt",
 		ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt",
 		avg_erase_times.erase_time AS "avg_erase_time",
 		avg_clone_times.clone_time AS "avg_clone_time",
