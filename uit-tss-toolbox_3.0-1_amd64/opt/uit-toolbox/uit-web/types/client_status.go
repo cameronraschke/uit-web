@@ -100,7 +100,6 @@ func CreatePartialClientHealthUpdateRequestDTO(request *ClientHealthUpdateReques
 	if request.BIOSVersion != nil && strings.TrimSpace(*request.BIOSVersion) != "" {
 		dto.BIOSVersion = request.BIOSVersion
 	}
-	*dto.OSInstalled = false // order matters
 	if request.EraseCompleted != nil && *request.EraseCompleted {
 		if request.EraseJobDuration != nil && *request.EraseJobDuration > 1 {
 			dto.LastEraseJobTime = &utcTime
