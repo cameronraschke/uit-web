@@ -1146,7 +1146,12 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 			WHEN $6 = static_bios_stats.bios_version THEN TRUE
 			ELSE FALSE
 		END AS "bios_updated",
-		$7 AS "os_installed",
+		CASE 
+			WHEN $7 = TRUE THEN TRUE
+			WHEN $7 = FALSE THEN FALSE
+			WHEN $7 IS NULL AND most_recent_job.clone_completed = TRUE THEN TRUE
+			ELSE NULL
+		END AS "os_installed",
 		static_image_names.image_name_readable AS "os_name",
 		NULL AS "disk_health_pcnt",
 		ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt",
@@ -1173,21 +1178,21 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 	WHERE hardware_data.tagnumber = $2
 	ON CONFLICT (tagnumber)
 	 DO UPDATE SET
-		time = EXCLUDED.time,
-		transaction_uuid = EXCLUDED.transaction_uuid,
-		system_serial = EXCLUDED.system_serial,
-		tpm_version = EXCLUDED.tpm_version,
-		bios_updated = EXCLUDED.bios_updated,
-		os_installed = CASE EXCLUDED.os_installed,
-		os_name = EXCLUDED.os_name,
-		disk_health_pcnt = EXCLUDED.disk_health_pcnt,
-		battery_health_pcnt = EXCLUDED.battery_health_pcnt,
-		avg_erase_time = EXCLUDED.avg_erase_time,
-		avg_clone_time = EXCLUDED.avg_clone_time,
-		last_erase_job_time = EXCLUDED.last_erase_job_time,
-		last_clone_job_time = EXCLUDED.last_clone_job_time,
-		total_jobs_completed = EXCLUDED.total_jobs_completed,
-		last_hardware_check = EXCLUDED.last_hardware_check
+		time = COALESCE(EXCLUDED.time, client_health.time),
+		transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, client_health.transaction_uuid),
+		system_serial = COALESCE(EXCLUDED.system_serial, client_health.system_serial),
+		tpm_version = COALESCE(EXCLUDED.tpm_version, client_health.tpm_version),
+		bios_updated = COALESCE(EXCLUDED.bios_updated, client_health.bios_updated),
+		os_installed = COALESCE(EXCLUDED.os_installed, client_health.os_installed),
+		os_name = COALESCE(EXCLUDED.os_name, client_health.os_name),
+		disk_health_pcnt = COALESCE(EXCLUDED.disk_health_pcnt, client_health.disk_health_pcnt),
+		battery_health_pcnt = COALESCE(EXCLUDED.battery_health_pcnt, client_health.battery_health_pcnt),
+		avg_erase_time = COALESCE(EXCLUDED.avg_erase_time, client_health.avg_erase_time),
+		avg_clone_time = COALESCE(EXCLUDED.avg_clone_time, client_health.avg_clone_time),
+		last_erase_job_time = COALESCE(EXCLUDED.last_erase_job_time, client_health.last_erase_job_time),
+		last_clone_job_time = COALESCE(EXCLUDED.last_clone_job_time, client_health.last_clone_job_time),
+		total_jobs_completed = COALESCE(EXCLUDED.total_jobs_completed, client_health.total_jobs_completed),
+		last_hardware_check = COALESCE(EXCLUDED.last_hardware_check, client_health.last_hardware_check)
 		;
 	`
 	var clientHealthResult sql.Result
@@ -1199,13 +1204,8 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 		ptrToNullString(clientHealth.TPMVersion),
 		ptrToNullBool(clientHealth.BIOSUpdated),
 		ptrToNullBool(clientHealth.OSInstalled),
-		ptrToNullString(clientHealth.OSName),
-		ptrToNullFloat64(clientHealth.BatteryHealthPcnt),
-		ptrToNullFloat64(clientHealth.AvgEraseTime),
-		ptrToNullFloat64(clientHealth.AvgCloneTime),
 		ptrToNullTime(clientHealth.LastEraseJobTime),
 		ptrToNullTime(clientHealth.LastCloneJobTime),
-		ptrToNullInt64(clientHealth.TotalJobsCompleted),
 		ptrToNullTime(clientHealth.LastHardwareCheck),
 	)
 	if err != nil {

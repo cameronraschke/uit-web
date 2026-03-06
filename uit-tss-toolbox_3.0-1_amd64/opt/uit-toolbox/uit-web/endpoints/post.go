@@ -278,7 +278,7 @@ func SetClientCPUMHz(w http.ResponseWriter, req *http.Request) {
 }
 
 func SetClientHealth(w http.ResponseWriter, req *http.Request) {
-	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "SetClientCPUTemperature"))
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "SetClientHealth"))
 	requestBody, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Warn("Cannot read request body: " + err.Error())
