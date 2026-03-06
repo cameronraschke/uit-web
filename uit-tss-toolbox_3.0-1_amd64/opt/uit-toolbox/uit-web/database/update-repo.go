@@ -1109,7 +1109,11 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 	}()
 
 	const sqlCode = `
-	WITH avg_erase_times AS (
+	WITH 
+	total_job_count AS (
+		SELECT COUNT(*) AS "job_count" FROM jobstats WHERE (erase_completed = TRUE OR clone_completed = TRUE) AND tagnumber = $2
+	),
+	avg_erase_times AS (
 		SELECT AVG(erase_time) AS "erase_time" FROM jobstats WHERE tagnumber = $2
 	),
 	avg_clone_times AS (
@@ -1117,6 +1121,12 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 	),
 	most_recent_job AS (
 		SELECT tagnumber, erase_completed, clone_completed, clone_image FROM jobstats WHERE time IN (SELECT MAX(time) FROM jobstats WHERE (erase_completed = TRUE OR clone_completed = TRUE) AND tagnumber = $2)
+	),
+	most_recent_erase_job AS (
+		SELECT tagnumber, time FROM jobstats WHERE erase_completed = TRUE AND tagnumber = $2 ORDER BY time DESC NULLS LAST LIMIT 1
+	),
+	most_recent_clone_job AS (
+		SELECT tagnumber, time FROM jobstats WHERE clone_completed = TRUE AND tagnumber = $2 ORDER BY time DESC NULLS LAST LIMIT 1
 	)
 	INSERT INTO client_health (
 		time,
@@ -1150,16 +1160,16 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 			WHEN $7 = TRUE THEN TRUE
 			WHEN $7 = FALSE THEN FALSE
 			WHEN $7 IS NULL AND most_recent_job.clone_completed = TRUE THEN TRUE
-			ELSE NULL
+			ELSE FALSE
 		END AS "os_installed",
 		static_image_names.image_name_readable AS "os_name",
-		NULL AS "disk_health_pcnt",
+		(((historical_hardware_data.disk_power_on_hours::decimal / static_disk_stats.disk_mtbf::decimal) + (historical_hardware_data.disk_writes_kb::decimal / static_disk_stats.disk_tbw::decimal)) / 2) AS "disk_health_pcnt",
 		ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt",
 		avg_erase_times.erase_time AS "avg_erase_time",
 		avg_clone_times.clone_time AS "avg_clone_time",
-		$8 AS "last_erase_job_time",
-		$9 AS "last_clone_job_time",
-		NULL AS "total_jobs_completed",
+		COALESCE($8, most_recent_erase_job.time) AS "last_erase_job_time",
+		COALESCE($9, most_recent_clone_job.time) AS "last_clone_job_time",
+		total_job_count.job_count AS "total_jobs_completed",
 		$10 AS "last_hardware_check"
 	FROM 
 		hardware_data
@@ -1168,6 +1178,8 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 	LEFT JOIN 
 		historical_hardware_data ON hardware_data.tagnumber = historical_hardware_data.tagnumber AND historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data WHERE tagnumber = $2)
 	LEFT JOIN 
+		static_disk_stats ON historical_hardware_data.disk_model = static_disk_stats.disk_model
+	LEFT JOIN 
 		most_recent_job ON hardware_data.tagnumber = most_recent_job.tagnumber
 	LEFT JOIN
 		static_image_names ON most_recent_job.clone_image = static_image_names.image_name
@@ -1175,6 +1187,12 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 		avg_erase_times
 	CROSS JOIN
 		avg_clone_times
+	CROSS JOIN
+		most_recent_erase_job
+	CROSS JOIN
+		most_recent_clone_job
+	CROSS JOIN
+		total_job_count
 	WHERE hardware_data.tagnumber = $2
 	ON CONFLICT (tagnumber)
 	 DO UPDATE SET
@@ -1183,7 +1201,7 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 		system_serial = COALESCE(EXCLUDED.system_serial, client_health.system_serial),
 		tpm_version = COALESCE(EXCLUDED.tpm_version, client_health.tpm_version),
 		bios_updated = COALESCE(EXCLUDED.bios_updated, client_health.bios_updated),
-		os_installed = EXCLUDED.os_installed,
+		os_installed = COALESCE(EXCLUDED.os_installed, client_health.os_installed),
 		os_name = COALESCE(EXCLUDED.os_name, client_health.os_name),
 		disk_health_pcnt = COALESCE(EXCLUDED.disk_health_pcnt, client_health.disk_health_pcnt),
 		battery_health_pcnt = COALESCE(EXCLUDED.battery_health_pcnt, client_health.battery_health_pcnt),
