@@ -1183,7 +1183,7 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 		system_serial = COALESCE(EXCLUDED.system_serial, client_health.system_serial),
 		tpm_version = COALESCE(EXCLUDED.tpm_version, client_health.tpm_version),
 		bios_updated = COALESCE(EXCLUDED.bios_updated, client_health.bios_updated),
-		os_installed = COALESCE(EXCLUDED.os_installed, client_health.os_installed),
+		os_installed = EXCLUDED.os_installed,
 		os_name = COALESCE(EXCLUDED.os_name, client_health.os_name),
 		disk_health_pcnt = COALESCE(EXCLUDED.disk_health_pcnt, client_health.disk_health_pcnt),
 		battery_health_pcnt = COALESCE(EXCLUDED.battery_health_pcnt, client_health.battery_health_pcnt),
