@@ -303,7 +303,7 @@ func SetClientHealth(w http.ResponseWriter, req *http.Request) {
 	}
 	partialDTO, err := types.CreatePartialClientHealthUpdateRequestDTO(&clientHealth)
 	if err != nil {
-		log.Warn("Unable to map client health update: %w", err)
+		log.Warn("Unable to map client health update: %w" + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}

@@ -50,9 +50,11 @@ type ClientHealthUpdateRequest struct {
 	TransactionUUID   string     `json:"transaction_uuid"`
 	SystemSerial      *string    `json:"system_serial"`
 	TPMVersion        *string    `json:"tpm_version"`
-	BIOSVersion       *string    `json:"bios_updated"`
+	BIOSVersion       *string    `json:"bios_version"`
 	EraseCompleted    *bool      `json:"erase_completed"`
+	EraseJobDuration  *float64   `json:"erase_job_duration"`
 	CloneCompleted    *bool      `json:"clone_completed"`
+	CloneJobDuration  *float64   `json:"clone_job_duration"`
 	LastHardwareCheck *time.Time `json:"last_hardware_check"`
 }
 
@@ -98,13 +100,20 @@ func CreatePartialClientHealthUpdateRequestDTO(request *ClientHealthUpdateReques
 	if request.BIOSVersion != nil && strings.TrimSpace(*request.BIOSVersion) != "" {
 		dto.BIOSVersion = request.BIOSVersion
 	}
+	*dto.OSInstalled = false // order matters
 	if request.EraseCompleted != nil && *request.EraseCompleted {
-		dto.LastEraseJobTime = &utcTime
-		*dto.OSInstalled = false // order matters
+		if request.EraseJobDuration != nil && *request.EraseJobDuration > 1 {
+			dto.LastEraseJobTime = &utcTime
+			*dto.OSInstalled = false // order matters
+			dto.AvgEraseTime = request.EraseJobDuration
+		}
 	}
 	if request.CloneCompleted != nil && *request.CloneCompleted {
-		dto.LastCloneJobTime = &utcTime
-		*dto.OSInstalled = true // order matters
+		if request.CloneJobDuration != nil && *request.CloneJobDuration > 1 {
+			dto.LastCloneJobTime = &utcTime
+			*dto.OSInstalled = true // order matters
+			dto.AvgCloneTime = request.CloneJobDuration
+		}
 	}
 	dto.LastHardwareCheck = request.LastHardwareCheck
 

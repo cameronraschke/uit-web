@@ -1109,6 +1109,15 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 	}()
 
 	const sqlCode = `
+	WITH avg_erase_times AS (
+		SELECT AVG(erase_time) AS "erase_time" FROM jobstats WHERE tagnumber = $2
+	),
+	avg_clone_times AS (
+		SELECT AVG(clone_time) AS "clone_time" FROM jobstats WHERE tagnumber = $2
+	),
+	most_recent_job AS (
+		SELECT tagnumber, erase_completed, clone_completed, clone_image FROM jobstats WHERE time IN (SELECT MAX(time) FROM jobstats WHERE (erase_completed = TRUE OR clone_completed = TRUE) AND tagnumber = $2)
+	)
 	INSERT INTO client_health (
 		time,
 		tagnumber,
@@ -1128,24 +1137,41 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 		last_hardware_check
 	)
 	SELECT
-		$1,
-		$2,
-		$3,
-		$4,
-		$5,
+		$1 AS "time",
+		$2 AS "tagnumber",
+		$3 AS "transaction_uuid",
+		$4 AS "system_serial",
+		$5 AS "tpm_version",
 		CASE (
 			WHEN $6 = static_bios_stats.bios_version THEN TRUE
 			ELSE FALSE
 			END
 		) AS "bios_updated",
-		$7,
-		$8,
-		$9,
+		$7 AS "os_installed",
+		static_image_names.image_name_readable AS "os_name",
+		NULL AS "disk_health_pcnt",
+		ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt",
+		avg_erase_times.erase_time AS "avg_erase_time",
+		avg_clone_times.clone_time AS "avg_clone_time",
+		$8 AS "last_erase_job_time",
+		$9 AS "last_clone_job_time",
+		NULL AS "total_jobs_completed",
+		$10 AS "last_hardware_check"
 	FROM 
 		hardware_data
 	LEFT JOIN 
 		static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
-	
+	LEFT JOIN 
+		historical_hardware_data ON hardware_data.tagnumber = historical_hardware_data.tagnumber AND historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data WHERE tagnumber = $2)
+	LEFT JOIN 
+		most_recent_job ON hardware_data.tagnumber = most_recent_job.tagnumber
+	LEFT JOIN
+		static_image_names ON most_recent_job.clone_image = static_image_names.image_name
+	CROSS JOIN
+		avg_erase_times
+	CROSS JOIN
+		avg_clone_times
+	WHERE hardware_data.tagnumber = $2
 	ON CONFLICT (tagnumber)
 	 DO UPDATE SET
 		time = EXCLUDED.time,
@@ -1153,7 +1179,7 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 		system_serial = EXCLUDED.system_serial,
 		tpm_version = EXCLUDED.tpm_version,
 		bios_updated = EXCLUDED.bios_updated,
-		os_installed = EXCLUDED.os_installed,
+		os_installed = CASE EXCLUDED.os_installed,
 		os_name = EXCLUDED.os_name,
 		disk_health_pcnt = EXCLUDED.disk_health_pcnt,
 		battery_health_pcnt = EXCLUDED.battery_health_pcnt,
@@ -1162,7 +1188,33 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 		last_erase_job_time = EXCLUDED.last_erase_job_time,
 		last_clone_job_time = EXCLUDED.last_clone_job_time,
 		total_jobs_completed = EXCLUDED.total_jobs_completed,
-		last_hardware_check = EXCLUDED.last_hardware_check,
-
+		last_hardware_check = EXCLUDED.last_hardware_check
+		;
 	`
+	var clientHealthResult sql.Result
+	clientHealthResult, err = tx.ExecContext(ctx, sqlCode,
+		ptrToNullTime(clientHealth.Time),
+		clientHealth.Tagnumber,
+		clientHealth.TransactionUUID,
+		ptrToNullString(clientHealth.SystemSerial),
+		ptrToNullString(clientHealth.TPMVersion),
+		ptrToNullBool(clientHealth.BIOSUpdated),
+		ptrToNullBool(clientHealth.OSInstalled),
+		ptrToNullString(clientHealth.OSName),
+		ptrToNullFloat64(clientHealth.BatteryHealthPcnt),
+		ptrToNullFloat64(clientHealth.AvgEraseTime),
+		ptrToNullFloat64(clientHealth.AvgCloneTime),
+		ptrToNullTime(clientHealth.LastEraseJobTime),
+		ptrToNullTime(clientHealth.LastCloneJobTime),
+		ptrToNullInt64(clientHealth.TotalJobsCompleted),
+		ptrToNullTime(clientHealth.LastHardwareCheck),
+	)
+	if err != nil {
+		return fmt.Errorf("error inserting/updating client health data: %w", err)
+	}
+	if err := VerifyRowsAffected(clientHealthResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on client_health table insert/update: %w", err)
+	}
+
+	return nil
 }

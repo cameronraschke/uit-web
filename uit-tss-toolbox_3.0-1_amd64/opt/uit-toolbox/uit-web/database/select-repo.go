@@ -871,7 +871,8 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 	),
 	current_battery_health AS (
 		SELECT 
-			tagnumber, ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt"
+			tagnumber, 
+			ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt"
 		FROM 
 			historical_hardware_data
 		WHERE 
