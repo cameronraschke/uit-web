@@ -215,7 +215,6 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 	}
 
 	const onlineTableFragment = document.createDocumentFragment();
-	const offlineTableFragment = document.createDocumentFragment();
 
 	for (const entry of data) {
 		if (entry && entry.online !== null && !entry.online) continue;
@@ -407,14 +406,14 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 			cpuUsage.appendChild(document.createTextNode('N/A'));
 		}
 		cpuUsage.appendChild(document.createElement('wbr'));
-		// CPU Temp
-		if (entry.cpu_temp !== null) {
-			cpuUsage.appendChild(document.createTextNode('(' + `${entry.cpu_temp.toFixed(0)}` + '°C)'));
-			cpuUsage.appendChild(document.createElement('wbr'));
-		}
 		// CPU MHz (frequency)
 		if (entry.cpu_mhz !== null) {
-			cpuUsage.appendChild(document.createTextNode('@' + `${(entry.cpu_mhz / 1000).toFixed(2)}` + 'GHz'));
+			cpuUsage.appendChild(document.createTextNode(' @' + `${(entry.cpu_mhz / 1000).toFixed(2)}` + 'GHz'));
+			cpuUsage.appendChild(document.createElement('wbr'));
+		}
+		// CPU Temp
+		if (entry.cpu_temp !== null) {
+			cpuUsage.appendChild(document.createTextNode(' (' + `${entry.cpu_temp.toFixed(0)}` + '°C)'));
 			cpuUsage.appendChild(document.createElement('wbr'));
 		}
 		hardwareInfoContainer.appendChild(cpuUsage);
@@ -474,16 +473,12 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		clientGridContainer.appendChild(jobInfoContainer);
 		if (entry.online) {
 			onlineTableFragment.appendChild(clientEntryContainer);
-		} else {
-			offlineTableFragment.appendChild(clientEntryContainer);
 		}
 		clientGridContainer.appendChild(softwareInfoContainer);
 		clientGridContainer.appendChild(hardwareInfoContainer);
 	}
 	onlineClientsDiv.innerHTML = '';
 	onlineClientsDiv.appendChild(onlineTableFragment);
-	offlineClientsDiv.innerHTML = '';
-	offlineClientsDiv.appendChild(offlineTableFragment);
 }
 
 async function updateClientJob(tagnumber: number, job_name: string) {
