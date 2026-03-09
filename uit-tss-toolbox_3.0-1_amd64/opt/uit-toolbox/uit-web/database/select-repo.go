@@ -690,8 +690,8 @@ func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([
 		if err := rows.Scan(&hash); err != nil {
 			return nil, fmt.Errorf("error during row scan: %w", err)
 		}
-		if len(hash) != 64 {
-			return nil, fmt.Errorf("unexpected hash length: got %d, want 64", len(hash))
+		if len(hash) > 64 {
+			return nil, fmt.Errorf("unexpected hash length: got %d, want less than 64", len(hash))
 		}
 		hashes = append(hashes, hash)
 	}
