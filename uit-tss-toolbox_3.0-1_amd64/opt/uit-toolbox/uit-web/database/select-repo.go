@@ -673,6 +673,8 @@ func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([
 		return nil, fmt.Errorf("tag is nil")
 	}
 
+	const maxHashByteLength = 64 // Some older hashes (PHP version) are 64 instead of 32 bytes
+
 	const sqlQuery = `SELECT sha256_hash FROM client_images WHERE tagnumber = $1;`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery, tag)
@@ -686,12 +688,12 @@ func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var hash = make([]uint8, 64)
+		var hash = make([]uint8, maxHashByteLength)
 		if err := rows.Scan(&hash); err != nil {
 			return nil, fmt.Errorf("error during row scan: %w", err)
 		}
-		if len(hash) > 64 {
-			return nil, fmt.Errorf("unexpected hash length: got %d, want less than 64", len(hash))
+		if len(hash) > maxHashByteLength {
+			return nil, fmt.Errorf("unexpected hash length: got %d, want less than %d", len(hash), maxHashByteLength)
 		}
 		hashes = append(hashes, hash)
 	}
