@@ -686,12 +686,12 @@ func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var hash = make([]uint8, 32)
+		var hash = make([]uint8, 64)
 		if err := rows.Scan(&hash); err != nil {
 			return nil, fmt.Errorf("error during row scan: %w", err)
 		}
-		if len(hash) != 32 {
-			return nil, fmt.Errorf("unexpected hash length: got %d, want 32", len(hash))
+		if len(hash) != 64 {
+			return nil, fmt.Errorf("unexpected hash length: got %d, want 64", len(hash))
 		}
 		hashes = append(hashes, hash)
 	}
