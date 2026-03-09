@@ -2,6 +2,12 @@ h2 {
 	text-align: center;
 }
 
+#job-queue-header {
+	width: 93dvw;
+	margin-right: 2rem;
+	justify-content: flex-start;
+	gap: 1rem;
+}
 .client-row-container {
 	display: flex;
 	flex-direction: column;
@@ -9,7 +15,7 @@ h2 {
 	justify-content: center;
 	width: 93dvw;
 	padding: 0.5rem 0.5rem 0.5rem 1rem;
-	margin-top: 3rem;
+	margin-bottom: 3rem;
 	margin-left: 3dvw; 
 	margin-right: 3dvw;
 	border: 1px solid black;

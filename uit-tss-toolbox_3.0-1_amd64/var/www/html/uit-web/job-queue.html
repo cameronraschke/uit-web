@@ -15,16 +15,21 @@
 		
 		<div class="flex-container title pagetitle"><h2>Queue Client Jobs</h2></div>
 		
-		<form id="update-all-online-jobs-form">
-			<div id="job-queue-controls" class="flex-container">
-				<label for="update-all-online-jobs-select">Filter Jobs:</label>
-				<select id="update-all-online-jobs-select">
-					<option value="" disabled selected>Update All Online Jobs</option>
-					<!-- Rest of options populated w/ JS -->
-				</select>
-				<button id="update-all-online-jobs-submit" type="submit" disabled>Update All Online Jobs</button>
-			</div>
-		</form>
+		<div id="job-queue-header" class="flex-container horizontal">
+			<form id="update-all-online-jobs-form">
+				<div id="job-queue-controls" class="flex-container horizontal">
+					<div class="flex-container vertical">
+						<label for="update-all-online-jobs-select">Update all jobs:</label>
+						<select id="update-all-online-jobs-select">
+							<option value="" disabled selected>Update All Online Jobs</option>
+							<!-- Rest of options populated w/ JS -->
+						</select>
+					</div>
+					<button id="update-all-online-jobs-submit" type="submit" disabled>Update All Online Jobs</button>
+				</div>
+			</form>
+			<p>Total Online: <span id="total-online-clients"></span></p>
+		</div>
 
 			
     <div id="online-clients-container" class="flex-container"></div>

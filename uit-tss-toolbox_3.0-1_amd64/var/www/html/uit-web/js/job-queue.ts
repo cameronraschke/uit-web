@@ -72,6 +72,7 @@ const updateOnlineJobQueueSelect = document.getElementById('update-all-online-jo
 const updateOnlineJobQueueButton = document.getElementById('update-all-online-jobs-submit') as HTMLButtonElement | null;
 const onlineClientsDiv = document.getElementById('online-clients-container') as HTMLDivElement | null;
 const offlineClientsDiv = document.getElementById('offline-clients-container') as HTMLDivElement | null;
+const onlineClientsCount = document.querySelector('#total-online-clients') as HTMLSpanElement | null;
 
 let jobQueueInterval: number;
 
@@ -216,8 +217,10 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 
 	const onlineTableFragment = document.createDocumentFragment();
 
+	let totalOnlineClients = 0;
 	for (const entry of data) {
 		if (entry && entry.online !== null && !entry.online) continue;
+		totalOnlineClients++;
 		if (!entry.tagnumber) {
 			console.warn("No tagnumber for entry");
 			continue;
@@ -234,7 +237,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		const clientIdentifiers = document.createElement('div');
 		clientIdentifiers.className = 'grid-item headers';
 		const tagLabel = document.createElement('p');
-		tagLabel.textContent = 'Tag Number: ';
+		tagLabel.textContent = 'Tag: ';
 		const tagAnchor = document.createElement('a');
 		const tagURL = new URL(`/client`, window.location.origin);
 		tagURL.searchParams.append('tagnumber', entry.tagnumber.toString());
@@ -244,13 +247,13 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		tagLabel.appendChild(tagAnchor);
 		clientIdentifiers.appendChild(tagLabel);
 		const serialNumber = document.createElement('p');
-		serialNumber.textContent = `Serial Number: ${entry.system_serial || 'N/A'}`;
+		serialNumber.textContent = `Serial: ${entry.system_serial || 'N/A'}`;
 		clientIdentifiers.appendChild(serialNumber);
 		const manufacturerModel = document.createElement('p');
 		manufacturerModel.textContent = `Manufacturer/Model: ${entry.system_manufacturer || 'N/A'} - ${entry.system_model || 'N/A'}`;
 		clientIdentifiers.appendChild(manufacturerModel);
 		const location = document.createElement('p');
-		location.textContent = `Location: '${entry.location || 'N/A'}'`;
+		location.textContent = `Location: ${entry.location || 'N/A'}`;
 		clientIdentifiers.appendChild(location);
 		const department = document.createElement('p');
 		department.textContent = `Department: ${entry.department_name || 'N/A'}`;
@@ -290,7 +293,17 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		}
 		liveViewContainer.appendChild(systemUptime);
 		const lastHeard = document.createElement('p');
-		lastHeard.textContent = entry.last_heard ? `Last Heard: ${new Date(entry.last_heard).toLocaleString()}` : 'Last Heard: N/A';
+		lastHeard.appendChild(document.createTextNode('Last Heard: '));
+		if (entry.last_heard) {
+			if (entry.online) {
+				const secondsSinceLastHeard = Math.floor((Date.now() - new Date(entry.last_heard).getTime()) / 1000);
+				lastHeard.appendChild(document.createTextNode(secondsSinceLastHeard.toString() + "s ago"));
+			} else {
+				lastHeard.appendChild(document.createTextNode(new Date(entry.last_heard).toLocaleString()));
+			}
+		} else {
+			lastHeard.appendChild(document.createTextNode('N/A'));
+		}
 		liveViewContainer.appendChild(lastHeard);
 		clientEntryContainer.appendChild(clientGridContainer);
 
@@ -301,7 +314,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		jobName.textContent = `Job Queued: ${entry.job_name_readable || 'N/A'}`;
 		jobInfoContainer.appendChild(jobName);
 		const jobStatus = document.createElement('p');
-		jobStatus.textContent = `Job Status: ${entry.job_status || 'N/A'}`;
+		jobStatus.textContent = `Status: ${entry.job_status || 'N/A'}`;
 		jobInfoContainer.appendChild(jobStatus);
 		const jobSelectContainer = document.createElement('div');
 		jobSelectContainer.classList.add('flex-container', 'horizontal');
@@ -386,7 +399,18 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		const softwareInfoContainer = document.createElement('div');
 		softwareInfoContainer.classList.add('grid-item');
 		const osInfo = document.createElement('p');
-		osInfo.textContent = `OS: ${entry.os_name || 'N/A'} ${entry.os_updated ? '(Updated)' : '(Not Updated)'}`;
+		osInfo.appendChild(document.createTextNode('OS: '));
+		if (entry.os_name) {
+			osInfo.appendChild(document.createElement('span').appendChild(document.createTextNode(entry.os_name)));
+		} else {
+			osInfo.appendChild(document.createElement('span').appendChild(document.createTextNode('N/A')));
+		}
+		if (entry.os_updated === null || entry.os_updated === false) {
+			const osWarning = document.createElement('span');
+			osWarning.style.color = "red";
+			osWarning.appendChild(document.createTextNode(' (Out of date)'));
+			osInfo.appendChild(osWarning);
+		}
 		softwareInfoContainer.appendChild(osInfo);
 		const domainJoined = document.createElement('p');
 		domainJoined.appendChild(document.createTextNode('Domain Joined: '));
@@ -488,6 +512,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		clientGridContainer.appendChild(softwareInfoContainer);
 		clientGridContainer.appendChild(hardwareInfoContainer);
 	}
+	if (onlineClientsCount) onlineClientsCount.textContent = totalOnlineClients.toString() || '0';
 	onlineClientsDiv.innerHTML = '';
 	onlineClientsDiv.appendChild(onlineTableFragment);
 }
