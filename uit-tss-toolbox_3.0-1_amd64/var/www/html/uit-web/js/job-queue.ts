@@ -29,7 +29,7 @@ type JobQueueTableRowView = {
 	os_updated: boolean | null;
 	domain_joined: boolean | null;
 	ad_domain: string | null;
-	ad_domain_formatted: boolean | null;
+	ad_domain_formatted: string | null;
 	bios_updated: boolean | null;
 	bios_version: string | null;
 	cpu_usage: number | null;
@@ -306,10 +306,14 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		const jobSelectContainer = document.createElement('div');
 		jobSelectContainer.classList.add('flex-container', 'horizontal');
 		const jobSelect = document.createElement('select');
+		const existingSelectElID = `${entry.tagnumber}-job-select`;
+		const existingSelectEl = document.getElementById(existingSelectElID) as HTMLSelectElement;
+		
+		jobSelect.id = existingSelectElID
 		
 		const defaultOption = document.createElement('option');
-		defaultOption.value = '';
-		defaultOption.textContent = 'Select job to queue';
+		defaultOption.value = existingSelectEl && existingSelectEl.options[existingSelectEl.selectedIndex].value ? existingSelectEl.options[existingSelectEl.selectedIndex].value : '';
+		defaultOption.textContent = existingSelectEl && existingSelectEl.options[existingSelectEl.selectedIndex].text ? existingSelectEl.options[existingSelectEl.selectedIndex].text : 'Select job to queue';
 		defaultOption.disabled = true;
 		defaultOption.selected = true;
 		jobSelect.appendChild(defaultOption);
@@ -385,7 +389,14 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		osInfo.textContent = `OS: ${entry.os_name || 'N/A'} ${entry.os_updated ? '(Updated)' : '(Not Updated)'}`;
 		softwareInfoContainer.appendChild(osInfo);
 		const domainJoined = document.createElement('p');
-		domainJoined.textContent = `Domain Joined: ${entry.domain_joined ? 'Yes' : 'No'}${entry.ad_domain_formatted ? ` (${entry.ad_domain_formatted})` : ''}`;
+		domainJoined.appendChild(document.createTextNode('Domain Joined: '));
+		if (entry.domain_joined === true && entry.ad_domain_formatted !== null) {
+			domainJoined.appendChild(document.createTextNode('Yes - '))
+			domainJoined.appendChild(document.createElement('wbr'));
+			domainJoined.appendChild(document.createTextNode(entry.ad_domain_formatted))
+		} else {
+			domainJoined.appendChild(document.createTextNode('No'));
+		}
 		softwareInfoContainer.appendChild(domainJoined);
 		const biosInfo = document.createElement('p');
 		biosInfo.textContent = `BIOS: ${entry.bios_version || 'N/A'} ${entry.bios_updated ? '(Updated)' : '(Not Updated)'}`;
@@ -434,7 +445,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		diskTemp.appendChild(document.createTextNode('Disk Temp: '));
 		diskTemp.appendChild(document.createElement('wbr'));
 		if (entry.disk_temp !== null) {
-			diskTemp.appendChild(document.createTextNode(`${entry.disk_temp.toFixed(2)}` + '°C'));
+			diskTemp.appendChild(document.createTextNode(`${entry.disk_temp.toFixed(0)}` + '°C'));
 		} else {
 			diskTemp.appendChild(document.createTextNode('N/A'));
 		}

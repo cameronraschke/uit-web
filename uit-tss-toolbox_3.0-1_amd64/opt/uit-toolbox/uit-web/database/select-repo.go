@@ -946,7 +946,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		static_image_names.image_name_readable AS "os_name",
 		NULL AS "os_updated",
 		(CASE 
-			WHEN latest_locations.ad_domain IS NOT NULL OR NOT latest_locations.ad_domain = 'none' THEN TRUE
+			WHEN latest_locations.ad_domain IS NOT NULL AND NOT latest_locations.ad_domain = 'none' THEN TRUE
 			ELSE FALSE
 		END) AS "domain_joined",
 		static_ad_domains.domain_name,
