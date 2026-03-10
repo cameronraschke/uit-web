@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,15 +25,10 @@ import (
 
 // Per-client functions
 func GetServerTime(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetServerTime"))
-	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving request query parameters from context for GetClientLookup: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	format := middleware.GetStrQuery(urlQueries, "format")
+	// ctx := req.Context()
+	// log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetServerTime"))
+	urlQueries := req.URL.Query()
+	format := middleware.GetStrQuery(&urlQueries, "format")
 	curTime := time.Now().Format(time.RFC3339)
 	if format != nil && *format == "unix" {
 		curTime = time.Now().Format(time.UnixDate)
@@ -43,16 +39,11 @@ func GetServerTime(w http.ResponseWriter, req *http.Request) {
 func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetClientLookup"))
-	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving request query parameters from context for GetClientLookup: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
+	urlQueries := req.URL.Query()
 
 	// No consequence for missing tag, acceptable if lookup by serial
 	var tagnumber, tagErr = types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
-	var systemSerial = middleware.GetStrQuery(urlQueries, "system_serial")
+	var systemSerial = middleware.GetStrQuery(&urlQueries, "system_serial")
 
 	if tagErr != nil && systemSerial == nil {
 		log.Warn("No tagnumber or system_serial provided in GetClientLookup")
@@ -110,13 +101,7 @@ func GetAllTags(w http.ResponseWriter, req *http.Request) {
 func GetBiosData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetBiosData: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
 	if err != nil || tagnumber == nil {
 		log.Warn("Invalid tagnumber provided in GetBiosData: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -142,12 +127,7 @@ func GetBiosData(w http.ResponseWriter, req *http.Request) {
 func GetOSData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetOSData: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
+	urlQueries := req.URL.Query()
 	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
 		log.Warn("Invalid tagnumber provided in GetOSData: " + err.Error())
@@ -174,13 +154,7 @@ func GetOSData(w http.ResponseWriter, req *http.Request) {
 func GetClientQueuedJobs(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetClientQueuedJobs: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
 	if err != nil {
 		log.Warn("Invalid tagnumber provided in GetClientQueuedJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -207,12 +181,7 @@ func GetClientQueuedJobs(w http.ResponseWriter, req *http.Request) {
 func GetClientAvailableJobs(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetClientAvailableJobs: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
+	urlQueries := req.URL.Query()
 	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
 	if err != nil {
 		log.Warn("Invalid tagnumber provided in GetClientAvailableJobs: " + err.Error())
@@ -239,12 +208,7 @@ func GetClientAvailableJobs(w http.ResponseWriter, req *http.Request) {
 func GetNotes(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetNotes: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
+	urlQueries := req.URL.Query()
 	noteType := strings.TrimSpace(urlQueries.Get("note_type"))
 	if noteType == "" {
 		log.Info("No note_type provided, defaulting to 'general'")
@@ -270,12 +234,7 @@ func GetNotes(w http.ResponseWriter, req *http.Request) {
 func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetLocationFormData: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
+	requestQueries := req.URL.Query()
 
 	serial := strings.TrimSpace(requestQueries.Get("system_serial"))
 	tagnumber, tagErr := types.ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
@@ -305,12 +264,7 @@ func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
 func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetClientImagesManifest"))
-	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetClientImagesManifest: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+	requestQueries := req.URL.Query()
 	tagnumber, err := types.ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
 	if err != nil {
 		log.Warn("Invalid tagnumber provided in request to GetClientImagesManifest: " + err.Error())
@@ -519,12 +473,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 func GetImage(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetImage"))
-	requestedQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetImage: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+	requestedQueries := req.URL.Query()
 	appState, err := config.GetAppState()
 	if err != nil {
 		log.Warn("Error getting app state (GetImage): " + err.Error())
@@ -540,7 +489,7 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 
 	// local filepath example: inventory-images/{tag}/{date --iso}-{uuid}.{file extension}
 	// incoming request url: /api/files/images/{tag}/{uuid}.{file extension}
-	uuidInURLQuery := middleware.GetStrQuery(requestedQueries, "uuid")
+	uuidInURLQuery := middleware.GetStrQuery(&requestedQueries, "uuid")
 	if uuidInURLQuery == nil || strings.TrimSpace(*uuidInURLQuery) == "" {
 		log.Warn("No image UUID provided in request to GetImage")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -683,31 +632,20 @@ func GetDashboardInventorySummary(w http.ResponseWriter, req *http.Request) {
 func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving query parameters from context for GetInventoryTableData: " + err.Error())
-		if requestQueries != nil {
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-	}
-
-	if requestQueries == nil || len(*requestQueries) == 0 {
-		requestQueries = new(url.Values)
-	}
+	requestQueries := req.URL.Query()
 
 	filterOptions := &types.InventoryAdvSearchOptions{
-		Tagnumber:          middleware.GetInt64Query(requestQueries, "tagnumber"),
-		SystemSerial:       middleware.GetStrQuery(requestQueries, "system_serial"),
-		Location:           middleware.GetStrQuery(requestQueries, "location"),
-		SystemManufacturer: middleware.GetStrQuery(requestQueries, "system_manufacturer"),
-		SystemModel:        middleware.GetStrQuery(requestQueries, "system_model"),
-		DeviceType:         middleware.GetStrQuery(requestQueries, "device_type"),
-		Department:         middleware.GetStrQuery(requestQueries, "department_name"),
-		Domain:             middleware.GetStrQuery(requestQueries, "ad_domain"),
-		Status:             middleware.GetStrQuery(requestQueries, "status"),
-		Broken:             middleware.GetBoolQuery(requestQueries, "is_broken"),
-		HasImages:          middleware.GetBoolQuery(requestQueries, "has_images"),
+		Tagnumber:          middleware.GetInt64Query(&requestQueries, "tagnumber"),
+		SystemSerial:       middleware.GetStrQuery(&requestQueries, "system_serial"),
+		Location:           middleware.GetStrQuery(&requestQueries, "location"),
+		SystemManufacturer: middleware.GetStrQuery(&requestQueries, "system_manufacturer"),
+		SystemModel:        middleware.GetStrQuery(&requestQueries, "system_model"),
+		DeviceType:         middleware.GetStrQuery(&requestQueries, "device_type"),
+		Department:         middleware.GetStrQuery(&requestQueries, "department_name"),
+		Domain:             middleware.GetStrQuery(&requestQueries, "ad_domain"),
+		Status:             middleware.GetStrQuery(&requestQueries, "status"),
+		Broken:             middleware.GetBoolQuery(&requestQueries, "is_broken"),
+		HasImages:          middleware.GetBoolQuery(&requestQueries, "has_images"),
 	}
 
 	// log.Debug(fmt.Sprintf("Filter options: %+v", filterOptions))
@@ -935,13 +873,7 @@ func GetAllDeviceTypes(w http.ResponseWriter, req *http.Request) {
 func FetchClientHardwareData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "FetchClientHardwareData"))
-	urlQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving query parameters from context: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
+	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
 	if err != nil {
 		log.Warn("Invalid tagnumber provided: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -960,4 +892,33 @@ func FetchClientHardwareData(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	middleware.WriteJson(w, http.StatusOK, clientOverview)
+}
+
+func FetchClientJobQueuePosition(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "FetchClientHardwareData"))
+
+	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
+	if err != nil {
+		log.Warn("Invalid tagnumber provided: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.Warn("Error creating select repository: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	queuePosition, err := db.GetJobQueuePosition(ctx, *tagnumber)
+	if err != nil {
+		log.Warn("DB error: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	queuePositionString := strconv.FormatInt(queuePosition, 10)
+
+	middleware.WritePlainTextResponse(w, queuePositionString)
 }

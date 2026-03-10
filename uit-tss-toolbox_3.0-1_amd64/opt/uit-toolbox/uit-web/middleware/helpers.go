@@ -109,6 +109,23 @@ func WriteJsonErrorCustomMessage(w http.ResponseWriter, httpStatusCode int, cust
 	_ = responseController.Flush()
 }
 
+func WritePlainTextResponse(w http.ResponseWriter, message string) {
+	responseController := http.NewResponseController(w)
+	if responseController != nil {
+		_ = responseController.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+
+	_, err := w.Write([]byte(message))
+	if err != nil {
+		return
+	}
+
+	_ = responseController.Flush()
+}
+
 func generateNonce(n int) (string, error) {
 	b := make([]byte, n)
 	if _, err := rand.Read(b); err != nil {
@@ -183,27 +200,11 @@ func GetRequestPathFromContext(ctx context.Context) (reqPath string, err error) 
 	return p, nil
 }
 
-func withRequestQuery(ctx context.Context, query *url.Values) (context.Context, error) {
-	if query == nil {
-		return ctx, nil
+func GetStrQuery(queries *url.Values, key string) *string {
+	if queries == nil || strings.TrimSpace(key) == "" {
+		return nil
 	}
-	return context.WithValue(ctx, queryRequestKey, query), nil
-}
-func GetRequestQueryFromContext(ctx context.Context) (query *url.Values, err error) {
-	q, ok := ctx.Value(queryRequestKey).(*url.Values)
-	if !ok {
-		return nil, fmt.Errorf("invalid/empty URL query found in context: type assertion failed")
-	}
-	if q == nil {
-		return nil, fmt.Errorf("nil URL query found in context")
-	}
-	queries := *q
-
-	return &queries, nil
-}
-
-func GetStrQuery(q *url.Values, key string) *string {
-	s := strings.TrimSpace(q.Get(key))
+	s := strings.TrimSpace(queries.Get(key))
 	if s == "" {
 		return nil
 	}

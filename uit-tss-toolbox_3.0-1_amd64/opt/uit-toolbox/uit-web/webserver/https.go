@@ -81,6 +81,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/overview/all_statuses", httpsFullAPIChain.ThenFunc(endpoints.GetAllStatuses))
 	httpsRouter.Handle("GET /api/overview/all_device_types", httpsFullAPIChain.ThenFunc(endpoints.GetAllDeviceTypes))
 	httpsRouter.Handle("GET /api/client/hardware", httpsFullAPIChain.ThenFunc(endpoints.FetchClientHardwareData))
+	httpsRouter.Handle("GET /api/client/job_queue_position", httpsFullAPIChain.ThenFunc(endpoints.FetchClientJobQueuePosition))
 
 	// API POST endpoints
 	httpsRouter.Handle("POST /api/overview/note", httpsFullAPIChain.ThenFunc(endpoints.InsertNewNote))

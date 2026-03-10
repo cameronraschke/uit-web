@@ -188,7 +188,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestQueries, _ := middleware.GetRequestQueryFromContext(ctx)
+	requestQueries := req.URL.Query()
 
 	nonce, nonceExists := middleware.GetNonceFromContext(ctx)
 	if !nonceExists || strings.TrimSpace(nonce) == "" {

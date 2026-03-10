@@ -335,8 +335,9 @@ CREATE TABLE IF NOT EXISTS client_health (
 
 CREATE TABLE IF NOT EXISTS job_queue (
 	tagnumber INTEGER UNIQUE NOT NULL,
-	job_queued VARCHAR(24) DEFAULT NULL,
-	job_queued_position SMALLINT DEFAULT NULL,
+	job_queued BOOLEAN DEFAULT FALSE,
+	job_name varchar(64) default null;
+	job_queued_at TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
 	job_active BOOLEAN DEFAULT FALSE,
 	clone_mode VARCHAR(24) DEFAULT NULL,
 	erase_mode VARCHAR(24) DEFAULT NULL,
@@ -359,7 +360,7 @@ CREATE TABLE IF NOT EXISTS job_queue (
 	cpu_mhz INTEGER DEFAULT NULL,
 	cpu_temp DECIMAL(6, 2) DEFAULT NULL,
 	network_usage INT DEFAULT NULL,
-	link_speed INT DEFAULT NULL
+	link_speed INT DEFAULT NULL,
 );
 
 

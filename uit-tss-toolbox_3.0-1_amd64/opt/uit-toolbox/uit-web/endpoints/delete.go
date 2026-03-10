@@ -14,12 +14,7 @@ import (
 func DeleteImage(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
-	requestQueries, err := middleware.GetRequestQueryFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving request query parameters from context for DeleteImage")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
+	requestQueries := req.URL.Query()
 
 	// Check if required query parameters are set
 	if !requestQueries.Has("tagnumber") {

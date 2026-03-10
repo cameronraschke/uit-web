@@ -518,7 +518,7 @@ func (updateRepo *UpdateRepo) SetAllOnlineClientJobs(ctx context.Context, allJob
 		}
 	}()
 
-	const sqlCode = `UPDATE job_queue SET job_queued = $1 WHERE NOW() - last_heard < INTERVAL '30 SECONDS';`
+	const sqlCode = `UPDATE job_queue SET job_name = $1 WHERE NOW() - last_heard < INTERVAL '30 SECONDS';`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode, ptrStringToString(allJobs.JobName))
 	if err != nil {

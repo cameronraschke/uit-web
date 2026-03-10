@@ -61,5 +61,8 @@
 	},
 	"/api/client/hardware": {
 		"allowed_methods": ["OPTIONS", "GET", "POST"]
+	},
+	"/api/client/job_queue_position": {
+		"content_type": "text/plain; charset=utf-8"
 	}
 }

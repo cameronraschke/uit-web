@@ -463,15 +463,6 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Store raw query in context, even if empty (to be used later on)
-		queries := req.URL.Query()
-		ctx, err = withRequestQuery(ctx, &queries)
-		if err != nil {
-			log.Error("Error storing query in context (CheckValidURLMiddleware): " + err.Error())
-			WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }

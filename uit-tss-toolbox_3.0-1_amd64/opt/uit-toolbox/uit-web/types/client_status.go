@@ -27,7 +27,8 @@ type ClientStatus struct {
 
 type ActiveJobs struct {
 	Tagnumber     int64  `json:"tagnumber"`
-	QueuedJob     string `json:"job_queued"`
+	JobQueued     *bool  `json:"job_queued"`
+	JobName       string `json:"job_name"`
 	JobActive     *bool  `json:"job_active"`
 	QueuePosition int64  `json:"queue_position"`
 }
