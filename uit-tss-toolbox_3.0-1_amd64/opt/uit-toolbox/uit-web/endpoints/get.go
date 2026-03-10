@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -918,7 +917,10 @@ func FetchClientJobQueuePosition(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	queuePositionString := strconv.FormatInt(queuePosition, 10)
-
-	middleware.WritePlainTextResponse(w, queuePositionString)
+	returnedJson := struct {
+		Position *int64 `json:"job_queue_position"`
+	}{
+		Position: &queuePosition,
+	}
+	middleware.WriteJson(w, http.StatusOK, returnedJson)
 }
