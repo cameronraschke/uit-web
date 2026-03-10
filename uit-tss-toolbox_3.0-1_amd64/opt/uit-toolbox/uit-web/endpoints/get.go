@@ -896,7 +896,7 @@ func FetchClientHardwareData(w http.ResponseWriter, req *http.Request) {
 
 func FetchClientJobQueuePosition(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "FetchClientHardwareData"))
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "FetchClientJobQueuePosition"))
 
 	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
 	if err != nil {

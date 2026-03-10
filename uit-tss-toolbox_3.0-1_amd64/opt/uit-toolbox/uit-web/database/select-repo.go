@@ -1427,15 +1427,15 @@ func (repo *SelectRepo) GetJobQueuePosition(ctx context.Context, tag int64) (int
 	WHERE t1.tagnumber = $1
 	;`
 
-	var queuePosition int64
+	var queuePosition = new(int64)
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
 	if err := row.Scan(
 		queuePosition,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			queuePosition = 0
+			*queuePosition = 0
 		}
 		return 0, fmt.Errorf("error during row scan: %w", err)
 	}
-	return queuePosition, nil
+	return *queuePosition, nil
 }
