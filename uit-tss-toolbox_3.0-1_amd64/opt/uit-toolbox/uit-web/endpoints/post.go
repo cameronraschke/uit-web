@@ -1032,8 +1032,7 @@ func SetAllJobs(w http.ResponseWriter, req *http.Request) {
 
 func SetClientJob(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	log = log.With(slog.String("func", "SetClientJob"))
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "SetClientJob"))
 
 	clientBody, err := io.ReadAll(req.Body)
 	if err != nil {
