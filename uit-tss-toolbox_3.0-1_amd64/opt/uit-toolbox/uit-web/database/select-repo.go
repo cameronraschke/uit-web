@@ -377,16 +377,32 @@ func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.A
 		return nil, fmt.Errorf("context error: %w", ctx.Err())
 	}
 
-	const sqlQuery = `SELECT job_queue.tagnumber, job_queue.job_name, job_queue.job_active, t1.queue_position
+	const sqlQuery = `
+	WITH job_queue_position AS (
+		SELECT 
+			tagnumber, queue_position
+		FROM (
+			SELECT 
+				tagnumber, 
+				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC) - 1 AS "queue_position" 
+			FROM 
+				job_queue 
+			WHERE 
+				job_queued = TRUE OR job_name IS NOT NULL
+				AND job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')
+			) t1
+		)
+	SELECT job_queue.tagnumber, job_queue.job_queued, job_queue.job_name, job_queue.job_active, job_queue_position.queue_position
 	FROM job_queue
-	LEFT JOIN (SELECT tagnumber, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY last_heard DESC) AS queue_position FROM job_queue) AS t1 
-		ON job_queue.tagnumber = t1.tagnumber
+	LEFT JOIN 
+		job_queue_position ON job_queue.tagnumber = job_queue_position.tagnumber
 	WHERE job_queue.tagnumber = $1;`
 
 	var activeJobs types.ActiveJobs
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
 	if err := row.Scan(
 		&activeJobs.Tagnumber,
+		&activeJobs.JobQueued,
 		&activeJobs.JobName,
 		&activeJobs.JobActive,
 		&activeJobs.QueuePosition,
@@ -438,9 +454,9 @@ func (repo *SelectRepo) GetJobQueueOverview(ctx context.Context) (*types.JobQueu
 
 	const sqlQuery = `SELECT t1.total_queued_jobs, t2.total_active_jobs, t3.total_active_blocking_jobs
 	FROM 
-	(SELECT COUNT(*) AS total_queued_jobs FROM job_queue WHERE job_queued = FALSE AND job_name IS NOT NULL AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_heard)) < 30) AS t1,
-	(SELECT COUNT(*) AS total_active_jobs FROM job_queue WHERE job_active IS NOT NULL AND job_active = TRUE AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_heard)) < 30) AS t2,
-	(SELECT COUNT(*) AS total_active_blocking_jobs FROM job_queue WHERE job_active IS NOT NULL AND job_active = TRUE AND job_queued = FALSE AND job_name IS NOT NULL AND job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')) AS t3;`
+	(SELECT COUNT(*) AS total_queued_jobs FROM job_queue WHERE job_queued = TRUE AND job_name IS NOT NULL AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_heard)) < 30) AS t1,
+	(SELECT COUNT(*) AS total_active_jobs FROM job_queue WHERE job_queued = TRUE AND job_name IS NOT NULL AND job_active = TRUE AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_heard)) < 30) AS t2,
+	(SELECT COUNT(*) AS total_active_blocking_jobs FROM job_queue WHERE job_queued = TRUE AND job_active = FALSE AND job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')) AS t3;`
 
 	var jobQueueOverview types.JobQueueOverview
 	row := repo.DB.QueryRowContext(ctx, sqlQuery)
@@ -943,12 +959,12 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		job_queue.job_name,
 		static_job_names.job_name_readable,
 		(CASE
-			WHEN job_queue.job_active = TRUE AND job_queue.job_queued = FALSE AND job_queue.job_name IS NOT NULL THEN job_queue.clone_mode
-			ELSE 'N/A'
+			WHEN (job_queue.job_queued = TRUE OR job_queue.job_active = TRUE) AND job_queue.job_name IS NOT NULL THEN job_queue.clone_mode
+			ELSE NULL
 		END) AS "job_clone_mode",
 		(CASE
-			WHEN job_queue.job_active = TRUE AND job_queue.job_queued = FALSE AND job_queue.job_name IS NOT NULL THEN job_queue.erase_mode
-			ELSE 'N/A'
+			WHEN (job_queue.job_queued = TRUE OR job_queue.job_active = TRUE) AND job_queue.job_name IS NOT NULL THEN job_queue.erase_mode
+			ELSE NULL
 		END) AS "job_erase_mode",
 		job_queue.job_status,
 		(CASE
