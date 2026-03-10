@@ -913,7 +913,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		FROM (
 			SELECT 
 				tagnumber, 
-				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC) AS "queue_position" 
+				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC) - 1 AS "queue_position" 
 			FROM 
 				job_queue 
 			WHERE 
@@ -1401,7 +1401,7 @@ func (repo *SelectRepo) GetJobQueuePosition(ctx context.Context, tag int64) (int
 	FROM (
 		SELECT 
 			tagnumber, 
-			ROW_NUMBER() OVER (ORDER BY job_queued_at ASC) AS "queue_position" 
+			ROW_NUMBER() OVER (ORDER BY job_queued_at ASC) - 1 AS "queue_position" 
 		FROM 
 			job_queue 
 		WHERE 
