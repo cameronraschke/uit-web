@@ -1434,6 +1434,7 @@ func (repo *SelectRepo) GetJobQueuePosition(ctx context.Context, tag int64) (int
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			*queuePosition = 0
+			return *queuePosition, nil
 		}
 		return 0, fmt.Errorf("error during row scan: %w", err)
 	}
