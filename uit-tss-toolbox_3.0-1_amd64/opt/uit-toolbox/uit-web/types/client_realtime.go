@@ -2,6 +2,8 @@ package types
 
 import "time"
 
+const MaxLiveImageBytes = 512 << 20
+
 type ClientRealtimeView struct {
 	TotalMemoryUsageKB    *int64         `json:"memory_usage_kb"`
 	TotalMemoryCapacityKB *int64         `json:"memory_capacity_kb"`

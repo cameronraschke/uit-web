@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -995,4 +996,33 @@ func FetchFormattedJobName(w http.ResponseWriter, req *http.Request) {
 		JobNameFormatted: jobNameFormatted,
 	}
 	middleware.WriteJson(w, http.StatusOK, returnedJson)
+}
+
+func DownloadLiveImage(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "DownloadLiveImage"))
+	tag := middleware.GetInt64Query(req.URL.Query(), "tagnumber")
+	if tag == nil || *tag == 0 {
+		log.Info("Missing tagnumber in request")
+	}
+	imageBytes, err := config.GetLiveImage(*tag)
+	if err != nil {
+		log.Warn("Error getting live image: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if len(imageBytes) == 0 {
+		log.Warn("Requested live image is empty")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if len(imageBytes) == 0 {
+		log.Warn("Requested live image is too large")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	reader := bytes.NewReader(imageBytes)
+	var readSeeker io.ReadSeeker = reader
+	w.Header().Set("Content-Type", "image/png")
+	http.ServeContent(w, req, strconv.Itoa(int(*tag))+".png", time.Now().UTC(), readSeeker)
+	log.Info("Served live image '" + strconv.Itoa(int(*tag)) + "' (" + fmt.Sprintf("%.2f", float64(len(imageBytes))/1024/1024) + " MB)")
 }

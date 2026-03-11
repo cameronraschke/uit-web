@@ -1226,3 +1226,34 @@ func SetJobQueuedAt(w http.ResponseWriter, req *http.Request) {
 
 	middleware.WritePlainTextResponse(w, "")
 }
+
+func UploadLiveImage(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "UploadLiveImage"))
+	tag := middleware.GetInt64Query(req.URL.Query(), "tagnumber")
+	if tag == nil || *tag == 0 {
+		log.Info("Missing tagnumber in request")
+	}
+	lr := &io.LimitedReader{R: req.Body, N: types.MaxLiveImageBytes + 1}
+	body, err := io.ReadAll(lr)
+	if err != nil {
+		log.Warn("Error reading request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if len(body) == 0 {
+		log.Warn("Request body is empty")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if len(body) == 0 {
+		log.Warn("Request body is too large")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	config.UpdateLiveImage(*tag, body)
+	middleware.WriteJson(w, http.StatusOK, struct {
+		Status string `json:"status"`
+	}{
+		Status: "success",
+	})
+}

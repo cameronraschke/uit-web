@@ -101,6 +101,7 @@ type AppState struct {
 	apiRequestTimeout  atomic.Pointer[time.Duration]
 	fileRequestTimeout atomic.Pointer[time.Duration]
 	webEndpoints       sync.Map
+	LiveImageMap       sync.Map
 	groupPermissions   sync.Map
 	userPermissions    sync.Map
 }
@@ -284,7 +285,7 @@ func InitConfig() (*AppConfiguration, error) {
 	fileConstraints := &types.FileUploadConstraints{
 		ImageConstraints:       &imgConstraints,
 		VideoConstraints:       &vidConstraints,
-		MaxUploadFileSizeLimit: 300 << 20,
+		MaxUploadFileSizeLimit: 512 << 20,
 	}
 	appConfig.FileConstraints.Store(fileConstraints)
 
@@ -428,6 +429,8 @@ func InitApp() (*AppState, error) {
 	// Set initial timeouts
 	appState.apiRequestTimeout.Store(&appConfig.APIRequestTimeout)
 	appState.fileRequestTimeout.Store(&appConfig.FileRequestTimeout)
+
+	appState.LiveImageMap.Store(111111, []byte("test"))
 
 	// Declare endpoints
 
@@ -773,4 +776,42 @@ func GetAllowedLANIPs() ([]netip.Prefix, error) {
 		return true
 	})
 	return allowedIPs, nil
+}
+
+func GetLiveImage(tag int64) ([]byte, error) {
+	as, err := GetAppState()
+	if err != nil || as == nil {
+		return nil, fmt.Errorf("error retrieving app state: %w", err)
+	}
+	if tag == 0 {
+		return nil, fmt.Errorf("tag is nil")
+	}
+	val, ok := as.LiveImageMap.Load(tag)
+	if !ok {
+		return nil, fmt.Errorf("tag not found, please insert live image first")
+	}
+	liveImage, ok := val.([]byte)
+	if !ok {
+		as.LiveImageMap.Delete(tag)
+		return nil, fmt.Errorf("invalid type, expecting byte array")
+	}
+	if len(liveImage) == 0 || len(liveImage) > types.MaxLiveImageBytes {
+		return nil, fmt.Errorf("size of live image is out of range: %.2fMB", float64(len(liveImage)/1024/1024))
+	}
+	return liveImage, nil
+}
+
+func UpdateLiveImage(tag int64, imageBytes []byte) error {
+	if tag == 0 {
+		return fmt.Errorf("tag is nil")
+	}
+	if len(imageBytes) == 0 || len(imageBytes) > types.MaxLiveImageBytes {
+		return fmt.Errorf("size of live image is out of range: %.2fMB", float64(len(imageBytes)/1024/1024))
+	}
+	as, err := GetAppState()
+	if err != nil || as == nil {
+		return fmt.Errorf("error retrieving app state: %w", err)
+	}
+	as.LiveImageMap.Store(tag, imageBytes)
+	return nil
 }

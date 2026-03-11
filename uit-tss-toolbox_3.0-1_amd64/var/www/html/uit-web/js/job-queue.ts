@@ -201,17 +201,18 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 	// Sort array
 	data.sort((a, b) => {
 		if (a.online === b.online) {
-			if (a.job_queued === true && b.job_queued === true) {
-				if (a.job_queued_at !== null && b.job_queued_at === null) return -1;
-				if (a.job_queued_at === null && b.job_queued_at !== null) return 1;
-				if (a.job_queued_at !== null && b.job_queued_at !== null) {
-					const aDate = new Date(a.job_queued_at);
-					const bDate = new Date(b.job_queued_at);
-					return aDate.getSeconds() - bDate.getSeconds();
-				}
+			if (a.queue_position !== null && b.queue_position !== null) {
+				return a.queue_position - b.queue_position
+				// if (a.job_queued_at !== null && b.job_queued_at === null) return -1;
+				// if (a.job_queued_at === null && b.job_queued_at !== null) return 1;
+				// if (a.job_queued_at !== null && b.job_queued_at !== null) {
+				// 	const aDate = new Date(a.job_queued_at);
+				// 	const bDate = new Date(b.job_queued_at);
+				// 	return aDate.getSeconds() - bDate.getSeconds();
+				// }
 			}
-			if (a.job_queued === true && b.job_queued === false) return -1;
-			if (a.job_queued === false && b.job_queued === true) return 1;
+			if (a.queue_position !== null && b.queue_position === null) return -1;
+			if (a.queue_position === null && b.queue_position !== null) return 1;
 			if (a.system_uptime !== null && b.system_uptime !== null) {
 				const diff = a.system_uptime - b.system_uptime;
 				if (diff !== 0) return diff;
