@@ -796,9 +796,13 @@ func GetLiveImage(tag int64) ([]byte, error) {
 		return nil, fmt.Errorf("invalid type, expecting byte array")
 	}
 	if len(liveImage) == 0 || len(liveImage) > types.MaxLiveImageBytes {
-		return nil, fmt.Errorf("size of live image is out of range: %.2fMB", float64(len(liveImage)/1024/1024))
+		return nil, fmt.Errorf("size of live image is out of range: %.2fMB", float64(len(liveImage))/1024/1024)
 	}
-	return liveImage, nil
+
+	// Copy the bytes
+	imageCopy := make([]byte, len(liveImage))
+	copy(imageCopy, liveImage)
+	return imageCopy, nil
 }
 
 func UpdateLiveImage(tag int64, imageBytes []byte) error {
@@ -806,12 +810,16 @@ func UpdateLiveImage(tag int64, imageBytes []byte) error {
 		return fmt.Errorf("tag is nil")
 	}
 	if len(imageBytes) == 0 || len(imageBytes) > types.MaxLiveImageBytes {
-		return fmt.Errorf("size of live image is out of range: %.2fMB", float64(len(imageBytes)/1024/1024))
+		return fmt.Errorf("size of live image is out of range: %.2fMB", float64(len(imageBytes))/1024/1024)
 	}
 	as, err := GetAppState()
 	if err != nil || as == nil {
 		return fmt.Errorf("error retrieving app state: %w", err)
 	}
-	as.LiveImageMap.Store(tag, imageBytes)
+
+	// Store a copy
+	newImage := make([]byte, len(imageBytes))
+	copy(newImage, imageBytes)
+	as.LiveImageMap.Store(tag, newImage)
 	return nil
 }

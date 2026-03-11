@@ -1232,6 +1232,8 @@ func UploadLiveImage(w http.ResponseWriter, req *http.Request) {
 	tag := middleware.GetInt64Query(req.URL.Query(), "tagnumber")
 	if tag == nil || *tag == 0 {
 		log.Info("Missing tagnumber in request")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
 	}
 	lr := &io.LimitedReader{R: req.Body, N: types.MaxLiveImageBytes + 1}
 	body, err := io.ReadAll(lr)
@@ -1245,7 +1247,7 @@ func UploadLiveImage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if len(body) == 0 {
+	if int64(len(body)) > types.MaxLiveImageBytes {
 		log.Warn("Request body is too large")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
