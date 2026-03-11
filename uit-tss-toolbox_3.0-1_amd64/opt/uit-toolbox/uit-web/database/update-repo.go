@@ -1260,9 +1260,9 @@ func (updateRepo *UpdateRepo) UpdateJobQueuedAt(ctx context.Context, jobQueue *t
 		UPDATE
 			job_queue
 		SET
-			job_queue.job_queued_at = $2
+			job_queued_at = $2
 		WHERE
-			job_queue.tagnumber = $1
+			tagnumber = $1
 	;`
 
 	var res sql.Result
