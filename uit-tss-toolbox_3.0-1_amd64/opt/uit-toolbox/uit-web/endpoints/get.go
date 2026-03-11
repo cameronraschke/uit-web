@@ -924,3 +924,73 @@ func FetchClientJobQueuePosition(w http.ResponseWriter, req *http.Request) {
 	}
 	middleware.WriteJson(w, http.StatusOK, returnedJson)
 }
+
+func FetchClientJobName(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "FetchClientJobName"))
+
+	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
+	if err != nil {
+		log.Warn("Invalid tagnumber provided: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.Warn("Error creating select repository: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	jobName, err := db.GetJobName(ctx, *tagnumber)
+	if err != nil {
+		log.Warn("DB error: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	returnedJson := struct {
+		Position string `json:"job_name"`
+	}{
+		Position: jobName,
+	}
+	middleware.WriteJson(w, http.StatusOK, returnedJson)
+}
+
+func FetchFormattedJobName(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "FetchFormattedJobName"))
+
+	jobName := strings.TrimSpace(req.URL.Query().Get("job_name"))
+	if jobName == "" {
+		log.Warn("Empty job_name provided")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	db, err := database.NewSelectRepo()
+	if err != nil {
+		log.Warn("Error creating select repository: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	jobNameFormatted, err := db.GetFormattedJobName(ctx, jobName)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			log.Warn("Job name not found")
+			middleware.WriteJsonError(w, http.StatusNotFound)
+			return
+		} else {
+			log.Warn("DB error: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	returnedJson := struct {
+		Position string `json:"job_name_formatted"`
+	}{
+		Position: jobNameFormatted,
+	}
+	middleware.WriteJson(w, http.StatusOK, returnedJson)
+}

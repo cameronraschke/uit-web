@@ -38,6 +38,8 @@ type Select interface {
 	GetAllDeviceTypes(ctx context.Context) ([]types.DeviceType, error)
 	GetClientHardwareOverview(ctx context.Context, tag int64) ([]types.ClientHardwareView, error)
 	GetJobQueuePosition(ctx context.Context, tag int64) (int64, error)
+	GetJobName(ctx context.Context, tag int64) (string, error)
+	GetFormattedJobName(ctx context.Context, jobName string) (string, error)
 }
 
 type SelectRepo struct {
@@ -1434,9 +1436,65 @@ func (repo *SelectRepo) GetJobQueuePosition(ctx context.Context, tag int64) (int
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			*queuePosition = 0
-			return *queuePosition, nil
+		} else {
+			return 0, fmt.Errorf("error during row scan: %w", err)
 		}
-		return 0, fmt.Errorf("error during row scan: %w", err)
 	}
 	return *queuePosition, nil
+}
+
+func (repo *SelectRepo) GetJobName(ctx context.Context, tag int64) (string, error) {
+	if tag == 0 {
+		return "", fmt.Errorf("tagnumber is empty")
+	}
+
+	const sqlCode = `
+	SELECT 
+		job_queue.job_name
+	FROM
+		job_queue
+	WHERE
+		tagnumber = $1
+	;`
+
+	jobName := new(string)
+	row := repo.DB.QueryRowContext(ctx, sqlCode, tag)
+	if err := row.Scan(
+		jobName,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			*jobName = ""
+		} else {
+			return "", fmt.Errorf("error during row scan: %w", err)
+		}
+	}
+	return *jobName, nil
+}
+
+func (repo *SelectRepo) GetFormattedJobName(ctx context.Context, jobName string) (string, error) {
+	if strings.TrimSpace(jobName) == "" {
+		return "", fmt.Errorf("job name is empty")
+	}
+
+	const sqlCode = `
+	SELECT 
+		static_job_names.job_name_readable
+	FROM
+		static_job_names
+	WHERE
+		job_name = $1
+	;`
+
+	jobNameFormatted := new(string)
+	row := repo.DB.QueryRowContext(ctx, sqlCode, jobName)
+	if err := row.Scan(
+		jobNameFormatted,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			*jobNameFormatted = ""
+		} else {
+			return "", fmt.Errorf("error during row scan: %w", err)
+		}
+	}
+	return *jobNameFormatted, nil
 }
