@@ -34,7 +34,7 @@ type Update interface {
 	UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error)
 	UpdateClientCPUMHz(ctx context.Context, cpuData *types.CPUData) (err error)
 	UpdateClientHealth(ctx context.Context, clientHealth *types.ClientHealthDTO) (err error)
-	UpdateJobQueuedAt(ctx context.Context, tag int64) (err error)
+	UpdateJobQueuedAt(ctx context.Context, jobQueue *types.JobQueueTableRowView) (err error)
 }
 
 type UpdateRepo struct {
@@ -1233,10 +1233,14 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateJobQueuedAt(ctx context.Context, tag int64) (err error) {
-	if tag == 0 {
+func (updateRepo *UpdateRepo) UpdateJobQueuedAt(ctx context.Context, jobQueue *types.JobQueueTableRowView) (err error) {
+	if jobQueue == nil {
+		return fmt.Errorf("required info is nil")
+	}
+	if jobQueue.Tagnumber == nil || *jobQueue.Tagnumber == 0 {
 		return fmt.Errorf("tagnumber is nil")
 	}
+
 	if ctx.Err() != nil {
 		return fmt.Errorf("context error: %w", ctx.Err())
 	}
@@ -1253,17 +1257,18 @@ func (updateRepo *UpdateRepo) UpdateJobQueuedAt(ctx context.Context, tag int64) 
 	}()
 
 	const sqlCode = `
-	UPDATE
-		job_queue
-	SET
-		job_queue.job_queued_at = CURRENT_TIMESTAMP
-	WHERE
-		job_queue.tagnumber = $1
+		UPDATE
+			job_queue
+		SET
+			job_queue.job_queued_at = $2
+		WHERE
+			job_queue.tagnumber = $1
 	;`
 
 	var res sql.Result
 	res, err = tx.ExecContext(ctx, sqlCode,
-		toNullInt64(tag),
+		ptrToNullInt64(jobQueue.Tagnumber),
+		ptrToNullTime(jobQueue.JobQueuedAt),
 	)
 	if err != nil {
 		return fmt.Errorf("error updating job_queued_at: %w", err)

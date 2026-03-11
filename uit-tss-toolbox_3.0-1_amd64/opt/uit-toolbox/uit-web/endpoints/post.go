@@ -1198,10 +1198,8 @@ func SetJobQueuedAt(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	var reqBody struct {
-		Tagnumber *int64 `json:"tagnumber"`
-	}
 
+	var reqBody types.JobQueueTableRowView
 	if err := json.Unmarshal(body, &reqBody); err != nil {
 		log.Warn("Error unmarshaling request body" + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -1220,7 +1218,7 @@ func SetJobQueuedAt(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := db.UpdateJobQueuedAt(req.Context(), *reqBody.Tagnumber); err != nil {
+	if err := db.UpdateJobQueuedAt(req.Context(), &reqBody); err != nil {
 		log.Warn("DB error: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return

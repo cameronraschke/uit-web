@@ -17,6 +17,7 @@ type JobQueueTableRowView = {
 	online: boolean | null;
 	job_active: boolean | null;
 	job_queued: boolean | null;
+	job_queued_at: Date | null;
 	queue_position: number | null;
 	job_name: string | null;
 	job_name_readable: string | null;
@@ -197,13 +198,25 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 	}
 	if (!onlineClientsDiv || !offlineClientsDiv) return;
 
+	// Sort array
 	data.sort((a, b) => {
 		if (a.online === b.online) {
+			if (a.job_queued === true && b.job_queued === true) {
+				if (a.job_queued_at !== null && b.job_queued_at === null) return -1;
+				if (a.job_queued_at === null && b.job_queued_at !== null) return 1;
+				if (a.job_queued_at !== null && b.job_queued_at !== null) {
+					const aDate = new Date(a.job_queued_at);
+					const bDate = new Date(b.job_queued_at);
+					return aDate.getSeconds() - bDate.getSeconds();
+				}
+			}
+			if (a.job_queued === true && b.job_queued === false) return -1;
+			if (a.job_queued === false && b.job_queued === true) return 1;
 			if (a.system_uptime !== null && b.system_uptime !== null) {
 				const diff = a.system_uptime - b.system_uptime;
 				if (diff !== 0) return diff;
 			}
-			return (a.tagnumber ?? 0) - (b.tagnumber ?? 0);
+			(a.tagnumber ?? 0) - (b.tagnumber ?? 0);
 		}
 		return a.online ? -1 : 1;
 	});

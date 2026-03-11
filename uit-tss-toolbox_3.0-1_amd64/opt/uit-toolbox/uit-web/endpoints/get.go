@@ -26,8 +26,7 @@ import (
 func GetServerTime(w http.ResponseWriter, req *http.Request) {
 	// ctx := req.Context()
 	// log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetServerTime"))
-	urlQueries := req.URL.Query()
-	format := middleware.GetStrQuery(&urlQueries, "format")
+	format := middleware.GetStrQuery(req.URL.Query(), "format")
 	curTime := time.Now().Format(time.RFC3339)
 	if format != nil && *format == "unix" {
 		curTime = time.Now().Format(time.UnixDate)
@@ -38,11 +37,10 @@ func GetServerTime(w http.ResponseWriter, req *http.Request) {
 func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetClientLookup"))
-	urlQueries := req.URL.Query()
 
 	// No consequence for missing tag, acceptable if lookup by serial
-	var tagnumber, tagErr = types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
-	var systemSerial = middleware.GetStrQuery(&urlQueries, "system_serial")
+	var tagnumber, tagErr = types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
+	var systemSerial = middleware.GetStrQuery(req.URL.Query(), "system_serial")
 
 	if tagErr != nil && systemSerial == nil {
 		log.Warn("No tagnumber or system_serial provided in GetClientLookup")
@@ -472,7 +470,6 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 func GetImage(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetImage"))
-	requestedQueries := req.URL.Query()
 	appState, err := config.GetAppState()
 	if err != nil {
 		log.Warn("Error getting app state (GetImage): " + err.Error())
@@ -488,7 +485,7 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 
 	// local filepath example: inventory-images/{tag}/{date --iso}-{uuid}.{file extension}
 	// incoming request url: /api/files/images/{tag}/{uuid}.{file extension}
-	uuidInURLQuery := middleware.GetStrQuery(&requestedQueries, "uuid")
+	uuidInURLQuery := middleware.GetStrQuery(req.URL.Query(), "uuid")
 	if uuidInURLQuery == nil || strings.TrimSpace(*uuidInURLQuery) == "" {
 		log.Warn("No image UUID provided in request to GetImage")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -630,21 +627,21 @@ func GetDashboardInventorySummary(w http.ResponseWriter, req *http.Request) {
 
 func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetInventoryTableData"))
 	requestQueries := req.URL.Query()
 
 	filterOptions := &types.InventoryAdvSearchOptions{
-		Tagnumber:          middleware.GetInt64Query(&requestQueries, "tagnumber"),
-		SystemSerial:       middleware.GetStrQuery(&requestQueries, "system_serial"),
-		Location:           middleware.GetStrQuery(&requestQueries, "location"),
-		SystemManufacturer: middleware.GetStrQuery(&requestQueries, "system_manufacturer"),
-		SystemModel:        middleware.GetStrQuery(&requestQueries, "system_model"),
-		DeviceType:         middleware.GetStrQuery(&requestQueries, "device_type"),
-		Department:         middleware.GetStrQuery(&requestQueries, "department_name"),
-		Domain:             middleware.GetStrQuery(&requestQueries, "ad_domain"),
-		Status:             middleware.GetStrQuery(&requestQueries, "status"),
-		Broken:             middleware.GetBoolQuery(&requestQueries, "is_broken"),
-		HasImages:          middleware.GetBoolQuery(&requestQueries, "has_images"),
+		Tagnumber:          middleware.GetInt64Query(requestQueries, "tagnumber"),
+		SystemSerial:       middleware.GetStrQuery(requestQueries, "system_serial"),
+		Location:           middleware.GetStrQuery(requestQueries, "location"),
+		SystemManufacturer: middleware.GetStrQuery(requestQueries, "system_manufacturer"),
+		SystemModel:        middleware.GetStrQuery(requestQueries, "system_model"),
+		DeviceType:         middleware.GetStrQuery(requestQueries, "device_type"),
+		Department:         middleware.GetStrQuery(requestQueries, "department_name"),
+		Domain:             middleware.GetStrQuery(requestQueries, "ad_domain"),
+		Status:             middleware.GetStrQuery(requestQueries, "status"),
+		Broken:             middleware.GetBoolQuery(requestQueries, "is_broken"),
+		HasImages:          middleware.GetBoolQuery(requestQueries, "has_images"),
 	}
 
 	// log.Debug(fmt.Sprintf("Filter options: %+v", filterOptions))
@@ -963,8 +960,13 @@ func FetchFormattedJobName(w http.ResponseWriter, req *http.Request) {
 
 	jobName := strings.TrimSpace(req.URL.Query().Get("job_name"))
 	if jobName == "" {
-		log.Warn("Empty job_name provided")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
+		log.Debug("Empty job_name provided")
+		middleware.WriteJson(w, http.StatusOK,
+			struct {
+				JobNameFormatted string `json:"job_name_formatted"`
+			}{
+				JobNameFormatted: "",
+			})
 		return
 	}
 	db, err := database.NewSelectRepo()
@@ -988,9 +990,9 @@ func FetchFormattedJobName(w http.ResponseWriter, req *http.Request) {
 	}
 
 	returnedJson := struct {
-		Position string `json:"job_name_formatted"`
+		JobNameFormatted string `json:"job_name_formatted"`
 	}{
-		Position: jobNameFormatted,
+		JobNameFormatted: jobNameFormatted,
 	}
 	middleware.WriteJson(w, http.StatusOK, returnedJson)
 }

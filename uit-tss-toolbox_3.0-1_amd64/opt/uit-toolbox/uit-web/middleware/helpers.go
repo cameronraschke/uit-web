@@ -200,37 +200,38 @@ func GetRequestPathFromContext(ctx context.Context) (reqPath string, err error) 
 	return p, nil
 }
 
-func GetStrQuery(queries *url.Values, key string) *string {
-	if queries == nil || strings.TrimSpace(key) == "" {
+func GetStrQuery(queries url.Values, key string) *string {
+	trimmedKey := strings.TrimSpace(key)
+	if len(queries) == 0 || trimmedKey == "" {
 		return nil
 	}
-	s := strings.TrimSpace(queries.Get(key))
-	if s == "" {
+	val := strings.TrimSpace(queries.Get(trimmedKey))
+	if val == "" {
 		return nil
 	}
-	return &s
+	return &val
 }
-func GetInt64Query(q *url.Values, key string) *int64 {
-	s := GetStrQuery(q, key)
-	if s == nil {
+func GetInt64Query(queries url.Values, key string) *int64 {
+	strVal := GetStrQuery(queries, key)
+	if strVal == nil {
 		return nil
 	}
-	v, err := strconv.ParseInt(*s, 10, 64)
+	intVal, err := strconv.ParseInt(*strVal, 10, 64)
 	if err != nil {
 		return nil
 	}
-	return &v
+	return &intVal
 }
-func GetBoolQuery(q *url.Values, key string) *bool {
-	s := GetStrQuery(q, key)
-	if s == nil {
+func GetBoolQuery(queries url.Values, key string) *bool {
+	strVal := GetStrQuery(queries, key)
+	if strVal == nil {
 		return nil
 	}
-	v, err := strconv.ParseBool(*s)
+	boolVal, err := strconv.ParseBool(*strVal)
 	if err != nil {
 		return nil
 	}
-	return &v
+	return &boolVal
 }
 
 func withRequestFile(ctx context.Context, file string) (context.Context, error) {
