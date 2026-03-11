@@ -285,9 +285,23 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		liveViewContainer.appendChild(liveViewHeader);
 		const liveViewScreenshotContainer = document.createElement('div');
 		liveViewScreenshotContainer.classList.add('image-container');
-		const liveViewOffline = document.createElement('h2');
-		liveViewOffline.textContent = `Live View Offline`;
-		liveViewScreenshotContainer.appendChild(liveViewOffline);
+		if (entry.online) {
+			liveViewScreenshotContainer.classList.add('image-container');
+			liveViewScreenshotContainer.classList.remove('offline');
+			const liveViewImage = document.createElement("img");
+			liveViewImage.src = `/api/live_image?tagnumber=${entry.tagnumber}`;
+			liveViewImage.loading = "lazy";
+			const liveViewAnchor = document.createElement("a");
+			liveViewAnchor.href = `/api/live_image?tagnumber=${entry.tagnumber}`;
+			liveViewAnchor.target = "_blank";
+			liveViewAnchor.appendChild(liveViewImage);
+			liveViewScreenshotContainer.appendChild(liveViewAnchor);
+		} else {
+			liveViewScreenshotContainer.classList.add('image-container', 'offline');
+			const liveViewOffline = document.createElement('h2');
+			liveViewOffline.textContent = `Live View Offline`;
+			liveViewScreenshotContainer.appendChild(liveViewOffline);
+		}
 		liveViewContainer.appendChild(liveViewScreenshotContainer);
 		const systemUptime = document.createElement('p');
 		if (entry.system_uptime !== null) {

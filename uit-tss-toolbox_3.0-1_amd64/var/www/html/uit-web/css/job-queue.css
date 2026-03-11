@@ -59,7 +59,7 @@ h2 {
 		background-color 0.3s ease
 	;
 }
-.image-container::before {
+.image-container.offline::before {
 	content: "";
 	position: absolute;
 	inset: 0;
