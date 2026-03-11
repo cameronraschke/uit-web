@@ -1429,18 +1429,18 @@ func (repo *SelectRepo) GetJobQueuePosition(ctx context.Context, tag int64) (int
 	WHERE t1.tagnumber = $1
 	;`
 
-	var queuePosition = new(int64)
+	var queuePosition sql.NullInt64
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
 	if err := row.Scan(
-		queuePosition,
+		&queuePosition,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			*queuePosition = 0
+			return 0, nil
 		} else {
 			return 0, fmt.Errorf("error during row scan: %w", err)
 		}
 	}
-	return *queuePosition, nil
+	return queuePosition.Int64, nil
 }
 
 func (repo *SelectRepo) GetJobName(ctx context.Context, tag int64) (string, error) {
@@ -1457,18 +1457,18 @@ func (repo *SelectRepo) GetJobName(ctx context.Context, tag int64) (string, erro
 		tagnumber = $1
 	;`
 
-	jobName := new(string)
-	row := repo.DB.QueryRowContext(ctx, sqlCode, ptrToNullInt64(&tag))
+	var jobName sql.NullString
+	row := repo.DB.QueryRowContext(ctx, sqlCode, tag)
 	if err := row.Scan(
-		jobName,
+		&jobName,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			*jobName = ""
+			return "", nil
 		} else {
 			return "", fmt.Errorf("error during row scan: %w", err)
 		}
 	}
-	return *jobName, nil
+	return jobName.String, nil
 }
 
 func (repo *SelectRepo) GetFormattedJobName(ctx context.Context, jobName string) (string, error) {
@@ -1485,16 +1485,16 @@ func (repo *SelectRepo) GetFormattedJobName(ctx context.Context, jobName string)
 		job_name = $1
 	;`
 
-	jobNameFormatted := new(string)
-	row := repo.DB.QueryRowContext(ctx, sqlCode, ptrToNullString(&jobName))
+	var jobNameFormatted sql.NullString
+	row := repo.DB.QueryRowContext(ctx, sqlCode, jobName)
 	if err := row.Scan(
-		jobNameFormatted,
+		&jobNameFormatted,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			*jobNameFormatted = ""
+			return "", nil
 		} else {
 			return "", fmt.Errorf("error during row scan: %w", err)
 		}
 	}
-	return *jobNameFormatted, nil
+	return jobNameFormatted.String, nil
 }
