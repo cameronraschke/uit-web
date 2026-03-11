@@ -34,6 +34,7 @@ type Update interface {
 	UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error)
 	UpdateClientCPUMHz(ctx context.Context, cpuData *types.CPUData) (err error)
 	UpdateClientHealth(ctx context.Context, clientHealth *types.ClientHealthDTO) (err error)
+	UpdateJobQueuedAt(ctx context.Context, tag int64) (err error)
 }
 
 type UpdateRepo struct {
@@ -1227,6 +1228,48 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 	}
 	if err := VerifyRowsAffected(clientHealthResult, 1); err != nil {
 		return fmt.Errorf("error while checking rows affected on client_health table insert/update: %w", err)
+	}
+
+	return nil
+}
+
+func (updateRepo *UpdateRepo) UpdateJobQueuedAt(ctx context.Context, tag int64) (err error) {
+	if tag == 0 {
+		return fmt.Errorf("tagnumber is nil")
+	}
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning DB transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	const sqlCode = `
+	UPDATE
+		job_queue
+	SET
+		job_queue.job_queued_at = CURRENT_TIMESTAMP
+	WHERE
+		job_queue.tagnumber = $1
+	;`
+
+	var res sql.Result
+	res, err = tx.ExecContext(ctx, sqlCode,
+		toNullInt64(tag),
+	)
+	if err != nil {
+		return fmt.Errorf("error updating job_queued_at: %w", err)
+	}
+	if err := VerifyRowsAffected(res, 1); err != nil {
+		return fmt.Errorf("rows affected are out of range: %w", err)
 	}
 
 	return nil

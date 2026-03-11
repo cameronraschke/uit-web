@@ -1189,3 +1189,42 @@ func SetClientHardwareData(w http.ResponseWriter, req *http.Request) {
 	}
 	middleware.WriteJson(w, http.StatusOK, "Client hardware data updated successfully")
 }
+
+func SetJobQueuedAt(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "SetJobQueuedAt"))
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Error reading request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	var reqBody struct {
+		Tagnumber *int64 `json:"tagnumber"`
+	}
+
+	if err := json.Unmarshal(body, &reqBody); err != nil {
+		log.Warn("Error unmarshaling request body" + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if reqBody.Tagnumber == nil || *reqBody.Tagnumber == 0 {
+		log.Warn("Request tagnumber is nil")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	db, err := database.NewUpdateRepo()
+	if err != nil {
+		log.Warn("Error creating DB connection" + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	if err := db.UpdateJobQueuedAt(req.Context(), *reqBody.Tagnumber); err != nil {
+		log.Warn("DB error: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	middleware.WritePlainTextResponse(w, "")
+}

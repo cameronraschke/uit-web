@@ -26,7 +26,7 @@
 	},
 	"/api/overview/all_models": {},
 	"/api/client/health": {
-		"allowed_methods": ["OPTIONS", "GET", "POST"]
+		"allowed_methods": ["OPTIONS", "POST"]
 	},
 	"/api/overview/all_domains": {},
 	"/api/overview/all_departments": {},
@@ -62,7 +62,10 @@
 	"/api/client/hardware": {
 		"allowed_methods": ["OPTIONS", "GET", "POST"]
 	},
-	"/api/client/job_queue_position": {
-		"content_type": "text/plain; charset=utf-8"
+	"/api/client/job_queue_position": {},
+	"/api/client/job_name": {},
+	"/api/client/job_name_formatted": {},
+	"/api/client/job_queued_at": {
+		"allowed_methods": ["OPTIONS", "POST"]
 	}
 }
