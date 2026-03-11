@@ -1250,7 +1250,11 @@ func UploadLiveImage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	config.UpdateLiveImage(*tag, body)
+	if err := config.UpdateLiveImage(*tag, body); err != nil {
+		log.Warn("Error updating live image for " + strconv.Itoa(int(*tag)) + ": " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
 	middleware.WriteJson(w, http.StatusOK, struct {
 		Status string `json:"status"`
 	}{
