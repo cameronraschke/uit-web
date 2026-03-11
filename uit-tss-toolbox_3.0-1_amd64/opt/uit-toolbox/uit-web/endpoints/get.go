@@ -1022,7 +1022,7 @@ func DownloadLiveImage(w http.ResponseWriter, req *http.Request) {
 	}
 	reader := bytes.NewReader(imageBytes)
 	var readSeeker io.ReadSeeker = reader
-	w.Header().Set("Content-Type", "image/png")
-	http.ServeContent(w, req, strconv.Itoa(int(*tag))+".png", time.Now().UTC(), readSeeker)
+	w.Header().Set("Content-Type", "image/jpeg")
+	http.ServeContent(w, req, strconv.Itoa(int(*tag))+".jpeg", time.Now().UTC(), readSeeker)
 	log.Info("Served live image '" + strconv.Itoa(int(*tag)) + "' (" + fmt.Sprintf("%.2f", float64(len(imageBytes))/1024/1024) + " MB)")
 }
