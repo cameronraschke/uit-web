@@ -1458,7 +1458,7 @@ func (repo *SelectRepo) GetJobName(ctx context.Context, tag int64) (string, erro
 	;`
 
 	jobName := new(string)
-	row := repo.DB.QueryRowContext(ctx, sqlCode, tag)
+	row := repo.DB.QueryRowContext(ctx, sqlCode, ptrToNullInt64(&tag))
 	if err := row.Scan(
 		jobName,
 	); err != nil {
@@ -1486,7 +1486,7 @@ func (repo *SelectRepo) GetFormattedJobName(ctx context.Context, jobName string)
 	;`
 
 	jobNameFormatted := new(string)
-	row := repo.DB.QueryRowContext(ctx, sqlCode, jobName)
+	row := repo.DB.QueryRowContext(ctx, sqlCode, ptrToNullString(&jobName))
 	if err := row.Scan(
 		jobNameFormatted,
 	); err != nil {
