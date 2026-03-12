@@ -388,11 +388,11 @@ func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.A
 	const sqlQuery = `
 	WITH job_queue_position AS (
 		SELECT 
-			tagnumber, queue_position
+			tagnumber, position
 		FROM (
 			SELECT 
 				tagnumber, 
-				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) - 1 AS "job_queue_position" 
+				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) - 1 AS "position" 
 			FROM 
 				job_queue 
 			WHERE 
@@ -400,7 +400,7 @@ func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.A
 				AND job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')
 			) t1
 		)
-	SELECT job_queue.tagnumber, job_queue.job_queued, job_queue.job_name, job_queue.job_active, job_queue_position.job_queue_position
+	SELECT job_queue.tagnumber, job_queue.job_queued, job_queue.job_name, job_queue.job_active, job_queue_position.position AS "job_queue_position"
 	FROM job_queue
 	LEFT JOIN 
 		job_queue_position ON job_queue.tagnumber = job_queue_position.tagnumber
@@ -947,11 +947,11 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 	),
 	job_queue_position AS (
 		SELECT 
-			tagnumber, queue_position
+			tagnumber, position
 		FROM (
 			SELECT 
 				tagnumber, 
-				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) - 1 AS "queue_position" 
+				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) - 1 AS "position" 
 			FROM 
 				job_queue 
 			WHERE 
@@ -978,7 +978,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		job_queue.job_active,
 		job_queue.job_queued,
 		job_queue.job_queued_at,
-		job_queue_position.queue_position AS "job_queue_position",
+		job_queue_position.position AS "job_queue_position",
 		job_queue.job_name,
 		static_job_names.job_name_readable,
 		(CASE
@@ -1444,11 +1444,11 @@ func (repo *SelectRepo) GetJobQueuePosition(ctx context.Context, tag int64) (int
 	}
 	const sqlQuery = `
 	SELECT 
-		queue_position
+		position AS "job_queue_position"
 	FROM (
 		SELECT 
 			tagnumber, 
-			ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) - 1 AS "job_queue_position" 
+			ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) - 1 AS "position"
 		FROM 
 			job_queue 
 		WHERE 
