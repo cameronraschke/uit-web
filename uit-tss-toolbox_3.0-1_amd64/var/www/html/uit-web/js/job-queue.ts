@@ -433,7 +433,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		} else {
 			osInfo.appendChild(document.createElement('span').appendChild(document.createTextNode('N/A')));
 		}
-		if (entry.os_updated !== null || entry.os_updated === true) {
+		if (entry.os_updated !== null && entry.os_updated === true) {
 			const osWarning = document.createElement('span');
 			osWarning.style.color = "green";
 			osWarning.appendChild(document.createTextNode(' (Updated)'));
