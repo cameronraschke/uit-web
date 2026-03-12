@@ -301,7 +301,7 @@ type JobQueueTableRowView struct {
 	NetworkLinkStatus      *string        `json:"network_link_status"`
 	NetworkLinkSpeed       *float64       `json:"network_link_speed"`
 	NetworkUsage           *float64       `json:"network_usage"`
-	BatteryCharge          *int64         `json:"battery_charge"`
+	BatteryCharge          *int64         `json:"battery_charge_pcnt"`
 	BatteryStatus          *string        `json:"battery_status"`
 	BatteryHealthDeviation *float64       `json:"battery_health_deviation"`
 	BatteryHealthPcnt      *float64       `json:"battery_health_pcnt"`

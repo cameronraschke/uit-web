@@ -48,7 +48,7 @@ type JobQueueTableRowView = {
 	network_link_status: string | null;
 	network_link_speed: number | null;
 	network_usage: number | null;
-	battery_charge: number | null;
+	battery_charge_pcnt: number | null;
 	battery_status: string | null;
 	battery_health_deviation: number | null;
 	battery_health_pcnt: number | null;
@@ -522,7 +522,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		// Battery
 		const batteryInfo = document.createElement('p');
 		const batteryInfoText = document.createTextNode('Battery: ');
-		if (entry.battery_charge !== null) batteryInfoText.appendData(`${entry.battery_charge.toFixed(0)}%`); else batteryInfoText.appendData('N/A%');
+		if (entry.battery_charge_pcnt !== null) batteryInfoText.appendData(`${entry.battery_charge_pcnt.toFixed(0)}%`); else batteryInfoText.appendData('N/A%');
 		if (entry.battery_health_pcnt !== null) batteryInfoText.appendData(` (Max Capacity: ${entry.battery_health_pcnt?.toFixed(2)}%`);
 		if (entry.battery_health_deviation !== null) {
 			if (entry.battery_health_deviation) batteryInfoText.appendData(', ');

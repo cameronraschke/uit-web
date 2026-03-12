@@ -346,7 +346,7 @@ CREATE TABLE IF NOT EXISTS job_queue (
 	present_bool BOOLEAN DEFAULT FALSE,
 	job_status VARCHAR(128) DEFAULT NULL,
 	kernel_updated BOOLEAN DEFAULT NULL,
-	battery_charge SMALLINT DEFAULT NULL,
+	battery_charge_pcnt SMALLINT DEFAULT NULL,
 	battery_status VARCHAR(20) DEFAULT NULL,
 	client_app_uptime INT DEFAULT NULL,
 	system_uptime INT DEFAULT NULL,

@@ -1030,7 +1030,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		'UP' AS "network_link_status",
 		job_queue.network_speed AS "network_link_speed",
 		'0' AS "network_usage",
-		job_queue.battery_charge,
+		job_queue.battery_charge_pcnt,
 		job_queue.battery_status,
 		ROUND((battery_current_max_capacity::decimal / battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt",
 		ROUND(avg_battery_health.avg_battery_health_pcnt - current_battery_health.battery_health_pcnt, 2) AS "battery_health_deviation",
