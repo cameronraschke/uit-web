@@ -59,8 +59,14 @@
 	"/api/client/uptime": {
 		"allowed_methods": ["OPTIONS", "POST"]
 	},
+	"/api/client/last_heard": {
+		"allowed_methods": ["OPTIONS", "POST"]
+	},
 	"/api/client/hardware": {
 		"allowed_methods": ["OPTIONS", "GET", "POST"]
+	},
+	"/api/client/hardware/battery": {
+		"allowed_methods": ["OPTIONS", "POST"]
 	},
 	"/api/client/job_queue_position": {},
 	"/api/client/job_name": {},

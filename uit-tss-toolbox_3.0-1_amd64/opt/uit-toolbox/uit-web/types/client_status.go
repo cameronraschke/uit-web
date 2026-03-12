@@ -30,7 +30,7 @@ type ActiveJobs struct {
 	JobQueued     *bool  `json:"job_queued"`
 	JobName       string `json:"job_name"`
 	JobActive     *bool  `json:"job_active"`
-	QueuePosition int64  `json:"queue_position"`
+	QueuePosition int64  `json:"job_queue_position"`
 }
 
 type AvailableJobs struct {

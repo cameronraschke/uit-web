@@ -477,7 +477,7 @@ CREATE TABLE IF NOT EXISTS static_job_names (
 INSERT INTO 
 	static_job_names (job_name, job_name_readable, job_sort_order, job_hidden)
 VALUES 
-	('update', 'Update', 20, FALSE),
+	('update', 'Update Client App', 20, FALSE),
 	('findmy', 'Play Sound', 30, FALSE),
 	('hpEraseAndClone', 'Erase and Clone', 40, TRUE),
 	('generic-erase+clone', 'Erase and Clone (manual)', 41, TRUE),
@@ -486,9 +486,7 @@ VALUES
 	('nvmeErase', 'Erase Only', 60, FALSE),
 	('generic-erase', 'Erase Only (manual)', 61, TRUE),
 	('nvmeVerify', 'Verify Erase', 70, TRUE),
-	('data collection', 'Data Collection', 80, TRUE),
-	('shutdown', 'Shutdown', 90, TRUE),
-	('clean-shutdown', 'Shutdown', 91, FALSE),
+	('shutdown', 'Shutdown', 80, TRUE),
 	('cancel', 'Cancel/Clear Job(s)', 95, FALSE)
 	;
 

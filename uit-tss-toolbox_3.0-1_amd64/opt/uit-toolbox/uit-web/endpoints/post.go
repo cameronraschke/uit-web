@@ -457,6 +457,105 @@ func SetClientUptime(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
+func SetClientLastHeard(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "SetClientLastHeard"))
+	requestBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Cannot read request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if len(requestBody) == 0 {
+		log.Warn("Empty request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if !types.IsPrintableUnicode(requestBody) {
+		log.Warn("Invalid UTF-8 in request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	var lastHeardData struct {
+		Tagnumber int64     `json:"tagnumber"`
+		LastHeard time.Time `json:"last_heard"`
+	}
+	if err := json.Unmarshal(requestBody, &lastHeardData); err != nil {
+		log.Warn("Cannot unmarshal JSON: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if lastHeardData.Tagnumber == 0 || lastHeardData.LastHeard.IsZero() {
+		log.Warn("Missing tag number or last heard time")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	updateRepo, err := database.NewUpdateRepo()
+	if err != nil {
+		log.Error("No database connection available for updating client last heard time")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if err := updateRepo.UpdateClientLastHeard(ctx, &lastHeardData.Tagnumber, &lastHeardData.LastHeard); err != nil {
+		log.Error("Failed to update client last heard time: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
+func UpdateClientBatteryChargePcnt(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "UpdateClientBatteryChargePcnt"))
+	requestBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Cannot read request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if len(requestBody) == 0 {
+		log.Warn("Empty request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if !types.IsPrintableUnicode(requestBody) {
+		log.Warn("Invalid UTF-8 in request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	var batteryData struct {
+		Tagnumber int64    `json:"tagnumber"`
+		Percent   *float64 `json:"percent"`
+	}
+	if err := json.Unmarshal(requestBody, &batteryData); err != nil {
+		log.Warn("Cannot unmarshal JSON: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if batteryData.Tagnumber == 0 || batteryData.Percent == nil {
+		log.Warn("Missing tag number or battery percentage")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if *batteryData.Percent < 0 || *batteryData.Percent > 100 {
+		log.Warn("Battery percentage out of valid range (0-100)")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	updateRepo, err := database.NewUpdateRepo()
+	if err != nil {
+		log.Error("No database connection available for updating client battery percentage")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if err := updateRepo.UpdateClientBatteryChargePcnt(ctx, &batteryData.Tagnumber, batteryData.Percent); err != nil {
+		log.Error("Failed to update client battery percentage: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
+}
+
 func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "InsertNewNote"))

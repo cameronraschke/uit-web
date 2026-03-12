@@ -1,6 +1,6 @@
 # API endpoints (WIP)
 > [!IMPORTANT]
-> Not all endpoints are implemented and/or actively used. Use API with caution.
+> Not all endpoints are implemented and/or actively used. Documentatino is still a work in progress. Use API with caution.
 
 > [!IMPORTANT]
 > Unless otherwise noted, a GET request will always return all other variables, regardless of request type. State-chaning requests (POST, DELETE, PUSH, etc.) requests will usually only return an error, unless otherwise noted with "Output POST Variables".

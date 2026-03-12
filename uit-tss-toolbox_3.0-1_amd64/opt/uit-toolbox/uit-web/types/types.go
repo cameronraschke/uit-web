@@ -271,7 +271,7 @@ type JobQueueTableRowView struct {
 	JobActive              *bool          `json:"job_active"`
 	JobQueued              *bool          `json:"job_queued"`
 	JobQueuedAt            *time.Time     `json:"job_queued_at"`
-	QueuePosition          *int64         `json:"queue_position"`
+	QueuePosition          *int64         `json:"job_queue_position"`
 	JobName                *string        `json:"job_name"`
 	JobNameReadable        *string        `json:"job_name_readable"`
 	JobCloneMode           *string        `json:"job_clone_mode"`

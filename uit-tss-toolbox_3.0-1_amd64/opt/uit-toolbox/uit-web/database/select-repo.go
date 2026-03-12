@@ -392,7 +392,7 @@ func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.A
 		FROM (
 			SELECT 
 				tagnumber, 
-				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) - 1 AS "queue_position" 
+				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) - 1 AS "job_queue_position" 
 			FROM 
 				job_queue 
 			WHERE 
@@ -400,7 +400,7 @@ func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.A
 				AND job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')
 			) t1
 		)
-	SELECT job_queue.tagnumber, job_queue.job_queued, job_queue.job_name, job_queue.job_active, job_queue_position.queue_position
+	SELECT job_queue.tagnumber, job_queue.job_queued, job_queue.job_name, job_queue.job_active, job_queue_position.job_queue_position
 	FROM job_queue
 	LEFT JOIN 
 		job_queue_position ON job_queue.tagnumber = job_queue_position.tagnumber
@@ -931,6 +931,20 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		FROM jobstats
 		WHERE jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE
 		ORDER BY jobstats.tagnumber, jobstats.time DESC NULLS LAST),
+	newest_image AS (
+		SELECT * FROM (
+			SELECT 
+				jobstats.time, 
+				hardware_data.system_model, 
+				ROW_NUMBER() OVER (PARTITION BY hardware_data.system_model ORDER BY jobstats.time DESC NULLS LAST) AS "row_num"
+			FROM jobstats
+			LEFT JOIN hardware_data ON jobstats.tagnumber = hardware_data.tagnumber
+			WHERE
+				jobstats.clone_master = TRUE 
+				GROUP BY hardware_data.system_model, jobstats.time
+				ORDER BY jobstats.time DESC NULLS LAST
+		) t1 WHERE t1.row_num = 1
+	),
 	job_queue_position AS (
 		SELECT 
 			tagnumber, queue_position
@@ -964,7 +978,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		job_queue.job_active,
 		job_queue.job_queued,
 		job_queue.job_queued_at,
-		job_queue_position.queue_position,
+		job_queue_position.queue_position AS "job_queue_position",
 		job_queue.job_name,
 		static_job_names.job_name_readable,
 		(CASE
@@ -986,7 +1000,10 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 			ELSE FALSE
 		END) AS "os_installed",
 		static_image_names.image_name_readable AS "os_name",
-		NULL AS "os_updated",
+		(CASE
+			WHEN latest_job.clone_completed = TRUE AND newest_image.time <= latest_job.time THEN TRUE
+			ELSE FALSE
+		END) AS "os_updated",
 		(CASE 
 			WHEN latest_locations.ad_domain IS NOT NULL AND NOT latest_locations.ad_domain = 'none' THEN TRUE
 			ELSE FALSE
@@ -1033,6 +1050,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 	LEFT JOIN static_disk_stats ON latest_historical_hardware_data.disk_model = static_disk_stats.disk_model
 	LEFT JOIN static_ad_domains ON latest_locations.ad_domain = static_ad_domains.domain_name
 	LEFT JOIN job_queue_position ON latest_locations.tagnumber = job_queue_position.tagnumber
+	LEFT JOIN newest_image ON hardware_data.system_model = newest_image.system_model
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
 	;`
 
@@ -1368,26 +1386,29 @@ func (repo *SelectRepo) GetClientHardwareOverview(ctx context.Context, tag int64
 		SELECT ram_speed FROM historical_hardware_data WHERE tagnumber = $1 ORDER BY time DESC NULLS LAST LIMIT 1
 	)
 	SELECT 
-	locations.tagnumber, 
-	locations.system_serial, 
-	hardware_data.ethernet_mac, 
-	hardware_data.wifi_mac,
-	hardware_data.system_manufacturer,
-	hardware_data.system_model,
-	NULL AS "product_family",
-	NULL AS "product_name",
-	hardware_data.system_uuid,
-	hardware_data.system_sku,
-	hardware_data.chassis_type,
-	hardware_data.motherboard_manufacturer,
-	hardware_data.motherboard_serial,
-	hardware_data.device_type,
-	latest_hardware_data.memory_speed_mhz,
-	FROM locations
+		locations.tagnumber, 
+		locations.system_serial, 
+		hardware_data.ethernet_mac, 
+		hardware_data.wifi_mac,
+		hardware_data.system_manufacturer,
+		hardware_data.system_model,
+		NULL AS "product_family",
+		NULL AS "product_name",
+		hardware_data.system_uuid,
+		hardware_data.system_sku,
+		hardware_data.chassis_type,
+		hardware_data.motherboard_manufacturer,
+		hardware_data.motherboard_serial,
+		hardware_data.device_type,
+		latest_hardware_data.memory_speed_mhz
+	FROM 
+		locations
 	LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber,
 	CROSS JOIN latest_hardware_data
-	WHERE locations.tagnumber = $1
-	ORDER BY locations.time DESC NULLS LAST LIMIT 1
+	WHERE 
+		locations.tagnumber = $1
+	ORDER BY 
+		locations.time DESC NULLS LAST LIMIT 1
 	`
 
 	var clientHardwareData types.ClientHardwareView
@@ -1427,7 +1448,7 @@ func (repo *SelectRepo) GetJobQueuePosition(ctx context.Context, tag int64) (int
 	FROM (
 		SELECT 
 			tagnumber, 
-			ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) - 1 AS "queue_position" 
+			ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) - 1 AS "job_queue_position" 
 		FROM 
 			job_queue 
 		WHERE 

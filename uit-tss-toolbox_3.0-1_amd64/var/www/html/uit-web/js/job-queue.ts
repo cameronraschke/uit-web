@@ -18,7 +18,7 @@ type JobQueueTableRowView = {
 	job_active: boolean | null;
 	job_queued: boolean | null;
 	job_queued_at: Date | null;
-	queue_position: number | null;
+	job_queue_position: number | null;
 	job_name: string | null;
 	job_name_readable: string | null;
 	job_clone_mode: string | null;
@@ -201,8 +201,8 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 	// Sort array
 	data.sort((a, b) => {
 		if (a.online === b.online) {
-			if (a.queue_position !== null && b.queue_position !== null) {
-				return a.queue_position - b.queue_position
+			if (a.job_queue_position !== null && b.job_queue_position !== null) {
+				return a.job_queue_position - b.job_queue_position
 				// if (a.job_queued_at !== null && b.job_queued_at === null) return -1;
 				// if (a.job_queued_at === null && b.job_queued_at !== null) return 1;
 				// if (a.job_queued_at !== null && b.job_queued_at !== null) {
@@ -211,8 +211,8 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 				// 	return aDate.getSeconds() - bDate.getSeconds();
 				// }
 			}
-			if (a.queue_position !== null && b.queue_position === null) return -1;
-			if (a.queue_position === null && b.queue_position !== null) return 1;
+			if (a.job_queue_position !== null && b.job_queue_position === null) return -1;
+			if (a.job_queue_position === null && b.job_queue_position !== null) return 1;
 			if (a.system_uptime !== null && b.system_uptime !== null) {
 				const diff = a.system_uptime - b.system_uptime;
 				if (diff !== 0) return diff;
@@ -416,10 +416,10 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		jobSelectContainer.appendChild(jobSelect);
 		jobSelectContainer.appendChild(queueJobButton);
 		if (entry.online) jobInfoContainer.appendChild(jobSelectContainer);
-		if (entry.job_queued && entry.queue_position !== null) {
+		if (entry.job_queued && entry.job_queue_position !== null) {
 			jobSelect.value = entry.job_name || '';
 			const queuePosition = document.createElement('p');
-			queuePosition.textContent = `Queue Position: ${entry.queue_position}, last job completed at ${entry.last_job_time ? new Date(entry.last_job_time).toLocaleString() : 'N/A'}`;
+			queuePosition.textContent = `Queue Position: ${entry.job_queue_position}, last job completed at ${entry.last_job_time ? new Date(entry.last_job_time).toLocaleString() : 'N/A'}`;
 			jobInfoContainer.appendChild(queuePosition);
 		}
 
@@ -433,7 +433,12 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		} else {
 			osInfo.appendChild(document.createElement('span').appendChild(document.createTextNode('N/A')));
 		}
-		if (entry.os_updated === null || entry.os_updated === false) {
+		if (entry.os_updated !== null || entry.os_updated === true) {
+			const osWarning = document.createElement('span');
+			osWarning.style.color = "green";
+			osWarning.appendChild(document.createTextNode(' (Updated)'));
+			osInfo.appendChild(osWarning);
+		} else {
 			const osWarning = document.createElement('span');
 			osWarning.style.color = "red";
 			osWarning.appendChild(document.createTextNode(' (Out of date)'));

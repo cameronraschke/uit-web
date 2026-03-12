@@ -102,6 +102,8 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("POST /api/client/health", httpsFullAPIChain.ThenFunc(endpoints.SetClientHealth))
 	httpsRouter.Handle("POST /api/client/job_queued_at", httpsFullAPIChain.ThenFunc(endpoints.SetJobQueuedAt))
 	httpsRouter.Handle("POST /api/live_image", httpsFullAPIChain.ThenFunc(endpoints.UploadLiveImage))
+	httpsRouter.Handle("POST /api/client/last_heard", httpsFullAPIChain.ThenFunc(endpoints.SetClientLastHeard))
+	httpsRouter.Handle("POST /api/client/hardware/battery", httpsFullAPIChain.ThenFunc(endpoints.UpdateClientBatteryChargePcnt))
 
 	// API DELETE endpoints
 	httpsRouter.Handle("DELETE /api/files/images", httpsFullAPIChain.ThenFunc(endpoints.DeleteImage))

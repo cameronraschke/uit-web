@@ -35,6 +35,8 @@ type Update interface {
 	UpdateClientCPUMHz(ctx context.Context, cpuData *types.CPUData) (err error)
 	UpdateClientHealth(ctx context.Context, clientHealth *types.ClientHealthDTO) (err error)
 	UpdateJobQueuedAt(ctx context.Context, jobQueue *types.JobQueueTableRowView) (err error)
+	UpdateClientLastHeard(ctx context.Context, tag *int64, lastHeard *time.Time) (err error)
+	UpdateClientBatteryChargePcnt(ctx context.Context, tag *int64, percent *float64) (err error)
 }
 
 type UpdateRepo struct {
@@ -1277,5 +1279,78 @@ func (updateRepo *UpdateRepo) UpdateJobQueuedAt(ctx context.Context, jobQueue *t
 		return fmt.Errorf("rows affected are out of range: %w", err)
 	}
 
+	return nil
+}
+
+func (updateRepo *UpdateRepo) UpdateClientLastHeard(ctx context.Context, tag *int64, lastHeard *time.Time) (err error) {
+	if tag == nil || *tag == 0 {
+		return fmt.Errorf("tagnumber is required")
+	}
+	if lastHeard == nil || lastHeard.IsZero() {
+		return fmt.Errorf("last heard time is required")
+	}
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning DB transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	const sqlCode = `UPDATE job_queue SET last_heard = COALESCE($2, CURRENT_TIMESTAMP) WHERE tagnumber = $1;`
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+		ptrToNullInt64(tag),
+		ptrToNullTime(lastHeard),
+	)
+	if err != nil {
+		return fmt.Errorf("error updating client's last heard time: %w", err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+	}
+	return nil
+}
+
+func (updateRepo *UpdateRepo) UpdateClientBatteryChargePcnt(ctx context.Context, tag *int64, percent *float64) (err error) {
+	if tag == nil || *tag == 0 {
+		return fmt.Errorf("tagnumber is required")
+	}
+	if percent == nil || *percent < 0 || *percent > 100 {
+		return fmt.Errorf("percent must be between 0 and 100")
+	}
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning DB transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+	const sqlCode = `UPDATE job_queue SET battery_charge_pcnt = $2 WHERE tagnumber = $1;`
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+		ptrToNullInt64(tag),
+		ptrToNullFloat64(percent),
+	)
+	if err != nil {
+		return fmt.Errorf("error updating client's battery charge percent: %w", err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+	}
 	return nil
 }
