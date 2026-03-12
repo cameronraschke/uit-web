@@ -486,7 +486,7 @@ VALUES
 	('nvmeErase', 'Erase Only', 60, FALSE),
 	('generic-erase', 'Erase Only (manual)', 61, TRUE),
 	('nvmeVerify', 'Verify Erase', 70, TRUE),
-	('shutdown', 'Shutdown', 80, TRUE),
+	('shutdown', 'Shutdown', 80, FALSE),
 	('cancel', 'Cancel/Clear Job(s)', 95, FALSE)
 	;
 
