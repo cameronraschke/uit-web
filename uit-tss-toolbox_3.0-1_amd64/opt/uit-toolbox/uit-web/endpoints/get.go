@@ -43,34 +43,28 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	var tagnumber, tagErr = types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
 	var systemSerial = middleware.GetStrQuery(req.URL.Query(), "system_serial")
 
-	if tagErr != nil && systemSerial == nil {
-		log.Warn("No tagnumber or system_serial provided in GetClientLookup")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-
-	if tagErr != nil {
-		log.Warn("Cannot convert tagnumber to int64 in GetClientLookup: " + tagErr.Error())
+	if tagErr != nil && (systemSerial == nil || strings.TrimSpace(*systemSerial) == "") {
+		log.Warn("No tagnumber or system_serial provided")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
-		log.Warn("Error creating select repository in GetClientLookup: " + err.Error())
+		log.Warn("Error creating select repository: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	var clientLookup *types.ClientLookup
 	var lookupSQLErr error
-	if tagnumber != nil {
+	if tagErr == nil {
 		clientLookup, lookupSQLErr = db.ClientLookupByTag(ctx, tagnumber)
-	} else if systemSerial != nil {
+	} else if systemSerial != nil && strings.TrimSpace(*systemSerial) != "" {
 		clientLookup, lookupSQLErr = db.ClientLookupBySerial(ctx, systemSerial)
 	}
 	if lookupSQLErr != nil {
-		log.Warn("error querying client in GetClientLookup: " + lookupSQLErr.Error())
+		log.Warn("error querying client: " + lookupSQLErr.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
