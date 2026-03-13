@@ -591,6 +591,17 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 	const sqlQuery = `WITH files AS
 	(
 		SELECT COUNT(client_images.tagnumber) AS file_count from client_images WHERE hidden = FALSE AND tagnumber = $1
+	),
+	most_recent_device_type AS (
+	SELECT 
+		tagnumber,
+		device_type 
+	FROM 
+		hardware_data 
+	WHERE 
+		(tagnumber = $1 OR system_serial = $2) 
+		AND device_type IS NOT NULL
+	ORDER BY time DESC LIMIT 1
 	)
 	SELECT 
 		locations.time, 
@@ -601,7 +612,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		locations.room, 
 		hardware_data.system_manufacturer, 
 		hardware_data.system_model,
-		hardware_data.device_type,
+		COALESCE(hardware_data.device_type, most_recent_device_type.device_type) AS "device_type",
 		locations.department_name, 
 		locations.ad_domain, 
 		locations.property_custodian, 
@@ -622,6 +633,8 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 	LEFT JOIN checkout_log ON locations.tagnumber = checkout_log.tagnumber AND checkout_log.log_entry_time IN (SELECT MAX(log_entry_time) FROM checkout_log WHERE log_entry_time IS NOT NULL GROUP BY tagnumber)
 	LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 	LEFT JOIN client_images ON locations.tagnumber = client_images.tagnumber
+	LEFT JOIN static_device_types ON hardware_data.system_model = static_device_types.system_model
+	LEFT JOIN most_recent_device_type ON hardware_data.tagnumber = most_recent_device_type.tagnumber
 	WHERE (locations.tagnumber = $1 OR locations.system_serial = $2)
 	ORDER BY locations.time DESC NULLS LAST
 	LIMIT 1;`
