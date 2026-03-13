@@ -593,7 +593,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		SELECT COUNT(client_images.tagnumber) AS file_count from client_images WHERE hidden = FALSE AND tagnumber = $1
 	),
 	default_system_model AS (
-		SELECT hardware_data.system_model FROM hardware_data WHERE (hardware_data.tagnumber = $1 OR hardware_data.system_serial = $2) ORDER BY hardware_data.time DESC LIMIT 1;
+		SELECT hardware_data.system_model FROM hardware_data WHERE (hardware_data.tagnumber = $1 OR hardware_data.system_serial = $2) ORDER BY hardware_data.time DESC LIMIT 1
 	)
 	SELECT 
 		locations.time, 
