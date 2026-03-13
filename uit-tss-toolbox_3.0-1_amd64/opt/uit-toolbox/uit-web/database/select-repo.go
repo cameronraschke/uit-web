@@ -388,19 +388,27 @@ func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.A
 	const sqlQuery = `
 	WITH job_queue_position AS (
 		SELECT 
-			tagnumber, position
+			tagnumber, position, job_name
 		FROM (
 			SELECT 
 				tagnumber, 
-				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) - 1 AS "position" 
+				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) AS "position",
+				job_name
 			FROM 
 				job_queue 
 			WHERE 
 				job_queued = TRUE OR job_name IS NOT NULL
-				AND job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')
 			) t1
 		)
-	SELECT job_queue.tagnumber, job_queue.job_queued, job_queue.job_name, job_queue.job_active, job_queue_position.position AS "job_queue_position"
+	SELECT 
+		job_queue.tagnumber, 
+		job_queue.job_queued, 
+		job_queue.job_name, 
+		job_queue.job_active, 
+		RANK() OVER (PARTITION BY job_queue.tagnumber ORDER BY (CASE
+			WHEN job_queue_position.job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone') THEN COALESCE(job_queue_position.position, 0)
+			ELSE 0
+		END)) - 1 AS "job_queue_position"
 	FROM job_queue
 	LEFT JOIN 
 		job_queue_position ON job_queue.tagnumber = job_queue_position.tagnumber
