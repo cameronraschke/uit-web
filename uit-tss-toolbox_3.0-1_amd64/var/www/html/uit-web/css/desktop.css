@@ -8,6 +8,7 @@
 	--fg-color: oklch(0.99 0 0);
 	--highlight-color: oklch(1 0 0);
 	--shadow-color: oklch(0.94 0 0);
+	--transparent-accent-color: oklch(0.5849 0.2065 23.43 / .1);
 	--light-accent-color: oklch(0.5849 0.2065 23.43);
 	--accent-color: oklch(0.5449 0.2065 23.43);
 	--dark-accent-color: oklch(0.5149 0.2065 23.43);
@@ -637,6 +638,10 @@ td > div.flex-container {
 
 .smaller-text {
 	font-size: var(--font-size-smaller);
+}
+
+.bold-text {
+	font-weight: bold;
 }
 
 .centered-text {

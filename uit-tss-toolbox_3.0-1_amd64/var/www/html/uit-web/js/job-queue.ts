@@ -245,11 +245,20 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		clientEntryContainer.dataset.tagnumber = entry.tagnumber.toString();
 
 		const clientGridContainer = document.createElement('div');
-		clientGridContainer.className = 'client-row-grid';
+		clientGridContainer.classList.add('client-row-grid');
+		if (entry.is_broken) {
+			clientGridContainer.classList.add('broken');
+		}
 
 		// Client identifiers and info
 		const clientIdentifiers = document.createElement('div');
 		clientIdentifiers.className = 'grid-item headers';
+		if (entry.is_broken) {
+			const brokenClient = document.createElement('p');
+			brokenClient.classList.add('bold-text');
+			brokenClient.appendChild(document.createTextNode('[Broken Client]'));
+			clientIdentifiers.appendChild(brokenClient);
+		}
 		const tagLabel = document.createElement('p');
 		tagLabel.textContent = 'Tag: ';
 		const tagAnchor = document.createElement('a');
@@ -272,9 +281,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		const department = document.createElement('p');
 		department.textContent = `Department: ${entry.department_name || 'N/A'}`;
 		clientIdentifiers.appendChild(department);
-		const status = document.createElement('p');
-		status.textContent = `Status: ${entry.client_status || 'N/A'}`;
-		clientIdentifiers.appendChild(status);
+		clientIdentifiers.appendChild(document.createElement('p').appendChild(document.createTextNode(`Status: ${entry.client_status || 'N/A'}`)));
 
 		// Live view
 		const liveViewContainer = document.createElement('div');
@@ -429,9 +436,14 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		const osInfo = document.createElement('p');
 		osInfo.appendChild(document.createTextNode('OS: '));
 		if (entry.os_name) {
-			osInfo.appendChild(document.createElement('span').appendChild(document.createTextNode(entry.os_name)));
+			const osNameSpan = document.createElement('span');
+			osNameSpan.appendChild(document.createTextNode(entry.os_name));
+			osInfo.appendChild(osNameSpan);
 		} else {
-			osInfo.appendChild(document.createElement('span').appendChild(document.createTextNode('N/A')));
+			const osNameSpan = document.createElement('span');
+			osNameSpan.appendChild(document.createTextNode('N/A'));
+			osNameSpan.style.fontStyle = 'italic';
+			osInfo.appendChild(osNameSpan);
 		}
 		if (entry.os_updated !== null && entry.os_updated === true) {
 			const osWarning = document.createElement('span');
@@ -456,7 +468,24 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		}
 		softwareInfoContainer.appendChild(domainJoined);
 		const biosInfo = document.createElement('p');
-		biosInfo.textContent = `BIOS: ${entry.bios_version || 'N/A'} ${entry.bios_updated ? '(Updated)' : '(Not Updated)'}`;
+		const biosText = document.createTextNode('BIOS: ');
+		biosInfo.appendChild(biosText);
+		if (entry.bios_version !== null) {
+			biosInfo.appendChild(document.createTextNode(entry.bios_version));
+			if (entry.bios_updated) {
+				const biosWarning = document.createElement('span');
+				biosWarning.style.color = "green";
+				biosWarning.appendChild(document.createTextNode(' (Updated)'));
+				biosInfo.appendChild(biosWarning);
+			} else {
+				const biosWarning = document.createElement('span');
+				biosWarning.style.color = "red";
+				biosWarning.appendChild(document.createTextNode(' (Out of date)'));
+				biosInfo.appendChild(biosWarning);
+			}
+		} else {
+			biosInfo.appendChild(document.createTextNode('N/A'));
+		}
 		softwareInfoContainer.appendChild(biosInfo);
 
 		// Hardware info

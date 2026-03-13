@@ -22,6 +22,8 @@ h2 {
 	border-radius: 1rem;
 }
 .client-row-grid {
+	border-radius: 1rem;
+	padding: 1rem;
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
 	grid-template-rows: auto;
@@ -29,6 +31,9 @@ h2 {
 	width: 100%;
 	text-align: left;
 	word-wrap: break-word;
+}
+.client-row-grid.broken {
+	background-color: var(--transparent-accent-color);
 }
 #client-offline {
 	position:absolute; 
