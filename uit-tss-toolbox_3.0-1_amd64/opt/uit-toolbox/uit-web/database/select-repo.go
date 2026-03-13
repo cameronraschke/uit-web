@@ -388,29 +388,27 @@ func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.A
 	const sqlQuery = `
 	WITH job_queue_position AS (
 		SELECT 
-			tagnumber, position, job_name
-		FROM (
-			SELECT 
-				tagnumber, 
-				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) AS "position",
-				job_name
-			FROM 
-				job_queue 
-			WHERE 
-				job_queued = TRUE OR job_name IS NOT NULL
-			) t1
-		WHERE t1.job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')
+			tagnumber, 
+			ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) AS "position",
+			job_name
+		FROM 
+			job_queue 
+		WHERE 
+			job_queued = TRUE OR job_name IS NOT NULL
 	)
-	SELECT 
-		job_queue.tagnumber, 
-		job_queue.job_queued, 
-		job_queue.job_name, 
-		job_queue.job_active, 
-		DENSE_RANK() OVER (ORDER BY COALESCE(job_queue_position.position, 0)) AS "job_queue_position"
-	FROM job_queue
-	LEFT JOIN 
-		job_queue_position ON job_queue.tagnumber = job_queue_position.tagnumber
-	WHERE job_queue.tagnumber = $1;`
+	SELECT * FROM (SELECT 
+			job_queue.tagnumber, 
+			job_queue.job_queued, 
+			job_queue.job_name, 
+			job_queue.job_active, 
+			DENSE_RANK() OVER (ORDER BY
+			(CASE
+				WHEN job_queue.job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone') THEN COALESCE(job_queue_position.position, 0)
+				ELSE 0
+			END)) - 1 AS "job_queue_position"
+		FROM job_queue
+		LEFT JOIN job_queue_position ON job_queue.tagnumber = job_queue_position.tagnumber) t1
+	WHERE t1.tagnumber = $1;`
 
 	var activeJobs types.ActiveJobs
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
@@ -972,18 +970,13 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 	),
 	job_queue_position AS (
 		SELECT 
-			tagnumber, position, job_name
-		FROM (
-			SELECT 
-				tagnumber, 
-				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) AS "position",
-				job_name
-			FROM 
-				job_queue 
-			WHERE 
-				job_queued = TRUE OR job_name IS NOT NULL
-			) t1
-		WHERE t1.job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')
+			tagnumber, 
+			ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) AS "position",
+			job_name
+		FROM 
+			job_queue 
+		WHERE 
+			job_queued = TRUE OR job_name IS NOT NULL
 	)
 	SELECT
 		latest_locations.tagnumber,
@@ -1004,7 +997,11 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		job_queue.job_active,
 		job_queue.job_queued,
 		job_queue.job_queued_at,
-		DENSE_RANK() OVER (ORDER BY COALESCE(job_queue_position.position, 0)) AS "job_queue_position",
+		DENSE_RANK() OVER (ORDER BY
+		(CASE
+			WHEN job_queue.job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone') THEN COALESCE(job_queue_position.position, 0)
+			ELSE 0
+		END)) - 1 AS "job_queue_position",
 		job_queue.job_name,
 		static_job_names.job_name_readable,
 		(CASE
@@ -1477,26 +1474,28 @@ func (repo *SelectRepo) GetJobQueuePosition(ctx context.Context, tag int64) (int
 	const sqlQuery = `
 	WITH job_queue_position AS (
 		SELECT 
-			tagnumber, position, job_name
-		FROM (
-			SELECT 
-				tagnumber, 
-				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) AS "position",
-				job_name
-			FROM 
-				job_queue 
-			WHERE 
-				job_queued = TRUE OR job_name IS NOT NULL
-			) t1
-		WHERE t1.job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')
+			tagnumber, 
+			ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) AS "position",
+			job_name
+		FROM 
+			job_queue 
+		WHERE 
+			job_queued = TRUE OR job_name IS NOT NULL
 	)
-	SELECT 
-		DENSE_RANK() OVER (ORDER BY COALESCE(job_queue_position.position, 0)) AS "job_queue_position"
-	FROM 
-		job_queue
-	LEFT JOIN 
-		job_queue_position ON job_queue.tagnumber = job_queue_position.tagnumber
-	WHERE job_queue.tagnumber = $1;
+	SELECT job_queue_position FROM (
+		SELECT
+			job_queue.tagnumber,
+			DENSE_RANK() OVER (ORDER BY
+				(CASE
+					WHEN job_queue.job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone') THEN COALESCE(job_queue_position.position, 0)
+					ELSE 0
+				END)) - 1 AS "job_queue_position"
+			FROM 
+				job_queue
+			LEFT JOIN 
+				job_queue_position ON job_queue.tagnumber = job_queue_position.tagnumber
+	) t1
+	WHERE t1.tagnumber = $1;
 	;`
 
 	var queuePosition sql.NullInt64

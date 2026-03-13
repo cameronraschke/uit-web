@@ -200,26 +200,31 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 
 	// Sort array
 	data.sort((a, b) => {
-		if (a.online === b.online) {
-			if (a.job_queue_position !== null && b.job_queue_position !== null) {
-				return a.job_queue_position - b.job_queue_position
-				// if (a.job_queued_at !== null && b.job_queued_at === null) return -1;
-				// if (a.job_queued_at === null && b.job_queued_at !== null) return 1;
-				// if (a.job_queued_at !== null && b.job_queued_at !== null) {
-				// 	const aDate = new Date(a.job_queued_at);
-				// 	const bDate = new Date(b.job_queued_at);
-				// 	return aDate.getSeconds() - bDate.getSeconds();
-				// }
-			}
-			if (a.job_queue_position !== null && b.job_queue_position === null) return -1;
-			if (a.job_queue_position === null && b.job_queue_position !== null) return 1;
-			if (a.system_uptime !== null && b.system_uptime !== null) {
-				const diff = a.system_uptime - b.system_uptime;
-				if (diff !== 0) return diff;
-			}
-			(a.tagnumber ?? 0) - (b.tagnumber ?? 0);
+		if (a.online !== b.online) {
+			return (a.online === true) ? -1 : 1;
 		}
-		return a.online ? -1 : 1;
+
+		if (a.job_active !== b.job_active) {
+			return (a.job_active === true) ? -1 : 1;
+		}
+
+		if (a.job_queued !== b.job_queued) {
+			return (a.job_queued === true) ? -1 : 1;
+		}
+
+		if (a.job_queue_position !== b.job_queue_position) {
+			if (a.job_queue_position === null) return 1;
+			if (b.job_queue_position === null) return -1;
+			return a.job_queue_position - b.job_queue_position;
+		}
+
+		if (a.system_uptime !== b.system_uptime) {
+			if (a.system_uptime === null) return 1;
+			if (b.system_uptime === null) return -1;
+			return a.system_uptime - b.system_uptime;
+		}
+
+		return (a.tagnumber ?? 0) - (b.tagnumber ?? 0);
 	});
 
 	let jobs: AllJobs[] = [];
