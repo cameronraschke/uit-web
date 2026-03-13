@@ -25,7 +25,7 @@ type JobQueueTableRowView = {
 	job_erase_mode: string | null;
 	job_status: string | null;
 	last_job_time: Date | null;
-	os_installed: string | null;
+	os_installed: boolean | null;
 	os_name: string | null;
 	os_updated: boolean | null;
 	domain_joined: boolean | null;
@@ -426,7 +426,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		if (entry.job_queued && entry.job_queue_position !== null) {
 			jobSelect.value = entry.job_name || '';
 			const queuePosition = document.createElement('p');
-			queuePosition.textContent = `Queue Position: ${entry.job_queue_position}, last job completed at ${entry.last_job_time ? new Date(entry.last_job_time).toLocaleString() : 'N/A'}`;
+			queuePosition.textContent = `Queue Position: ${entry.job_queue_position || 'N/A'}`;
 			jobInfoContainer.appendChild(queuePosition);
 		}
 
@@ -467,6 +467,24 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 			domainJoined.appendChild(document.createTextNode('No'));
 		}
 		softwareInfoContainer.appendChild(domainJoined);
+
+		softwareInfoContainer.appendChild(document.createElement('span').appendChild(document.createTextNode(' Last Job: ')));
+		if (entry.last_job_time) {
+			const lastJobTime = document.createElement('span');
+			if (entry.os_installed === true) {
+				lastJobTime.appendChild(document.createTextNode('Clone - '));
+			} if (entry.os_installed === false) {
+				lastJobTime.appendChild(document.createTextNode('Erase - '));
+			}
+			lastJobTime.appendChild(document.createTextNode(new Date(entry.last_job_time).toLocaleString()));
+			softwareInfoContainer.appendChild(lastJobTime);
+		} else {
+			const lastJobTime = document.createElement('span');
+			lastJobTime.appendChild(document.createTextNode('N/A'));
+			lastJobTime.style.fontStyle = 'italic';
+			softwareInfoContainer.appendChild(lastJobTime);
+		}
+
 		const biosInfo = document.createElement('p');
 		const biosText = document.createTextNode('BIOS: ');
 		biosInfo.appendChild(biosText);

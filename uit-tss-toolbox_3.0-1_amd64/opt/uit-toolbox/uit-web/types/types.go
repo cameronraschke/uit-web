@@ -278,7 +278,7 @@ type JobQueueTableRowView struct {
 	JobEraseMode           *string        `json:"job_erase_mode"`
 	JobStatus              *string        `json:"job_status"`
 	LastJobTime            *time.Time     `json:"last_job_time"`
-	OSInstalled            *string        `json:"os_installed"`
+	OSInstalled            *bool        	`json:"os_installed"`
 	OSName                 *string        `json:"os_name"`
 	OSUpdated              *bool          `json:"os_updated"`
 	DomainJoined           *bool          `json:"domain_joined"`
