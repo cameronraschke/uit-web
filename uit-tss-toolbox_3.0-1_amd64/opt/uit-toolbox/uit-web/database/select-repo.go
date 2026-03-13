@@ -1045,7 +1045,10 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		job_queue.cpu_usage,
 		job_queue.cpu_mhz,
 		job_queue.cpu_temp,
-		FALSE AS "cpu_temp_warning",
+		(CASE 
+			WHEN job_queue.cpu_temp > 90 THEN TRUE
+			ELSE FALSE
+		END) AS "cpu_temp_warning",
 		job_queue.memory_usage_kb,
 		job_queue.memory_capacity_kb,
 		'0' AS "disk_usage",
@@ -1053,7 +1056,10 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		static_disk_stats.disk_type,
 		latest_historical_hardware_data.disk_capacity AS "disk_size",
 		'80' AS "max_disk_temp",
-		FALSE AS "disk_temp_warning",
+		(CASE
+			WHEN job_queue.disk_temp > 80 THEN TRUE
+			ELSE FALSE
+		END) AS "disk_temp_warning",
 		'UP' AS "network_link_status",
 		job_queue.network_speed AS "network_link_speed",
 		'0' AS "network_usage",

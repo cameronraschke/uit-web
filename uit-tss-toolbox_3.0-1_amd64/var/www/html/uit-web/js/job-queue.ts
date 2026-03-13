@@ -505,14 +505,26 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		cpuUsage.appendChild(document.createElement('wbr'));
 		// CPU MHz (frequency)
 		if (entry.cpu_mhz !== null) {
-			cpuUsage.appendChild(document.createTextNode(' @' + `${(entry.cpu_mhz / 1000).toFixed(2)}` + 'GHz'));
+			const cpuMHz = document.createElement('span');
+			cpuMHz.appendChild(document.createTextNode(' @' + `${(entry.cpu_mhz / 1000).toFixed(2)}` + 'GHz'));
+			cpuUsage.appendChild(cpuMHz);
 			cpuUsage.appendChild(document.createElement('wbr'));
 		}
 		// CPU Temp
 		if (entry.cpu_temp !== null) {
-			cpuUsage.appendChild(document.createTextNode(' (' + `${entry.cpu_temp.toFixed(0)}` + '°C)'));
-			cpuUsage.appendChild(document.createElement('wbr'));
+			cpuUsage.appendChild(document.createTextNode(' ('));
+			const cpuTemp = document.createElement('span');
+			if (entry.cpu_temp_warning) {
+				cpuTemp.style.color = 'red';
+				cpuTemp.classList.add('bold-text');
+			}
+			cpuTemp.appendChild(document.createTextNode(`${entry.cpu_temp.toFixed(0)}` + '°C'));
+			cpuUsage.appendChild(cpuTemp);
+			cpuUsage.appendChild(document.createTextNode(')'));
+		} else {
+			cpuUsage.appendChild(document.createTextNode(' (Temp N/A)'));
 		}
+		cpuUsage.appendChild(document.createElement('wbr'));
 		hardwareInfoContainer.appendChild(cpuUsage);
 
 		// Memory/RAM
@@ -531,7 +543,12 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		diskTemp.appendChild(document.createTextNode('Disk Temp: '));
 		diskTemp.appendChild(document.createElement('wbr'));
 		if (entry.disk_temp !== null) {
-			diskTemp.appendChild(document.createTextNode(`${entry.disk_temp.toFixed(0)}` + '°C'));
+			const diskTempValue = document.createElement('span');
+			if (entry.disk_temp_warning) {
+				diskTempValue.style.color = 'red';
+			}
+			diskTempValue.appendChild(document.createTextNode(`${entry.disk_temp.toFixed(0)}` + '°C'));
+			diskTemp.appendChild(diskTempValue);
 		} else {
 			diskTemp.appendChild(document.createTextNode('N/A'));
 		}
@@ -542,7 +559,9 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		networkUsage.appendChild(document.createTextNode('Network Usage: '));
 		networkUsage.appendChild(document.createElement('wbr'));
 		if (entry.network_usage !== null) {
-			networkUsage.appendChild(document.createTextNode(`${entry.network_usage.toFixed(2)}` + 'Mbps'));
+			const networkUsageValue = document.createElement('span');
+			networkUsageValue.appendChild(document.createTextNode(`${entry.network_usage.toFixed(2)}` + 'Mbps'));
+			networkUsage.appendChild(networkUsageValue);
 		} else {
 			networkUsage.appendChild(document.createTextNode('N/A'));
 		}
