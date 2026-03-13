@@ -633,7 +633,6 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 	LEFT JOIN checkout_log ON locations.tagnumber = checkout_log.tagnumber AND checkout_log.log_entry_time IN (SELECT MAX(log_entry_time) FROM checkout_log WHERE log_entry_time IS NOT NULL GROUP BY tagnumber)
 	LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 	LEFT JOIN client_images ON locations.tagnumber = client_images.tagnumber
-	LEFT JOIN static_device_types ON hardware_data.system_model = static_device_types.system_model
 	LEFT JOIN most_recent_device_type ON hardware_data.tagnumber = most_recent_device_type.tagnumber
 	WHERE (locations.tagnumber = $1 OR locations.system_serial = $2)
 	ORDER BY locations.time DESC NULLS LAST
