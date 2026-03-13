@@ -107,7 +107,8 @@ type AppState struct {
 }
 
 var (
-	appStateInstance atomic.Pointer[AppState]
+	appStateInstance      atomic.Pointer[AppState]
+	LiveImageMissingError = errors.New("live image not found for the given tag, please insert live image first")
 )
 
 type levelRangeHandler struct {
@@ -788,7 +789,7 @@ func GetLiveImage(tag int64) ([]byte, error) {
 	}
 	val, ok := as.LiveImageMap.Load(tag)
 	if !ok {
-		return nil, fmt.Errorf("tag not found, please insert live image first")
+		return nil, LiveImageMissingError
 	}
 	liveImage, ok := val.([]byte)
 	if !ok {

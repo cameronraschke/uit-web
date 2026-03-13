@@ -1001,7 +1001,11 @@ func DownloadLiveImage(w http.ResponseWriter, req *http.Request) {
 	imageBytes, err := config.GetLiveImage(*tag)
 	if err != nil {
 		log.Warn("Error getting live image: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		if errors.Is(err, config.LiveImageMissingError) {
+			middleware.WriteJsonError(w, http.StatusNotFound)
+		} else {
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+		}
 		return
 	}
 	if len(imageBytes) == 0 {
