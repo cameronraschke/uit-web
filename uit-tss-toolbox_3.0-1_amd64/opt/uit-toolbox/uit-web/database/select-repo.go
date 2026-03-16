@@ -59,8 +59,8 @@ func NewSelectRepo() (Select, error) {
 var _ Select = (*SelectRepo)(nil)
 
 func (repo *SelectRepo) GetAllTags(ctx context.Context) ([]int64, error) {
-	const sqlQuery = `SELECT tagnumber FROM (SELECT tagnumber, time, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC) AS
-		row_nums FROM locations WHERE tagnumber IS NOT NULL) t1 WHERE t1.row_nums = 1 ORDER BY t1.time DESC;`
+	const sqlQuery = `SELECT tagnumber FROM (SELECT tagnumber, time, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC NULLS LAST) AS
+		row_nums FROM locations WHERE tagnumber IS NOT NULL) t1 WHERE t1.row_nums = 1 ORDER BY t1.time DESC NULLS LAST;`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
@@ -522,12 +522,12 @@ func (repo *SelectRepo) GetDashboardInventorySummary(ctx context.Context) ([]typ
 	const sqlQuery = `WITH latest_locations AS (
 		SELECT DISTINCT ON (locations.tagnumber) locations.tagnumber, locations.department_name
 		FROM locations
-		ORDER BY locations.tagnumber, locations.time DESC
+		ORDER BY locations.tagnumber, locations.time DESC NULLS LAST
 	),
 	latest_checkouts AS (
 		SELECT DISTINCT ON (checkout_log.tagnumber) checkout_log.tagnumber, checkout_log.checkout_date, checkout_log.return_date
 		FROM checkout_log
-		ORDER BY checkout_log.tagnumber, checkout_log.log_entry_time DESC
+		ORDER BY checkout_log.tagnumber, checkout_log.log_entry_time DESC NULLS LAST
 	),
 	systems AS (
 		SELECT hardware_data.tagnumber, hardware_data.system_model
@@ -610,9 +610,9 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 			WHERE 
 				(hardware_data.tagnumber = $1 OR hardware_data.system_serial = $2)
 			ORDER BY 
-				hardware_data.time DESC 
+				hardware_data.time DESC NULLS LAST
 			LIMIT 1) 
-			AND hardware_data.device_type IS NOT NULL ORDER BY time DESC limit 1
+			AND hardware_data.device_type IS NOT NULL ORDER BY time DESC NULLS LAST LIMIT 1
 	)
 	SELECT 
 		locations.time, 
@@ -836,7 +836,7 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 				($11 = TRUE AND EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber))
 				OR ($11 = FALSE AND NOT EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber)))
 			)
-		ORDER BY locations.time DESC;`
+		ORDER BY locations.time DESC NULLS LAST;`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery,
 		ptrToNullInt64(filterOptions.Tagnumber),
@@ -938,14 +938,14 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		FROM locations
 		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status
 		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
-		ORDER BY locations.tagnumber, locations.time DESC),
+		ORDER BY locations.tagnumber, locations.time DESC NULLS LAST),
 	latest_historical_hardware_data AS (
 		SELECT DISTINCT ON (historical_hardware_data.tagnumber) historical_hardware_data.time, historical_hardware_data.tagnumber, 
 			historical_hardware_data.disk_type, historical_hardware_data.disk_size AS "disk_capacity",
 			historical_hardware_data.bios_version, historical_hardware_data.disk_model,
 			historical_hardware_data.battery_design_capacity, historical_hardware_data.battery_current_max_capacity
 		FROM historical_hardware_data
-		ORDER BY historical_hardware_data.tagnumber, historical_hardware_data.time DESC),
+		ORDER BY historical_hardware_data.tagnumber, historical_hardware_data.time DESC NULLS LAST),
 	latest_job AS (
 		SELECT DISTINCT ON (jobstats.tagnumber) jobstats.time, jobstats.tagnumber,
 			jobstats.erase_completed, jobstats.erase_mode, jobstats.erase_time, 
@@ -1216,7 +1216,7 @@ func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.Cli
 		current_battery_health.battery_health_pcnt,
 		historical_hardware_data.battery_current_max_capacity,
 		historical_hardware_data.battery_design_capacity
-	ORDER BY historical_hardware_data.time DESC;
+	ORDER BY historical_hardware_data.time DESC NULLS LAST;
 	`
 	var clientReports []types.ClientReport
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
@@ -1295,7 +1295,7 @@ func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocatio
 		WHERE location IS NOT NULL 
 			AND location != ''
 			AND time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-		ORDER BY tagnumber, time DESC
+		ORDER BY tagnumber, time DESC NULLS LAST
 	)
 	SELECT location, MAX(time) as time, MAX(location_count) as location_count
 	FROM latest_locations
