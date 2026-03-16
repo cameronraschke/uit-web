@@ -647,3 +647,10 @@ td > div.flex-container {
 .centered-text {
 	text-align: center;
 }
+
+.disabled {
+	user-select: none;
+	opacity: 0.5;
+	pointer-events: none;
+	/* tabindex: -1; */
+}

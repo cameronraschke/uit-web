@@ -112,17 +112,27 @@ async function fetchAllJobs(purgeCache = false): Promise<AllJobs[]> {
 
 if (updateOnlineJobQueueForm && updateOnlineJobQueueSelect && updateOnlineJobQueueButton) {
 	updateOnlineJobQueueSelect.addEventListener('change', () => {
-		updateOnlineJobQueueButton.disabled = updateOnlineJobQueueSelect.value === '';
+		if (updateOnlineJobQueueSelect.value === '') {
+			updateOnlineJobQueueButton.classList.add('disabled');
+			updateOnlineJobQueueButton.disabled = true;
+		} else {
+			updateOnlineJobQueueButton.classList.remove('disabled');
+			updateOnlineJobQueueButton.disabled = false;
+		}
 	});
 
 	updateOnlineJobQueueForm.addEventListener('submit', async (event) => {
 		event.preventDefault();
 		updateOnlineJobQueueSelect.disabled = true;
 		updateOnlineJobQueueButton.disabled = true;
+		updateOnlineJobQueueSelect.classList.add('disabled');
+		updateOnlineJobQueueButton.classList.add('disabled');
 
 		const selectedValue = updateOnlineJobQueueSelect.value;
 		if (!selectedValue) {
 			alert('Please select a valid job to queue.');
+			updateOnlineJobQueueSelect.classList.remove('disabled');
+			updateOnlineJobQueueButton.classList.remove('disabled');
 			updateOnlineJobQueueSelect.disabled = false;
 			updateOnlineJobQueueButton.disabled = false;
 			return;
@@ -159,6 +169,8 @@ if (updateOnlineJobQueueForm && updateOnlineJobQueueSelect && updateOnlineJobQue
 			console.error('Error updating all online clients with the selected job:', error);
 			alert('An error occurred while updating all online clients with the selected job.');
 		} finally {
+			updateOnlineJobQueueSelect.classList.remove('disabled');
+			updateOnlineJobQueueButton.classList.remove('disabled');
 			updateOnlineJobQueueSelect.disabled = false;
 			updateOnlineJobQueueButton.disabled = false;
 		}
@@ -267,8 +279,10 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		const tagLabel = document.createElement('p');
 		tagLabel.textContent = 'Tag: ';
 		const tagAnchor = document.createElement('a');
-		const tagURL = new URL(`/client`, window.location.origin);
+		// const tagURL = new URL(`/client`, window.location.origin);
+		const tagURL = new URL(`/inventory`, window.location.origin);
 		tagURL.searchParams.append('tagnumber', entry.tagnumber.toString());
+		tagURL.searchParams.append('update', 'true');
 		tagAnchor.href = tagURL.toString();
 		tagAnchor.target = '_blank';
 		tagAnchor.textContent = entry.tagnumber !== null ? `${entry.tagnumber.toString()}` : 'N/A';
@@ -384,28 +398,35 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		
 		const queueJobButton = document.createElement('button');
 		queueJobButton.removeEventListener('click', async () => {});
-		if (entry.job_queued || entry.job_name === "cancel") {
+		if (entry.job_queued) {
 			queueJobButton.textContent = 'Cancel Job';
 			queueJobButton.classList.add('svg-button', 'cancel');
 			jobSelect.value = entry.job_name || '';
 			jobSelect.disabled = true;
-			queueJobButton.addEventListener('click', async () => {
-				try {
-						if (entry.tagnumber === null) {
-							throw new Error('tagnumber is null');
+			jobSelect.classList.add('disabled');
+			if (entry.job_name === "cancel" || entry.job_name === "shutdown") {
+				queueJobButton.disabled = true;
+				queueJobButton.classList.add('disabled');
+			} else {
+				queueJobButton.addEventListener('click', async () => {
+					try {
+							if (entry.tagnumber === null) {
+								throw new Error('tagnumber is null');
+							}
+							await updateClientJob(entry.tagnumber, "cancel");
+						} catch (error) {
+							console.error('Error canceling job:', error);
+							alert('An error occurred while canceling the job. Please try again.');
+						} finally {
+							await initializeJobQueuePage();
 						}
-						await updateClientJob(entry.tagnumber, "cancel");
-					} catch (error) {
-						console.error('Error canceling job:', error);
-						alert('An error occurred while canceling the job. Please try again.');
-					} finally {
-						await initializeJobQueuePage();
-					}
-				});
+					});
+			}
 		} else {
 			queueJobButton.textContent = 'Queue Job';
 			queueJobButton.classList.remove('svg-button', 'cancel');
 			jobSelect.disabled = false;
+			jobSelect.classList.remove('disabled');
 			queueJobButton.addEventListener('click', async () => {
 				if (!jobSelect.value) {
 					alert('Please select a job to queue.');
