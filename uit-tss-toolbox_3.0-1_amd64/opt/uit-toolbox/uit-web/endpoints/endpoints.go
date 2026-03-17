@@ -50,43 +50,54 @@ func ValidateAuthFormInputSHA256(username string, password string) error {
 	return nil
 }
 
-func CheckAuthCredentials(ctx context.Context, username string, password string) (bool, error) {
+func CheckAuthCredentials(ctx context.Context, username string, password string, twoFactorCode string) (bool, error) {
 	username = strings.TrimSpace(username)
 	password = strings.TrimSpace(password)
-	if utf8.RuneCountInString(username) == 0 || utf8.RuneCountInString(password) == 0 {
-		return false, fmt.Errorf("username or password is empty")
-	}
+	twoFactorCode = strings.TrimSpace(twoFactorCode)
 
 	selectRepo, err := database.NewSelectRepo()
 	if err != nil {
 		return false, fmt.Errorf("cannot create select repo: %w", err)
 	}
-	usernameExists, dbPassword, err := selectRepo.CheckAuthCredentials(ctx, &username, &password)
-	if err != nil || !usernameExists || dbPassword == nil {
-		if errors.Is(err, sql.ErrNoRows) { // timing attacks
-			buffer1 := make([]byte, mathrand.Intn(32)+32)
-			_, _ = rand.Read(buffer1)
-			buffer2 := make([]byte, mathrand.Intn(32)+32)
-			_, _ = rand.Read(buffer2)
-			pass1, err := bcrypt.GenerateFromPassword(buffer1, bcrypt.DefaultCost)
-			if err != nil {
-				return false, fmt.Errorf("error generating bcrypt hash #1 for timing attack: %w", err)
-			}
-			pass2, err := bcrypt.GenerateFromPassword(buffer2, bcrypt.DefaultCost)
-			if err != nil {
-				return false, fmt.Errorf("error generating bcrypt hash #2 for timing attack: %w", err)
-			}
-			bcrypt.CompareHashAndPassword(pass1, pass2)
-			return false, fmt.Errorf("invalid username or password")
-		}
-		return false, fmt.Errorf("query error: %w", err)
-	}
 
-	// Compare plaintext password versus stored bcrypt
-	if err := bcrypt.CompareHashAndPassword([]byte(*dbPassword), []byte(password)); err != nil {
-		return false, fmt.Errorf("invalid password: %w", err)
+	if utf8.RuneCountInString(twoFactorCode) > 0 {
+		dbCode, err := selectRepo.CheckTwoFactorCode(ctx, &twoFactorCode)
+		if err != nil {
+			return false, fmt.Errorf("database error checking two-factor code: %w", err)
+		}
+		if dbCode == "" {
+			return false, fmt.Errorf("invalid two-factor code")
+		}
+		return true, nil
+	} else if utf8.RuneCountInString(username) > 0 && utf8.RuneCountInString(password) > 0 {
+		usernameExists, dbPassword, err := selectRepo.CheckAuthCredentials(ctx, &username, &password)
+		if err != nil || !usernameExists || dbPassword == nil {
+			if errors.Is(err, sql.ErrNoRows) { // timing attacks
+				buffer1 := make([]byte, mathrand.Intn(32)+32)
+				_, _ = rand.Read(buffer1)
+				buffer2 := make([]byte, mathrand.Intn(32)+32)
+				_, _ = rand.Read(buffer2)
+				pass1, err := bcrypt.GenerateFromPassword(buffer1, bcrypt.DefaultCost)
+				if err != nil {
+					return false, fmt.Errorf("error generating bcrypt hash #1 for timing attack: %w", err)
+				}
+				pass2, err := bcrypt.GenerateFromPassword(buffer2, bcrypt.DefaultCost)
+				if err != nil {
+					return false, fmt.Errorf("error generating bcrypt hash #2 for timing attack: %w", err)
+				}
+				bcrypt.CompareHashAndPassword(pass1, pass2)
+				return false, fmt.Errorf("invalid username or password")
+			}
+			return false, fmt.Errorf("query error: %w", err)
+		}
+
+		// Compare plaintext password versus stored bcrypt
+		if err := bcrypt.CompareHashAndPassword([]byte(*dbPassword), []byte(password)); err != nil {
+			return false, fmt.Errorf("invalid password: %w", err)
+		}
+		return true, nil
 	}
-	return true, nil
+	return false, fmt.Errorf("username and password cannot be empty")
 }
 
 func FileServerHandler(w http.ResponseWriter, req *http.Request) {

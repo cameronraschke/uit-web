@@ -90,14 +90,16 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Validate input data
-	if err := ValidateAuthFormInputSHA256(clientFormAuthData.Username, clientFormAuthData.Password); err != nil {
-		log.Warn("Invalid username/password input: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
+	if utf8.RuneCountInString(clientFormAuthData.Username) != 0 || utf8.RuneCountInString(clientFormAuthData.Password) != 0 {
+		if err := ValidateAuthFormInputSHA256(clientFormAuthData.Username, clientFormAuthData.Password); err != nil {
+			log.Warn("Invalid username/password input: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
 	}
 
 	// Authenticate with bcrypt
-	authenticated, err := CheckAuthCredentials(ctx, clientFormAuthData.Username, clientFormAuthData.Password)
+	authenticated, err := CheckAuthCredentials(ctx, clientFormAuthData.Username, clientFormAuthData.Password, clientFormAuthData.TwoFactorCode)
 	if err != nil || !authenticated {
 		log.Info("Authentication failed: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusUnauthorized)

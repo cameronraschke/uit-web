@@ -15,6 +15,7 @@ type Select interface {
 	GetDepartments(ctx context.Context) ([]types.Department, error)
 	GetDomains(ctx context.Context) ([]types.Domain, error)
 	GetManufacturersAndModels(ctx context.Context) ([]types.ManufacturersAndModels, error)
+	CheckTwoFactorCode(ctx context.Context, twoFactorCode *string) (string, error)
 	CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error)
 	ClientLookupByTag(ctx context.Context, tag *int64) (*types.ClientLookup, error)
 	ClientLookupBySerial(ctx context.Context, serial *string) (*types.ClientLookup, error)
@@ -226,6 +227,29 @@ func (repo *SelectRepo) GetManufacturersAndModels(ctx context.Context) ([]types.
 	}
 
 	return manufacturersAndModels, nil
+}
+
+func (repo *SelectRepo) CheckTwoFactorCode(ctx context.Context, twoFactorCode *string) (string, error) {
+	if twoFactorCode == nil || strings.TrimSpace(*twoFactorCode) == "" {
+		return "", fmt.Errorf("twoFactorCode is empty")
+	}
+
+	if ctx.Err() != nil {
+		return "", fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	const sqlQuery = `SELECT two_factor_code FROM logins WHERE two_factor_code = $1 LIMIT 1;`
+
+	var dbCode string
+	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullString(twoFactorCode))
+	if err := row.Scan(&dbCode); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+		return "", fmt.Errorf("error during row scan: %w", err)
+	}
+
+	return dbCode, nil
 }
 
 func (repo *SelectRepo) CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error) {
