@@ -594,7 +594,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 
 	const sqlQuery = `WITH files AS
 	(
-		SELECT tagnumber, COUNT(client_images.tagnumber) AS file_count from client_images WHERE hidden = FALSE
+		SELECT tagnumber, COUNT(client_images.tagnumber) AS file_count from client_images WHERE hidden = FALSE GROUP BY tagnumber
 	),
 	default_system_model AS (
 		SELECT 
@@ -603,16 +603,19 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 			hardware_data 
 		WHERE 
 			hardware_data.system_model = 
-			(SELECT 
-				hardware_data.system_model 
-			FROM 
-				hardware_data 
-			WHERE 
-				hardware_data.system_model IS NOT NULL
-			ORDER BY 
-				hardware_data.time DESC NULLS LAST
-			LIMIT 1) 
-			AND hardware_data.device_type IS NOT NULL ORDER BY time DESC NULLS LAST LIMIT 1
+				(SELECT 
+					hardware_data.system_model 
+				FROM 
+					hardware_data 
+				WHERE 
+					hardware_data.system_model IS NOT NULL
+				ORDER BY 
+					hardware_data.time DESC NULLS LAST
+				LIMIT 1) 
+			AND hardware_data.device_type IS NOT NULL 
+			GROUP BY hardware_data.tagnumber, hardware_data.device_type
+			ORDER BY hardware_data.time DESC NULLS LAST 
+			LIMIT 1
 	)
 	SELECT 
 		locations.time, 
@@ -646,6 +649,31 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 	LEFT JOIN client_images ON locations.tagnumber = client_images.tagnumber
 	LEFT JOIN default_system_model ON locations.tagnumber = default_system_model.tagnumber
 	WHERE (locations.tagnumber = $1 OR locations.system_serial = $2)
+	GROUP BY 
+		locations.time,
+		locations.tagnumber,
+		locations.system_serial,
+		locations.location,
+		locations.building,
+		locations.room,
+		hardware_data.system_manufacturer,
+		hardware_data.system_model,
+		device_type,
+		locations.department_name,
+		locations.ad_domain,
+		locations.property_custodian,
+		locations.acquired_date,
+		locations.retired_date,
+		locations.is_broken,
+		locations.disk_removed,
+		client_health.last_hardware_check,
+		locations.client_status,
+		checkout_log.checkout_date,
+		checkout_log.return_date,
+		locations.note,
+		COALESCE(files.file_count, 0) AS file_count,
+		files.tagnumber,
+		client_images.tagnumber
 	ORDER BY locations.time DESC NULLS LAST
 	LIMIT 1;`
 	row := repo.DB.QueryRowContext(ctx, sqlQuery,
