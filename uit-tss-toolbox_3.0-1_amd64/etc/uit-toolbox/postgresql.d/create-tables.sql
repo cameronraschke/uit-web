@@ -612,20 +612,26 @@ CREATE TABLE IF NOT EXISTS checkout_log (
 -- ;
 
 CREATE TABLE IF NOT EXISTS static_client_statuses (
-    status VARCHAR(24) PRIMARY KEY,
-    status_formatted VARCHAR(36) DEFAULT NULL,
-    sort_order SMALLINT DEFAULT NULL
+	status VARCHAR(24) PRIMARY KEY,
+	status_formatted VARCHAR(36) DEFAULT NULL,
+	sort_order SMALLINT DEFAULT NULL,
+	status_type VARCHAR(24) DEFAULT NULL
 );
 
-INSERT INTO static_client_statuses (status, status_formatted, sort_order) VALUES
-  ('in-use', 'In Use', 10),
-  ('available', 'Available', 20),
-  ('needs-imaging', 'Needs Imaging', 30),
-  ('reserved-for-checkout', 'Reserved for Checkout', 40),
-  ('checked-out', 'Checked Out', 50),
-  ('storage', 'Storage', 60),
-  ('needs-repair', 'Needs Repair', 70),
-  ('retired', 'Retired', 80),
-  ('lost', 'Lost/Stolen', 90),
-  ('other', 'Other', 100) ON CONFLICT (status) DO NOTHING
-  ;
+INSERT INTO 
+	static_client_statuses (status, status_formatted, sort_order, status_type) 
+VALUES
+	('in-use', 'In Use', 10, 'Availability'),
+	('needs-imaging', 'Needs Erasing/Imaging', 20, 'Preparation'),
+	('needs-to-join-domain', 'Needs to Join Domain', 25, 'Preparation'),
+	('available', 'Available For Use/Checkout', 30, 'Availability'),
+	('reserved-for-checkout', 'Reserved for Checkout', 40, 'Availability'),
+	('checked-out', 'Checked Out', 50, 'Availability'),
+	('storage', 'In Storage', 60, 'Availability'),
+	('needs-repair', 'Needs Repair', 70, 'Maintenance'),
+	('retired', 'Retired', 80, 'Possession'),
+	('lost', 'Lost/Stolen', 90, 'Possession'),
+	('other', 'Other', 100, 'Other')
+ON CONFLICT (status) DO UPDATE
+	SET status_formatted = EXCLUDED.status_formatted, sort_order = EXCLUDED.sort_order, status_type = EXCLUDED.status_type
+;

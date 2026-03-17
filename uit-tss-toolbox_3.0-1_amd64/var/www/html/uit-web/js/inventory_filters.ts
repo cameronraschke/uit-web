@@ -461,9 +461,7 @@ async function populateStatusSelect(el: HTMLSelectElement, purgeCache: boolean =
 		}
 
 		statusData.sort((a, b) => {
-			if (a.status && a.status === 'other') return 1;
-			if (b.status && b.status === 'other') return -1;
-			return (a.status_formatted || a.status).localeCompare(b.status_formatted || b.status);
+			return a.sort_order - b.sort_order;
 		});
 
 		resetSelectElement(el, 'Status', false, undefined);
