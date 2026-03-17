@@ -34,7 +34,7 @@ type Select interface {
 	GetClientBatteryReport(ctx context.Context) ([]types.ClientReport, error)
 	GetAllJobs(ctx context.Context) ([]types.AllJobs, error)
 	GetAllLocations(ctx context.Context) ([]types.AllLocations, error)
-	GetAllStatuses(ctx context.Context) ([]map[string]types.ClientStatus, error)
+	GetAllStatuses(ctx context.Context) (map[string][]types.ClientStatus, error)
 	GetAllDeviceTypes(ctx context.Context) ([]types.DeviceType, error)
 	GetClientHardwareOverview(ctx context.Context, tag int64) ([]types.ClientHardwareView, error)
 	GetJobQueuePosition(ctx context.Context, tag int64) (int64, error)
@@ -1361,7 +1361,7 @@ func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocatio
 	return allLocations, nil
 }
 
-func (repo *SelectRepo) GetAllStatuses(ctx context.Context) ([]map[string]types.ClientStatus, error) {
+func (repo *SelectRepo) GetAllStatuses(ctx context.Context) (map[string][]types.ClientStatus, error) {
 	const sqlQuery = `SELECT status, status_formatted, sort_order, status_type FROM static_client_statuses ORDER BY sort_order;`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
@@ -1392,11 +1392,11 @@ func (repo *SelectRepo) GetAllStatuses(ctx context.Context) ([]map[string]types.
 	if len(allStatuses) == 0 {
 		return nil, nil
 	}
-	statusMap := make(map[string]types.ClientStatus)
+	statusMap := make(map[string][]types.ClientStatus)
 	for _, status := range allStatuses {
-		statusMap[status.Status] = status
+		statusMap[status.StatusType] = append(statusMap[status.StatusType], status)
 	}
-	return []map[string]types.ClientStatus{statusMap}, nil
+	return statusMap, nil
 }
 
 func (repo *SelectRepo) GetAllDeviceTypes(ctx context.Context) ([]types.DeviceType, error) {

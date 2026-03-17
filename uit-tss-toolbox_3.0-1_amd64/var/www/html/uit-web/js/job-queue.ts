@@ -180,10 +180,12 @@ if (updateOnlineJobQueueForm && updateOnlineJobQueueSelect && updateOnlineJobQue
 document.addEventListener('visibilitychange', () => {
 	clearInterval(jobQueueInterval);
 	if (document.visibilityState === 'visible') {
-		fetchJobQueueData();
-		jobQueueInterval = setInterval(() => {
-			fetchJobQueueData();
-		}, 10000);
+		const updateJobQueue = async () => {
+			const jobTable = await fetchJobQueueData();
+			await renderJobQueueTable(jobTable);
+		};
+		updateJobQueue();
+		jobQueueInterval = setInterval(updateJobQueue, 10000);
 	}
 });
 
@@ -276,8 +278,9 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 			brokenClient.appendChild(document.createTextNode('[Broken Client]'));
 			clientIdentifiers.appendChild(brokenClient);
 		}
-		const tagLabel = document.createElement('p');
-		tagLabel.textContent = 'Tag: ';
+		const tagAndSerialDiv = document.createElement('div');
+		tagAndSerialDiv.classList.add('flex-container', 'horizontal');
+		tagAndSerialDiv.style.justifyContent = 'center';
 		const tagAnchor = document.createElement('a');
 		// const tagURL = new URL(`/client`, window.location.origin);
 		const tagURL = new URL(`/inventory`, window.location.origin);
@@ -286,14 +289,25 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		tagAnchor.href = tagURL.toString();
 		tagAnchor.target = '_blank';
 		tagAnchor.textContent = entry.tagnumber !== null ? `${entry.tagnumber.toString()}` : 'N/A';
-		tagLabel.appendChild(tagAnchor);
-		clientIdentifiers.appendChild(tagLabel);
+		tagAnchor.style.borderRight = '1px solid black';
+		tagAnchor.style.paddingRight = '1rem';
+		tagAndSerialDiv.appendChild(tagAnchor);
 		const serialNumber = document.createElement('p');
-		serialNumber.textContent = `Serial: ${entry.system_serial || 'N/A'}`;
-		clientIdentifiers.appendChild(serialNumber);
+		serialNumber.textContent = `${entry.system_serial || 'N/A'}`;
+		serialNumber.style.borderLeft = '1px solid black';
+		serialNumber.style.paddingLeft = '1rem';
+		tagAndSerialDiv.appendChild(serialNumber);
+		clientIdentifiers.appendChild(tagAndSerialDiv);
+
+		const manufacturerModelDiv = document.createElement('div');
+		manufacturerModelDiv.classList.add('flex-container', 'horizontal');
+		manufacturerModelDiv.style.justifyContent = 'center';
 		const manufacturerModel = document.createElement('p');
-		manufacturerModel.textContent = `Manufacturer/Model: ${entry.system_manufacturer || 'N/A'} - ${entry.system_model || 'N/A'}`;
-		clientIdentifiers.appendChild(manufacturerModel);
+		manufacturerModel.classList.add('smaller-text')
+		manufacturerModel.textContent = `${entry.system_manufacturer || 'N/A'} | ${entry.system_model || 'N/A'}`;
+		manufacturerModelDiv.appendChild(manufacturerModel);
+		clientIdentifiers.appendChild(manufacturerModelDiv);
+
 		const location = document.createElement('p');
 		location.textContent = `Location: ${entry.location || 'N/A'}`;
 		clientIdentifiers.appendChild(location);
@@ -346,19 +360,19 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 			systemUptime.textContent = 'Uptime: N/A';
 		}
 		liveViewContainer.appendChild(systemUptime);
-		const lastHeard = document.createElement('p');
-		lastHeard.appendChild(document.createTextNode('Last Heard: '));
-		if (entry.last_heard) {
-			if (entry.online) {
-				const secondsSinceLastHeard = Math.floor((Date.now() - new Date(entry.last_heard).getTime()) / 1000);
-				lastHeard.appendChild(document.createTextNode(secondsSinceLastHeard.toString() + "s ago"));
-			} else {
-				lastHeard.appendChild(document.createTextNode(new Date(entry.last_heard).toLocaleString()));
-			}
-		} else {
-			lastHeard.appendChild(document.createTextNode('N/A'));
-		}
-		liveViewContainer.appendChild(lastHeard);
+		// const lastHeard = document.createElement('p');
+		// lastHeard.appendChild(document.createTextNode('Last Heard: '));
+		// if (entry.last_heard) {
+		// 	if (entry.online) {
+		// 		const secondsSinceLastHeard = Math.floor((Date.now() - new Date(entry.last_heard).getTime()) / 1000);
+		// 		lastHeard.appendChild(document.createTextNode(secondsSinceLastHeard.toString() + "s ago"));
+		// 	} else {
+		// 		lastHeard.appendChild(document.createTextNode(new Date(entry.last_heard).toLocaleString()));
+		// 	}
+		// } else {
+		// 	lastHeard.appendChild(document.createTextNode('N/A'));
+		// }
+		// liveViewContainer.appendChild(lastHeard);
 		clientEntryContainer.appendChild(clientGridContainer);
 
 		// Job info

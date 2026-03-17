@@ -21,15 +21,16 @@ type ManufacturerAndModelsCache = {
 	manufacturers_and_models: ManufacturersAndModels[];
 };
 
-type Status = {
-	status: string;
-	status_formatted: string;
-	sort_order: number;
+type Statuses = {
+	status: string,
+	status_formatted: string,
+	status_sort_order: number,
+	status_type: string;
 };
 
 type StatusCache = {
 	timestamp: number;
-	statuses: Status[];
+	statuses: Record<string, Statuses[]>;
 }
 
 type AdvSearchFilterParams = {
@@ -419,19 +420,19 @@ async function populateDepartmentSelect(el: HTMLSelectElement, purgeCache: boole
 	}
 }
 
-async function fetchStatuses(purgeCache: boolean = false): Promise<Array<Status> | []> {
+async function fetchStatuses(purgeCache: boolean = false): Promise<Record<string, Statuses[]> | null> {
 	const cached = sessionStorage.getItem("uit_statuses");
 
 	try {
 		if (cached && !purgeCache) {
 			const cacheEntry: StatusCache = JSON.parse(cached);
-			if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.statuses)) {
+			if (Date.now() - cacheEntry.timestamp < 300000 && cacheEntry.statuses) {
 				console.log("Loaded statuses from cache");
 				return cacheEntry.statuses;
 			}
 		}
-		const data: Array<Status> = await fetchData('/api/overview/all_statuses');
-		if (!data || !Array.isArray(data) || data.length === 0) {
+		const data: Record<string, Statuses[]> = await fetchData('/api/overview/all_statuses');
+		if (!data || Object.keys(data).length === 0) {
 			throw new Error('No data returned from /api/overview/all_statuses');
 		}
 		const cacheEntry: StatusCache = {
@@ -443,7 +444,7 @@ async function fetchStatuses(purgeCache: boolean = false): Promise<Array<Status>
 		return data;
 	} catch (error) {
 		console.error('Error fetching statuses:', error);
-		return [];
+		return null;
 	}
 }
 
@@ -455,25 +456,41 @@ async function populateStatusSelect(el: HTMLSelectElement, purgeCache: boolean =
 	el.disabled = true;
 
 	try {
-		const statusData: Array<Status> = await fetchStatuses(purgeCache);
-		if (!statusData || !Array.isArray(statusData) || statusData.length === 0) {
+		const statusMap = await fetchStatuses(purgeCache);
+		if (!statusMap || Object.keys(statusMap).length === 0) {
 			throw new Error('No data returned from /api/statuses');
 		}
 
-		statusData.sort((a, b) => {
-			return a.sort_order - b.sort_order;
-		});
-
 		resetSelectElement(el, 'Status', false, undefined);
 
+		let hasInitialValue = false;
+		const sortedKeys = Object.keys(statusMap).sort((a, b) => {
+			if (a === 'Other') return 1;
+			if (b === 'Other') return -1;
+			return a.localeCompare(b);
+		});
 
-		for (const status of statusData) {
-			const option = document.createElement('option');
-			option.value = status.status;
-			option.textContent = status.status_formatted || status.status;
-			el.appendChild(option);
+		for (const key of sortedKeys) {
+			const statuses = statusMap[key];
+			statuses.sort((a, b) => a.status_sort_order - b.status_sort_order);
+
+			const optGroup = document.createElement('optgroup');
+			optGroup.label = key;
+			el.appendChild(optGroup);
+
+			for (const status of statuses) {
+				const option = document.createElement('option');
+				option.value = status.status;
+				option.textContent = status.status_formatted || status.status;
+				optGroup.appendChild(option);
+
+				if (initialValue && (initialValue === status.status || initialValue === status.status_formatted)) {
+					hasInitialValue = true;
+				}
+			}
 		}
-		el.value = (initialValue && statusData.some(item => initialValue === item.status || initialValue === item.status_formatted)) ? initialValue : '';
+		
+		el.value = hasInitialValue ? initialValue : '';
 	} catch (error) {
 		console.error('Error fetching statuses:', error);
 	} finally {

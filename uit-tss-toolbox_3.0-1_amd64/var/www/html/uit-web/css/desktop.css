@@ -447,6 +447,13 @@ td > div.flex-container {
 	width: 100%;
 }
 
+.flex-container.horizontal.separated {
+	border-bottom: var(--border-width) solid var(--default-border-color);
+	margin-top: 1rem;
+	margin-bottom: 3rem;
+	padding-bottom: 1rem;
+}
+
 .flex-container.horizontal label {
 	align-self: flex-start;
 	min-width: fit-content;
@@ -643,6 +650,7 @@ td > div.flex-container {
 }
 
 .smaller-text {
+	margin: 0;
 	font-size: var(--font-size-smaller);
 }
 
