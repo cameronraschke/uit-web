@@ -70,7 +70,7 @@
 							<button type="button" id="show-property-data">Property/Checkouts</button>
 							<button type="button" id="show-notes-files-data">Notes/Media</button>
 						</div>
-						<div id="inventory-form-container" class="grid-container inventory inventory-update-form">
+						<div id="inventory-form-container" class="flex-container horizontal">
 							<div class="flex-container vertical separated" data-location-part>
 								<div class="flex-container vertical">
 									<label class="required-field" for="location">Location: </label>
@@ -212,9 +212,6 @@
 									</select>
 								</div>
 								<div id="print-checkout-container" class="flex-container horizontal"><a id="print-checkout-link"></a></div>
-							</div>
-								
-							<div class="flex-container vertical separated" data-note-files-part>
 								<div class="flex-container vertical">
 									<label for="note">Notes:</label>
 									<textarea id="note" name="note" placeholder="Enter notes..." maxlength="1024" rows="6" cols="50"></textarea>

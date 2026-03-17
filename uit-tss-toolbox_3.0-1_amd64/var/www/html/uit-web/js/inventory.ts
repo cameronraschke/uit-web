@@ -1168,10 +1168,10 @@ clientLookupForm.addEventListener("submit", async (event) => {
 });
 
 document.addEventListener("DOMContentLoaded", async () => {
-	updateFormContainerDisplay();
-	window.addEventListener("resize", () => {
-		updateFormContainerDisplay();
-	});
+	// updateFormContainerDisplay();
+	// window.addEventListener("resize", () => {
+	// 	updateFormContainerDisplay();
+	// });
 	
 	try {
 		await initializeInventoryPage();
@@ -1235,12 +1235,12 @@ locationEl.addEventListener("keyup", async () => {
 	});
 });
 
-function updateFormContainerDisplay() {
-	if (window.matchMedia("(max-width: 768px)").matches) {
-		updateFormContainer.classList.remove("grid-container", "inventory", "inventory-update-form");
-		updateFormContainer.classList.add("flex-container", "horizontal");
-	} else {
-		updateFormContainer.classList.remove("flex-container", "horizontal");
-		updateFormContainer.classList.add("grid-container", "inventory", "inventory-update-form");
-	}
-}
+// function updateFormContainerDisplay() {
+// 	if (window.matchMedia("(max-width: 768px)").matches) {
+// 		updateFormContainer.classList.remove("grid-container", "inventory", "inventory-update-form");
+// 		updateFormContainer.classList.add("flex-container", "horizontal");
+// 	} else {
+// 		updateFormContainer.classList.remove("flex-container", "horizontal");
+// 		updateFormContainer.classList.add("grid-container", "inventory", "inventory-update-form");
+// 	}
+// }

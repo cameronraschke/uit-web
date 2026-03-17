@@ -437,6 +437,9 @@ td > div.flex-container {
 
 .flex-container.vertical.separated {
 	border-bottom: var(--border-width) solid var(--default-border-color);
+	margin-top: 1rem;
+	margin-bottom: 3rem;
+	padding-bottom: 1rem;
 }
 
 .flex-container.horizontal {
