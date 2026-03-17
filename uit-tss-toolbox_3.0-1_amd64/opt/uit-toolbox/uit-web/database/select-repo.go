@@ -614,7 +614,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 				LIMIT 1) 
 			AND hardware_data.device_type IS NOT NULL 
 			GROUP BY hardware_data.tagnumber, hardware_data.device_type
-			ORDER BY hardware_data.time DESC NULLS LAST 
+			ORDER BY MAX(hardware_data.time) DESC NULLS LAST 
 			LIMIT 1
 	)
 	SELECT 
@@ -639,7 +639,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		checkout_log.checkout_date,
 		checkout_log.return_date,
 		locations.note,
-		COALESCE(files.file_count, 0) AS file_count
+		COALESCE(files.file_count, 0) AS "file_count"
 	FROM locations
 	LEFT JOIN files ON locations.tagnumber = files.tagnumber
 	LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber
@@ -658,7 +658,8 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		locations.room,
 		hardware_data.system_manufacturer,
 		hardware_data.system_model,
-		device_type,
+		hardware_data.device_type,
+		default_system_model.device_type,
 		locations.department_name,
 		locations.ad_domain,
 		locations.property_custodian,
@@ -671,7 +672,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		checkout_log.checkout_date,
 		checkout_log.return_date,
 		locations.note,
-		COALESCE(files.file_count, 0) AS file_count,
+		COALESCE(files.file_count, 0),
 		files.tagnumber,
 		client_images.tagnumber
 	ORDER BY locations.time DESC NULLS LAST
