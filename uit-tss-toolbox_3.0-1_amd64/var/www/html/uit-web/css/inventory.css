@@ -51,3 +51,7 @@
 	justify-content: flex-start;
 	gap: 1rem;
 }
+
+[data-location-part], [data-hardware-part], [data-software-part], [data-property-part], [data-note-files-part] {
+	display: none;
+}

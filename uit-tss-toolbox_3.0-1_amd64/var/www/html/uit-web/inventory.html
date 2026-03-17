@@ -71,8 +71,7 @@
 							<button type="button" id="show-notes-files-data">Notes/Media</button>
 						</div>
 						<div id="inventory-form-container" class="grid-container inventory inventory-update-form">
-							<div class="flex-container vertical separated">
-								<div class="flex-container horizontal"><p>Location</p></div>
+							<div class="flex-container vertical separated" data-location-part>
 								<div class="flex-container vertical">
 									<label class="required-field" for="location">Location: </label>
 									<datalist id="location-suggestions"></datalist>
@@ -84,6 +83,12 @@
 										autocapitalize="on"
 										list="location-suggestions" />
 								</div>
+								<div class="flex-container vertical">
+									<label class="required-field" for="department_name">Department: </label>
+									<select id="department_name" name="department_name"></select>
+								</div>
+							</div>
+							<div class="flex-container vertical separated" data-location-part>
 								<div class="flex-container vertical">
 									<label for="building">Building: </label>
 									<input type="text" id="building" name="building"
@@ -104,8 +109,7 @@
 								</div>
 							</div>
 
-							<div class="flex-container vertical separated">
-								<div class="flex-container horizontal"><p>Hardware Data: </p></div>
+							<div class="flex-container vertical separated" data-hardware-part>
 								<div class="flex-container vertical">
 									<label for="manufacturer">Manufacturer: </label>
 									<input type="text" id="system_manufacturer" name="system_manufacturer"
@@ -130,42 +134,7 @@
 								</div>
 							</div>
 
-							<div class="flex-container vertical separated">
-								<div class="flex-container horizontal"><p>Group Ownership:</p></div>
-								<div class="flex-container vertical">
-									<label class="required-field" for="department_name">Department: </label>
-									<select id="department_name" name="department_name"></select>
-								</div>
-								<div class="flex-container vertical">
-									<label for="ad_domain" class="required-field">AD Domain: </label>
-									<select id="ad_domain" name="ad_domain"></select>
-								</div>
-							</div>
-
-							<div class="flex-container vertical separated">
-								<div class="flex-container horizontal"><p>Property Info:</p></div>
-								<div class="flex-container vertical">
-									<label for="property_custodian">Property Custodian</label>
-									<input type="text" id="property_custodian" name="property_custodian"
-										placeholder="Property Custodian" 
-										maxlength="64" 
-										autocomplete="off"
-										autocorrect="off"
-										autocapitalize="words" />
-								</div>
-								<div class="flex-container vertical">
-									<label for="acquired_date">Acquired Date</label>
-									<input type="date" id="acquired_date" name="acquired_date" />
-								</div>
-								<div class="flex-container vertical">
-									<label for="retired_date">Retired Date</label>
-									<input type="date" id="retired_date" name="retired_date" />
-								</div>
-							</div>
-
-
-							<div class="flex-container vertical separated">
-								<div class="flex-container horizontal"><p>Client Health</p></div>
+							<div class="flex-container vertical separated" data-hardware-part>
 								<div class="flex-container vertical">
 									<label for="is_broken">Is it Functional?</label>
 									<select id="is_broken" name="is_broken">
@@ -185,15 +154,46 @@
 								</div>
 							</div>
 
-							<div class="flex-container vertical separated">
-								<div class="flex-container horizontal"><p>Client Status:</p></div>
+							<div class="flex-container vertical separated" data-software-part>
 								<div class="flex-container vertical">
-									<label for="status" class="required-field">Overall Status: </label>
-									<select id="status" name="status">
-										<option value="" disabled selected>Select Status</option>
+									<label for="ad_domain" class="required-field">AD Domain: </label>
+									<select id="ad_domain" name="ad_domain"></select>
+								</div>
+							</div>
+							<div class="flex-container vertical separated" data-software-part>
+								<div class="flex-container vertical">
+									<label for="os_updated">OS Updated: </label>
+									<select id="os_updated" name="os_updated" disabled>
+										<option value="" selected>Placeholder</option>
 									</select>
 								</div>
-								<div id="print-checkout-container" class="flex-container horizontal"><a id="print-checkout-link"></a></div>
+							</div>
+
+							<div class="flex-container vertical separated" data-property-part>
+								<div class="flex-container vertical">
+									<label for="property_custodian">Property Custodian</label>
+									<input type="text" id="property_custodian" name="property_custodian"
+										placeholder="Property Custodian" 
+										maxlength="64" 
+										autocomplete="off"
+										autocorrect="off"
+										autocapitalize="words" />
+								</div>
+								<div class="flex-container vertical">
+									<label for="acquired_date">Acquired Date</label>
+									<input type="date" id="acquired_date" name="acquired_date" />
+								</div>
+								<div class="flex-container vertical">
+									<label for="retired_date">Retired Date</label>
+									<input type="date" id="retired_date" name="retired_date" />
+								</div>
+							</div>
+
+							<div class="flex-container vertical separated" data-property-part>
+								<div class="flex-container vertical">
+									<label for="customer_name">Customer Name: </label>
+									<input id="customer_name" name="customer_name" type="text" disabled placeholder="Placeholder">
+								</div>
 								<div class="flex-container vertical">
 									<label for="checkout_date">Checkout Date: </label>
 									<input type="date" id="checkout_date" name="checkout_date" value="" />
@@ -203,13 +203,27 @@
 									<input type="date" id="return_date" name="return_date" value="" />
 								</div>
 							</div>
+
+							<div class="flex-container vertical separated" data-note-files-part>
+								<div class="flex-container vertical">
+									<label for="status" class="required-field">Overall Status: </label>
+									<select id="status" name="status">
+										<option value="" disabled selected>Select Status</option>
+									</select>
+								</div>
+								<div id="print-checkout-container" class="flex-container horizontal"><a id="print-checkout-link"></a></div>
+							</div>
+								
+							<div class="flex-container vertical separated" data-note-files-part>
+								<div class="flex-container vertical">
+									<label for="note">Notes:</label>
+									<textarea id="note" name="note" placeholder="Enter notes..." maxlength="1024" rows="6" cols="50"></textarea>
+								</div>
+							</div>
 						<!-- Close grid -->
 						</div> 
 
-						<div class="flex-container horizontal">
-							<label for="note">Notes:</label>
-							<textarea id="note" name="note" placeholder="Enter notes..." maxlength="1024" rows="6" cols="50"></textarea>
-						</div>
+						
 
 						<div class="flex-container horizontal"><div class="message"><p id="inventory-error" class="error-message"></p></div></div>
 						<div class="flex-container horizontal form-buttons" id="inventory-update-form-buttons">

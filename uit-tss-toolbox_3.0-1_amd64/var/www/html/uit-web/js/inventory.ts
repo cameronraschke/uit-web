@@ -104,13 +104,19 @@ const submitUpdate = document.getElementById('inventory-update-submit-button') a
 const cancelUpdate = document.getElementById('inventory-update-cancel-button') as HTMLButtonElement;
 
 // Show/hide parts of form
-const showLocationForm = document.querySelector("#show-location-data") as HTMLButtonElement;
-const showHardwareForm = document.querySelector("#show-hardware-data") as HTMLButtonElement;
-const showSoftwareForm = document.querySelector("#show-software-data") as HTMLButtonElement;
-const showPropertyForm = document.querySelector("#show-property-data") as HTMLButtonElement;
-const showNotesFilesForm = document.querySelector("#show-notes-files-data") as HTMLButtonElement;
+const showLocationPart = document.querySelector("#show-location-data") as HTMLButtonElement;
+const showHardwarePart = document.querySelector("#show-hardware-data") as HTMLButtonElement;
+const showSoftwarePart = document.querySelector("#show-software-data") as HTMLButtonElement;
+const showPropertyPart = document.querySelector("#show-property-data") as HTMLButtonElement;
+const showNotesFilesPart = document.querySelector("#show-notes-files-data") as HTMLButtonElement;
 
-const locationFormShowSections = [showLocationForm, showHardwareForm, showSoftwareForm, showPropertyForm, showNotesFilesForm];
+const locationPart = document.querySelectorAll("[data-location-part]") as NodeListOf<HTMLDivElement>;
+const hardwarePart = document.querySelectorAll("[data-hardware-part]") as NodeListOf<HTMLDivElement>;
+const softwarePart = document.querySelectorAll("[data-software-part]") as NodeListOf<HTMLDivElement>;
+const propertyPart = document.querySelectorAll("[data-property-part]") as NodeListOf<HTMLDivElement>;
+const notesFilesPart = document.querySelectorAll("[data-note-files-part]") as NodeListOf<HTMLDivElement>;
+
+const locationFormShowSections = [showLocationPart, showHardwarePart, showSoftwarePart, showPropertyPart, showNotesFilesPart];
 
 const allowedFileNameRegex = /^[a-zA-Z0-9.\-_ ()]+\.(jpg|jpeg|jfif|png|mp4)$/i; // file name + extension
 const allowedFileExtensions = [".jpg", ".jpeg", ".jfif", ".png", ".mp4"];
@@ -481,6 +487,8 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		clientLookupTagInput.tabIndex = -1;
 	} else {
 		clientLookupTagInput.classList.add("empty-required-input");
+		clientLookupTagInput.classList.remove("readonly-input");
+		clientLookupTagInput.removeAttribute("tabindex");
 	}
 
 	resetInputElement(clientLookupSerial, "Enter System Serial", false, undefined);
@@ -492,6 +500,8 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		clientLookupSerial.tabIndex = -1;
 	} else {
 		clientLookupSerial.classList.add("empty-required-input");
+		clientLookupSerial.classList.remove("readonly-input");
+		clientLookupSerial.removeAttribute("tabindex");
 	}
 
 	resetInputElement(locationEl, "Enter Location", false, "empty-required-input");
@@ -636,6 +646,8 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				clientLookupTagInput.tabIndex = -1;
 			} else {
 				clientLookupTagInput.classList.add("empty-required-input");
+				clientLookupTagInput.classList.remove("readonly-input");
+				clientLookupTagInput.removeAttribute("tabindex");
 			}
 
 			if (locationFormData.system_serial) {
@@ -646,6 +658,8 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				clientLookupSerial.tabIndex = -1;
 			} else {
 				clientLookupSerial.classList.add("empty-required-input");
+				clientLookupSerial.classList.remove("readonly-input");
+				clientLookupSerial.removeAttribute("tabindex");
 			}
 
 			if (locationFormData.location ) {
@@ -677,6 +691,8 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				manufacturerUpdate.tabIndex = -1;
 			} else {
 				manufacturerUpdate.classList.add("empty-input");
+				manufacturerUpdate.classList.remove("readonly-input");
+				manufacturerUpdate.removeAttribute("tabindex");
 			}
 
 			if (locationFormData.system_model) {
@@ -687,6 +703,8 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				modelUpdate.tabIndex = -1;
 			} else {
 				modelUpdate.classList.add("empty-input");
+				modelUpdate.classList.remove("readonly-input");
+				modelUpdate.removeAttribute("tabindex");
 			}
 
 			if (locationFormData.device_type) {
@@ -1135,6 +1153,17 @@ clientStatusUpdate.addEventListener("change", async () => {
 clientLookupForm.addEventListener("submit", async (event) => {
 	event.preventDefault();
 	await submitInventoryLookup();
+	if (locationPart.length) locationPart.forEach(part => part.style.display = "none");
+	if (hardwarePart.length) hardwarePart.forEach(part => part.style.display = "none");
+	if (softwarePart.length) softwarePart.forEach(part => part.style.display = "none");
+	if (propertyPart.length) propertyPart.forEach(part => part.style.display = "none");
+	if (notesFilesPart.length) notesFilesPart.forEach(part => part.style.display = "none");
+	for (const sec of locationFormShowSections) {
+		sec.classList.remove("selected");
+		sec.blur();
+	}
+	showLocationPart.classList.add("selected");
+	locationPart.forEach(part => part.style.display = "flex");
 	await updateCheckoutStatus();
 });
 
@@ -1158,19 +1187,35 @@ document.addEventListener("DOMContentLoaded", async () => {
 		const tags = (event && event.detail && Array.isArray(event.detail.tags)) ? event.detail.tags : window.allTags;
 		renderTagOptions(tags || []);
 	});
-
 	
-	showLocationForm.classList.add("selected");
+	locationPart.forEach(part => part.style.display = "flex");
+	showLocationPart.classList.add("selected");
 
-	for (const section of locationFormShowSections) {
-		section.addEventListener("click", () => {
+	for (const showSectionButton of locationFormShowSections) {
+		showSectionButton.addEventListener("click", () => {
 			for (const sec of locationFormShowSections) {
-				if (sec !== section) {
-					sec.classList.remove("selected");
-					sec.blur();
-				}
+				sec.classList.remove("selected");
+				sec.blur();
 			}
-			section.classList.toggle("selected");
+			showSectionButton.classList.add("selected");
+
+			if (locationPart.length) locationPart.forEach(part => part.style.display = "none");
+			if (hardwarePart.length) hardwarePart.forEach(part => part.style.display = "none");
+			if (softwarePart.length) softwarePart.forEach(part => part.style.display = "none");
+			if (propertyPart.length) propertyPart.forEach(part => part.style.display = "none");
+			if (notesFilesPart.length) notesFilesPart.forEach(part => part.style.display = "none");
+
+			if (showSectionButton === showLocationPart) {
+				if (locationPart.length) locationPart.forEach(part => part.style.display = "flex");
+			} else if (showSectionButton === showHardwarePart) {
+				if (hardwarePart.length) hardwarePart.forEach(part => part.style.display = "flex");
+			} else if (showSectionButton === showSoftwarePart) {
+				if (softwarePart.length) softwarePart.forEach(part => part.style.display = "flex");
+			} else if (showSectionButton === showPropertyPart) {
+				if (propertyPart.length) propertyPart.forEach(part => part.style.display = "flex");
+			} else if (showSectionButton === showNotesFilesPart) {
+				if (notesFilesPart.length) notesFilesPart.forEach(part => part.style.display = "flex");
+			}
 		});
 	}
 });

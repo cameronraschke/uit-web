@@ -594,11 +594,11 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 
 	const sqlQuery = `WITH files AS
 	(
-		SELECT COUNT(client_images.tagnumber) AS file_count from client_images WHERE hidden = FALSE AND tagnumber = $1
+		SELECT tagnumber, COUNT(client_images.tagnumber) AS file_count from client_images WHERE hidden = FALSE
 	),
 	default_system_model AS (
 		SELECT 
-			hardware_data.device_type 
+			hardware_data.tagnumber, hardware_data.device_type 
 		FROM 
 			hardware_data 
 		WHERE 
@@ -608,7 +608,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 			FROM 
 				hardware_data 
 			WHERE 
-				(hardware_data.tagnumber = $1 OR hardware_data.system_serial = $2)
+				hardware_data.system_model IS NOT NULL
 			ORDER BY 
 				hardware_data.time DESC NULLS LAST
 			LIMIT 1) 
@@ -638,13 +638,13 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		locations.note,
 		COALESCE(files.file_count, 0) AS file_count
 	FROM locations
-	CROSS JOIN files
+	LEFT JOIN files ON locations.tagnumber = files.tagnumber
 	LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber
 	LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
 	LEFT JOIN checkout_log ON locations.tagnumber = checkout_log.tagnumber AND checkout_log.log_entry_time IN (SELECT MAX(log_entry_time) FROM checkout_log WHERE log_entry_time IS NOT NULL GROUP BY tagnumber)
 	LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 	LEFT JOIN client_images ON locations.tagnumber = client_images.tagnumber
-	CROSS JOIN default_system_model
+	LEFT JOIN default_system_model ON locations.tagnumber = default_system_model.tagnumber
 	WHERE (locations.tagnumber = $1 OR locations.system_serial = $2)
 	ORDER BY locations.time DESC NULLS LAST
 	LIMIT 1;`
