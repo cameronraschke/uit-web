@@ -17,7 +17,9 @@
 	--warning-color: oklch(0.829 0.1695 87.07);
 	--error-color: red;
 	--default-border-color: black;
-	--focus-color-underline: oklch(54.56% 0.20447 264.901);
+	--focus-color: oklch(54.56% 0.20447 264.901);
+	--focus-color-lighter: oklch(54.56% 0.20447 264.901 / 0.5);
+	--focus-color-lightest: oklch(54.56% 0.20447 264.901 / 0.3);
 	--focus-border-width: 0.25rem;
 	--border-width: 1px;
 	--input-border-width: 2px;
@@ -100,15 +102,17 @@ button {
 	user-select: none;
 }
 
-button:hover {
+button:hover, button:focus {
 	background-color: var(--bg-color-darker);
 }
 
 button.submit {
 	background-color: var(--light-submit-color);
+	margin-right: 0;
+	margin-left: var(--select-element-extended-margin);
 }
 
-button.submit:hover {
+button.submit:hover, button.submit:focus {
 	background-color: var(--submit-color);
 }
 
@@ -116,13 +120,13 @@ input[type="file"] {
 	max-width: 100%;
 	color: var(--text-color);
 	padding: var(--input-padding);
+	margin: 1px;
 	border: var(--border-width) solid var(--default-border-color);
 	border-radius: var(--border-radius-text);
 	user-select: none;
 }
 
 .text-search, input:not(.text-search), select, textarea, button {
-	outline: none;
   background-color: var(--fg-color);
   padding: var(--input-padding);
   border-radius: var(--border-radius-text);
@@ -165,11 +169,7 @@ textarea.readonly-input {
 }
 
 .text-search:focus, input:not(.text-search):focus, select:focus, textarea:focus, button:focus {
-  outline: none;
-	box-shadow: 0px var(--focus-border-width) var(--focus-color-underline);
-	transition: 
-		box-shadow 100ms ease
-	;
+	outline: 1px solid var(--default-border-color);	
 }
 
 table {
@@ -263,12 +263,12 @@ td > div.flex-container {
 	background-image: url(/icons/general/close_small.svg);
 }
 
-.svg-button.cancel.subtle:hover {
+.svg-button.cancel.subtle:hover, .svg-button.cancel.subtle:focus {
 	background-color: var(--bg-color-darker);
 	background-image: url(/icons/general/cancel.svg);
 }
 
-.svg-button.cancel:hover {
+.svg-button.cancel:hover, .svg-button.cancel:focus {
 	background-color: var(--dark-accent-color);
 	background-image: url(/icons/general/cancel.svg);
 }
@@ -278,7 +278,7 @@ td > div.flex-container {
 	background-image: url(/icons/general/edit_square.svg);
 }
 
-.svg-button.edit:hover {
+.svg-button.edit:hover, .svg-button.edit:focus {
 	background-color: var(--light-accent-color);
 }
 
@@ -286,7 +286,7 @@ td > div.flex-container {
 	background-color: var(--bg-color);
 	background-image: url(/icons/general/check_small.svg);
 }
-.svg-button.small-check:hover {
+.svg-button.small-check:hover, .svg-button.small-check:focus {
 	background-color: var(--bg-color-darker);
 	background-image: url(/icons/general/close_small.svg);
 }
@@ -295,7 +295,7 @@ td > div.flex-container {
 	background-color: var(--bg-color);
 	background-image: url(/icons/general/close_small.svg);
 }
-.svg-button.small-x:hover {
+.svg-button.small-x:hover, .svg-button.small-x:focus {
 	background-color: var(--bg-color-darker);
 	background-image: url(/icons/general/check_small.svg);
 }
@@ -304,7 +304,7 @@ td > div.flex-container {
 	background-color: var(--bg-color);
 	background-image: url(/icons/general/delete.svg);
 }
-.svg-button.delete:hover {
+.svg-button.delete:hover, .svg-button.delete:focus {
 	background-color: red;
 	background-image: url(/icons/general/delete.svg);
 }
@@ -313,15 +313,15 @@ td > div.flex-container {
 	background-color: var(--bg-color);
 	background-image: url(/icons/general/add_location.svg);
 }
-.svg-button.unpinned:hover {
-	background-color: var(--focus-color-underline);
+.svg-button.unpinned:hover, .svg-button.unpinned:focus {
+	background-color: var(--focus-color);
 }
 
 .svg-button.pinned {
 	background-color: var(--bg-color);
 	background-image: url(/icons/general/location_on.svg);
 }
-.svg-button.pinned:hover {
+.svg-button.pinned:hover, .svg-button.pinned:focus {
 	background-color: var(--light-accent-color);
 	background-image: url(/icons/general/location_off.svg);
 }
@@ -337,7 +337,7 @@ td > div.flex-container {
 	user-select: none;
 }
 
-.svg-select:hover {
+.svg-select:hover, .svg-select:focus {
 	background-color: var(--bg-color-darker);
 }
 
@@ -449,18 +449,12 @@ td > div.flex-container {
 	min-width: fit-content;
 }
 
-.flex-container.horizontal small, .flex-container.horizontal input, .flex-container.horizontal select, .flex-container.horizontal button {
-	margin-top: var(--select-element-margin);
-	margin-bottom: var(--select-element-margin);
-	margin-right: var(--select-element-margin);
-	margin-left: 0px;
+.flex-container.horizontal small, .flex-container.horizontal input, .flex-container.horizontal select {
+	margin: var(--select-element-margin) var(--select-element-margin) var(--select-element-margin) 1px;
 }
 
 .flex-container.horizontal a > button {
-	margin-top: 0px;
-	margin-bottom: 0px;
-	margin-right: 0px;
-	margin-left: 0px;
+	margin: 1px;
 	box-shadow: none;
 }
 
@@ -662,4 +656,57 @@ td > div.flex-container {
 	opacity: 0.5;
 	pointer-events: none;
 	/* tabindex: -1; */
+}
+
+.tabs-container {
+  display: grid;
+	grid-template-columns: auto;
+	align-items: center;
+	gap: 0rem;
+	margin: 0;
+}
+
+.tabs-container button {
+	padding-bottom: 0.7rem;
+	padding-top: 0.7rem;
+	border-bottom: none;
+	border-right: none;
+	border-bottom-left-radius: 0%;
+	border-bottom-right-radius: 0%;
+	border-top-left-radius: 0%;
+	border-top-right-radius: 0%;
+	margin-left: 0;
+	margin-right: 0;
+	outline: 0;
+}
+
+.tabs-container button:hover, .tabs-container button:focus {
+	/* box-shadow: 0px var(--focus-border-width) var(--focus-color); */
+	background-color: var(--focus-color-lighter);
+	transition: 
+		background-color 100ms ease
+	;
+}
+
+.tabs-container > button.selected {
+	background-color: var(--focus-color-lightest);
+	transition: 
+		background-color 100ms ease
+	;
+}
+
+.tabs-container button::not(:first-child) {
+	border-left: var(--border-width) solid var(--default-border-color);
+}
+
+.tabs-container button:first-child {
+	margin-left: 0;
+	border-left: var(--border-width) solid var(--default-border-color);
+	border-top-left-radius: var(--border-radius);
+}
+
+.tabs-container button:last-child {
+	margin-right: 0;
+	border-right: var(--border-width) solid var(--default-border-color);
+	border-top-right-radius: var(--border-radius);
 }

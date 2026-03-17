@@ -22,10 +22,15 @@
 	width: 10rem;
 }
 
+.tabs-container.inventory-update-form {
+	grid-template-columns: auto auto auto auto auto;
+}
+
 .grid-container.inventory.inventory-update-form {
   grid-template-columns: 1fr 1fr;
   gap: 0.5dvw;
   padding: var(--container-padding);
+	padding-top: 0;
   border-radius: var(--border-radius);
   background-color: var(--bg-color);
 	border: var(--border-width) solid var(--default-border-color);

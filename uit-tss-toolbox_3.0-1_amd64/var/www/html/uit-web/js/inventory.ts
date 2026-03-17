@@ -103,6 +103,15 @@ const fileInputUpdate = updateForm.querySelector("#inventory-file-input") as HTM
 const submitUpdate = document.getElementById('inventory-update-submit-button') as HTMLButtonElement;
 const cancelUpdate = document.getElementById('inventory-update-cancel-button') as HTMLButtonElement;
 
+// Show/hide parts of form
+const showLocationForm = document.querySelector("#show-location-data") as HTMLButtonElement;
+const showHardwareForm = document.querySelector("#show-hardware-data") as HTMLButtonElement;
+const showSoftwareForm = document.querySelector("#show-software-data") as HTMLButtonElement;
+const showPropertyForm = document.querySelector("#show-property-data") as HTMLButtonElement;
+const showNotesFilesForm = document.querySelector("#show-notes-files-data") as HTMLButtonElement;
+
+const locationFormShowSections = [showLocationForm, showHardwareForm, showSoftwareForm, showPropertyForm, showNotesFilesForm];
+
 const allowedFileNameRegex = /^[a-zA-Z0-9.\-_ ()]+\.(jpg|jpeg|jfif|png|mp4)$/i; // file name + extension
 const allowedFileExtensions = [".jpg", ".jpeg", ".jfif", ".png", ".mp4"];
 
@@ -1149,6 +1158,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 		const tags = (event && event.detail && Array.isArray(event.detail.tags)) ? event.detail.tags : window.allTags;
 		renderTagOptions(tags || []);
 	});
+
+	
+	showLocationForm.classList.add("selected");
+
+	for (const section of locationFormShowSections) {
+		section.addEventListener("click", () => {
+			for (const sec of locationFormShowSections) {
+				if (sec !== section) {
+					sec.classList.remove("selected");
+					sec.blur();
+				}
+			}
+			section.classList.toggle("selected");
+		});
+	}
 });
 
 locationEl.addEventListener("keyup", async () => {
