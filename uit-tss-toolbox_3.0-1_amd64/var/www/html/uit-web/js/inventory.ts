@@ -64,7 +64,6 @@ const clientLookupForm = document.getElementById('inventory-lookup-form') as HTM
 const clientLookupTagInput = document.getElementById('inventory-tag-lookup') as HTMLInputElement;
 const clientLookupSerial = document.getElementById('inventory-serial-lookup') as HTMLInputElement;
 const clientLookupSubmitButton = document.getElementById('inventory-lookup-submit-button') as HTMLButtonElement;
-const clientLookupReset = document.getElementById('inventory-lookup-reset-button') as HTMLButtonElement;
 const clientMoreDetails = document.getElementById('inventory-lookup-more-details') as HTMLButtonElement;
 const clientViewPhotos = document.getElementById('inventory-lookup-photo-album') as HTMLButtonElement;
 const clientAddPhotos = document.getElementById('inventory-lookup-add-photos') as HTMLButtonElement;
@@ -266,7 +265,6 @@ async function submitInventoryLookup() {
     return;
   }
 
-	clientLookupReset.style.display = "inline-block";
 	for (const btn of buttonsVisibleWhenUpdating) {
 		btn.style.display = "inline-block";
 		btn.disabled = false;
@@ -366,8 +364,6 @@ function resetInventoryLookupAndUpdateForm() {
 	clientLookupSubmitButton.style.border = "1px solid black";
 	clientLookupSubmitButton.style.backgroundColor = "";
 	clientLookupSubmitButton.style.display = "inline-block";
-
-	clientLookupReset.style.display = "none";
 
 	for (const btn of buttonsVisibleWhenUpdating) {
 		btn.style.display = "none";
@@ -473,6 +469,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		clientLookupTagInput.readOnly = true;
 		clientLookupTagInput.value = clientLookupTagInput.value.toString().trim();
 		clientLookupTagInput.classList.add("readonly-input");
+		clientLookupTagInput.tabIndex = -1;
 	} else {
 		clientLookupTagInput.classList.add("empty-required-input");
 	}
@@ -483,6 +480,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		clientLookupSerial.readOnly = true;
 		clientLookupSerial.value = clientLookupSerial.value.trim();
 		clientLookupSerial.classList.add("readonly-input");
+		clientLookupSerial.tabIndex = -1;
 	} else {
 		clientLookupSerial.classList.add("empty-required-input");
 	}
@@ -626,6 +624,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				clientLookupTagInput.classList.remove("empty-required-input");
 				clientLookupTagInput.classList.add("readonly-input");
 				clientLookupTagInput.readOnly = true;
+				clientLookupTagInput.tabIndex = -1;
 			} else {
 				clientLookupTagInput.classList.add("empty-required-input");
 			}
@@ -635,6 +634,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				clientLookupSerial.classList.remove("empty-required-input");
 				clientLookupSerial.classList.add("readonly-input");
 				clientLookupSerial.readOnly = true;
+				clientLookupSerial.tabIndex = -1;
 			} else {
 				clientLookupSerial.classList.add("empty-required-input");
 			}
@@ -665,6 +665,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				manufacturerUpdate.value = locationFormData.system_manufacturer.trim();
 				manufacturerUpdate.classList.remove("empty-input");
 				manufacturerUpdate.classList.add("readonly-input");
+				manufacturerUpdate.tabIndex = -1;
 			} else {
 				manufacturerUpdate.classList.add("empty-input");
 			}
@@ -674,6 +675,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				modelUpdate.value = locationFormData.system_model.trim();
 				modelUpdate.classList.remove("empty-input");
 				modelUpdate.classList.add("readonly-input");
+				modelUpdate.tabIndex = -1;
 			} else {
 				modelUpdate.classList.add("empty-input");
 			}
@@ -1089,12 +1091,6 @@ csvDownloadButton.addEventListener('click', async (event) => {
     csvDownloadButton.disabled = false;
     csvDownloadButton.textContent = 'Download Results';
   }
-});
-
-clientLookupReset.addEventListener("click", (event) => {
-	event.preventDefault();
-	resetInventoryLookupAndUpdateForm();
-	updateURLFromFilters();
 });
 
 clientMoreDetails.addEventListener("click", (event) => {
