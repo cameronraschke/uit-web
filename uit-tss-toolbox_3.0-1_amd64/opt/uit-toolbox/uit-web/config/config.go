@@ -487,28 +487,40 @@ func GetLogger() *slog.Logger {
 }
 
 // Database managment
-func GetDatabaseCredentials() (dbName string, dbHost string, dbPort string, dbUsername string, dbPassword string, err error) {
-	appState, err := GetAppState()
+func GetDatabaseCredentials() (dbConnection *types.DBConnection, err error) {
+	as, err := GetAppState()
 	if err != nil {
-		return "", "", "", "", "", fmt.Errorf("error getting app state in GetDatabaseCredentials: %w", err)
+		return nil, fmt.Errorf("error getting app state in GetDatabaseCredentials: %w", err)
 	}
-	return appState.appConfig.Load().WebDBName, appState.appConfig.Load().WebDBHost.String(), strconv.FormatUint(uint64(appState.appConfig.Load().WebDBPort), 10), appState.appConfig.Load().WebDBUsername, appState.appConfig.Load().WebDBPasswd, nil
+	return &types.DBConnection{
+		DBName:     as.appConfig.Load().WebDBName,
+		DBHost:     as.appConfig.Load().WebDBHost.String(),
+		DBPort:     strconv.FormatUint(uint64(as.appConfig.Load().WebDBPort), 10),
+		DBUsername: as.appConfig.Load().WebDBUsername,
+		DBPassword: as.appConfig.Load().WebDBPasswd,
+	}, nil
 }
 
-func GetWebServerUserDBCredentials() (dbName string, dbHost string, dbPort string, dbUsername string, dbPassword string, err error) {
-	appState, err := GetAppState()
+func GetWebServerUserDBCredentials() (dbConnection *types.DBConnection, err error) {
+	as, err := GetAppState()
 	if err != nil {
-		return "", "", "", "", "", fmt.Errorf("error getting app state in GetWebServerUserDBCredentials: %w", err)
+		return nil, fmt.Errorf("error getting app state in GetWebServerUserDBCredentials: %w", err)
 	}
-	return appState.appConfig.Load().WebDBName, appState.appConfig.Load().WebDBHost.String(), strconv.FormatUint(uint64(appState.appConfig.Load().WebDBPort), 10), appState.appConfig.Load().WebDBUsername, appState.appConfig.Load().WebDBPasswd, nil
+	return &types.DBConnection{ 
+		DBName:     as.appConfig.Load().WebDBName,
+		DBHost:     as.appConfig.Load().WebDBHost.String(),
+		DBPort:     strconv.FormatUint(uint64(as.appConfig.Load().WebDBPort), 10),
+		DBUsername: as.appConfig.Load().WebDBUsername,
+		DBPassword: as.appConfig.Load().WebDBPasswd,
+	}, nil
 }
 
 func GetDatabaseConn() (*sql.DB, error) {
-	appState, err := GetAppState()
+	as, err := GetAppState()
 	if err != nil {
 		return nil, fmt.Errorf("error getting app state in GetDatabaseConn: %w", err)
 	}
-	db := appState.dbConn.Load()
+	db := as.dbConn.Load()
 	if db == nil {
 		return nil, fmt.Errorf("database connection is not initialized")
 	}
