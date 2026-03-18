@@ -1,5 +1,10 @@
 let updatingInventory = false;
 
+type BulkUpdateRequest = {
+	bulk_location: string | null;
+	bulk_tagnumbers: number[];
+};
+
 type InventoryForm = {
 	time: string | null;
 	tagnumber: number | null;
@@ -57,10 +62,18 @@ type AllLocationsCache = {
 	locations: AllLocations[];
 };
 
+// Bulk update form 
+const toggleBulkUpdate = document.querySelector('#inventory-toggle-bulk') as HTMLButtonElement;
+const bulkUpdateForm = document.querySelector('#inventory-bulk-update') as HTMLFormElement;
+const bulkUpdateLocationInput = document.querySelector('#bulk_location') as HTMLInputElement;
+const bulkUpdateTagInput = document.querySelector('#bulk_tagnumbers') as HTMLInputElement;
+const bulkUpdateSubmitButton = document.querySelector('#inventory-bulk-update-submit') as HTMLButtonElement;
+const bulkUpdateCancel = document.querySelector('#inventory-bulk-update-cancel') as HTMLButtonElement;
+
 // Inventory lookup form elements
+const clientLookupForm = document.querySelector('#inventory-lookup-form') as HTMLFormElement;
 const updateFormContainer = document.getElementById('inventory-form-container') as HTMLElement;
 const clientLookupWarningMessage = document.getElementById('existing-inventory-message') as HTMLElement;
-const clientLookupForm = document.getElementById('inventory-lookup-form') as HTMLFormElement;
 const clientLookupTagInput = document.getElementById('inventory-tag-lookup') as HTMLInputElement;
 const clientLookupSerial = document.getElementById('inventory-serial-lookup') as HTMLInputElement;
 const clientLookupSubmitButton = document.getElementById('inventory-lookup-submit-button') as HTMLButtonElement;
@@ -1218,6 +1231,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 			}
 		});
 	}
+	
+	toggleBulkUpdate.addEventListener("click", () => {
+		if (!clientLookupForm || !bulkUpdateForm) return;
+		
+		if (clientLookupForm.style.display !== "none") {
+			clientLookupForm.reset();
+			clientLookupForm.style.display = "none";
+			bulkUpdateForm.style.display = "flex";
+			bulkUpdateLocationInput.focus();
+		} else {
+			bulkUpdateForm.reset();
+			bulkUpdateForm.style.display = "none";
+			clientLookupForm.style.display = "flex";
+			clientLookupTagInput.focus();
+		}
+	});
 });
 
 locationEl.addEventListener("keyup", async () => {
@@ -1244,3 +1273,61 @@ locationEl.addEventListener("keyup", async () => {
 // 		updateFormContainer.classList.add("grid-container", "inventory", "inventory-update-form");
 // 	}
 // }
+
+bulkUpdateSubmitButton.addEventListener("click", async (event) => {
+	event.preventDefault();
+	if (updatingInventory) return;
+	updatingInventory = true;
+	bulkUpdateSubmitButton.disabled = true;
+	bulkUpdateSubmitButton.classList.add("disabled");
+	const newJson: BulkUpdateRequest = {
+		bulk_location: bulkUpdateLocationInput.value || null,
+		bulk_tagnumbers: bulkUpdateTagInput.value ? bulkUpdateTagInput.value.split('\n').map(Number) : []
+	};
+
+	for (const tag of newJson.bulk_tagnumbers) {
+		if (isNaN(tag)) {
+			alert(`Invalid tag number: ${tag}. Please ensure all tag numbers are valid integers.`);
+			updatingInventory = false;
+			bulkUpdateSubmitButton.disabled = false;
+			bulkUpdateSubmitButton.classList.remove("disabled");
+			return;
+		}
+		if (tag <= 0 || tag > 999999) {
+			alert(`Tag number out of valid range (1-999999): ${tag}. Please ensure all tag numbers are within this range.`);
+			updatingInventory = false;
+			bulkUpdateSubmitButton.disabled = false;
+			bulkUpdateSubmitButton.classList.remove("disabled");
+			return;
+		}
+	}
+
+	try {
+		const response = await fetch("/api/inventory/bulk_update_location", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"credentials": "include"
+			},
+			body: JSON.stringify(newJson)
+		});
+		if (!response.ok) {
+			throw new Error(`Server returned an error: ${response.status} ${response.statusText}`);
+		}
+		const result = await response.json();
+		if (result && result.updated_count !== undefined) {
+			alert(`Successfully updated location for ${result.updated_count} item(s).`);
+		} else {
+			alert("Bulk update completed, but could not determine how many items were updated.");
+		}
+		await renderInventoryTable();
+	} catch (error) {
+		console.error("Error during bulk update:", error);
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		alert("Error during bulk update: " + errorMessage);
+	} finally {
+		updatingInventory = false;
+		bulkUpdateSubmitButton.disabled = false;
+		bulkUpdateSubmitButton.classList.remove("disabled");
+	}
+});

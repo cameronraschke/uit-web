@@ -363,3 +363,8 @@ func MapInventoryUpdateDomainToCheckoutWriteModel(transactionUUID uuid.UUID, dom
 		CheckoutBool:    copyBoolPtr(domain.CheckoutBool),
 	}
 }
+
+type BulkUpdateRequest struct {
+	Location   *string `json:"bulk_location"`
+	Tagnumbers []int64 `json:"bulk_tagnumbers"`
+}

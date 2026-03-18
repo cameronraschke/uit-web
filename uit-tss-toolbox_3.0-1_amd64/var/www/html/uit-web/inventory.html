@@ -17,39 +17,73 @@
 
 		<section id="update-and-search-container" class="flex-container horizontal">
 			<div class="flex-container vertical outlined">
+				<div class="flex-container title"><h3>Update Client Information</h3></div>
+					<datalist id="location-suggestions"></datalist>
+					<div class="flex-container horizontal">
+						<button type="button" id="inventory-toggle-bulk">Toggle Bulk Update</button>
+					</div>
 				<form id="inventory-lookup-form">
+					<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
 					<div class="flex-container vertical">
-						<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
-						<div class="flex-container horizontal"><div class="flex-container title"><h3>Update Client Information</h3></div></div>
+						<div class="flex-container horizontal"><p>Tag Number/Serial Number Lookup:</p></div>
+						<input type="number" id="inventory-tag-lookup" list="inventory-tag-suggestions"
+							class="text-search"
+							placeholder="Enter Tag Number"
+							minlength="6"
+							maxlength="6"
+							autocomplete="off"
+							autocorrect="off"
+							autocapitalize="off"
+							pattern="[0-9]{6}"
+							autofocus
+						/>
+						<input type="text" id="inventory-serial-lookup"
+							class="text-search"
+							placeholder="Enter Serial Number"
+							minlength="1"
+							maxlength="128"
+							autocomplete="off"
+							autocorrect="off"
+							autocapitalize="off"
+							pattern="[A-Za-z0-9\-_]{1,64}"
+						/>
+						<div class="flex-container horizontal">
+							<button type="button" id="inventory-lookup-more-details" class="svg-button info">More Details</button>
+							<button type="button" id="inventory-lookup-photo-album" class="svg-button photo-album">View Photos</button>
+							<button type="button" id="inventory-lookup-add-photos" class="svg-button add-photo">Add Photos</button>
+							<button type="submit" id="inventory-lookup-submit-button" class="svg-button filter-search">Search for Client</button>
+						</div>
+					</div>
+				</form>
+
+				<form id="inventory-bulk-update">
+					<div class="message"><p id="bulk-update-message" class="warning-message"></p></div>
+					<div class="flex-container vertical">
+						<div class="flex-container horizontal"><p>Bulk Update Client Locations:</p></div>
 						<div class="flex-container vertical">
-							<div class="flex-container horizontal"><p>Tag Number/Serial Number Lookup:</p></div>
-							<input type="number" id="inventory-tag-lookup" list="inventory-tag-suggestions"
-								class="text-search"
-								placeholder="Enter Tag Number"
-								minlength="6"
-								maxlength="6"
-								autocomplete="off"
-								autocorrect="off"
-								autocapitalize="off"
-								pattern="[0-9]{6}"
-								autofocus
-							/>
-							<datalist id="inventory-tag-suggestions"></datalist>
-							<input type="text" id="inventory-serial-lookup"
-								class="text-search"
-								placeholder="Enter Serial Number"
-								minlength="1"
+							<label class="required-field" for="location">Enter Location: </label>
+							<input type="text" id="bulk_location" name="bulk_location"
+								placeholder="Enter Location..."
 								maxlength="128"
 								autocomplete="off"
 								autocorrect="off"
-								autocapitalize="off"
-								pattern="[A-Za-z0-9\-_]{1,64}"
-							/>
-							<div class="flex-container horizontal">
-								<button type="button" id="inventory-lookup-more-details" class="svg-button info">More Details</button>
-								<button type="button" id="inventory-lookup-photo-album" class="svg-button photo-album">View Photos</button>
-								<button type="button" id="inventory-lookup-add-photos" class="svg-button add-photo">Add Photos</button>
-								<button type="submit" id="inventory-lookup-submit-button" class="svg-button filter-search">Search for Client</button>
+								autocapitalize="on"
+								list="location-suggestions" />
+							<div class="flex-container vertical">
+								<label for="bulk_tagnumbers">Tags (Separate by New Lines):</label>
+								<textarea id="bulk_tagnumbers" name="bulk_tagnumbers" placeholder="Enter tags..." maxlength="1024" rows="20" cols="10"></textarea>
+							</div>
+							<div class="flex-container horizontal form-buttons">
+								<button id="inventory-bulk-update-cancel" name="inventory-bulk-update-cancel"
+									type="button"
+									class="svg-button cancel">
+									Cancel
+								</button>
+								<button id="inventory-bulk-update-submit" name="inventory-bulk-update-submit" 
+									type="button"
+									class="submit">
+									Submit Inventory Update
+								</button>
 							</div>
 						</div>
 					</div>
@@ -74,7 +108,6 @@
 							<div class="flex-container vertical separated" data-location-part>
 								<div class="flex-container vertical">
 									<label class="required-field" for="location">Location: </label>
-									<datalist id="location-suggestions"></datalist>
 									<input type="text" id="location" name="location"
 										placeholder="Location"
 										maxlength="128"
@@ -223,7 +256,7 @@
 						
 
 						<div class="flex-container horizontal"><div class="message"><p id="inventory-error" class="error-message"></p></div></div>
-						<div class="flex-container horizontal form-buttons" id="inventory-update-form-buttons">
+						<div class="flex-container horizontal form-buttons">
 							<button id="inventory-update-cancel-button" name="inventory-update-cancel-button"
 								type="button"
 								class="svg-button cancel">

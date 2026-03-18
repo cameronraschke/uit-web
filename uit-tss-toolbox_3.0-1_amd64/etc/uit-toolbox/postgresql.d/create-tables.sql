@@ -175,7 +175,8 @@ CREATE TABLE IF NOT EXISTS locations (
 	property_custodian VARCHAR(64) DEFAULT NULL,
 	acquired_date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
 	retired_date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
-	transaction_uuid UUID DEFAULT NULL
+	transaction_uuid UUID DEFAULT NULL,
+	bulk_update BOOLEAN DEFAULT FALSE
 );
 
 

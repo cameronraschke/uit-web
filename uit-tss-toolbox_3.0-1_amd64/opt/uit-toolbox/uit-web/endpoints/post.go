@@ -1360,3 +1360,61 @@ func UploadLiveImage(w http.ResponseWriter, req *http.Request) {
 		Status: "success",
 	})
 }
+
+func BulkUpdateInventoryLocation(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "BulkUpdateInventoryLocation"))
+
+	requestBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Cannot read request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	var bulkUpdateReq types.BulkUpdateRequest
+	if err := json.Unmarshal(requestBody, &bulkUpdateReq); err != nil {
+		log.Warn("Cannot decode BulkUpdateInventoryLocation JSON: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if bulkUpdateReq.Location == nil || strings.TrimSpace(*bulkUpdateReq.Location) == "" || len(bulkUpdateReq.Tagnumbers) == 0 {
+		log.Warn("Bulk update request is invalid")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	transactionUUID, err := uuid.NewUUID()
+	if err != nil {
+		log.Error("error generation a transaction UUID (BulkUpdateInventoryLocation)")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if transactionUUID == uuid.Nil {
+		log.Error("transaction UUID in BulkUpdateInventoryLocation is nil")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	transactionUUIDStr := transactionUUID.String()
+	updateRepo, err := database.NewUpdateRepo()
+	if err != nil {
+		log.Error("No database connection available for BulkUpdateInventoryLocation")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	for _, tagnumber := range bulkUpdateReq.Tagnumbers {
+		if err := types.IsTagnumberInt64Valid(&tagnumber); err != nil {
+			log.Warn("Invalid tagnumber in bulk update request: " + strconv.FormatInt(tagnumber, 10))
+			continue
+		}
+		if err := updateRepo.BulkUpdateClientLocation(ctx, &transactionUUIDStr, &tagnumber, bulkUpdateReq.Location); err != nil {
+			log.Error("Failed to bulk update inventory location: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+	}
+	middleware.WriteJson(w, http.StatusOK, struct {
+		Status string `json:"status"`
+	}{
+		Status: "success",
+	})
+
+}

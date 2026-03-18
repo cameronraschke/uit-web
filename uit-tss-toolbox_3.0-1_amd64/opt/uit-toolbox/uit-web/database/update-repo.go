@@ -37,6 +37,7 @@ type Update interface {
 	UpdateJobQueuedAt(ctx context.Context, jobQueue *types.JobQueueTableRowView) (err error)
 	UpdateClientLastHeard(ctx context.Context, tag *int64, lastHeard *time.Time) (err error)
 	UpdateClientBatteryChargePcnt(ctx context.Context, tag *int64, percent *float64) (err error)
+	BulkUpdateClientLocation(ctx context.Context, transactionUUID *string, tag *int64, location *string) (err error)
 }
 
 type UpdateRepo struct {
@@ -1355,6 +1356,84 @@ func (updateRepo *UpdateRepo) UpdateClientBatteryChargePcnt(ctx context.Context,
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+	}
+	return nil
+}
+
+func (updateRepo *UpdateRepo) BulkUpdateClientLocation(ctx context.Context, transactionUUID *string, tag *int64, location *string) (err error) {
+	if transactionUUID == nil || strings.TrimSpace(*transactionUUID) == "" {
+		return fmt.Errorf("transactionUUID is required")
+	}
+	if tag == nil || *tag == 0 {
+		return fmt.Errorf("tagnumber is required")
+	}
+	if location == nil || strings.TrimSpace(*location) == "" {
+		return fmt.Errorf("location is required")
+	}
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning DB transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+	const sqlCode = `INSERT INTO locations (time, 
+	tagnumber,
+	system_serial,
+	location,
+	is_broken,
+	disk_removed,
+	department_name,
+	ad_domain,
+	note,
+	client_status,
+	building,
+	room,
+	property_custodian,
+	acquired_date,
+	retired_date,
+	transaction_uuid,
+	bulk_update
+	) SELECT CURRENT_TIMESTAMP, 
+	$1,
+	locations.system_serial,
+	$2,
+	locations.is_broken,
+	locations.disk_removed,
+	locations.department_name,
+	locations.ad_domain,
+	locations.note,
+	locations.client_status,
+	locations.building,
+	locations.room,
+	locations.property_custodian,
+	locations.acquired_date,
+	locations.retired_date,
+	$3,
+	TRUE
+	FROM locations
+	WHERE locations.tagnumber = $1
+	ORDER BY time DESC NULLS LAST
+	LIMIT 1
+	;`
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+		ptrToNullInt64(tag),
+		ptrToNullString(location),
+		ptrToNullString(transactionUUID),
+	)
+	if err != nil {
+		return fmt.Errorf("error while bulk updating a client's ('%d') location: %w", *tag, err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on a locations bulk update: %w", err)
 	}
 	return nil
 }
