@@ -68,7 +68,7 @@ const bulkUpdateForm = document.querySelector('#inventory-bulk-update') as HTMLF
 const bulkUpdateLocationInput = document.querySelector('#bulk_location') as HTMLInputElement;
 const bulkUpdateTagInput = document.querySelector('#bulk_tagnumbers') as HTMLInputElement;
 const bulkUpdateSubmitButton = document.querySelector('#inventory-bulk-update-submit') as HTMLButtonElement;
-const bulkUpdateCancel = document.querySelector('#inventory-bulk-update-cancel') as HTMLButtonElement;
+const bulkUpdateCancelButton = document.querySelector('#inventory-bulk-update-cancel') as HTMLButtonElement;
 
 // Inventory lookup form elements
 const clientLookupForm = document.querySelector('#inventory-lookup-form') as HTMLFormElement;
@@ -1274,6 +1274,12 @@ locationEl.addEventListener("keyup", async () => {
 // 	}
 // }
 
+bulkUpdateCancelButton.addEventListener("click", (event) => {
+	event.preventDefault();
+	bulkUpdateForm.reset();
+	clientLookupTagInput.focus();
+});
+
 bulkUpdateSubmitButton.addEventListener("click", async (event) => {
 	event.preventDefault();
 	if (updatingInventory) return;
@@ -1282,8 +1288,23 @@ bulkUpdateSubmitButton.addEventListener("click", async (event) => {
 	bulkUpdateSubmitButton.classList.add("disabled");
 	const newJson: BulkUpdateRequest = {
 		bulk_location: bulkUpdateLocationInput.value || null,
-		bulk_tagnumbers: bulkUpdateTagInput.value ? bulkUpdateTagInput.value.split('\n').map(Number) : []
+		bulk_tagnumbers: bulkUpdateTagInput.value ? bulkUpdateTagInput.value.split('\n').map(Number).filter(tag => !isNaN(tag) && tag > 0 && tag <= 999999) : []
 	};
+
+	if (newJson.bulk_location === null || newJson.bulk_location.trim() === "") {
+		alert("Please enter a location for the bulk update.");
+		updatingInventory = false;
+		bulkUpdateSubmitButton.disabled = false;
+		bulkUpdateSubmitButton.classList.remove("disabled");
+		return;
+	}
+	if (newJson.bulk_tagnumbers.length === 0) {
+		alert("Please enter at least one tag number for the bulk update.");
+		updatingInventory = false;
+		bulkUpdateSubmitButton.disabled = false;
+		bulkUpdateSubmitButton.classList.remove("disabled");
+		return;
+	}
 
 	for (const tag of newJson.bulk_tagnumbers) {
 		if (isNaN(tag)) {
@@ -1329,5 +1350,6 @@ bulkUpdateSubmitButton.addEventListener("click", async (event) => {
 		updatingInventory = false;
 		bulkUpdateSubmitButton.disabled = false;
 		bulkUpdateSubmitButton.classList.remove("disabled");
+		bulkUpdateForm.reset();
 	}
 });

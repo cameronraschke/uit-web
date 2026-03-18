@@ -26,6 +26,7 @@
 					<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
 					<div class="flex-container vertical">
 						<div class="flex-container horizontal"><p>Tag Number/Serial Number Lookup:</p></div>
+						<datalist id="inventory-tag-suggestions"></datalist>
 						<input type="number" id="inventory-tag-lookup" list="inventory-tag-suggestions"
 							class="text-search"
 							placeholder="Enter Tag Number"
@@ -69,22 +70,22 @@
 								autocorrect="off"
 								autocapitalize="on"
 								list="location-suggestions" />
-							<div class="flex-container vertical">
-								<label for="bulk_tagnumbers">Tags (Separate by New Lines):</label>
-								<textarea id="bulk_tagnumbers" name="bulk_tagnumbers" placeholder="Enter tags..." maxlength="1024" rows="20" cols="10"></textarea>
-							</div>
-							<div class="flex-container horizontal form-buttons">
-								<button id="inventory-bulk-update-cancel" name="inventory-bulk-update-cancel"
-									type="button"
-									class="svg-button cancel">
-									Cancel
-								</button>
-								<button id="inventory-bulk-update-submit" name="inventory-bulk-update-submit" 
-									type="button"
-									class="submit">
-									Submit Inventory Update
-								</button>
-							</div>
+						</div>
+						<div class="flex-container vertical">
+							<label for="bulk_tagnumbers">Tags (Separate by New Lines):</label>
+							<textarea id="bulk_tagnumbers" name="bulk_tagnumbers" placeholder="Enter tags..." maxlength="1024" rows="20" cols="10"></textarea>
+						</div>
+						<div class="flex-container horizontal form-buttons">
+							<button id="inventory-bulk-update-cancel" name="inventory-bulk-update-cancel"
+								type="button"
+								class="svg-button cancel">
+								Cancel
+							</button>
+							<button id="inventory-bulk-update-submit" name="inventory-bulk-update-submit" 
+								type="button"
+								class="submit">
+								Submit Inventory Update
+							</button>
 						</div>
 					</div>
 				</form>
