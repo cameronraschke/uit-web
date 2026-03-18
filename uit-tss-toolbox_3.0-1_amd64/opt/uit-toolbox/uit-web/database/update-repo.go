@@ -19,11 +19,11 @@ type Update interface {
 	UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.InventoryClientHealthWriteModel) (err error)
 	InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID, checkoutData *types.InventoryCheckoutWriteModel) (err error)
 	UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.InventoryHardwareWriteModel) (err error)
-	UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *types.ImageManifest) (err error)
+	UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *types.ImageManifestDTO) (err error)
 	HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	DeleteClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err error)
-	SetAllOnlineClientJobs(ctx context.Context, allJobs *types.AllJobs) (err error)
+	SetAllOnlineClientJobs(ctx context.Context, clientJob *types.ClientJob) (err error)
 	SetClientJob(ctx context.Context, tag *int64, clientJob *string) (err error)
 	UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryDataRequest) (err error)
 	UpdateClientCPUUsage(ctx context.Context, cpuData *types.CPUData) (err error)
@@ -316,16 +316,20 @@ func (updateRepo *UpdateRepo) InsertInventoryUpdate(ctx context.Context, transac
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *types.ImageManifest) (err error) {
+func (updateRepo *UpdateRepo) UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *types.ImageManifestDTO) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
 		return fmt.Errorf("transaction UUID is nil")
 	}
 
 	if manifest == nil ||
-		manifest.UUID == nil || strings.TrimSpace(*manifest.UUID) == "" ||
-		manifest.Tagnumber == nil ||
-		manifest.FileName == nil || strings.TrimSpace(*manifest.FileName) == "" ||
-		manifest.FilePath == nil || strings.TrimSpace(*manifest.FilePath) == "" {
+		strings.TrimSpace(manifest.UUID) == "" ||
+		manifest.Time.IsZero() ||
+		manifest.Tagnumber == 0 ||
+		strings.TrimSpace(manifest.FileName) == "" ||
+		strings.TrimSpace(manifest.FilePath) == "" ||
+		manifest.FileSize <= 0 ||
+		len(manifest.SHA256Hash) == 0 ||
+		strings.TrimSpace(manifest.MimeType) == "" {
 		return fmt.Errorf("invalid manifest: %v", manifest)
 	}
 
@@ -363,21 +367,21 @@ func (updateRepo *UpdateRepo) UpdateClientImages(ctx context.Context, transactio
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		ptrToNullString(manifest.UUID),
-		ptrToNullTime(manifest.Time),
-		ptrToNullInt64(manifest.Tagnumber),
-		ptrToNullString(manifest.FileName),
-		ptrToNullString(manifest.FilePath),
+		manifest.UUID,
+		manifest.Time,
+		manifest.Tagnumber,
+		manifest.FileName,
+		manifest.FilePath,
 		ptrToNullString(manifest.ThumbnailFilePath),
-		ptrToNullInt64(manifest.FileSize),
+		manifest.FileSize,
 		manifest.SHA256Hash,
-		ptrToNullString(manifest.MimeType),
+		manifest.MimeType,
 		ptrToNullTime(manifest.ExifTimestamp),
 		ptrToNullInt64(manifest.ResolutionX),
 		ptrToNullInt64(manifest.ResolutionY),
-		ptrToNullString(manifest.Note),
-		ptrToNullBool(manifest.Hidden),
-		ptrToNullBool(manifest.Pinned),
+		ptrToNullString(manifest.Caption),
+		manifest.Hidden,
+		manifest.Pinned,
 	)
 	if err != nil {
 		return fmt.Errorf("error inserting client image: %w", err)
@@ -496,7 +500,7 @@ func (updateRepo *UpdateRepo) TogglePinImage(ctx context.Context, tagnumber *int
 	return nil
 }
 
-func (updateRepo *UpdateRepo) SetAllOnlineClientJobs(ctx context.Context, allJobs *types.AllJobs) (err error) {
+func (updateRepo *UpdateRepo) SetAllOnlineClientJobs(ctx context.Context, allJobs *types.ClientJob) (err error) {
 	if allJobs == nil {
 		return fmt.Errorf("allJobs structure is nil")
 	}

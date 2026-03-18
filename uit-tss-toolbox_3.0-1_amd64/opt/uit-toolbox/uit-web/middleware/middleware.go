@@ -44,7 +44,7 @@ func (chain MiddlewareChain) Append(middlewares ...Middleware) MiddlewareChain {
 	}
 }
 
-// Then applies the middleware chain to the final handler
+// Apply the middleware chain to the final handler
 func (chain MiddlewareChain) Then(finalHandler http.Handler) http.Handler {
 	for i := len(chain.middlewares) - 1; i >= 0; i-- {
 		finalHandler = chain.middlewares[i](finalHandler)
@@ -52,7 +52,7 @@ func (chain MiddlewareChain) Then(finalHandler http.Handler) http.Handler {
 	return finalHandler
 }
 
-// ThenFunc applies the middleware chain to a handler function
+// Apply the middleware chain to a handler function
 func (chain MiddlewareChain) ThenFunc(finalHandlerFunc http.HandlerFunc) http.Handler {
 	return chain.Then(finalHandlerFunc)
 }

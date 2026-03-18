@@ -506,7 +506,7 @@ func GetWebServerUserDBCredentials() (dbConnection *types.DBConnection, err erro
 	if err != nil {
 		return nil, fmt.Errorf("error getting app state in GetWebServerUserDBCredentials: %w", err)
 	}
-	return &types.DBConnection{ 
+	return &types.DBConnection{
 		DBName:     as.appConfig.Load().WebDBName,
 		DBHost:     as.appConfig.Load().WebDBHost.String(),
 		DBPort:     strconv.FormatUint(uint64(as.appConfig.Load().WebDBPort), 10),

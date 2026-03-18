@@ -296,7 +296,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var filteredImageManifests []types.ImageManifest
+	var filteredImageManifests []types.ImageManifestView
 	for _, imageManifest := range imageManifests {
 		// UUID of file
 		if imageManifest.UUID == nil || strings.TrimSpace(*imageManifest.UUID) == "" {

@@ -754,7 +754,8 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	// var totalInvalidFileCount int = 2
 	// var totalInvalidUploadSize int64 = 1 << 10
 	for _, fileHeader := range files {
-		var manifest types.ImageManifest
+		// var fileUploadRequest = new(types.ImageUploadRequest)
+		var manifest = new(types.ImageManifestDTO)
 
 		if !types.IsPrintableUnicodeString(fileHeader.Filename) {
 			log.Warn("Non-printable characters in uploaded file name: " + fileHeader.Filename)
@@ -798,8 +799,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		}
 
 		// File size
-		fileSize := int64(len(fileBytes))
-		manifest.FileSize = &fileSize
+		manifest.FileSize = int64(len(fileBytes))
 
 		// MIME type detection
 		mimeType := http.DetectContentType(fileBytes)
@@ -808,7 +808,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)
 			return
 		}
-		manifest.MimeType = &mimeType
+		manifest.MimeType = mimeType
 		ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
 
 		if fileUploadConstraints.ImageConstraints.AcceptedImageExtensionsAndMimeTypes[ext] != mimeType && fileUploadConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[ext] != mimeType {
@@ -818,16 +818,14 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		}
 
 		// Get upload timestamp
-		fileTimeStamp := time.Now()
-		timeUTC := fileTimeStamp.UTC()
-		manifest.Time = &timeUTC
+		manifest.Time = time.Now().UTC()
 
 		// Generate unique file name
-		fileTimeStampFormatted := fileTimeStamp.Format("2006-01-02-150405")
+		fileTimeStampFormatted := manifest.Time.Format("2006-01-02-150405")
 		fileUUID := uuid.New().String()
 		fileName := fileTimeStampFormatted + "-" + fileUUID + ext
-		manifest.FileName = &fileName
-		manifest.UUID = &fileUUID
+		manifest.FileName = fileName
+		manifest.UUID = fileUUID
 
 		// Compute SHA256 hash of file
 		fileHash := crypto.SHA256.New()
@@ -840,7 +838,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		fileHashBytes := make([]uint8, 32)
 		copy(fileHashBytes, shaSum[:32])
 		// fileHashString := fmt.Sprintf("%x", fileHashBytes)
-		manifest.SHA256Hash = &fileHashBytes
+		manifest.SHA256Hash = fileHashBytes
 
 		selectRepo, err := database.NewSelectRepo()
 		if err != nil {
@@ -872,13 +870,13 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
-			if fileSize > fileUploadConstraints.ImageConstraints.MaxFileSize {
-				log.Warn("Uploaded image file '" + fileHeader.Filename + "' too large (" + strconv.FormatInt(int64(fileSize), 10) + " bytes)")
+			if manifest.FileSize > fileUploadConstraints.ImageConstraints.MaxFileSize {
+				log.Warn("Uploaded image file '" + fileHeader.Filename + "' too large (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
-			if fileSize < fileUploadConstraints.ImageConstraints.MinFileSize {
-				log.Warn("Uploaded image file too small: " + fileHeader.Filename + " (" + strconv.FormatInt(int64(fileSize), 10) + " bytes)")
+			if manifest.FileSize < fileUploadConstraints.ImageConstraints.MinFileSize {
+				log.Warn("Uploaded image file too small: " + fileHeader.Filename + " (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
@@ -940,7 +938,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			}
 			_ = thumbnailFile.Close()
 			manifest.ThumbnailFilePath = &fullThumbnailPath
-			totalImageUploadSize += fileSize
+			totalImageUploadSize += manifest.FileSize
 			totalImageFileCount++
 		} else if fileUploadConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[ext] == mimeType { // Video file processing
 			if totalVideoFileCount >= fileUploadConstraints.VideoConstraints.MaxFileCount {
@@ -948,18 +946,18 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
-			if fileSize > fileUploadConstraints.VideoConstraints.MaxFileSize {
-				log.Warn("Uploaded video file too large (InsertInventoryUpdate) (" + strconv.FormatInt(int64(fileSize), 10) + " bytes)")
+			if manifest.FileSize > fileUploadConstraints.VideoConstraints.MaxFileSize {
+				log.Warn("Uploaded video file too large (InsertInventoryUpdate) (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
-			if fileSize < fileUploadConstraints.VideoConstraints.MinFileSize {
-				log.Warn("Uploaded video file too small (InsertInventoryUpdate): " + fileHeader.Filename + " (" + strconv.FormatInt(int64(fileSize), 10) + " bytes)")
+			if manifest.FileSize < fileUploadConstraints.VideoConstraints.MinFileSize {
+				log.Warn("Uploaded video file too small (InsertInventoryUpdate): " + fileHeader.Filename + " (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
 			totalVideoFileCount++
-			totalVideoUploadSize += fileSize
+			totalVideoUploadSize += manifest.FileSize
 		} else {
 			log.Warn("Unsupported MIME type for '" + fileHeader.Filename + "' (InsertInventoryUpdate): MIME Type: " + mimeType)
 			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)
@@ -980,24 +978,22 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		manifest.FilePath = &fullFilePath
+		manifest.FilePath = fullFilePath
 
 		// Close the uploaded file, not needed anymore
 		_ = file.Close()
 
 		// Insert image metadata into database
-		manifest.Tagnumber = &inventoryDomain.Tagnumber
-		manifest.Hidden = new(bool)
-		*manifest.Hidden = false
-		manifest.Pinned = new(bool)
-		*manifest.Pinned = false
+		manifest.Tagnumber = inventoryDomain.Tagnumber
+		manifest.Hidden = false
+		manifest.Pinned = false
 
-		if err := updateRepo.UpdateClientImages(ctx, transactionUUID, &manifest); err != nil {
+		if err := updateRepo.UpdateClientImages(ctx, transactionUUID, manifest); err != nil {
 			log.Error("Failed to update inventory image data for '" + fullFilePath + "': " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		log.Info(fmt.Sprintf("Uploaded file '%s', Size: %.2f MB, MIME Type: %s", fileName, float64(*manifest.FileSize)/1024/1024, mimeType))
+		log.Info(fmt.Sprintf("Uploaded file '%s', Size: %.2f MB, MIME Type: %s", fileName, float64(manifest.FileSize)/1024/1024, mimeType))
 		_ = file.Close()
 	}
 	fileUploadCount := totalImageFileCount + totalVideoFileCount
@@ -1110,7 +1106,7 @@ func SetAllJobs(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var clientJson types.AllJobs
+	var clientJson types.ClientJob
 	if err := json.Unmarshal(clientBody, &clientJson); err != nil {
 		log.Warn("Cannot decode SetAllJobs JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)

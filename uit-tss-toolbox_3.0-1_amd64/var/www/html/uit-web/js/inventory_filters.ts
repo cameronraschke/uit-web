@@ -1,4 +1,4 @@
-type Domain = {
+type AllDomainsRow = {
 	ad_domain: string;
 	ad_domain_formatted: string;
 	domain_sort_order: number;
@@ -6,10 +6,10 @@ type Domain = {
 
 type DomainCache = {
 	timestamp: number;
-	domains: Domain[];
+	domains: AllDomainsRow[];
 };
 
-type ManufacturersAndModels = {
+type AllManufacturersAndModelsRow = {
 	system_manufacturer: string;
 	system_model: string;
 	system_model_count: number;
@@ -18,7 +18,7 @@ type ManufacturersAndModels = {
 
 type ManufacturerAndModelsCache = {
 	timestamp: number;
-	manufacturers_and_models: ManufacturersAndModels[];
+	manufacturers_and_models: AllManufacturersAndModelsRow[];
 };
 
 type Statuses = {
@@ -164,7 +164,7 @@ async function fetchFilteredInventoryData(csvDownload = false): Promise<Inventor
 	}
 }
 
-async function fetchAllManufacturersAndModels(purgeCache: boolean = false): Promise<Array<ManufacturersAndModels> | []> {
+async function fetchAllManufacturersAndModels(purgeCache: boolean = false): Promise<Array<AllManufacturersAndModelsRow> | []> {
 	const cached = sessionStorage.getItem("uit_manufacturers_and_models");
 
   try {
@@ -176,7 +176,7 @@ async function fetchAllManufacturersAndModels(purgeCache: boolean = false): Prom
 			}
 		}
 
-    const data: ManufacturersAndModels[] = await fetchData('/api/overview/all_models');
+    const data: AllManufacturersAndModelsRow[] = await fetchData('/api/overview/all_models');
     if (!data || !Array.isArray(data) || data.length === 0) {
       throw new Error('No data returned from /api/overview/all_models');
     }
@@ -209,18 +209,18 @@ async function populateManufacturerSelect(selectEl: HTMLSelectElement, resetEl: 
 	selectEl.disabled = true; // temporary while we update it
 
 	try {
-  	const data: ManufacturersAndModels[] = await fetchAllManufacturersAndModels(purgeCache);
+  	const data: AllManufacturersAndModelsRow[] = await fetchAllManufacturersAndModels(purgeCache);
 		if (!data || !Array.isArray(data) || data.length === 0) throw new Error('No data returned from /api/overview/all_models');
 
 		// Sort manufacturers array - get unique key
-		const manufacturerMap = new Map<string, ManufacturersAndModels>();
+		const manufacturerMap = new Map<string, AllManufacturersAndModelsRow>();
 		for (const item of data) {
 			if (!item.system_manufacturer) continue;
 			if (!manufacturerMap.has(item.system_manufacturer)) {
 				manufacturerMap.set(item.system_manufacturer, item);
 			}
 		}
-		const uniqueManufacturerArr: ManufacturersAndModels[] = Array.from(manufacturerMap.values());
+		const uniqueManufacturerArr: AllManufacturersAndModelsRow[] = Array.from(manufacturerMap.values());
 		uniqueManufacturerArr.sort((a, b) => {
 			const manufacturerA = a.system_manufacturer;
 			const manufacturerB = b.system_manufacturer;
@@ -271,7 +271,7 @@ async function populateModelSelect(selectEl: HTMLSelectElement, resetEl: HTMLEle
 	}
 
 	try {
-		const data: ManufacturersAndModels[] = await fetchAllManufacturersAndModels(purgeCache);
+		const data: AllManufacturersAndModelsRow[] = await fetchAllManufacturersAndModels(purgeCache);
 		if (!data || !Array.isArray(data) || data.length === 0) return;
 
 		data.sort((a, b) => {
@@ -305,7 +305,7 @@ async function populateModelSelect(selectEl: HTMLSelectElement, resetEl: HTMLEle
 	}
 }
 
-async function fetchDomains(purgeCache: boolean = false): Promise<Array<Domain> | []> {
+async function fetchDomains(purgeCache: boolean = false): Promise<Array<AllDomainsRow> | []> {
 	const cached = sessionStorage.getItem("uit_domains");
 
 	try {
@@ -316,7 +316,7 @@ async function fetchDomains(purgeCache: boolean = false): Promise<Array<Domain> 
 				return cacheEntry.domains;
 			}
 		}
-		const data: Array<Domain> = await fetchData('/api/overview/all_domains');
+		const data: Array<AllDomainsRow> = await fetchData('/api/overview/all_domains');
 		if (!data || !Array.isArray(data) || data.length === 0) {
 			throw new Error('No data returned from /api/overview/all_domains');
 		}
@@ -341,7 +341,7 @@ async function populateDomainSelect(el: HTMLSelectElement, purgeCache: boolean =
 	el.disabled = true;
 
 	try {
-		const domainData: Array<Domain> = await fetchDomains(purgeCache);
+		const domainData: Array<AllDomainsRow> = await fetchDomains(purgeCache);
 		if (!domainData || !Array.isArray(domainData) || domainData.length === 0) {
 			throw new Error('No data returned from /api/overview/all_domains');
 		}

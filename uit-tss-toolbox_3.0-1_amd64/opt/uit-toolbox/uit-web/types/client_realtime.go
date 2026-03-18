@@ -19,3 +19,7 @@ type ClientRealtimeView struct {
 	JobName               *string        `json:"job_name"`
 	BatteryChargePcnt     *float64       `json:"battery_charge_pcnt"`
 }
+
+type ClientJob struct {
+	JobName *string `json:"job_name"`
+}

@@ -12,9 +12,9 @@ import (
 
 type Select interface {
 	GetAllTags(ctx context.Context) ([]int64, error)
-	GetDepartments(ctx context.Context) ([]types.Department, error)
-	GetDomains(ctx context.Context) ([]types.Domain, error)
-	GetManufacturersAndModels(ctx context.Context) ([]types.ManufacturersAndModels, error)
+	GetDepartments(ctx context.Context) ([]types.AllDepartmentsRow, error)
+	GetDomains(ctx context.Context) ([]types.AllDomainsRow, error)
+	GetManufacturersAndModels(ctx context.Context) ([]types.AllManufacturersAndModelsRow, error)
 	CheckTwoFactorCode(ctx context.Context, twoFactorCode *string) (string, error)
 	CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error)
 	ClientLookupByTag(ctx context.Context, tag *int64) (*types.ClientLookup, error)
@@ -27,14 +27,14 @@ type Select interface {
 	GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteRow, error)
 	GetDashboardInventorySummary(ctx context.Context) ([]types.DashboardInventorySummary, error)
 	GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryFormPrefill, error)
-	GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifest, error)
+	GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifestView, error)
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
-	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifest, error)
+	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifestView, error)
 	GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableRow, error)
 	GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
-	GetClientBatteryReport(ctx context.Context) ([]types.ClientReport, error)
-	GetAllJobs(ctx context.Context) ([]types.AllJobs, error)
-	GetAllLocations(ctx context.Context) ([]types.AllLocations, error)
+	GetClientBatteryReport(ctx context.Context) ([]types.ClientReportRow, error)
+	GetAllJobs(ctx context.Context) ([]types.AllJobsRow, error)
+	GetAllLocations(ctx context.Context) ([]types.AllLocationsRow, error)
 	GetAllStatuses(ctx context.Context) (map[string][]types.ClientStatus, error)
 	GetAllDeviceTypes(ctx context.Context) ([]types.DeviceType, error)
 	GetClientHardwareOverview(ctx context.Context, tag int64) ([]types.ClientHardwareView, error)
@@ -97,7 +97,7 @@ func (repo *SelectRepo) GetAllTags(ctx context.Context) ([]int64, error) {
 	return allTagsSlice, nil
 }
 
-func (repo *SelectRepo) GetDepartments(ctx context.Context) ([]types.Department, error) {
+func (repo *SelectRepo) GetDepartments(ctx context.Context) ([]types.AllDepartmentsRow, error) {
 	const sqlQuery = `SELECT 
 			static_department_info.department_name, 
 			static_department_info.department_name_formatted, 
@@ -115,12 +115,12 @@ func (repo *SelectRepo) GetDepartments(ctx context.Context) ([]types.Department,
 	}
 	defer rows.Close()
 
-	var departments []types.Department
+	var departments []types.AllDepartmentsRow
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var dept types.Department
+		var dept types.AllDepartmentsRow
 		if err := rows.Scan(
 			&dept.DepartmentName,
 			&dept.DepartmentNameFormatted,
@@ -143,7 +143,7 @@ func (repo *SelectRepo) GetDepartments(ctx context.Context) ([]types.Department,
 	return departments, nil
 }
 
-func (repo *SelectRepo) GetDomains(ctx context.Context) ([]types.Domain, error) {
+func (repo *SelectRepo) GetDomains(ctx context.Context) ([]types.AllDomainsRow, error) {
 	const sqlQuery = `SELECT domain_name, domain_name_formatted 
 		FROM static_ad_domains 
 		ORDER BY domain_sort_order NULLS LAST;`
@@ -153,12 +153,12 @@ func (repo *SelectRepo) GetDomains(ctx context.Context) ([]types.Domain, error) 
 	}
 	defer rows.Close()
 
-	var domains []types.Domain
+	var domains []types.AllDomainsRow
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var domain types.Domain
+		var domain types.AllDomainsRow
 		if err := rows.Scan(&domain.DomainName, &domain.DomainNameFormatted); err != nil {
 			return nil, fmt.Errorf("error during row scan: %w", err)
 		}
@@ -174,7 +174,7 @@ func (repo *SelectRepo) GetDomains(ctx context.Context) ([]types.Domain, error) 
 	return domains, nil
 }
 
-func (repo *SelectRepo) GetManufacturersAndModels(ctx context.Context) ([]types.ManufacturersAndModels, error) {
+func (repo *SelectRepo) GetManufacturersAndModels(ctx context.Context) ([]types.AllManufacturersAndModelsRow, error) {
 	const sqlQuery = `SELECT system_manufacturer, system_model, COUNT(*) AS "system_model_count"
 		FROM hardware_data 
 		WHERE system_manufacturer IS NOT NULL 
@@ -182,7 +182,7 @@ func (repo *SelectRepo) GetManufacturersAndModels(ctx context.Context) ([]types.
 		GROUP BY system_manufacturer, system_model 
 		ORDER BY system_manufacturer ASC, system_model ASC;`
 
-	var manufacturersAndModels []types.ManufacturersAndModels
+	var manufacturersAndModels []types.AllManufacturersAndModelsRow
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, fmt.Errorf("cannot execute query: %w", err)
@@ -193,7 +193,7 @@ func (repo *SelectRepo) GetManufacturersAndModels(ctx context.Context) ([]types.
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var row types.ManufacturersAndModels
+		var row types.AllManufacturersAndModelsRow
 		if err := rows.Scan(
 			&row.SystemManufacturer,
 			&row.SystemModel,
@@ -739,7 +739,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 	return inventoryUpdate, nil
 }
 
-func (repo *SelectRepo) GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifest, error) {
+func (repo *SelectRepo) GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifestView, error) {
 	if uuid == nil || strings.TrimSpace(*uuid) == "" {
 		return nil, fmt.Errorf("uuid cannot be nil or empty")
 	}
@@ -753,7 +753,7 @@ func (repo *SelectRepo) GetClientImageFilePathFromUUID(ctx context.Context, uuid
 		FROM client_images 
 		WHERE uuid = $1;`
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullString(uuid))
-	var imageManifest types.ImageManifest
+	var imageManifest types.ImageManifestView
 	if err := row.Scan(
 		&imageManifest.Tagnumber,
 		&imageManifest.FileName,
@@ -807,14 +807,14 @@ func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([
 	return hashes, nil
 }
 
-func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifest, error) {
+func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifestView, error) {
 	if tagnumber == nil {
 		return nil, fmt.Errorf("tagnumber is nil")
 	}
 
 	const sqlQuery = `SELECT time, tagnumber, uuid, filename, filepath, thumbnail_filepath, mime_type, hidden, pinned, note FROM client_images WHERE tagnumber = $1;`
 
-	imageManifests := make([]types.ImageManifest, 0, 10)
+	imageManifests := make([]types.ImageManifestView, 0, 10)
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery, tagnumber)
 	if err != nil {
 		return nil, fmt.Errorf("error during query execution: %w", err)
@@ -825,7 +825,7 @@ func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumb
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var imageManifest types.ImageManifest
+		var imageManifest types.ImageManifestView
 		if err := rows.Scan(
 			&imageManifest.Time,
 			&imageManifest.Tagnumber,
@@ -836,7 +836,7 @@ func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumb
 			&imageManifest.MimeType,
 			&imageManifest.Hidden,
 			&imageManifest.Pinned,
-			&imageManifest.Note,
+			&imageManifest.Caption,
 		); err != nil {
 			return nil, fmt.Errorf("error during row scan: %w", err)
 		}
@@ -1217,7 +1217,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 	return jobQueueRows, nil
 }
 
-func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.ClientReport, error) {
+func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.ClientReportRow, error) {
 	const sqlQuery = `
 	WITH avg_battery_health AS (
 		SELECT system_model, AVG(avg_battery_health_pcnt) AS "avg_battery_health_pcnt" 
@@ -1271,7 +1271,7 @@ func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.Cli
 		historical_hardware_data.battery_design_capacity
 	ORDER BY historical_hardware_data.time DESC NULLS LAST;
 	`
-	var clientReports []types.ClientReport
+	var clientReports []types.ClientReportRow
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, err
@@ -1282,7 +1282,7 @@ func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.Cli
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var clientReport types.ClientReport
+		var clientReport types.ClientReportRow
 		if err := rows.Scan(
 			&clientReport.BatteryHealthTimestamp,
 			&clientReport.Tagnumber,
@@ -1302,7 +1302,7 @@ func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.Cli
 	return clientReports, nil
 }
 
-func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]types.AllJobs, error) {
+func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]types.AllJobsRow, error) {
 	const sqlQuery = `SELECT static_job_names.job_name, 
 		static_job_names.job_name_readable, 
 		static_job_names.job_sort_order, 
@@ -1310,7 +1310,7 @@ func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]types.AllJobs, error)
 	FROM static_job_names
 	ORDER BY static_job_names.job_sort_order ASC;`
 
-	var allJobs []types.AllJobs
+	var allJobs []types.AllJobsRow
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error during query execution: %w", err)
@@ -1321,7 +1321,7 @@ func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]types.AllJobs, error)
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var job types.AllJobs
+		var job types.AllJobsRow
 		if err := rows.Scan(
 			&job.JobName,
 			&job.JobNameReadable,
@@ -1341,7 +1341,7 @@ func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]types.AllJobs, error)
 	return allJobs, nil
 }
 
-func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocations, error) {
+func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocationsRow, error) {
 	const sqlQuery = `WITH latest_locations AS (
 		SELECT DISTINCT ON (tagnumber) location, time, COUNT(location) OVER (PARTITION BY location) AS location_count
 		FROM locations
@@ -1355,7 +1355,7 @@ func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocatio
 	GROUP BY location
 	ORDER BY location ASC;`
 
-	var allLocations []types.AllLocations
+	var allLocations []types.AllLocationsRow
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error during query execution: %w", err)
@@ -1366,7 +1366,7 @@ func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocatio
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var location types.AllLocations
+		var location types.AllLocationsRow
 		if err := rows.Scan(
 			&location.Location,
 			&location.Timestamp,

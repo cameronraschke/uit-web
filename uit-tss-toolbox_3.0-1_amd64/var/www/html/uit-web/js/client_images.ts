@@ -14,7 +14,7 @@ type ImageManifest = {
 	url: string
 	hidden: boolean
 	pinned: boolean
-	note: string
+	caption: string
 	file_type: string
 };
 
@@ -183,8 +183,8 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 		}
 
 		const noteCaption = document.createElement('p');
-		if (file.note) {
-			noteCaption.textContent = file.note;
+		if (file.caption && file.caption.trim() !== '') {
+			noteCaption.textContent = file.caption;
 			noteCaption.style.fontStyle = "normal";
 		} else {
 			noteCaption.textContent = "No description";

@@ -1,6 +1,6 @@
 // reports TS file
 
-type ClientReport = {
+type ClientReportRow = {
 	tagnumber: number;
 	battery_health_pcnt: number;
 	battery_health_deviation: number;
@@ -15,7 +15,7 @@ async function populateBatteryStandardDeviationReport() {
 	try {
 		const data = await fetchData(`/api/reports/battery`, false);
 		if (!data) { return; }
-		data.sort((a: ClientReport, b: ClientReport) => {
+		data.sort((a: ClientReportRow, b: ClientReportRow) => {
 			return (b.battery_health_deviation || 0) - (a.battery_health_deviation || 0);
 		});
 
