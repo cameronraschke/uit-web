@@ -26,7 +26,7 @@
 	--border-radius: 1rem;
 	--border-radius-text: 0.5rem;
 	--border-radius-button: 0.5rem;
-	--svg-padding-left: 2.1rem;
+	--svg-padding-left: 1.5rem;
 	--input-padding: 0.5rem;
 	--container-padding: 2rem;
 	--select-element-margin: 0.5rem;
@@ -100,6 +100,11 @@ button {
 		box-shadow 0.3s ease
 	;
 	user-select: none;
+}
+
+option {
+	padding: 0;
+	margin: 0;
 }
 
 button:hover, button:focus {
@@ -225,7 +230,7 @@ td > div.flex-container {
 }
 
 .svg-button {
-	padding-left: var(--svg-padding-left);
+	text-indent: var(--svg-padding-left);
 	background-repeat: no-repeat;
 	background-size: 1.5rem;
 	background-position: 0.5rem center;
@@ -329,7 +334,7 @@ td > div.flex-container {
 .svg-select {
 	margin-right: 2rem;
 	background-color: var(--fg-color);
-	padding-left: var(--svg-padding-left);
+	text-indent: var(--svg-padding-left);
 	background-repeat: no-repeat;
 	background-size: 1.5rem;
 	background-position: 0.5rem center;
@@ -378,7 +383,7 @@ td > div.flex-container {
 }
 
 .text-search {
-	padding-left: var(--svg-padding-left);
+	text-indent: var(--svg-padding-left);
 	background-image: url(/icons/search/search.svg);
 	background-repeat: no-repeat;
 	background-size: 1.5rem;
