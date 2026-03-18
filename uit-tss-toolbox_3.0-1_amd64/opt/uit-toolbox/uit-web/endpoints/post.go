@@ -1412,9 +1412,11 @@ func BulkUpdateInventoryLocation(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	middleware.WriteJson(w, http.StatusOK, struct {
-		Status string `json:"status"`
+		Status       string `json:"status"`
+		UpdatedCount int    `json:"updated_count"`
 	}{
-		Status: "success",
+		Status:       "success",
+		UpdatedCount: len(bulkUpdateReq.Tagnumbers),
 	})
 
 }
