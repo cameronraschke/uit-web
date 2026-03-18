@@ -1231,7 +1231,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 			}
 		});
 	}
-	
+
+	const queries = new URLSearchParams(window.location.search);
+	if (queries.has("bulk_update") && queries.get("bulk_update") === "true") {
+		clientLookupForm.reset();
+		clientLookupForm.style.display = "none";
+		bulkUpdateForm.style.display = "flex";
+		if (queries.get("bulk_location")) {
+			bulkUpdateLocationInput.value = queries.get("bulk_location") || '';
+			bulkUpdateTagInput.focus();
+		} else {
+			bulkUpdateLocationInput.focus();
+		}
+	}
+
 	toggleBulkUpdate.addEventListener("click", () => {
 		if (!clientLookupForm || !bulkUpdateForm) return;
 		
@@ -1273,6 +1286,10 @@ locationEl.addEventListener("keyup", async () => {
 // 		updateFormContainer.classList.add("grid-container", "inventory", "inventory-update-form");
 // 	}
 // }
+
+bulkUpdateForm.addEventListener("submit", async (event) => {
+	event.preventDefault();
+});
 
 bulkUpdateCancelButton.addEventListener("click", (event) => {
 	event.preventDefault();
