@@ -632,7 +632,7 @@ VALUES
 	('checked-out', 'Checked Out', 50, 'Availability'),
 	('storage', 'In Storage', 60, 'Availability'),
 	('needs-repair', 'Needs Repair', 70, 'Maintenance'),
-	('pre-property', 'Being Prepared for Property', 75, 'Preparation'),
+	('pre-property', 'Getting Prepared for Property', 75, 'Preparation'),
 	('retired', 'Retired', 80, 'Possession'),
 	('lost', 'Lost/Stolen', 90, 'Possession'),
 	('other', 'Other', 100, 'Other')
