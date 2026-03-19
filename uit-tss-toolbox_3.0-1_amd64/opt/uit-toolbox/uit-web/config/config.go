@@ -107,8 +107,11 @@ type AppState struct {
 }
 
 var (
-	appStateInstance      atomic.Pointer[AppState]
-	LiveImageMissingError = errors.New("live image not found for the given tag, please insert live image first")
+	appStateInstance       atomic.Pointer[AppState]
+	LiveImageMissingError  = errors.New("live image not found for the given tag, please insert live image first")
+	CannotGetAppStateError = errors.New("cannot retrieve app state")
+	AppStateNilError       = errors.New("app state is nil")
+	DatabaseConnNilError   = errors.New("database connection is nil/uninitialized")
 )
 
 type levelRangeHandler struct {
@@ -458,7 +461,7 @@ func SetAppState(newState *AppState) error {
 func GetAppState() (*AppState, error) {
 	appState := appStateInstance.Load()
 	if appState == nil {
-		return nil, fmt.Errorf("app state is nil (GetAppState)")
+		return nil, fmt.Errorf("%w", AppStateNilError)
 	}
 	return appState, nil
 }
@@ -518,25 +521,25 @@ func GetWebServerUserDBCredentials() (dbConnection *types.DBConnection, err erro
 func GetDatabaseConn() (*sql.DB, error) {
 	as, err := GetAppState()
 	if err != nil {
-		return nil, fmt.Errorf("error getting app state in GetDatabaseConn: %w", err)
+		return nil, fmt.Errorf("%w: %w", CannotGetAppStateError, err)
 	}
 	db := as.dbConn.Load()
 	if db == nil {
-		return nil, fmt.Errorf("database connection is not initialized")
+		return nil, DatabaseConnNilError
 	}
 	return db, nil
 }
 
 func SetDatabaseConn(newDbConn *sql.DB) error {
 	if newDbConn == nil {
-		return errors.New("new database connection is nil in SetDatabaseConn")
+		return DatabaseConnNilError
 	}
 	appState, err := GetAppState()
 	if err != nil {
-		return fmt.Errorf("error getting app state in SetDatabaseConn: %w", err)
+		return fmt.Errorf("%w: %w", CannotGetAppStateError, err)
 	}
 	if appState == nil {
-		return errors.New("app state is not initialized in SetDatabaseConn")
+		return AppStateNilError
 	}
 	appState.dbConn.Store(newDbConn)
 	return nil
@@ -546,7 +549,7 @@ func SetDatabaseConn(newDbConn *sql.DB) error {
 func IsIPAllowed(trafficType string, ipAddr netip.Addr) (allowed bool, err error) {
 	appState, err := GetAppState()
 	if err != nil {
-		return allowed, fmt.Errorf("cannot retrieve app state: %w", err)
+		return allowed, fmt.Errorf("%w: %w", CannotGetAppStateError, err)
 	}
 
 	if !ipAddr.IsValid() || RequestIPBlocked(ipAddr) {
@@ -646,7 +649,7 @@ func CleanupBlockedIPs() {
 func GetWebServerIPs() (httpIP string, httpsIP string, err error) {
 	appState, err := GetAppState()
 	if err != nil {
-		return "", "", fmt.Errorf("error getting app state in GetWebServerIPs: %w", err)
+		return "", "", fmt.Errorf("%w: %w", CannotGetAppStateError, err)
 	}
 	return appState.appConfig.Load().WebHTTPAddr.String(), appState.appConfig.Load().WebHTTPSAddr.String(), nil
 }
@@ -681,7 +684,7 @@ func GetServerIPAddressByInterface(ifName string) (string, error) {
 func GetWebmasterContact() (webmasterName string, webmasterEmail string, err error) {
 	appState, err := GetAppState()
 	if err != nil {
-		return "", "", fmt.Errorf("error getting app state in GetWebmasterContact: %w", err)
+		return "", "", fmt.Errorf("%w: %w", CannotGetAppStateError, err)
 	}
 	return appState.appConfig.Load().WebmasterName, appState.appConfig.Load().WebmasterEmail, nil
 }
@@ -689,11 +692,11 @@ func GetWebmasterContact() (webmasterName string, webmasterEmail string, err err
 func GetClientConfig() (*ClientConfig, error) {
 	appState, err := GetAppState()
 	if err != nil {
-		return nil, fmt.Errorf("error getting app state in GetClientConfig: %w", err)
+		return nil, fmt.Errorf("%w: %w", CannotGetAppStateError, err)
 	}
 	appConfig := appState.appConfig.Load()
 	if appConfig == nil {
-		return nil, fmt.Errorf("app config is not loaded in GetClientConfig")
+		return nil, fmt.Errorf("%w: app config is not loaded in GetClientConfig", CannotGetAppStateError)
 	}
 
 	clientConfig := &ClientConfig{
@@ -718,11 +721,11 @@ func GetClientConfig() (*ClientConfig, error) {
 func GetTLSCertFiles() (certFile string, keyFile string, err error) {
 	appState, err := GetAppState()
 	if err != nil {
-		return "", "", fmt.Errorf("error getting app state in GetTLSCertFiles: %w", err)
+		return "", "", fmt.Errorf("%w: %w", CannotGetAppStateError, err)
 	}
 	appConfig := appState.appConfig.Load()
 	if appConfig == nil {
-		return "", "", fmt.Errorf("app config is not loaded in GetTLSCertFiles")
+		return "", "", fmt.Errorf("%w: app config is not loaded in GetTLSCertFiles", CannotGetAppStateError)
 	}
 	return appConfig.WebTLSCertFile, appConfig.WebTLSKeyFile, nil
 }
@@ -730,19 +733,19 @@ func GetTLSCertFiles() (certFile string, keyFile string, err error) {
 func GetRequestTimeout(timeoutType string) (time.Duration, error) {
 	appState, err := GetAppState()
 	if err != nil {
-		return 0, fmt.Errorf("error getting app state in GetRequestTimeout: %w", err)
+		return 0, fmt.Errorf("%w: %w", CannotGetAppStateError, err)
 	}
 	switch strings.ToLower(timeoutType) {
 	case "api":
 		apiTimeout := appState.apiRequestTimeout.Load()
 		if apiTimeout == nil {
-			return 0, fmt.Errorf("cannot get API request timeout in GetRequestTimeout")
+			return 0, fmt.Errorf("%w: cannot get API request timeout in GetRequestTimeout", CannotGetAppStateError)
 		}
 		return *apiTimeout, nil
 	case "file":
 		fileTimeout := appState.fileRequestTimeout.Load()
 		if fileTimeout == nil {
-			return 0, fmt.Errorf("cannot get file request timeout in GetRequestTimeout")
+			return 0, fmt.Errorf("%w: cannot get file request timeout in GetRequestTimeout", CannotGetAppStateError)
 		}
 		return *fileTimeout, nil
 	default:
@@ -753,7 +756,7 @@ func GetRequestTimeout(timeoutType string) (time.Duration, error) {
 func SetRequestTimeout(timeoutType string, timeout time.Duration) error {
 	appState, err := GetAppState()
 	if err != nil {
-		return fmt.Errorf("error getting app state in SetRequestTimeout: %w", err)
+		return fmt.Errorf("%w: %w", CannotGetAppStateError, err)
 	}
 	if timeout <= 0 {
 		return fmt.Errorf("invalid timeout value in SetRequestTimeout: %.2f", timeout.Seconds())
@@ -773,7 +776,7 @@ func SetRequestTimeout(timeoutType string, timeout time.Duration) error {
 func GetAllowedLANIPs() ([]netip.Prefix, error) {
 	appState, err := GetAppState()
 	if err != nil {
-		return nil, fmt.Errorf("error getting app state in GetAllowedLANIPs: %w", err)
+		return nil, fmt.Errorf("%w: %w", CannotGetAppStateError, err)
 	}
 	var allowedIPs []netip.Prefix
 	appState.allowedLANIPs.Range(func(k, v any) bool {
@@ -794,14 +797,14 @@ func GetAllowedLANIPs() ([]netip.Prefix, error) {
 func GetLiveImage(tag int64) ([]byte, error) {
 	as, err := GetAppState()
 	if err != nil || as == nil {
-		return nil, fmt.Errorf("error retrieving app state: %w", err)
+		return nil, fmt.Errorf("%w: %w", CannotGetAppStateError, err)
 	}
 	if tag == 0 {
 		return nil, fmt.Errorf("tag is nil")
 	}
 	val, ok := as.LiveImageMap.Load(tag)
 	if !ok {
-		return nil, LiveImageMissingError
+		return nil, fmt.Errorf("%w: live image not found for tag %d", LiveImageMissingError, tag)
 	}
 	liveImage, ok := val.([]byte)
 	if !ok {
@@ -827,7 +830,7 @@ func UpdateLiveImage(tag int64, imageBytes []byte) error {
 	}
 	as, err := GetAppState()
 	if err != nil || as == nil {
-		return fmt.Errorf("error retrieving app state: %w", err)
+		return fmt.Errorf("%w: %w", CannotGetAppStateError, err)
 	}
 
 	// Store a copy

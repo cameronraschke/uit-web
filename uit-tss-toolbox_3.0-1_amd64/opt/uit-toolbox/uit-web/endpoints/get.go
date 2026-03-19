@@ -25,8 +25,6 @@ import (
 
 // Per-client functions
 func GetServerTime(w http.ResponseWriter, req *http.Request) {
-	// ctx := req.Context()
-	// log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetServerTime"))
 	format := middleware.GetStrQuery(req.URL.Query(), "format")
 	curTime := time.Now().Format(time.RFC3339)
 	if format != nil && *format == "unix" {
@@ -36,10 +34,9 @@ func GetServerTime(w http.ResponseWriter, req *http.Request) {
 }
 
 func GetClientLookup(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetClientLookup"))
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "GetClientLookup"))
 
-	// No consequence for missing tag, acceptable if lookup by serial
+	// Need either tag or serial, tag is preferred if both are provided
 	var tagnumber, tagErr = types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
 	var systemSerial = middleware.GetStrQuery(req.URL.Query(), "system_serial")
 
@@ -49,22 +46,15 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
 	var clientLookup *types.ClientLookup
-	var lookupSQLErr error
+	var clientLookupErr error
 	if tagErr == nil {
-		clientLookup, lookupSQLErr = db.ClientLookupByTag(ctx, tagnumber)
+		clientLookup, clientLookupErr = database.ClientLookupByTag(req.Context(), tagnumber)
 	} else if systemSerial != nil && strings.TrimSpace(*systemSerial) != "" {
-		clientLookup, lookupSQLErr = db.ClientLookupBySerial(ctx, systemSerial)
+		clientLookup, clientLookupErr = database.ClientLookupBySerial(req.Context(), systemSerial)
 	}
-	if lookupSQLErr != nil {
-		log.Warn("error querying client: " + lookupSQLErr.Error())
+	if clientLookupErr != nil {
+		log.Warn("error during client lookup: " + clientLookupErr.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}

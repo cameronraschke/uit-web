@@ -10,6 +10,13 @@ import (
 	"uit-toolbox/types"
 )
 
+// All SELECT queries should check for:
+// 1. Basic input constraints/validation (type conversion should be done prior to)
+// 2. Check context errors
+// 3. Get database connection from app state
+// 4. Check for sql.ErrNoRows and return nil if error exists
+// 5. Return any other errors
+
 type Select interface {
 	GetAllTags(ctx context.Context) ([]int64, error)
 	GetDepartments(ctx context.Context) ([]types.AllDepartmentsRow, error)
@@ -17,8 +24,6 @@ type Select interface {
 	GetManufacturersAndModels(ctx context.Context) ([]types.AllManufacturersAndModelsRow, error)
 	CheckTwoFactorCode(ctx context.Context, twoFactorCode *string) (string, error)
 	CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error)
-	ClientLookupByTag(ctx context.Context, tag *int64) (*types.ClientLookup, error)
-	ClientLookupBySerial(ctx context.Context, serial *string) (*types.ClientLookup, error)
 	GetBiosData(ctx context.Context, tag *int64) (*types.BiosData, error)
 	GetOsData(ctx context.Context, tag *int64) (*types.OsData, error)
 	GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error)
@@ -48,6 +53,10 @@ type SelectRepo struct {
 }
 
 const approxClientCount = 600
+
+var (
+	DatabaseConnError = errors.New("error getting database connection from app state")
+)
 
 func NewSelectRepo() (Select, error) {
 	db, err := config.GetDatabaseConn()
@@ -279,23 +288,40 @@ func (repo *SelectRepo) CheckAuthCredentials(ctx context.Context, username *stri
 	return true, &dbBcryptHash.String, nil
 }
 
-func (repo *SelectRepo) ClientLookupByTag(ctx context.Context, tag *int64) (*types.ClientLookup, error) {
-	if tag == nil {
-		return nil, fmt.Errorf("tagnumber is nil")
+func ClientLookupByTag(ctx context.Context, tag *int64) (*types.ClientLookup, error) {
+	if tag == nil || *tag <= 0 {
+		return nil, fmt.Errorf("tagnumber is nil or invalid")
 	}
-
 	if ctx.Err() != nil {
 		return nil, fmt.Errorf("context error: %w", ctx.Err())
 	}
 
-	const sqlQuery = `SELECT tagnumber, system_serial 
-		FROM locations 
-		WHERE tagnumber = $1 
-		ORDER BY time DESC NULLS LAST LIMIT 1;`
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", DatabaseConnError, err)
+	}
+
+	const sqlQuery = `
+		SELECT 
+			tagnumber, 
+			system_serial 
+		FROM 
+			locations 
+		WHERE 
+			tagnumber = $1 
+		ORDER BY 
+			time DESC NULLS LAST 
+		LIMIT 1
+	;`
 
 	var clientLookup types.ClientLookup
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
-	if err := row.Scan(&clientLookup.Tagnumber, &clientLookup.SystemSerial); err != nil {
+	row := dbConn.QueryRowContext(ctx, sqlQuery,
+		ptrToNullInt64(tag),
+	)
+	if err := row.Scan(
+		&clientLookup.Tagnumber,
+		&clientLookup.SystemSerial,
+	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
@@ -304,13 +330,18 @@ func (repo *SelectRepo) ClientLookupByTag(ctx context.Context, tag *int64) (*typ
 	return &clientLookup, nil
 }
 
-func (repo *SelectRepo) ClientLookupBySerial(ctx context.Context, serial *string) (*types.ClientLookup, error) {
+func ClientLookupBySerial(ctx context.Context, serial *string) (*types.ClientLookup, error) {
 	if serial == nil || strings.TrimSpace(*serial) == "" {
-		return nil, fmt.Errorf("serial is nil")
+		return nil, fmt.Errorf("serial is nil or empty")
 	}
 
 	if ctx.Err() != nil {
 		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("error establishing database connection: %w", err)
 	}
 
 	const sqlQuery = `
@@ -322,11 +353,18 @@ func (repo *SelectRepo) ClientLookupBySerial(ctx context.Context, serial *string
 		WHERE 
 			system_serial = $1 
 		ORDER BY 
-			time DESC NULLS LAST LIMIT 1;`
+			time DESC NULLS LAST 
+		LIMIT 1
+	;`
 
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullString(serial))
+	row := dbConn.QueryRowContext(ctx, sqlQuery,
+		ptrToNullString(serial),
+	)
 	var clientLookup types.ClientLookup
-	if err := row.Scan(&clientLookup.Tagnumber, &clientLookup.SystemSerial); err != nil {
+	if err := row.Scan(
+		&clientLookup.Tagnumber,
+		&clientLookup.SystemSerial,
+	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
