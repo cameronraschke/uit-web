@@ -603,14 +603,8 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Insert note into database
-	insertRepo, err := database.NewUpdateRepo()
-	if err != nil {
-		log.Error("No database connection available for inserting new note")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
 	curTime := time.Now().UTC()
-	err = insertRepo.InsertNewNote(ctx, &curTime, newNote.NoteType, newNote.Content)
+	err = database.InsertNewNote(ctx, &curTime, newNote.NoteType, newNote.Content)
 	if err != nil {
 		log.Error("Failed to insert new note: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)

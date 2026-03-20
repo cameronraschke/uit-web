@@ -10,7 +10,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -21,7 +20,6 @@ import (
 )
 
 type Update interface {
-	InsertNewNote(ctx context.Context, time *time.Time, noteType *string, note *string) (err error)
 	UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.InventoryClientHealthWriteModel) (err error)
 	InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID, checkoutData *types.InventoryCheckoutWriteModel) (err error)
 	UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.InventoryHardwareWriteModel) (err error)
@@ -60,22 +58,24 @@ func NewUpdateRepo() (Update, error) {
 
 var _ Update = (*UpdateRepo)(nil)
 
-func (updateRepo *UpdateRepo) InsertNewNote(ctx context.Context, time *time.Time, noteType *string, note *string) (err error) {
-	if time == nil {
-		return errors.New("time is required in InsertNewNote")
+func InsertNewNote(ctx context.Context, timestamp *time.Time, noteType *string, noteContent *string) (err error) {
+	if timestamp == nil || timestamp.IsZero() {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "time")
 	}
 	if noteType == nil || strings.TrimSpace(*noteType) == "" {
-		return errors.New("note type is required in InsertNewNote")
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "note type")
 	}
 
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error in InsertNewNote: %w", ctx.Err())
-	}
-
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("error beginning transaction in InsertNewNote: %w", err)
+		return fmt.Errorf("%w: %v", types.DatabaseConnError, err)
 	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.CannotBeginTransactionError, err)
+	}
+
 	defer func() {
 		if err != nil {
 			_ = tx.Rollback()
@@ -86,15 +86,15 @@ func (updateRepo *UpdateRepo) InsertNewNote(ctx context.Context, time *time.Time
 
 	sqlCode := `INSERT INTO notes (time, note_type, note) VALUES ($1, $2, $3);`
 	sqlResult, err := tx.ExecContext(ctx, sqlCode,
-		ptrToNullTime(time),
+		ptrToNullTime(timestamp),
 		ptrToNullString(noteType),
-		ptrToNullString(note),
+		ptrToNullString(noteContent),
 	)
 	if err != nil {
-		return fmt.Errorf("error inserting new note: %w", err)
+		return fmt.Errorf("%w: %w", types.DBUpdateError, err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected when inserting new note: %w", err)
+		return fmt.Errorf("%w: %w", types.DBRowsAffectedError, err)
 	}
 	return err
 }
@@ -252,7 +252,7 @@ func (updateRepo *UpdateRepo) UpdateInventoryHardwareData(ctx context.Context, t
 
 func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdate *types.InventoryLocationWriteModel) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
-		return types.EmptyTransactionUUIDError
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
 	}
 	if inventoryUpdate == nil || inventoryUpdate.Tagnumber == 0 {
 		return fmt.Errorf("inventoryUpdate is invalid")
