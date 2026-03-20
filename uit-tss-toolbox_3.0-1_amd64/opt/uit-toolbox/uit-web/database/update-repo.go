@@ -1,5 +1,12 @@
 package database
 
+// All UPDATE/INSERT/DELETE queries should check for:
+// 1. Basic input constraints/validation (type conversion should be done prior to)
+// 2. Get database connection from app state
+// 3. Use transactions instead of ExecContext
+// 4. Check rows affected when appropriate (especially for updates/deletes where a specific number of rows should be modified)
+// 5. Return errors and cancel transactions (defer rollback) on error
+
 import (
 	"context"
 	"database/sql"
@@ -15,7 +22,6 @@ import (
 
 type Update interface {
 	InsertNewNote(ctx context.Context, time *time.Time, noteType *string, note *string) (err error)
-	InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdate *types.InventoryLocationWriteModel) (err error)
 	UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.InventoryClientHealthWriteModel) (err error)
 	InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID, checkoutData *types.InventoryCheckoutWriteModel) (err error)
 	UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.InventoryHardwareWriteModel) (err error)
@@ -244,19 +250,20 @@ func (updateRepo *UpdateRepo) UpdateInventoryHardwareData(ctx context.Context, t
 	return nil
 }
 
-func (updateRepo *UpdateRepo) InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdate *types.InventoryLocationWriteModel) (err error) {
+func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdate *types.InventoryLocationWriteModel) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
-		return fmt.Errorf("generated transaction UUID is nil")
+		return types.EmptyTransactionUUIDError
 	}
 	if inventoryUpdate == nil || inventoryUpdate.Tagnumber == 0 {
 		return fmt.Errorf("inventoryUpdate is invalid")
 	}
 
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return fmt.Errorf("%w: %v", types.DatabaseConnError, err)
 	}
 
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("error beginning transaction: %w", err)
 	}

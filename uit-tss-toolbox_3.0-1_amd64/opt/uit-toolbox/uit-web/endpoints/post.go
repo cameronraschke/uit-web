@@ -1004,7 +1004,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 
 	// Update db
 	inventoryData := types.MapInventoryUpdateDomainToLocationWriteModel(transactionUUID, inventoryDomain)
-	if err := updateRepo.InsertInventoryUpdate(ctx, transactionUUID, inventoryData); err != nil {
+	if err := database.InsertInventoryUpdate(ctx, transactionUUID, inventoryData); err != nil {
 		log.Error("Failed to update inventory data: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return

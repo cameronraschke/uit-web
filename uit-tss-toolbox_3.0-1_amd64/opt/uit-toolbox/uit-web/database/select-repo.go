@@ -1,5 +1,12 @@
 package database
 
+// All SELECT queries should check for:
+// 1. Basic input constraints/validation (type conversion should be done prior to)
+// 2. Check context errors
+// 3. Get database connection from app state
+// 4. Check for sql.ErrNoRows and return nil if error exists
+// 5. Return any other errors
+
 import (
 	"context"
 	"database/sql"
@@ -9,13 +16,6 @@ import (
 	"uit-toolbox/config"
 	"uit-toolbox/types"
 )
-
-// All SELECT queries should check for:
-// 1. Basic input constraints/validation (type conversion should be done prior to)
-// 2. Check context errors
-// 3. Get database connection from app state
-// 4. Check for sql.ErrNoRows and return nil if error exists
-// 5. Return any other errors
 
 type Select interface {
 	GetAllTags(ctx context.Context) ([]int64, error)
@@ -53,10 +53,6 @@ type SelectRepo struct {
 }
 
 const approxClientCount = 600
-
-var (
-	DatabaseConnError = errors.New("error getting database connection from app state")
-)
 
 func NewSelectRepo() (Select, error) {
 	db, err := config.GetDatabaseConn()
@@ -298,7 +294,7 @@ func ClientLookupByTag(ctx context.Context, tag *int64) (*types.ClientLookup, er
 
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", DatabaseConnError, err)
+		return nil, fmt.Errorf("%w: %v", types.DatabaseConnError, err)
 	}
 
 	const sqlQuery = `
