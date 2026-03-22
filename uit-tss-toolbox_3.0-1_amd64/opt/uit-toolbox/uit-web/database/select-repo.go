@@ -2,7 +2,7 @@ package database
 
 // All SELECT queries should check for:
 // 1. Basic input constraints/validation (type conversion should be done prior to)
-// 2. Check context errors
+// 2. Check context errors on row iteration
 // 3. Get database connection from app state
 // 4. Check for sql.ErrNoRows and return nil if error exists
 // 5. Return any other errors
@@ -32,7 +32,6 @@ type Select interface {
 	GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteRow, error)
 	GetDashboardInventorySummary(ctx context.Context) ([]types.DashboardInventorySummary, error)
 	GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryFormPrefill, error)
-	GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifestView, error)
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
 	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifestView, error)
 	GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableRow, error)
@@ -773,20 +772,32 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 	return inventoryUpdate, nil
 }
 
-func (repo *SelectRepo) GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifestView, error) {
+func GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifestView, error) {
 	if uuid == nil || strings.TrimSpace(*uuid) == "" {
-		return nil, fmt.Errorf("uuid cannot be nil or empty")
+		return nil, fmt.Errorf("%w: %s", types.MissingFieldError, "uuid")
 	}
 
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
-	const sqlQuery = `SELECT tagnumber, filename, 
-			filepath, thumbnail_filepath, hidden
-		FROM client_images 
-		WHERE uuid = $1;`
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullString(uuid))
+	const sqlQuery = `
+		SELECT 
+			tagnumber, 
+			filename, 
+			filepath, 
+			thumbnail_filepath, 
+			hidden
+		FROM 
+			client_images 
+		WHERE
+			uuid = $1
+	;`
+
+	row := dbConn.QueryRowContext(ctx, sqlQuery,
+		ptrToNullString(uuid),
+	)
 	var imageManifest types.ImageManifestView
 	if err := row.Scan(
 		&imageManifest.Tagnumber,
@@ -798,7 +809,7 @@ func (repo *SelectRepo) GetClientImageFilePathFromUUID(ctx context.Context, uuid
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("error during row scan: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 	}
 	return &imageManifest, nil
 }

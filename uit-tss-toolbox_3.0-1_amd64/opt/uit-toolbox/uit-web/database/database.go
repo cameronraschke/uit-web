@@ -39,7 +39,7 @@ func VerifyRowsAffected(result sql.Result, expectedRowCount int64) error {
 		return fmt.Errorf("failed to get rows affected: %w", err)
 	}
 	if rowsAffected != expectedRowCount {
-		return fmt.Errorf("unexpected number of rows affected: %d, expected exactly %d row(s)", rowsAffected, expectedRowCount)
+		return fmt.Errorf("%w: expected exactly %d row(s), got %d", types.DatabaseAffectedRowsError, expectedRowCount, rowsAffected)
 	}
 	return nil
 }

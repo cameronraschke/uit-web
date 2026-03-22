@@ -733,14 +733,6 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Establish DB connection before opening files
-	updateRepo, err := database.NewUpdateRepo()
-	if err != nil {
-		log.Error("No database connection available")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
 	var totalImageFileCount int
 	var totalImageUploadSize int64
 	var totalVideoFileCount int
@@ -982,7 +974,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		manifest.Hidden = false
 		manifest.Pinned = false
 
-		if err := updateRepo.UpdateClientImages(ctx, transactionUUID, manifest); err != nil {
+		if err := database.UpdateClientImages(ctx, transactionUUID, manifest); err != nil {
 			log.Error("Failed to update inventory image data for '" + fullFilePath + "': " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
@@ -1004,20 +996,20 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	clientHardwareData := types.MapInventoryUpdateDomainToHardwareWriteModel(transactionUUID, inventoryDomain)
-	if err := updateRepo.UpdateInventoryHardwareData(ctx, transactionUUID, clientHardwareData); err != nil {
+	if err := database.UpdateInventoryHardwareData(ctx, transactionUUID, clientHardwareData); err != nil {
 		log.Error("Failed to update inventory hardware info: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	clientHealthData := types.MapInventoryUpdateDomainToClientHealthWriteModel(transactionUUID, inventoryDomain)
-	if err := updateRepo.UpdateClientHealthUpdate(ctx, transactionUUID, clientHealthData); err != nil {
+	if err := database.UpdateClientHealthUpdate(ctx, transactionUUID, clientHealthData); err != nil {
 		log.Error("Failed to update inventory health info: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	checkoutData := types.MapInventoryUpdateDomainToCheckoutWriteModel(transactionUUID, inventoryDomain)
 	if checkoutData != nil {
-		if err := updateRepo.InsertClientCheckoutsUpdate(ctx, transactionUUID, checkoutData); err != nil {
+		if err := database.InsertClientCheckoutsUpdate(ctx, transactionUUID, checkoutData); err != nil {
 			log.Error("Failed to update inventory checkout info: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return

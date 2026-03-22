@@ -20,12 +20,6 @@ import (
 )
 
 type Update interface {
-	UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.InventoryClientHealthWriteModel) (err error)
-	InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID, checkoutData *types.InventoryCheckoutWriteModel) (err error)
-	UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.InventoryHardwareWriteModel) (err error)
-	UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *types.ImageManifestDTO) (err error)
-	HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
-	DeleteClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	SetAllOnlineClientJobs(ctx context.Context, clientJob *types.ClientJob) (err error)
 	SetClientJob(ctx context.Context, tag *int64, clientJob *string) (err error)
@@ -91,30 +85,35 @@ func InsertNewNote(ctx context.Context, timestamp *time.Time, noteType *string, 
 		ptrToNullString(noteContent),
 	)
 	if err != nil {
-		return fmt.Errorf("%w: %w", types.DBUpdateError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("%w: %w", types.DBRowsAffectedError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseAffectedRowsError, err)
 	}
 	return err
 }
 
-func (updateRepo *UpdateRepo) UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.InventoryClientHealthWriteModel) (err error) {
+func UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.InventoryClientHealthWriteModel) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
-		return fmt.Errorf("generated transaction UUID is nil")
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
 	}
-	if clientHealthData == nil || clientHealthData.Tagnumber == 0 {
-		return fmt.Errorf("clientHealthData is invalid")
+	if clientHealthData == nil {
+		return fmt.Errorf("%w: %s", types.InvalidFieldError, "InventoryClientHealthWriteModel")
+	}
+	if err := types.IsTagnumberInt64Valid(&clientHealthData.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
 
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("error beginning transaction: %w", err)
+		return fmt.Errorf("%w: %v", types.DatabaseConnError, err)
 	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.CannotBeginTransactionError, err)
+	}
+
 	defer func() {
 		if err != nil {
 			_ = tx.Rollback()
@@ -122,47 +121,71 @@ func (updateRepo *UpdateRepo) UpdateClientHealthUpdate(ctx context.Context, tran
 			err = tx.Commit()
 		}
 	}()
-	// Insert/update client_health table
-	const clientHealthSql = `INSERT INTO client_health
-		(time, tagnumber, last_hardware_check, transaction_uuid) VALUES
-		(CURRENT_TIMESTAMP, $1, $2, $3)
-		ON CONFLICT (tagnumber)
-		DO UPDATE SET
-			time = CURRENT_TIMESTAMP,
-			last_hardware_check = EXCLUDED.last_hardware_check,
-			transaction_uuid = EXCLUDED.transaction_uuid;`
 
-	var clientHealthResult sql.Result
-	clientHealthResult, err = tx.ExecContext(ctx, clientHealthSql,
+	// Insert/update client_health table
+	const clientHealthSql = `
+		INSERT INTO client_health
+			(
+				time, 
+				tagnumber, 
+				last_hardware_check, 
+				transaction_uuid
+			) 
+		VALUES
+			(
+				CURRENT_TIMESTAMP, 
+				$1, 
+				$2, 
+				$3
+			)
+			ON CONFLICT (tagnumber)
+			DO UPDATE SET
+				time = CURRENT_TIMESTAMP,
+				last_hardware_check = EXCLUDED.last_hardware_check,
+				transaction_uuid = EXCLUDED.transaction_uuid
+	;`
+
+	clientHealthResult, err := tx.ExecContext(ctx, clientHealthSql,
 		clientHealthData.Tagnumber,
 		ptrToNullTime(clientHealthData.LastHardwareCheck),
 		transactionUUID,
 	)
 	if err != nil {
-		return fmt.Errorf("error inserting/updating client health data: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(clientHealthResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on client_health table insert/update: %w", err)
+		return err
 	}
 
 	return nil
 }
 
-func (updateRepo *UpdateRepo) InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID, checkoutData *types.InventoryCheckoutWriteModel) (err error) {
+func InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID, checkoutData *types.InventoryCheckoutWriteModel) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
-		return fmt.Errorf("generated transaction UUID is nil")
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
 	}
-	if checkoutData == nil || checkoutData.Tagnumber == 0 {
-		return fmt.Errorf("checkoutData is invalid")
+	if checkoutData == nil {
+		return fmt.Errorf("%w: %s", types.InvalidStructureError, "checkoutData")
 	}
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
+	if err := types.IsTagnumberInt64Valid(&checkoutData.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
+	}
+	if checkoutData.CheckoutDate == nil &&
+		checkoutData.ReturnDate == nil &&
+		(checkoutData.CheckoutBool != nil && !*checkoutData.CheckoutBool) {
+		return nil
 	}
 
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return fmt.Errorf("%w: %v", types.DatabaseConnError, err)
+	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("error beginning transaction: %w", err)
 	}
+
 	defer func() {
 		if err != nil {
 			_ = tx.Rollback()
@@ -170,47 +193,66 @@ func (updateRepo *UpdateRepo) InsertClientCheckoutsUpdate(ctx context.Context, t
 			err = tx.Commit()
 		}
 	}()
+
 	// Insert into checkout_log table if necessary fields are present
-	if checkoutData.CheckoutDate != nil || checkoutData.ReturnDate != nil || (checkoutData.CheckoutBool != nil && *checkoutData.CheckoutBool) {
-		var checkoutLogResult sql.Result
-		const checkoutSql = `INSERT INTO checkout_log
-			(log_entry_time, transaction_uuid, tagnumber, checkout_date, return_date, checkout_bool)
-			VALUES (CURRENT_TIMESTAMP, $1, $2, $3, $4, $5);`
+	const checkoutSql = `
+		INSERT INTO checkout_log
+			(
+				log_entry_time, 
+				transaction_uuid, 
+				tagnumber, 
+				checkout_date, 
+				return_date, 
+				checkout_bool
+			)
+		VALUES 
+			(
+				CURRENT_TIMESTAMP, 
+				$1, 
+				$2, 
+				$3, 
+				$4, 
+				$5
+			)
+	;`
 
-		checkoutLogResult, err = tx.ExecContext(ctx, checkoutSql,
-			transactionUUID,
-			checkoutData.Tagnumber,
-			ptrToNullTime(checkoutData.CheckoutDate),
-			ptrToNullTime(checkoutData.ReturnDate),
-			ptrToNullBool(checkoutData.CheckoutBool),
-		)
-		if err != nil {
-			return fmt.Errorf("error inserting into checkout_log: %w", err)
-		}
-		if err := VerifyRowsAffected(checkoutLogResult, 1); err != nil {
-			return fmt.Errorf("error while checking rows affected on checkout_log table insert: %w", err)
-		}
+	checkoutLogResult, err := tx.ExecContext(ctx, checkoutSql,
+		transactionUUID,
+		checkoutData.Tagnumber,
+		ptrToNullTime(checkoutData.CheckoutDate),
+		ptrToNullTime(checkoutData.ReturnDate),
+		ptrToNullBool(checkoutData.CheckoutBool),
+	)
+	if err != nil {
+		return err
 	}
-
+	if err := VerifyRowsAffected(checkoutLogResult, 1); err != nil {
+		return err
+	}
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.InventoryHardwareWriteModel) (err error) {
+func UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.InventoryHardwareWriteModel) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
-		return fmt.Errorf("generated transaction UUID is nil")
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
 	}
-	if hardwareData == nil || hardwareData.Tagnumber == 0 {
-		return fmt.Errorf("hardwareData is invalid")
+	if hardwareData == nil {
+		return fmt.Errorf("%w: %s (%s)", types.InvalidStructureError, "InventoryHardwareWriteModel", "nil")
+	}
+	if err := types.IsTagnumberInt64Valid(&hardwareData.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
 
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return fmt.Errorf("%w: %v", types.DatabaseConnError, err)
 	}
 
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("error beginning transaction: %w", err)
 	}
+
 	defer func() {
 		if err != nil {
 			_ = tx.Rollback()
@@ -220,9 +262,25 @@ func (updateRepo *UpdateRepo) UpdateInventoryHardwareData(ctx context.Context, t
 	}()
 
 	// Insert/update hardware_data table
-	const hardwareDataSql = `INSERT INTO hardware_data
-		(time, transaction_uuid, tagnumber, system_manufacturer, system_model, device_type) 
-		VALUES (CURRENT_TIMESTAMP, $1, $2, $3, $4, $5)
+	const hardwareDataSql = `
+		INSERT INTO hardware_data
+			(
+				time, 
+				transaction_uuid, 
+				tagnumber, 
+				system_manufacturer, 
+				system_model, 
+				device_type
+			) 
+		VALUES
+			(
+				CURRENT_TIMESTAMP, 
+				$1, 
+				$2, 
+				$3, 
+				$4, 
+				$5
+			)
 		ON CONFLICT (tagnumber)
 		DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
@@ -230,7 +288,8 @@ func (updateRepo *UpdateRepo) UpdateInventoryHardwareData(ctx context.Context, t
 			tagnumber = EXCLUDED.tagnumber,
 			system_manufacturer = EXCLUDED.system_manufacturer,
 			system_model = EXCLUDED.system_model,
-			device_type = EXCLUDED.device_type;`
+			device_type = EXCLUDED.device_type
+	;`
 
 	var hardwareDataResult sql.Result
 	hardwareDataResult, err = tx.ExecContext(ctx, hardwareDataSql,
@@ -241,10 +300,10 @@ func (updateRepo *UpdateRepo) UpdateInventoryHardwareData(ctx context.Context, t
 		ptrToNullString(hardwareData.DeviceType),
 	)
 	if err != nil {
-		return fmt.Errorf("error inserting/updating hardware data: %w", err)
+		return fmt.Errorf("db error: %w", err)
 	}
 	if err := VerifyRowsAffected(hardwareDataResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on hardware_data table insert/update: %w", err)
+		return err
 	}
 
 	return nil
@@ -318,37 +377,42 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 		return fmt.Errorf("error inserting location data: %w", err)
 	}
 	if err := VerifyRowsAffected(locationsResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on locations table insert: %w", err)
+		return err
 	}
 
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *types.ImageManifestDTO) (err error) {
+func UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest *types.ImageManifestDTO) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
-		return fmt.Errorf("transaction UUID is nil")
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
+	}
+
+	if err := types.IsTagnumberInt64Valid(&manifest.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
 
 	if manifest == nil ||
 		strings.TrimSpace(manifest.UUID) == "" ||
 		manifest.Time.IsZero() ||
-		manifest.Tagnumber == 0 ||
 		strings.TrimSpace(manifest.FileName) == "" ||
 		strings.TrimSpace(manifest.FilePath) == "" ||
 		manifest.FileSize <= 0 ||
 		len(manifest.SHA256Hash) == 0 ||
 		strings.TrimSpace(manifest.MimeType) == "" {
-		return fmt.Errorf("invalid manifest: %v", manifest)
+		return fmt.Errorf("%w: invalid manifest: %s", types.InvalidStructureError, "ImageManifestDTO")
 	}
 
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("error beginning transaction: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.CannotBeginTransactionError, err)
+	}
+
 	defer func() {
 		if err != nil {
 			_ = tx.Rollback()
@@ -357,24 +421,46 @@ func (updateRepo *UpdateRepo) UpdateClientImages(ctx context.Context, transactio
 		}
 	}()
 
-	const sqlCode = `INSERT INTO client_images (uuid, 
-		time, 
-		tagnumber, 
-		filename, 
-		filepath, 
-		thumbnail_filepath, 
-		filesize, 
-		sha256_hash, 
-		mime_type, 
-		exif_timestamp, 
-		resolution_x, 
-		resolution_y, 
-		note, 
-		hidden, 
-		pinned)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`
-	var sqlResult sql.Result
-	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+	const sqlCode = `
+		INSERT INTO client_images 
+			(
+				uuid, 
+				time, 
+				tagnumber, 
+				filename, 
+				filepath, 
+				thumbnail_filepath, 
+				filesize, 
+				sha256_hash, 
+				mime_type, 
+				exif_timestamp, 
+				resolution_x, 
+				resolution_y, 
+				note, 
+				hidden, 
+				pinned
+			)
+		VALUES 
+			(
+				$1, 
+				$2, 
+				$3, 
+				$4, 
+				$5, 
+				$6, 
+				$7, 
+				$8, 
+				$9, 
+				$10, 
+				$11, 
+				$12, 
+				$13, 
+				$14, 
+				$15
+			)
+	;`
+
+	sqlResult, err := tx.ExecContext(ctx, sqlCode,
 		manifest.UUID,
 		manifest.Time,
 		manifest.Tagnumber,
@@ -392,27 +478,32 @@ func (updateRepo *UpdateRepo) UpdateClientImages(ctx context.Context, transactio
 		manifest.Pinned,
 	)
 	if err != nil {
-		return fmt.Errorf("error inserting client image: %w", err)
+		return err
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on client_images table insert: %w", err)
+		return err
 	}
 	return nil
 }
 
-func (updateRepo *UpdateRepo) HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error) {
-	if tagnumber == nil || uuid == nil || strings.TrimSpace(*uuid) == "" {
-		return fmt.Errorf("tagnumber and uuid are both required")
+func HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error) {
+	if err := types.IsTagnumberInt64Valid(tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
+	}
+	if uuid == nil || strings.TrimSpace(*uuid) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "image UUID")
 	}
 
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("error beginning transaction: %w", err)
+		return fmt.Errorf("%w: %v", types.DatabaseConnError, err)
 	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.CannotBeginTransactionError, err)
+	}
+
 	defer func() {
 		if err != nil {
 			_ = tx.Rollback()
@@ -421,34 +512,47 @@ func (updateRepo *UpdateRepo) HideClientImageByUUID(ctx context.Context, tagnumb
 		}
 	}()
 
-	const sqlQuery = `UPDATE client_images SET hidden = TRUE WHERE tagnumber = $1 AND uuid = $2;`
-	var sqlResult sql.Result
-	sqlResult, err = tx.ExecContext(ctx, sqlQuery,
+	const sqlQuery = `
+		UPDATE 
+			client_images 
+		SET 
+			hidden = TRUE 
+		WHERE 
+			tagnumber = $1 
+			AND uuid = $2
+	;`
+
+	sqlResult, err := tx.ExecContext(ctx, sqlQuery,
 		ptrToNullInt64(tagnumber),
 		ptrToNullString(uuid),
 	)
 	if err != nil {
-		return fmt.Errorf("error hiding client image: %w", err)
+		return err
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on client_images table update: %w", err)
+		return err
 	}
 	return nil
 }
 
-func (updateRepo *UpdateRepo) DeleteClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error) {
-	if tagnumber == nil || uuid == nil || strings.TrimSpace(*uuid) == "" {
-		return fmt.Errorf("tagnumber and uuid are both required")
+func DeleteClientImageByUUID(ctx context.Context, tag *int64, imageUUID *string) (err error) {
+	if err := types.IsTagnumberInt64Valid(tag); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
+	}
+	if imageUUID == nil || strings.TrimSpace(*imageUUID) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "image UUID")
 	}
 
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("error beginning transaction: %w", err)
+		return fmt.Errorf("%w: %v", types.DatabaseConnError, err)
 	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.CannotBeginTransactionError, err)
+	}
+
 	defer func() {
 		if err != nil {
 			_ = tx.Rollback()
@@ -457,17 +561,22 @@ func (updateRepo *UpdateRepo) DeleteClientImageByUUID(ctx context.Context, tagnu
 		}
 	}()
 
-	const sqlQuery = `DELETE FROM client_images WHERE tagnumber = $1 AND uuid = $2;`
-	var sqlResult sql.Result
-	sqlResult, err = tx.ExecContext(ctx, sqlQuery,
-		ptrToNullInt64(tagnumber),
-		ptrToNullString(uuid),
+	const sqlQuery = `
+		DELETE FROM 
+			client_images 
+		WHERE 
+			tagnumber = $1 
+			AND uuid = $2
+	;`
+	sqlResult, err := tx.ExecContext(ctx, sqlQuery,
+		ptrToNullInt64(tag),
+		ptrToNullString(imageUUID),
 	)
 	if err != nil {
-		return fmt.Errorf("error deleting client image: %w", err)
+		return err
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on client_images table delete: %w", err)
+		return err
 	}
 	return nil
 }
@@ -503,7 +612,7 @@ func (updateRepo *UpdateRepo) TogglePinImage(ctx context.Context, tagnumber *int
 		return fmt.Errorf("error toggling pin on client image: %w", err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on client_images table update: %w", err)
+		return err
 	}
 	return nil
 }
@@ -568,7 +677,7 @@ func (updateRepo *UpdateRepo) SetClientJob(ctx context.Context, tag *int64, clie
 		return fmt.Errorf("error while updating client job: %w", err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+		return err
 	}
 	return nil
 }
@@ -613,7 +722,7 @@ func (updateRepo *UpdateRepo) UpdateClientMemoryInfo(ctx context.Context, memInf
 		return fmt.Errorf("error updating memory usage: %w", err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+		return err
 	}
 	return nil
 }
@@ -654,7 +763,7 @@ func (updateRepo *UpdateRepo) UpdateClientCPUUsage(ctx context.Context, cpuData 
 		return fmt.Errorf("error updating CPU usage: %w", err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+		return err
 	}
 	return nil
 }
@@ -693,7 +802,7 @@ func (updateRepo *UpdateRepo) UpdateClientCPUMHz(ctx context.Context, cpuData *t
 		return fmt.Errorf("error updating CPU MHz: %w", err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on CPU MHz update: %w", err)
+		return err
 	}
 	return nil
 }
@@ -732,7 +841,7 @@ func (updateRepo *UpdateRepo) UpdateClientNetworkUsage(ctx context.Context, netw
 		return fmt.Errorf("error updating network usage: %w", err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+		return err
 	}
 	return nil
 }
@@ -774,7 +883,7 @@ func (updateRepo *UpdateRepo) UpdateClientCPUTemperature(ctx context.Context, cp
 		return fmt.Errorf("error updating CPU temperature: %w", err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+		return err
 	}
 	return nil
 }
@@ -814,7 +923,7 @@ func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData
 		return fmt.Errorf("error updating client uptime: %w", err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+		return err
 	}
 	return nil
 }
@@ -851,7 +960,7 @@ func (updateRepo *UpdateRepo) UpdateClientLastHardwareCheck(ctx context.Context,
 		return fmt.Errorf("error updating last hardware check time: %w", err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on client_health table update: %w", err)
+		return err
 	}
 	return nil
 }
@@ -960,10 +1069,10 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		ptrToNullString(hardwareData.WiFiMAC),
 	)
 	if err != nil {
-		return fmt.Errorf("error inserting/updating hardware data: %w", err)
+		return err
 	}
 	if err := VerifyRowsAffected(hardwareResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on hardware_data table insert/update: %w", err)
+		return err
 	}
 
 	const historicalHardwareDataTable = `INSERT INTO historical_hardware_data 
@@ -1092,10 +1201,10 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		ptrToNullInt64(hardwareData.MemorySpeedMHz),
 	)
 	if err != nil {
-		return fmt.Errorf("error inserting/updating historical hardware data: %w", err)
+		return err
 	}
 	if err := VerifyRowsAffected(hardwareHistoryResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on historical hardware data table update: %w", err)
+		return err
 	}
 	return nil
 }
@@ -1238,10 +1347,10 @@ func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHeal
 		ptrToNullTime(clientHealth.LastHardwareCheck),
 	)
 	if err != nil {
-		return fmt.Errorf("error inserting/updating client health data: %w", err)
+		return err
 	}
 	if err := VerifyRowsAffected(clientHealthResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on client_health table insert/update: %w", err)
+		return err
 	}
 
 	return nil
@@ -1285,10 +1394,10 @@ func (updateRepo *UpdateRepo) UpdateJobQueuedAt(ctx context.Context, jobQueue *t
 		ptrToNullTime(jobQueue.JobQueuedAt),
 	)
 	if err != nil {
-		return fmt.Errorf("error updating job_queued_at: %w", err)
+		return err
 	}
 	if err := VerifyRowsAffected(res, 1); err != nil {
-		return fmt.Errorf("rows affected are out of range: %w", err)
+		return err
 	}
 
 	return nil
@@ -1323,23 +1432,20 @@ func (updateRepo *UpdateRepo) UpdateClientLastHeard(ctx context.Context, tag *in
 		ptrToNullTime(lastHeard),
 	)
 	if err != nil {
-		return fmt.Errorf("error updating client's last heard time: %w", err)
+		return err
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("error while checking rows affected on job_queue table update: %w", err)
+		return err
 	}
 	return nil
 }
 
 func (updateRepo *UpdateRepo) UpdateClientBatteryChargePcnt(ctx context.Context, tag *int64, percent *float64) (err error) {
-	if tag == nil || *tag == 0 {
-		return fmt.Errorf("tagnumber is required")
+	if err := types.IsTagnumberInt64Valid(tag); err != nil {
+		return err
 	}
 	if percent == nil || *percent < 0 || *percent > 100 {
 		return fmt.Errorf("percent must be between 0 and 100")
-	}
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
 	}
 	tx, err := updateRepo.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -1371,14 +1477,11 @@ func (updateRepo *UpdateRepo) BulkUpdateClientLocation(ctx context.Context, tran
 	if transactionUUID == nil || strings.TrimSpace(*transactionUUID) == "" {
 		return fmt.Errorf("transactionUUID is required")
 	}
-	if tag == nil || *tag == 0 {
-		return fmt.Errorf("tagnumber is required")
+	if err := types.IsTagnumberInt64Valid(tag); err != nil {
+		return err
 	}
 	if location == nil || strings.TrimSpace(*location) == "" {
 		return fmt.Errorf("location is required")
-	}
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
 	}
 	tx, err := updateRepo.DB.BeginTx(ctx, nil)
 	if err != nil {

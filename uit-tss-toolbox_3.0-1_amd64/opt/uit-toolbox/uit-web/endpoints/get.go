@@ -493,15 +493,8 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository (GetImage): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
 	log.Debug("Serving image request for: " + imageUUID)
-	imageManifest, err := db.GetClientImageFilePathFromUUID(ctx, &imageUUID)
+	imageManifest, err := database.GetClientImageFilePathFromUUID(ctx, &imageUUID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			log.Info("Image not found from UUID lookup (GetImage): " + imageUUID + " " + err.Error())
