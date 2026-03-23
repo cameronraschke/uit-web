@@ -1162,7 +1162,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 			WHEN latest_historical_hardware_data.bios_version = static_bios_stats.bios_version THEN TRUE
 			ELSE FALSE
 		END) AS "bios_updated",
-		static_bios_stats.bios_version,
+		latest_historical_hardware_data.bios_version,
 		job_queue.cpu_usage,
 		job_queue.cpu_mhz,
 		job_queue.cpu_temp,
