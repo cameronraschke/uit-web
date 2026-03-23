@@ -474,7 +474,6 @@ CREATE TABLE IF NOT EXISTS static_department_info (
 	organization_name VARCHAR(64) REFERENCES static_organizations(organization_name) DEFAULT NULL
 );
 
-DROP TABLE IF EXISTS static_job_names;
 CREATE TABLE IF NOT EXISTS static_job_names (
 	job_name VARCHAR(24) PRIMARY KEY,
 	job_name_readable VARCHAR(24) DEFAULT NULL,
@@ -496,6 +495,11 @@ VALUES
 	('nvmeVerify', 'Verify Erase', 70, TRUE),
 	('shutdown', 'Shutdown', 80, FALSE),
 	('cancel', 'Cancel/Clear Job(s)', 95, FALSE)
+	ON CONFLICT (job_name) 
+	DO UPDATE SET 
+		job_name_readable = EXCLUDED.job_name_readable, 
+		job_sort_order = EXCLUDED.job_sort_order, 
+		job_hidden = EXCLUDED.job_hidden
 	;
 
 CREATE TABLE IF NOT EXISTS static_ad_domains (
