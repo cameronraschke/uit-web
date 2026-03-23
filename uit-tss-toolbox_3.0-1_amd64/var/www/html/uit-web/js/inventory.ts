@@ -983,7 +983,9 @@ cancelUpdate.addEventListener("click", (event) => {
 
 clientLookupTagInput.addEventListener("keyup", (event: KeyboardEvent) => {
   const searchTerm = ((event.target as HTMLInputElement).value || '').trim().toLowerCase();
-  const allTags = Array.isArray(window.allTags) ? window.allTags : [];
+  const allTags = Array.isArray(window.globalLookupResults) 
+    ? window.globalLookupResults.flatMap(cache => cache.entries || []).map(entry => entry.tagnumber).filter((tag): tag is number => typeof tag === "number") 
+    : [];
   const filteredTags = searchTerm
     ? allTags.filter(tag => tag.toString().trim().includes(searchTerm))
     : allTags;
@@ -1174,12 +1176,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 		const errorMessage = e instanceof Error ? e.message : String(e);
 		console.error("Error during inventory page initialization:", errorMessage);
 	}
-	if (Array.isArray(window.allTags)) {
-		renderTagOptions(allTagsDatalist, window.allTags, 20);
+	if (Array.isArray(window.globalLookupResults) && window.globalLookupResults.length > 0) {
+		const tags = window.globalLookupResults.flatMap(cache => (cache.entries || []).map(e => e.tagnumber)).filter((tag): tag is number => typeof tag === "number");
+		renderTagOptions(allTagsDatalist, tags, 20);
 	}
 
-	document.addEventListener('tags:loaded', (event: CustomEvent<{ tags: number[] }>) => {
-		const tags = (event && event.detail && Array.isArray(event.detail.tags)) ? event.detail.tags : window.allTags;
+	document.addEventListener('tags:loaded', (event: CustomEvent<{ entries: any[] }>) => {
+		const rawEntries = (event && event.detail && Array.isArray(event.detail.entries)) ? event.detail.entries : window.globalLookupResults;
+		const tags = rawEntries.flatMap((cache: any) => (cache.entries || []).map((e: any) => e.tagnumber)).filter((tag: any): tag is number => typeof tag === "number");
 		renderTagOptions(allTagsDatalist, tags || [], 20);
 	});
 	
@@ -1229,6 +1233,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 	toggleBulkUpdate.addEventListener("click", () => {
 		if (!clientLookupForm || !bulkUpdateForm) return;
+
+		updateForm.reset();
 		
 		if (clientLookupForm.style.display !== "none") {
 			clientLookupForm.reset();

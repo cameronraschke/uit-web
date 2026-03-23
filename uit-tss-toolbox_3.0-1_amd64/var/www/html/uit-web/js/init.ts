@@ -1,5 +1,5 @@
 interface Window {
-  allTags: number[];
+  globalLookupResults: GlobalLookupResultCache[];
 }
 
 type GlobalLookupResult = {
@@ -9,7 +9,7 @@ type GlobalLookupResult = {
 };
 
 type GlobalLookupResultCache = {
-	results: GlobalLookupResult[] | null;
+	entries: GlobalLookupResult[] | null;
 	timestamp: number;
 };
 
@@ -511,21 +511,30 @@ async function generateSHA256Hash(input: string) {
     return hashStr;
 }
 
-async function getTagsFromServer(): Promise<GlobalLookupResultCache | null> {
-	const tagObj: GlobalLookupResultCache = {
-		results: [],
-		timestamp: 0
-	};
+async function getGlobalLookupData(purgeCache = false): Promise<GlobalLookupResultCache | null> {
+	if (purgeCache) {
+		sessionStorage.removeItem("uit_global_lookup");
+	}
+	const cached = sessionStorage.getItem("uit_global_lookup");
+	if (cached && !purgeCache) {
+		const cacheEntry: GlobalLookupResultCache = JSON.parse(cached);
+		if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.entries) && cacheEntry.entries.length > 0) {
+			console.log("Loaded tags from cache");
+			return cacheEntry;
+		} else {
+			sessionStorage.removeItem("uit_global_lookup");
+		}
+	}
 
+	const newCache: GlobalLookupResultCache = { timestamp: Date.now(), entries: [] };
 	const url = "/api/overview/global_lookup";
 	try {
-		const data = await fetchData(url, false); // expect JSON array
-		if (!data) {
-			console.warn("No data returned from /api/overview/global_lookup");
+		const response: GlobalLookupResult | null = await fetchData(url, false);
+		if (!response) {
+			console.warn("Invalid response returned from /api/overview/global_lookup");
 			return null;
 		}
 
-		const response: GlobalLookupResult | null = data;
 		if (!Array.isArray(response) || response.length === 0) {
 			console.warn("/api/overview/global_lookup response is not an array or is empty");
 			return null;
@@ -535,16 +544,28 @@ async function getTagsFromServer(): Promise<GlobalLookupResultCache | null> {
 				console.warn("Invalid result in /api/overview/global_lookup response: " + result);
 				return null;
 			}
-
-			const parsedResult: GlobalLookupResult = {
-				tagnumber: typeof result.tagnumber === "number" ? result.tagnumber : null,
-				system_serial: typeof result.system_serial === "string" ? result.system_serial : null,
-				last_inventory_entry: result.last_inventory_entry ? new Date(result.last_inventory_entry) : null
-			};
-			tagObj.results?.push(parsedResult);
+			if (typeof result.tagnumber !== "number" && typeof result.tagnumber !== "string") {
+				console.warn("Invalid tagnumber in /api/overview/global_lookup response: " + result.tagnumber);
+				return null;
+			}
+			if (typeof result.system_serial !== "string" && result.system_serial !== null) {
+				console.warn("Invalid system_serial in /api/overview/global_lookup response: " + result.system_serial);
+				return null;
+			}
+			if (result.last_inventory_entry !== null && isNaN(Date.parse(result.last_inventory_entry))) {
+				console.warn("Invalid last_inventory_entry in /api/overview/global_lookup response: " + result.last_inventory_entry);
+				return null;
+			}
 		}
-		tagObj.timestamp = Date.now();
-		return tagObj;
+		newCache.entries = response;
+		newCache.entries.sort((a, b) => {
+			const dateA = a.last_inventory_entry ? new Date(a.last_inventory_entry).getTime() : 0;
+			const dateB = b.last_inventory_entry ? new Date(b.last_inventory_entry).getTime() : 0;
+			return dateB - dateA;
+		});
+		newCache.timestamp = Date.now();
+		sessionStorage.setItem("uit_global_lookup", JSON.stringify(newCache));
+		return newCache;
 	} catch (error) {
 		console.error("Error fetching tags from server:", error);
 		return null;
@@ -563,46 +584,6 @@ function setURLParameter(urlParameter: string | null, value: string | null) {
 	} else {
 		history.replaceState(null, '', newURL.pathname);
 	}
-}
-
-function getCachedTags(): GlobalLookupResultCache | null {
-	const cached = sessionStorage.getItem("uit_all_tags");
-	if (!cached) return null;
-
-	try {
-		const cacheEntry: GlobalLookupResultCache = JSON.parse(cached);
-		// 5 min cache expiry
-		if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.results) && cacheEntry.results.length > 0) {
-			console.log("Loaded tags from cache");
-			return cacheEntry;
-		}
-	} catch (e) {
-		sessionStorage.removeItem("uit_all_tags");
-	}
-	return null;
-}
-
-async function getAllTags():  Promise<GlobalLookupResultCache | null> {
-	if (window.location.pathname === '/login' || window.location.pathname === '/logout') {
-		return null;
-	}
-	const cachedTags = getCachedTags();
-	if (cachedTags) return cachedTags;
-
-	try {
-		const refreshedTags = await getTagsFromServer();
-		if (refreshedTags) {
-			sessionStorage.setItem("uit_all_tags", JSON.stringify({
-				results: refreshedTags.results,
-				timestamp: refreshedTags.timestamp
-			}));
-			return refreshedTags;
-		}
-	} catch (e) {
-		console.warn("Error parsing /api/overview/global_lookup response:", e);
-		return null;
-	}
-	return null;
 }
 
 async function waitForNextPaint(frames = 1) {
@@ -633,15 +614,17 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 	// Load all tags
 	try {
-		const allTags = await getAllTags();
-		if (allTags && Array.isArray(allTags.results)) {
-			window.allTags = allTags.results.map(result => result.tagnumber).filter((tag): tag is number => typeof tag === "number");
+		const data: GlobalLookupResultCache | null = await getGlobalLookupData();
+		if (data && Array.isArray(data.entries) && data.entries.length > 0) {
+			window.globalLookupResults = [];
+			window.globalLookupResults.push(data);
+			console.log("Available tags loaded: " + window.globalLookupResults.length);
 		} else {
-			window.allTags = [];
+			window.globalLookupResults = [] as GlobalLookupResultCache[];
 		}
-		document.dispatchEvent(new CustomEvent("tags:loaded", { detail: { tags: window.allTags } }));
+		document.dispatchEvent(new CustomEvent("tags:loaded", { detail: { entries: window.globalLookupResults } }));
 	} catch (error) {
 		console.warn("Error initializing available tags:", error);
-		window.allTags = [];
+		window.globalLookupResults = [] as GlobalLookupResultCache[];
 	}
 });

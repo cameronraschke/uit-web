@@ -40,11 +40,11 @@ function initHeader() {
 	tagLookup.addEventListener('keyup', () => {
 		const inputVal = tagLookup.value.trim();
 		if (inputVal.length === 0) {
-			renderTagOptions(globalSearchDatalist, window.allTags, 10);
+			renderTagOptions(globalSearchDatalist, window.globalLookupResults.flatMap(entry => entry.entries || []).map(entry => entry.tagnumber).filter((tag): tag is number => typeof tag === "number"), 0);
 			return;
 		}
-		const filteredTags = window.allTags.filter(tag => tag.toString().includes(inputVal));
-		renderTagOptions(globalSearchDatalist, filteredTags, 10);
+		const globalSearchValues = window.globalLookupResults.flatMap(entry => entry.entries || []).map(entry => entry.tagnumber).filter((tag): tag is number => typeof tag === "number").filter(tag => tag.toString().includes(inputVal));
+		renderTagOptions(globalSearchDatalist, globalSearchValues, 10);
 	});
 
 	globalLookupForm.addEventListener('submit', (event) => {
