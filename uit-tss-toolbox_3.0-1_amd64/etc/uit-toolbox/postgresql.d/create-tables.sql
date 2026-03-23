@@ -363,10 +363,13 @@ CREATE TABLE IF NOT EXISTS job_queue (
 	cpu_temp DECIMAL(6, 2) DEFAULT NULL,
 	network_usage INT DEFAULT NULL,
 	link_speed INT DEFAULT NULL,
+
+	CONSTRAINT fkey_job_name 
+	FOREIGN KEY (job_name) 
+	REFERENCES static_job_names(job_name) 
+	ON UPDATE CASCADE 
+	ON DELETE SET NULL
 );
-
--- ALTER TABLE job_queue ADD CONSTRAINT fkey_job_name FOREIGN KEY (job_name) REFERENCES static_job_names(job_name) ON UPDATE CASCADE ON DELETE SET NULL;
-
 
 DROP table IF EXISTS logins;
 CREATE TABLE IF NOT EXISTS logins (
