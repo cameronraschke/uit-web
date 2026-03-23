@@ -306,6 +306,7 @@ td > div.flex-container {
 }
 
 .svg-button.delete {
+	padding-left: 2rem;
 	background-color: var(--bg-color);
 	background-image: url(/icons/general/delete.svg);
 }

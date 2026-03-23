@@ -1234,7 +1234,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	toggleBulkUpdate.addEventListener("click", () => {
 		if (!clientLookupForm || !bulkUpdateForm) return;
 
-		updateForm.reset();
+		resetInventoryLookupAndUpdateForm();
 		
 		if (clientLookupForm.style.display !== "none") {
 			clientLookupForm.reset();
