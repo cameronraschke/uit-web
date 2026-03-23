@@ -338,7 +338,7 @@ CREATE TABLE IF NOT EXISTS client_health (
 CREATE TABLE IF NOT EXISTS job_queue (
 	tagnumber INTEGER UNIQUE NOT NULL,
 	job_queued BOOLEAN DEFAULT FALSE,
-	job_name varchar(64) default null;
+	job_name VARCHAR(64) REFERENCES static_job_names(job_name) DEFAULT NULL,
 	job_queued_at TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
 	job_active BOOLEAN DEFAULT FALSE,
 	clone_mode VARCHAR(24) DEFAULT NULL,
@@ -364,6 +364,8 @@ CREATE TABLE IF NOT EXISTS job_queue (
 	network_usage INT DEFAULT NULL,
 	link_speed INT DEFAULT NULL,
 );
+
+-- ALTER TABLE job_queue ADD CONSTRAINT fkey_job_name FOREIGN KEY (job_name) REFERENCES static_job_names(job_name) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 DROP table IF EXISTS logins;
