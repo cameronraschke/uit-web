@@ -20,8 +20,14 @@ async function drawHeader() {
 }
 
 function initHeader() {
+	const globalLookupForm = document.querySelector("#global-client-lookup-form") as HTMLFormElement;
 	const tagLookup = document.querySelector("#global-client-lookup") as HTMLInputElement;
 	const globalSearchDatalist = document.querySelector("#global-client-lookup-datalist") as HTMLDataListElement;
+
+	if (!globalLookupForm) {
+		console.warn("Global lookup form not found, skipping tag search initialization");
+		return;
+	}
 	if (!tagLookup) {
 		console.warn("Tag lookup input not found, skipping tag search initialization");
 		return;
@@ -39,6 +45,15 @@ function initHeader() {
 		}
 		const filteredTags = window.allTags.filter(tag => tag.toString().includes(inputVal));
 		renderTagOptions(globalSearchDatalist, filteredTags, 10);
+	});
+
+	globalLookupForm.addEventListener('submit', (event) => {
+		event.preventDefault();
+		const tagValue = tagLookup.value.trim();
+		if (tagValue.length === 0) {
+			return;
+		}
+		window.location.href = `/inventory?tagnumber=${encodeURIComponent(tagValue)}&update=true`;
 	});
 }
 
