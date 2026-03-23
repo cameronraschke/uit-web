@@ -18,21 +18,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var csvHeader = []string{
-	"Tagnumber",
-	"System Serial",
-	"Location",
-	"Manufacturer",
-	"Model",
-	"Department",
-	"Domain",
-	"OS Name",
-	"Status",
-	"Broken",
-	"Note",
-	"Last Updated",
-}
-
 func VerifyRowsAffected(result sql.Result, expectedRowCount int64) error {
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
@@ -239,6 +224,24 @@ func ConvertInventoryTableDataToCSV(ctx context.Context, dbQueryData []types.Inv
 	var buf bytes.Buffer
 	buf.Grow(len(dbQueryData) * 200) // Grow by 200 bytes before another allocation
 	csvWriter := csv.NewWriter(&buf)
+
+	var csvHeader = []string{
+		"Tagnumber",
+		"System Serial",
+		"Location",
+		"Building",
+		"Room",
+		"Department",
+		"Device Type",
+		"Manufacturer",
+		"Model",
+		"Domain",
+		"OS Name",
+		"Status",
+		"Broken",
+		"Note",
+		"Last Updated",
+	}
 
 	if err := csvWriter.Write(csvHeader); err != nil {
 		return nil, fmt.Errorf("Error writing CSV header in ConvertInventoryTableDataToCSV: %w", err)
