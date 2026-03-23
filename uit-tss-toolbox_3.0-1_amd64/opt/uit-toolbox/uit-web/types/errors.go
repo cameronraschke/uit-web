@@ -17,4 +17,5 @@ var (
 	DatabaseUpdateError         = errors.New("cannot update DB")
 	DatabaseAffectedRowsError   = errors.New("unexpected number of rows affected")
 	DatabaseRowScanError        = errors.New("error scanning DB row")
+	DatabaseRowIterationError   = errors.New("error during DB row iteration")
 )

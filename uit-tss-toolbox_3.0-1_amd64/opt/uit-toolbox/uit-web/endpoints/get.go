@@ -61,23 +61,16 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, clientLookup)
 }
 
-func GetAllTags(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+func GetGlobalLookup(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "GetGlobalLookup"))
 
-	db, err := database.NewSelectRepo()
+	globalLookup, err := database.GetGlobalSearchData(req.Context())
 	if err != nil {
-		log.Warn("Error creating select repository in GetAllTags: " + err.Error())
+		log.Warn("DB error: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	allTags, err := db.GetAllTags(ctx)
-	if err != nil {
-		log.Warn("Query error in GetAllTags: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	middleware.WriteJson(w, http.StatusOK, allTags)
+	middleware.WriteJson(w, http.StatusOK, globalLookup)
 }
 
 func GetBiosData(w http.ResponseWriter, req *http.Request) {

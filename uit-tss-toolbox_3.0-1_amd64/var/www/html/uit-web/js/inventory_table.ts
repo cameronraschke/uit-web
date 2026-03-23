@@ -170,18 +170,23 @@ async function renderInventoryTable() {
 			const locationContainer = document.createElement('div');
 			const locationFormattedDiv = document.createElement('div');
 			const buildingRoomDiv = document.createElement('div');
+			const departmentDiv = document.createElement('div');
 
 			locationContainer.classList.add('flex-container', 'vertical');
 			locationFormattedDiv.classList.add('flex-container', 'horizontal');
 			buildingRoomDiv.classList.add('flex-container', 'horizontal', 'smaller-text');
+			departmentDiv.classList.add('flex-container', 'horizontal', 'smaller-text');
 
 			locationFormattedDiv.textContent = locationFormatted || 'N/A';
 			buildingRoomDiv.textContent = `B: ${building || 'N/A'} - R: ${room || 'N/A'}`;
 			if (!locationFormatted) locationFormattedDiv.style.fontStyle = 'italic';
 			if (!building && !room) buildingRoomDiv.style.fontStyle = 'italic';
+			if (!inventoryRow.department_formatted) departmentDiv.style.fontStyle = 'italic';
+			departmentDiv.appendChild(document.createTextNode(inventoryRow.department_formatted || 'N/A'));
 
 			locationContainer.appendChild(locationFormattedDiv);
 			locationContainer.appendChild(buildingRoomDiv);
+			locationContainer.appendChild(departmentDiv);
 			locationCell.appendChild(locationContainer);
 			tr.appendChild(locationCell);
 
@@ -236,9 +241,7 @@ async function renderInventoryTable() {
 			manufacturerModelContainer.appendChild(manufacturerModelDiv);
 			manufacturerModelCell.appendChild(manufacturerModelContainer);
 			tr.appendChild(manufacturerModelCell);
-
-			// Department
-			tr.appendChild(createTextCell(undefined, 'department', inventoryRow.department_formatted, 20, undefined));
+			
 
 			// Domain
 			tr.appendChild(createTextCell(undefined, 'ad_domain', inventoryRow.ad_domain_formatted, 20, undefined));
@@ -250,7 +253,18 @@ async function renderInventoryTable() {
 			tr.appendChild(createTextCell(undefined, 'note', inventoryRow.note, 60, ''));
 
 			// Last Updated
-			tr.appendChild(createTimestampCell(undefined, 'last_updated', inventoryRow.last_updated, undefined));
+			const lastUpdatedCell = document.createElement('td');
+			const lastUpdatedDiv = document.createElement('div');
+			lastUpdatedDiv.classList.add('flex-container', 'vertical');
+			const dateFormattedDiv = document.createElement('div');
+			dateFormattedDiv.appendChild(document.createTextNode(new Date(inventoryRow.last_updated).toLocaleDateString()));
+			const timeFormattedDiv = document.createElement('div');
+			timeFormattedDiv.classList.add('flex-container', 'horizontal', 'smaller-text');
+			timeFormattedDiv.appendChild(document.createTextNode(new Date(inventoryRow.last_updated).toLocaleTimeString()));
+			lastUpdatedDiv.appendChild(dateFormattedDiv);
+			lastUpdatedDiv.appendChild(timeFormattedDiv);
+			lastUpdatedCell.appendChild(lastUpdatedDiv);
+			tr.appendChild(lastUpdatedCell);
 
 			fragment.appendChild(tr);
 		}

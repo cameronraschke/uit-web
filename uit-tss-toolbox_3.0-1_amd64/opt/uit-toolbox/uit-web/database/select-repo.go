@@ -18,7 +18,6 @@ import (
 )
 
 type Select interface {
-	GetAllTags(ctx context.Context) ([]int64, error)
 	GetDepartments(ctx context.Context) ([]types.AllDepartmentsRow, error)
 	GetDomains(ctx context.Context) ([]types.AllDomainsRow, error)
 	GetManufacturersAndModels(ctx context.Context) ([]types.AllManufacturersAndModelsRow, error)
@@ -63,42 +62,47 @@ func NewSelectRepo() (Select, error) {
 
 var _ Select = (*SelectRepo)(nil)
 
-func (repo *SelectRepo) GetAllTags(ctx context.Context) ([]int64, error) {
-	const sqlQuery = `SELECT tagnumber FROM (SELECT tagnumber, time, ROW_NUMBER() OVER (PARTITION BY tagnumber ORDER BY time DESC NULLS LAST) AS
-		row_nums FROM locations WHERE tagnumber IS NOT NULL) t1 WHERE t1.row_nums = 1 ORDER BY t1.time DESC NULLS LAST;`
-
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
+func GetGlobalSearchData(ctx context.Context) ([]types.GlobalLookupRow, error) {
+	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return nil, fmt.Errorf("error executing query: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+	const sqlQuery = `
+		SELECT 
+			DISTINCT ON (tagnumber) tagnumber, 
+			system_serial, 
+			time 
+		FROM 
+			locations 
+		GROUP BY tagnumber, system_serial, time 
+		ORDER BY tagnumber, system_serial, time DESC NULLS LAST
+	;`
+
+	rows, err := dbConn.QueryContext(ctx, sqlQuery)
+	if err != nil {
+		return nil, err
 	}
 	defer rows.Close()
 
-	var allTags []types.AllTagsRow
+	var globalLookupRow []types.GlobalLookupRow
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var tag types.AllTagsRow
+		var tag types.GlobalLookupRow
 		if err := rows.Scan(&tag.Tagnumber); err != nil {
-			return nil, fmt.Errorf("error scanning row: %w", err)
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
-		allTags = append(allTags, tag)
+		globalLookupRow = append(globalLookupRow, tag)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
 	}
-	if len(allTags) == 0 {
+	if len(globalLookupRow) == 0 {
 		return nil, nil
 	}
 
-	allTagsSlice := make([]int64, len(allTags))
-	for i := range allTags {
-		if allTags[i].Tagnumber != nil {
-			allTagsSlice[i] = *allTags[i].Tagnumber
-		}
-	}
-
-	return allTagsSlice, nil
+	return globalLookupRow, nil
 }
 
 func (repo *SelectRepo) GetDepartments(ctx context.Context) ([]types.AllDepartmentsRow, error) {

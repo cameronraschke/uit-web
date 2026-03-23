@@ -16,8 +16,9 @@
 			<a id="menu-reports" href="/reports" class="menuitem">
 				<span>Reports</span>
 			</a>
-			<form id="menu-tag-lookup" class="menuitem search">
-				<input type="text" class="text-search disabled" placeholder="Search Tag/Serial No."/>
+			<form id="global-client-lookup-form" class="menuitem search">
+				<input type="text" id="global-client-lookup" class="text-search" placeholder="Search Tag/Serial No." list="global-client-lookup-datalist"/>
+				<datalist id="global-client-lookup-datalist"></datalist>
 			</form>
 			<a id="menu-logout-button" href="/logout" class="menuitem logout">
 				<span>Logout</span>

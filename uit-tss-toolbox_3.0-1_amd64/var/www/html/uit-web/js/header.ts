@@ -19,6 +19,29 @@ async function drawHeader() {
   }
 }
 
+function initHeader() {
+	const tagLookup = document.querySelector("#global-client-lookup") as HTMLInputElement;
+	const globalSearchDatalist = document.querySelector("#global-client-lookup-datalist") as HTMLDataListElement;
+	if (!tagLookup) {
+		console.warn("Tag lookup input not found, skipping tag search initialization");
+		return;
+	}
+	if (!globalSearchDatalist) {
+		console.warn("Global search datalist not found, skipping tag search initialization");
+		return;
+	}
+
+	tagLookup.addEventListener('keyup', () => {
+		const inputVal = tagLookup.value.trim();
+		if (inputVal.length === 0) {
+			renderTagOptions(globalSearchDatalist, window.allTags, 10);
+			return;
+		}
+		const filteredTags = window.allTags.filter(tag => tag.toString().includes(inputVal));
+		renderTagOptions(globalSearchDatalist, filteredTags, 10);
+	});
+}
+
 document.addEventListener("DOMContentLoaded", () => {
 	drawHeader().then(() => {
 		for (const [path, elementId] of pathMap) {
@@ -34,6 +57,12 @@ document.addEventListener("DOMContentLoaded", () => {
 	}).catch(
 		(error) => {
 			console.error("Error in drawHeader:", error);
+		}
+	).then(() => {
+		initHeader();
+	}).catch(
+		(error) => {
+			console.error("Error in initHeader:", error);
 		}
 	);
 });

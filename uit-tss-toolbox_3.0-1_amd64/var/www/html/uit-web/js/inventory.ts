@@ -414,24 +414,6 @@ function resetInventorySearchQuery() {
 	history.replaceState(null, '', url.toString());
 }
 
-function renderTagOptions(tags: number[]): void {
-  if (!allTagsDatalist) {
-    console.warn("No tag datalist found");
-    return;
-  }
-  
-  allTagsDatalist.innerHTML = '';
-  let maxTags = 20;
-	if (tags.length < maxTags) {
-		maxTags = tags.length;
-	}
-  (tags || []).slice(0, maxTags).forEach(tag => {
-    const option = document.createElement('option');
-    option.value = tag.toString();
-    allTagsDatalist.appendChild(option);
-  });
-}
-
 async function getLocationFormData(tag?: number, serial?: string): Promise<InventoryForm | null> {
 	const tagNum = tag ? tag : clientLookupTagInput.value ? Number(clientLookupTagInput.value) : null;
 	const serialNum = serial ? serial : clientLookupSerial.value ? String(clientLookupSerial.value) : null;
@@ -1008,7 +990,7 @@ clientLookupTagInput.addEventListener("keyup", (event: KeyboardEvent) => {
   if (filteredTags.includes(Number(searchTerm))) {
     allTagsDatalist.innerHTML = '';
   } else {
-    renderTagOptions(filteredTags);
+    renderTagOptions(allTagsDatalist, filteredTags, 20);
   }
 });
 
@@ -1193,12 +1175,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 		console.error("Error during inventory page initialization:", errorMessage);
 	}
 	if (Array.isArray(window.allTags)) {
-		renderTagOptions(window.allTags);
+		renderTagOptions(allTagsDatalist, window.allTags, 20);
 	}
 
 	document.addEventListener('tags:loaded', (event: CustomEvent<{ tags: number[] }>) => {
 		const tags = (event && event.detail && Array.isArray(event.detail.tags)) ? event.detail.tags : window.allTags;
-		renderTagOptions(tags || []);
+		renderTagOptions(allTagsDatalist, tags || [], 20);
 	});
 	
 	locationPart.forEach(part => part.style.display = "flex");

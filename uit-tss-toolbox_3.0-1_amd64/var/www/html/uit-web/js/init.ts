@@ -2,8 +2,14 @@ interface Window {
   allTags: number[];
 }
 
-type TagCache = {
-	tags: number[];
+type GlobalLookupResult = {
+	tagnumber: number | null;
+	system_serial: string | null;
+	last_inventory_entry: Date | null;
+};
+
+type GlobalLookupResultCache = {
+	results: GlobalLookupResult[] | null;
 	timestamp: number;
 };
 
@@ -21,7 +27,7 @@ type DeviceType = {
 };
 
 type DeviceTypeCache = {
-	deviceTypes: DeviceType[] | [];
+	deviceTypes: DeviceType[] | null;
 	timestamp: number;
 };
 
@@ -63,6 +69,24 @@ function createTextCell(elID: string | undefined, datasetKey: string | undefined
 	return cell;
 }
 
+function renderTagOptions(datalistEL: HTMLDataListElement, tags: number[], limit: number): void {
+  if (!datalistEL) {
+    console.warn("No tag datalist found");
+    return;
+  }
+  
+  datalistEL.innerHTML = '';
+  let maxTags = limit || 20;
+	if (tags.length < maxTags) {
+		maxTags = tags.length;
+	}
+  (tags || []).slice(0, maxTags).forEach(tag => {
+    const option = document.createElement('option');
+    option.value = tag.toString();
+    datalistEL.appendChild(option);
+  });
+}
+
 // Boolean broken status
 function createBooleanCell(elID: string | undefined, datasetKey: string | undefined, inputBool: boolean | null, trueText: string | undefined, falseText: string | undefined, customError: string | undefined) : HTMLTableCellElement {
   const cell = document.createElement('td');
@@ -76,31 +100,6 @@ function createBooleanCell(elID: string | undefined, datasetKey: string | undefi
 		cell.style.fontStyle = 'italic';
     cell.textContent = customError !== undefined ? customError : 'N/A';
   }
-  return cell;
-}
-
-// Date formatting
-function createTimestampCell(elID: string | undefined, datasetKey: string | undefined, inputStr: string | null, customError: string | undefined) : HTMLTableCellElement {
-  const cell = document.createElement('td');
-
-	if (elID) cell.id = elID;
-  
-  if (!inputStr || inputStr.trim().length === 0) {
-		cell.style.fontStyle = 'italic';
-    cell.textContent = customError !== undefined ? customError : 'N/A';
-    return cell;
-  }
-  
-  const date = new Date(inputStr);
-  
-  if (!isNaN(date.getTime())) {
-    const formatted = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-    if (datasetKey) cell.dataset[`${datasetKey}`] = formatted;
-    cell.textContent = formatted;
-  } else {
-		cell.style.fontStyle = 'italic';
-		cell.textContent = customError !== undefined ? customError : 'N/A';
-	}
   return cell;
 }
 
@@ -512,29 +511,37 @@ async function generateSHA256Hash(input: string) {
     return hashStr;
 }
 
-async function getTagsFromServer(): Promise<TagCache | null> {
-	let tagObj: TagCache = { tags: [], timestamp: Date.now() };
+async function getTagsFromServer(): Promise<GlobalLookupResultCache | null> {
+	const tagObj: GlobalLookupResultCache = {
+		results: [],
+		timestamp: 0
+	};
 
-	const url = "/api/overview/all_tags";
+	const url = "/api/overview/global_lookup";
 	try {
 		const data = await fetchData(url, false); // expect JSON array
 		if (!data) {
-			console.warn("No data returned from /api/overview/all_tags");
+			console.warn("No data returned from /api/overview/global_lookup");
 			return null;
 		}
 
-		const tagArr: any = data;
-		if (!Array.isArray(tagArr) || tagArr.length === 0) {
-			console.warn("/api/overview/all_tags response is not an array or is empty");
+		const response: GlobalLookupResult | null = data;
+		if (!Array.isArray(response) || response.length === 0) {
+			console.warn("/api/overview/global_lookup response is not an array or is empty");
 			return null;
 		}
-		for (const tag of tagArr) {
-			const tagNum = typeof tag === "number" ? tag : Number(tag);
-			if (!Number.isFinite(tagNum) || !validateTagInput(tagNum)) {
-				console.warn("Invalid tag in /api/overview/all_tags response: " + tag);
+		for (const result of response) {
+			if (result === null) {
+				console.warn("Invalid result in /api/overview/global_lookup response: " + result);
 				return null;
 			}
-			tagObj.tags.push(tagNum);
+
+			const parsedResult: GlobalLookupResult = {
+				tagnumber: typeof result.tagnumber === "number" ? result.tagnumber : null,
+				system_serial: typeof result.system_serial === "string" ? result.system_serial : null,
+				last_inventory_entry: result.last_inventory_entry ? new Date(result.last_inventory_entry) : null
+			};
+			tagObj.results?.push(parsedResult);
 		}
 		tagObj.timestamp = Date.now();
 		return tagObj;
@@ -558,14 +565,14 @@ function setURLParameter(urlParameter: string | null, value: string | null) {
 	}
 }
 
-function getCachedTags(): TagCache | null {
+function getCachedTags(): GlobalLookupResultCache | null {
 	const cached = sessionStorage.getItem("uit_all_tags");
 	if (!cached) return null;
 
 	try {
-		const cacheEntry: TagCache = JSON.parse(cached);
+		const cacheEntry: GlobalLookupResultCache = JSON.parse(cached);
 		// 5 min cache expiry
-		if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.tags)) {
+		if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.results) && cacheEntry.results.length > 0) {
 			console.log("Loaded tags from cache");
 			return cacheEntry;
 		}
@@ -575,7 +582,7 @@ function getCachedTags(): TagCache | null {
 	return null;
 }
 
-async function getAllTags():  Promise<TagCache | null> {
+async function getAllTags():  Promise<GlobalLookupResultCache | null> {
 	if (window.location.pathname === '/login' || window.location.pathname === '/logout') {
 		return null;
 	}
@@ -586,13 +593,13 @@ async function getAllTags():  Promise<TagCache | null> {
 		const refreshedTags = await getTagsFromServer();
 		if (refreshedTags) {
 			sessionStorage.setItem("uit_all_tags", JSON.stringify({
-				tags: refreshedTags.tags,
+				results: refreshedTags.results,
 				timestamp: refreshedTags.timestamp
 			}));
 			return refreshedTags;
 		}
 	} catch (e) {
-		console.warn("Error parsing /api/overview/all_tags response:", e);
+		console.warn("Error parsing /api/overview/global_lookup response:", e);
 		return null;
 	}
 	return null;
@@ -627,8 +634,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 	// Load all tags
 	try {
 		const allTags = await getAllTags();
-		if (allTags && Array.isArray(allTags.tags)) {
-			window.allTags = allTags.tags;
+		if (allTags && Array.isArray(allTags.results)) {
+			window.allTags = allTags.results.map(result => result.tagnumber).filter((tag): tag is number => typeof tag === "number");
 		} else {
 			window.allTags = [];
 		}

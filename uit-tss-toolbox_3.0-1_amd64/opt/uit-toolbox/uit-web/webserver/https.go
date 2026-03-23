@@ -59,7 +59,7 @@ func StartWebServer(ctx context.Context) error {
 	// API GET endpoints
 	httpsRouter.Handle("GET /api/server_time", httpsFullAPIChain.ThenFunc(endpoints.GetServerTime))
 	httpsRouter.Handle("GET /api/client/lookup", httpsFullAPIChain.ThenFunc(endpoints.GetClientLookup))
-	httpsRouter.Handle("GET /api/overview/all_tags", httpsFullAPIChain.ThenFunc(endpoints.GetAllTags))
+	httpsRouter.Handle("GET /api/overview/global_lookup", httpsFullAPIChain.ThenFunc(endpoints.GetGlobalLookup))
 	httpsRouter.Handle("GET /api/client/bios", httpsFullAPIChain.ThenFunc(endpoints.GetBiosData))
 	httpsRouter.Handle("GET /api/client/os", httpsFullAPIChain.ThenFunc(endpoints.GetOSData))
 	httpsRouter.Handle("GET /api/overview/job_queue", httpsFullAPIChain.ThenFunc(endpoints.GetJobQueueTable))

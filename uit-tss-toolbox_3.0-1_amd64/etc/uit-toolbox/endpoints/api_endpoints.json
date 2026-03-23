@@ -2,7 +2,7 @@
 	"/api/check_auth": {},
 	"/api/server_time": {},
 	"/api/client/lookup": {},
-	"/api/overview/all_tags": {},
+	"/api/overview/global_lookup": {},
 	"/api/client/bios": {},
 	"/api/client/os": {},
 	"/api/overview/job_queue": {},
