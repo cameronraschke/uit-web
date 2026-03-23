@@ -1099,13 +1099,7 @@ func SetAllJobs(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	updateRepo, err := database.NewUpdateRepo()
-	if err != nil {
-		log.Error("No database connection available for SetAllJobs")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	if err = updateRepo.SetAllOnlineClientJobs(ctx, &clientJson); err != nil {
+	if err = database.SetAllOnlineClientJobs(ctx, &clientJson); err != nil {
 		log.Error("Failed to set all jobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return

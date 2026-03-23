@@ -21,7 +21,6 @@ import (
 
 type Update interface {
 	TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err error)
-	SetAllOnlineClientJobs(ctx context.Context, clientJob *types.ClientJob) (err error)
 	SetClientJob(ctx context.Context, tag *int64, clientJob *string) (err error)
 	UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryDataRequest) (err error)
 	UpdateClientCPUUsage(ctx context.Context, cpuData *types.CPUData) (err error)
@@ -617,7 +616,7 @@ func (updateRepo *UpdateRepo) TogglePinImage(ctx context.Context, tagnumber *int
 	return nil
 }
 
-func (updateRepo *UpdateRepo) SetAllOnlineClientJobs(ctx context.Context, allJobs *types.ClientJob) (err error) {
+func SetAllOnlineClientJobs(ctx context.Context, allJobs *types.ClientJob) (err error) {
 	if allJobs == nil {
 		return fmt.Errorf("allJobs structure is nil")
 	}
@@ -626,13 +625,14 @@ func (updateRepo *UpdateRepo) SetAllOnlineClientJobs(ctx context.Context, allJob
 		return fmt.Errorf("job name is required")
 	}
 
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("error initializing transaction: %w", err)
+		return fmt.Errorf("%w: %w", types.CannotBeginTransactionError, err)
 	}
 	defer func() {
 		if err != nil {
@@ -642,10 +642,10 @@ func (updateRepo *UpdateRepo) SetAllOnlineClientJobs(ctx context.Context, allJob
 		}
 	}()
 
-	const sqlCode = `UPDATE job_queue SET job_name = $1 WHERE NOW() - last_heard < INTERVAL '30 SECONDS';`
+	const sqlCode = `UPDATE job_queue SET job_name = $1 WHERE NOW() - last_heard < INTERVAL '30 SECONDS' AND job_active = FALSE AND job_queued = FALSE;`
 	_, err = tx.ExecContext(ctx, sqlCode, ptrStringToString(allJobs.JobName))
 	if err != nil {
-		return fmt.Errorf("error while updating job queue: %w", err)
+		return fmt.Errorf("%w: %v", types.DatabaseUpdateError, err)
 	}
 	return nil
 }

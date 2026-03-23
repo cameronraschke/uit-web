@@ -1075,7 +1075,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		SELECT DISTINCT ON (jobstats.tagnumber) jobstats.time, jobstats.tagnumber,
 			jobstats.erase_completed, jobstats.erase_mode, jobstats.erase_time, 
 			jobstats.clone_completed, jobstats.clone_image, jobstats.clone_master, jobstats.clone_time, 
-			jobstats.job_failed
+			jobstats.job_cancelled
 		FROM jobstats
 		WHERE jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE
 		ORDER BY jobstats.tagnumber, jobstats.time DESC NULLS LAST),
