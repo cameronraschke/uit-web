@@ -90,7 +90,11 @@ func GetGlobalSearchData(ctx context.Context) ([]types.GlobalLookupRow, error) {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
 		var tag types.GlobalLookupRow
-		if err := rows.Scan(&tag.Tagnumber); err != nil {
+		if err := rows.Scan(
+			&tag.Tagnumber,
+			&tag.SystemSerial,
+			&tag.LastInventoryEntry,
+		); err != nil {
 			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
 		globalLookupRow = append(globalLookupRow, tag)
