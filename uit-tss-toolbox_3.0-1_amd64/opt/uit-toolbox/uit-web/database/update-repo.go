@@ -20,7 +20,6 @@ import (
 )
 
 type Update interface {
-	TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err error)
 	SetClientJob(ctx context.Context, tag *int64, clientJob *string) (err error)
 	UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryDataRequest) (err error)
 	UpdateClientCPUUsage(ctx context.Context, cpuData *types.CPUData) (err error)
@@ -61,12 +60,12 @@ func InsertNewNote(ctx context.Context, timestamp *time.Time, noteType *string, 
 
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("%w: %v", types.DatabaseConnError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
 	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("%w: %w", types.CannotBeginTransactionError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 
 	defer func() {
@@ -105,12 +104,12 @@ func UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, cl
 
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("%w: %v", types.DatabaseConnError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
 	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("%w: %w", types.CannotBeginTransactionError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 
 	defer func() {
@@ -177,12 +176,12 @@ func InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID,
 
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("%w: %v", types.DatabaseConnError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
 	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("error beginning transaction: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 
 	defer func() {
@@ -244,12 +243,12 @@ func UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID,
 
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("%w: %v", types.DatabaseConnError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
 	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("error beginning transaction: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 
 	defer func() {
@@ -318,12 +317,12 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("%w: %v", types.DatabaseConnError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
 	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("error beginning transaction: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 	defer func() {
 		if err != nil {
@@ -373,7 +372,7 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 		ptrToNullString(inventoryUpdate.Note),
 	)
 	if err != nil {
-		return fmt.Errorf("error inserting location data: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(locationsResult, 1); err != nil {
 		return err
@@ -409,7 +408,7 @@ func UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest
 
 	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("%w: %w", types.CannotBeginTransactionError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 
 	defer func() {
@@ -495,12 +494,12 @@ func HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) 
 
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("%w: %v", types.DatabaseConnError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
 	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("%w: %w", types.CannotBeginTransactionError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 
 	defer func() {
@@ -544,12 +543,12 @@ func DeleteClientImageByUUID(ctx context.Context, tag *int64, imageUUID *string)
 
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("%w: %v", types.DatabaseConnError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
 	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("%w: %w", types.CannotBeginTransactionError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 
 	defer func() {
@@ -580,18 +579,25 @@ func DeleteClientImageByUUID(ctx context.Context, tag *int64, imageUUID *string)
 	return nil
 }
 
-func (updateRepo *UpdateRepo) TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err error) {
-	if tagnumber == nil || uuid == nil || strings.TrimSpace(*uuid) == "" {
-		return fmt.Errorf("tagnumber and uuid are both required")
+func TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err error) {
+	if tagnumber == nil {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "tagnumber")
+	}
+	if err := types.IsTagnumberInt64Valid(tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
+	}
+	if uuid == nil || strings.TrimSpace(*uuid) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "image UUID")
 	}
 
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("error beginning transaction: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 	defer func() {
 		if err != nil {
@@ -602,13 +608,12 @@ func (updateRepo *UpdateRepo) TogglePinImage(ctx context.Context, tagnumber *int
 	}()
 
 	const sqlQuery = `UPDATE client_images SET pinned = NOT COALESCE(pinned, FALSE) WHERE uuid = $1 AND tagnumber = $2;`
-	var sqlResult sql.Result
-	sqlResult, err = tx.ExecContext(ctx, sqlQuery,
+	sqlResult, err := tx.ExecContext(ctx, sqlQuery,
 		ptrToNullString(uuid),
 		ptrToNullInt64(tagnumber),
 	)
 	if err != nil {
-		return fmt.Errorf("error toggling pin on client image: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return err
@@ -616,13 +621,13 @@ func (updateRepo *UpdateRepo) TogglePinImage(ctx context.Context, tagnumber *int
 	return nil
 }
 
-func SetAllOnlineClientJobs(ctx context.Context, allJobs *types.ClientJob) (err error) {
-	if allJobs == nil {
-		return fmt.Errorf("allJobs structure is nil")
+func SetAllOnlineClientJobs(ctx context.Context, clientJob *types.ClientJob) (err error) {
+	if clientJob == nil {
+		return fmt.Errorf("%w: %s", types.InvalidStructureError, "ClientJob")
 	}
 
-	if allJobs.JobName == nil || strings.TrimSpace(*allJobs.JobName) == "" {
-		return fmt.Errorf("job name is required")
+	if clientJob.JobName == nil || strings.TrimSpace(*clientJob.JobName) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "job name")
 	}
 
 	dbConn, err := config.GetDatabaseConn()
@@ -632,8 +637,9 @@ func SetAllOnlineClientJobs(ctx context.Context, allJobs *types.ClientJob) (err 
 
 	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("%w: %w", types.CannotBeginTransactionError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
+
 	defer func() {
 		if err != nil {
 			_ = tx.Rollback()
@@ -643,9 +649,11 @@ func SetAllOnlineClientJobs(ctx context.Context, allJobs *types.ClientJob) (err 
 	}()
 
 	const sqlCode = `UPDATE job_queue SET job_name = $1 WHERE NOW() - last_heard < INTERVAL '30 SECONDS' AND job_active = FALSE AND job_queued = FALSE;`
-	_, err = tx.ExecContext(ctx, sqlCode, ptrStringToString(allJobs.JobName))
+	_, err = tx.ExecContext(ctx, sqlCode, 
+		ptrStringToString(clientJob.JobName),
+	)
 	if err != nil {
-		return fmt.Errorf("%w: %v", types.DatabaseUpdateError, err)
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	return nil
 }
@@ -674,7 +682,7 @@ func (updateRepo *UpdateRepo) SetClientJob(ctx context.Context, tag *int64, clie
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode, ptrStringToString(clientJob), ptrToNullInt64(tag))
 	if err != nil {
-		return fmt.Errorf("error while updating client job: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return err
@@ -719,7 +727,7 @@ func (updateRepo *UpdateRepo) UpdateClientMemoryInfo(ctx context.Context, memInf
 		toNullInt64(*memInfo.TotalUsageKB),
 	)
 	if err != nil {
-		return fmt.Errorf("error updating memory usage: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return err
@@ -760,7 +768,7 @@ func (updateRepo *UpdateRepo) UpdateClientCPUUsage(ctx context.Context, cpuData 
 		ptrToNullFloat64(cpuData.UsagePercent),
 	)
 	if err != nil {
-		return fmt.Errorf("error updating CPU usage: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return err
@@ -799,7 +807,7 @@ func (updateRepo *UpdateRepo) UpdateClientCPUMHz(ctx context.Context, cpuData *t
 		ptrToNullFloat64(cpuData.MHz),
 	)
 	if err != nil {
-		return fmt.Errorf("error updating CPU MHz: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return err
@@ -838,7 +846,7 @@ func (updateRepo *UpdateRepo) UpdateClientNetworkUsage(ctx context.Context, netw
 		ptrToNullInt64(networkData.LinkSpeed),
 	)
 	if err != nil {
-		return fmt.Errorf("error updating network usage: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return err
@@ -880,7 +888,7 @@ func (updateRepo *UpdateRepo) UpdateClientCPUTemperature(ctx context.Context, cp
 		ptrToNullFloat64(&degreesC),
 	)
 	if err != nil {
-		return fmt.Errorf("error updating CPU temperature: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return err
@@ -920,7 +928,7 @@ func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData
 		toNullDuration(uptimeData.SystemUptime),
 	)
 	if err != nil {
-		return fmt.Errorf("error updating client uptime: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return err
@@ -957,7 +965,7 @@ func (updateRepo *UpdateRepo) UpdateClientLastHardwareCheck(ctx context.Context,
 		ptrToNullTime(&lastCheck),
 	)
 	if err != nil {
-		return fmt.Errorf("error updating last hardware check time: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return err

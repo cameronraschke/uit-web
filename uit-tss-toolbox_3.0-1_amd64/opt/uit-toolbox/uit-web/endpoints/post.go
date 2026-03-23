@@ -1061,13 +1061,7 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	updateRepo, err := database.NewUpdateRepo()
-	if err != nil {
-		log.Error("No database connection available for TogglePinImage")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	if err := updateRepo.TogglePinImage(ctx, &tagnumber, &uuid); err != nil {
+	if err := database.TogglePinImage(ctx, &tagnumber, &uuid); err != nil {
 		log.Error("Failed to toggle pin image: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return

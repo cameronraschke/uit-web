@@ -457,7 +457,7 @@ func SetAppState(newState *AppState) error {
 func GetAppState() (*AppState, error) {
 	appState := appStateInstance.Load()
 	if appState == nil {
-		return nil, fmt.Errorf("%w", types.AppStateNilError)
+		return nil, fmt.Errorf("%w", types.NilAppStateError)
 	}
 	return appState, nil
 }
@@ -535,7 +535,7 @@ func SetDatabaseConn(newDbConn *sql.DB) error {
 		return fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
 	}
 	if appState == nil {
-		return types.AppStateNilError
+		return types.NilAppStateError
 	}
 	appState.dbConn.Store(newDbConn)
 	return nil
