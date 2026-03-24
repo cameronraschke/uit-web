@@ -1070,40 +1070,7 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 }
 
 func SetAllJobs(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-
-	if req.Method != http.MethodPost {
-		log.Warn("Invalid HTTP method for SetAllJobs")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-
-	clientBody, err := io.ReadAll(req.Body)
-	if err != nil {
-		log.Warn("Cannot read request body for SetAllJobs: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-
-	var clientJson types.ClientJob
-	if err := json.Unmarshal(clientBody, &clientJson); err != nil {
-		log.Warn("Cannot decode SetAllJobs JSON: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-
-	if err = database.SetAllOnlineClientJobs(ctx, &clientJson); err != nil {
-		log.Error("Failed to set all jobs: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	middleware.WriteJson(w, http.StatusOK, "All jobs set successfully")
-}
-
-func SetClientJob(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "SetClientJob"))
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "SetAllJobs"))
 
 	clientBody, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -1114,7 +1081,51 @@ func SetClientJob(w http.ResponseWriter, req *http.Request) {
 
 	var clientJson types.JobQueueTableRowView
 	if err := json.Unmarshal(clientBody, &clientJson); err != nil {
-		log.Warn("Cannot decode request JSON: " + err.Error())
+		log.Warn("Cannot decode JSON: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	if clientJson.JobName == nil || strings.TrimSpace(*clientJson.JobName) == "" {
+		log.Warn("Job name is missing")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if utf8.RuneCountInString(strings.TrimSpace(*clientJson.JobName)) < 1 ||
+		utf8.RuneCountInString(strings.TrimSpace(*clientJson.JobName)) > 64 {
+		log.Warn("Invalid job name length")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if !types.IsASCIIStringPrintable(*clientJson.JobName) {
+		log.Warn("Non-printable ASCII characters in job name field")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	if err = database.SetAllOnlineClientJobs(req.Context(), *clientJson.JobName); err != nil {
+		log.Error("Failed to set all jobs: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, struct {
+		Message string `json:"response_status"`
+	}{Message: "All client jobs set successfully"})
+}
+
+func SetClientJob(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "SetClientJob"))
+
+	clientBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Cannot read request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	var clientJson types.JobQueueTableRowView
+	if err := json.Unmarshal(clientBody, &clientJson); err != nil {
+		log.Warn("Cannot decode JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -1124,35 +1135,33 @@ func SetClientJob(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if clientJson.JobName == nil {
+
+	// Job name checks
+	if clientJson.JobName == nil || strings.TrimSpace(*clientJson.JobName) == "" {
 		log.Warn("Job name is missing")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if utf8.RuneCountInString(strings.TrimSpace(*clientJson.JobName)) < 1 || utf8.RuneCountInString(strings.TrimSpace(*clientJson.JobName)) > 64 {
+	if utf8.RuneCountInString(strings.TrimSpace(*clientJson.JobName)) < 1 ||
+		utf8.RuneCountInString(strings.TrimSpace(*clientJson.JobName)) > 64 {
 		log.Warn("Invalid job name length")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-
 	if !types.IsASCIIStringPrintable(*clientJson.JobName) {
 		log.Warn("Non-printable ASCII characters in job name field")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	updateRepo, err := database.NewUpdateRepo()
-	if err != nil {
-		log.Error("No database connection available for SetClientJob")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	if err = updateRepo.SetClientJob(ctx, clientJson.Tagnumber, clientJson.JobName); err != nil {
+	if err = database.SetClientJob(req.Context(), *clientJson.Tagnumber, *clientJson.JobName); err != nil {
 		log.Error("Failed to set client job: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	middleware.WriteJson(w, http.StatusOK, "Client job set successfully")
+	middleware.WriteJson(w, http.StatusOK, struct {
+		Message string `json:"response_status"`
+	}{Message: "Client job set successfully"})
 }
 
 func SetClientLastHardwareCheck(w http.ResponseWriter, req *http.Request) {

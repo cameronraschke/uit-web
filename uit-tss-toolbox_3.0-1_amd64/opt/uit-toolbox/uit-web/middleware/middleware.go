@@ -16,56 +16,20 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	config "uit-toolbox/config"
+	"uit-toolbox/config"
 	"uit-toolbox/types"
 )
 
-type Middleware func(http.Handler) http.Handler
-
-type MiddlewareChain struct {
-	middlewares []Middleware
-}
-
-func NewChain(middlewares ...Middleware) MiddlewareChain {
-	return MiddlewareChain{
-		middlewares: append([]Middleware{}, middlewares...),
-	}
-}
-
-// Append extends the chain with additional middlewares, returning a new MiddlewareChain
-func (chain MiddlewareChain) Append(middlewares ...Middleware) MiddlewareChain {
-	newMiddlewares := make([]Middleware, 0, len(chain.middlewares)+len(middlewares))
-	newMiddlewares = append(newMiddlewares, chain.middlewares...)
-	newMiddlewares = append(newMiddlewares, middlewares...)
-
-	return MiddlewareChain{
-		middlewares: newMiddlewares,
-	}
-}
-
-// Apply the middleware chain to the final handler
-func (chain MiddlewareChain) Then(finalHandler http.Handler) http.Handler {
-	for i := len(chain.middlewares) - 1; i >= 0; i-- {
-		finalHandler = chain.middlewares[i](finalHandler)
-	}
-	return finalHandler
-}
-
-// Apply the middleware chain to a handler function
-func (chain MiddlewareChain) ThenFunc(finalHandlerFunc http.HandlerFunc) http.Handler {
-	return chain.Then(finalHandlerFunc)
-}
-
 func StoreLoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		justIpAddr, _, _ := net.SplitHostPort(req.RemoteAddr)
-		baseLogger := config.GetLogger()
-		requestLogger := baseLogger.WithGroup("request").With(
+		requestIpStr, _, _ := net.SplitHostPort(req.RemoteAddr)
+		appLogger := config.GetLogger()
+		requestLogger := appLogger.WithGroup("request").With(
 			slog.String("method", req.Method),
 			slog.String("url", req.URL.String()),
-			slog.String("remote_addr", justIpAddr),
+			slog.String("remote_addr", requestIpStr),
 		)
+		// Store logger in request ctx
 		ctx, err := withLogger(req.Context(), requestLogger)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error storing logger in context in StoreLoggerMiddleware: "+err.Error())
@@ -97,11 +61,11 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "LimitRequestSizeMiddleware"))
-		if req.Method == http.MethodPost || req.Method == http.MethodPut {
+		if req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodPatch {
 			log = log.With(slog.Int64("content_length", req.ContentLength))
 		}
-		if strings.TrimSpace(req.Header.Get("Content-Length")) == "" && (req.Method == http.MethodPost || req.Method == http.MethodPut) {
-			log.Info("Content-Length is missing in POST/PUT request")
+		if strings.TrimSpace(req.Header.Get("Content-Length")) == "" && (req.Method == http.MethodPost || req.Method == http.MethodPut || req.Method == http.MethodPatch) {
+			log.Info("Content-Length is missing in POST/PUT/PATCH request")
 			WriteJsonError(w, http.StatusLengthRequired)
 			return
 		}
@@ -129,16 +93,15 @@ func LimitRequestSizeMiddleware(next http.Handler) http.Handler {
 
 func StoreClientIPMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := GetLoggerFromContext(req.Context())
-		log = log.With(slog.String("func", "StoreClientIPMiddleware"))
-		ipStr, _, err := net.SplitHostPort(req.RemoteAddr)
+		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "StoreClientIPMiddleware"))
+		requestIPStr, _, err := net.SplitHostPort(req.RemoteAddr)
 		if err != nil {
 			log.Error("Cannot parse request IP: " + err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
 
-		reqAddr, _, _, err := types.ConvertAndCheckIPStr(&ipStr)
+		reqAddr, _, _, err := types.ConvertAndCheckIPStr(&requestIPStr)
 		if err != nil {
 			log.Warn("Cannot convert request IP: " + err.Error())
 			WriteJsonError(w, http.StatusBadRequest)
@@ -158,8 +121,7 @@ func StoreClientIPMiddleware(next http.Handler) http.Handler {
 
 func CheckIPBlockedMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := GetLoggerFromContext(req.Context())
-		log = log.With(slog.String("func", "CheckIPBlockedMiddleware"))
+		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "CheckIPBlockedMiddleware"))
 		reqAddr, err := GetRequestIPFromContext(req.Context())
 		if err != nil {
 			log.Warn("Cannot retrieve request IP from context: " + err.Error())
@@ -177,8 +139,7 @@ func CheckIPBlockedMiddleware(next http.Handler) http.Handler {
 
 func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := GetLoggerFromContext(req.Context())
-		log = log.With(slog.String("func", "WebEndpointConfigMiddleware"))
+		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "WebEndpointConfigMiddleware"))
 		endpointConfigPtr, err := config.GetWebEndpointConfig(req.URL.Path)
 		if err != nil {
 			log.Warn("Cannot retrieve endpoint config from context: " + err.Error())
@@ -197,8 +158,7 @@ func WebEndpointConfigMiddleware(next http.Handler) http.Handler {
 
 func TLSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := GetLoggerFromContext(req.Context())
-		log = log.With(slog.String("func", "TLSMiddleware"))
+		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "TLSMiddleware"))
 		endpointConfig, err := GetWebEndpointConfigFromContext(req.Context())
 		if err != nil {
 			log.Warn("Cannot retrieve endpoint config from context: " + err.Error())
@@ -247,8 +207,7 @@ func TLSMiddleware(next http.Handler) http.Handler {
 
 func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := GetLoggerFromContext(req.Context())
-		log = log.With(slog.String("func", "CheckHttpVersionMiddleware"))
+		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "CheckHttpVersionMiddleware"))
 		endpointConfig, err := GetWebEndpointConfigFromContext(req.Context())
 		if err != nil {
 			log.Warn("Cannot retrieve endpoint config from context: " + err.Error())
@@ -289,8 +248,7 @@ func CheckHttpVersionMiddleware(next http.Handler) http.Handler {
 func AllowIPRangeMiddleware(trafficSource string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			log := GetLoggerFromContext(req.Context())
-			log = log.With(slog.String("func", "AllowIPRangeMiddleware"))
+			log := GetLoggerFromContext(req.Context()).With(slog.String("func", "AllowIPRangeMiddleware"))
 			if strings.TrimSpace(trafficSource) == "" {
 				log.Warn("No traffic source specified")
 				WriteJsonError(w, http.StatusInternalServerError)
@@ -321,8 +279,7 @@ func AllowIPRangeMiddleware(trafficSource string) func(http.Handler) http.Handle
 func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			log := GetLoggerFromContext(req.Context())
-			log = log.With(slog.String("func", "RateLimitMiddleware"))
+			log := GetLoggerFromContext(req.Context()).With(slog.String("func", "RateLimitMiddleware"))
 			reqIP, err := GetRequestIPFromContext(req.Context())
 			if err != nil {
 				log.Warn("Cannot retrieve IP from context: " + err.Error())
@@ -345,7 +302,7 @@ func RateLimitMiddleware(rateType string) func(http.Handler) http.Handler {
 
 func APITimeoutMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := GetLoggerFromContext(req.Context())
+		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "APITimeoutMiddleware"))
 		apiTimeout, err := config.GetRequestTimeout("api")
 		if err != nil {
 			log.Error("Failed to get API timeout from config: " + err.Error())
@@ -360,7 +317,7 @@ func APITimeoutMiddleware(next http.Handler) http.Handler {
 
 func FileServerTimeoutMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := GetLoggerFromContext(req.Context())
+		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "FileServerTimeoutMiddleware"))
 		fileTimeout, err := config.GetRequestTimeout("file")
 		if err != nil {
 			log.Error("Failed to get file server timeout from config: " + err.Error())
@@ -375,7 +332,7 @@ func FileServerTimeoutMiddleware(next http.Handler) http.Handler {
 
 func HTTPMethodMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := GetLoggerFromContext(req.Context())
+		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "HTTPMethodMiddleware"))
 
 		// Check method
 		validMethods := map[string]bool{
@@ -410,7 +367,7 @@ func HTTPMethodMiddleware(next http.Handler) http.Handler {
 
 func CheckValidURLMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := GetLoggerFromContext(req.Context())
+		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "CheckValidURLMiddleware"))
 
 		// URL length
 		if len(req.URL.RequestURI()) > 2048 {
@@ -469,8 +426,7 @@ func CheckValidURLMiddleware(next http.Handler) http.Handler {
 
 func CheckForRedirectsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := GetLoggerFromContext(req.Context())
-		log = log.With(slog.String("func", "CheckForRedirectsMiddleware"))
+		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "CheckForRedirectsMiddleware"))
 		endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
 		if err != nil {
 			log.Warn("Error getting endpoint config in CheckForRedirectsMiddleware: " + err.Error())
@@ -489,7 +445,7 @@ func CheckForRedirectsMiddleware(next http.Handler) http.Handler {
 
 func CheckHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		log := GetLoggerFromContext(req.Context())
+		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "CheckHeadersMiddleware"))
 
 		for headerKey, headerValues := range req.Header {
 			// Check header key length
@@ -501,7 +457,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 
 			// Block disallowed characters in header keys
 			if strings.ContainsAny(headerKey, disallowedHeaderChars) {
-				log.Warn("Disallowed characters in header key (CheckHeadersMiddleware)")
+				log.Warn("Disallowed characters in header key")
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
@@ -647,9 +603,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 
 func SetHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		ctx := req.Context()
-		log := GetLoggerFromContext(ctx)
-		log = log.With(slog.String("func", "SetHeadersMiddleware"))
+		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "SetHeadersMiddleware"))
 
 		// SERVER-SIDE CORS CHECKS
 		// Get web server IP for CORS
@@ -698,13 +652,13 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		ctx, err = withNonce(ctx, nonce)
+		newCtx, err := withNonce(req.Context(), nonce)
 		if err != nil {
 			log.Error("Error storing CSP nonce in context: " + err.Error())
 			WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		req = req.WithContext(ctx)
+		req = req.WithContext(newCtx)
 		cspPolicy := "default-src 'self'; " +
 			"style-src 'self'; " +
 			"script-src 'self' 'nonce-" + nonce + "'; " +
@@ -737,7 +691,7 @@ func SetHeadersMiddleware(next http.Handler) http.Handler {
 func AllowedFilesMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-		log := GetLoggerFromContext(ctx)
+		log := GetLoggerFromContext(ctx).With(slog.String("func", "AllowedFilesMiddleware"))
 		pathRequested, err := GetRequestPathFromContext(ctx)
 		if err != nil {
 			log.Error("Error retrieving URL path from context in AllowedFilesMiddleware")
@@ -854,45 +808,10 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func IsCookieValid(req *http.Request, cookie *http.Cookie) (bool, error) {
-	if req == nil || cookie == nil {
-		return false, fmt.Errorf("missing expected authentication cookie")
-	}
-	if err := cookie.Valid(); err != nil {
-		return false, fmt.Errorf("invalid authentication cookie format: %w", err)
-	}
-	if strings.TrimSpace(cookie.Name) == "" || len(cookie.Name) > 255 || !types.IsASCIIStringPrintable(cookie.Name) {
-		return false, fmt.Errorf("invalid authentication cookie name")
-	}
-	if cookie.Secure && req.TLS == nil {
-		return false, fmt.Errorf("secure authentication cookie sent over non-TLS connection: %s", cookie.Name)
-	}
-	// if cookie.MaxAge <= 0 { // Expire early to allow for creation of new session
-	// 	return false, fmt.Errorf("authentication cookie has MaxAge <= 0 seconds: %s", cookie.Name)
-	// }
-	// if cookie.Expires.Before(time.Now()) {
-	// 	return false, fmt.Errorf("authentication cookie has expired: %s", cookie.Name)
-	// }
-	// if cookie.HttpOnly == false {
-	// 	return false, fmt.Errorf("authentication cookie is not HttpOnly: %s", cookie.Name)
-	// }
-	// if cookie.SameSite != http.SameSiteStrictMode && cookie.SameSite != http.SameSiteLaxMode {
-	// 	return false, fmt.Errorf("authentication cookie does not have SameSite=Strict or SameSite=Lax: %s", cookie.Name)
-	// }
-	if strings.TrimSpace(cookie.Value) == "" || len(cookie.Value) > 4096 {
-		return false, fmt.Errorf("authentication cookie value out of range: %s", cookie.Name)
-	}
-	if !types.IsASCIIStringPrintable(cookie.Value) {
-		return false, fmt.Errorf("authentication cookie contains invalid characters: %s", cookie.Name)
-	}
-	return true, nil
-}
-
 func CookieAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
-		log := GetLoggerFromContext(ctx)
-		log = log.With(slog.String("func", "CookieAuthMiddleware"))
+		log := GetLoggerFromContext(ctx).With(slog.String("func", "CookieAuthMiddleware"))
 		reqAddr, err := GetRequestIPFromContext(ctx)
 		if err != nil {
 			log.Warn("Cannot retrieve IP from context: " + err.Error())

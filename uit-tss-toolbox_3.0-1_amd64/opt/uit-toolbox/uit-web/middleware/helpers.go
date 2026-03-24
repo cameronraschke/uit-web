@@ -74,6 +74,42 @@ var (
 	allowedQueryKeyRegex = regexp.MustCompile(`^[A-Za-z0-9._\-]+$`)
 )
 
+type Middleware func(http.Handler) http.Handler
+
+type MiddlewareChain struct {
+	middlewares []Middleware
+}
+
+func NewChain(middlewares ...Middleware) MiddlewareChain {
+	return MiddlewareChain{
+		middlewares: append([]Middleware{}, middlewares...),
+	}
+}
+
+// Append extends the chain with additional middlewares, returning a new MiddlewareChain
+func (chain MiddlewareChain) Append(middlewares ...Middleware) MiddlewareChain {
+	newMiddlewares := make([]Middleware, 0, len(chain.middlewares)+len(middlewares))
+	newMiddlewares = append(newMiddlewares, chain.middlewares...)
+	newMiddlewares = append(newMiddlewares, middlewares...)
+
+	return MiddlewareChain{
+		middlewares: newMiddlewares,
+	}
+}
+
+// Apply the middleware chain to the final handler
+func (chain MiddlewareChain) Then(finalHandler http.Handler) http.Handler {
+	for i := len(chain.middlewares) - 1; i >= 0; i-- {
+		finalHandler = chain.middlewares[i](finalHandler)
+	}
+	return finalHandler
+}
+
+// Apply the middleware chain to a handler function
+func (chain MiddlewareChain) ThenFunc(finalHandlerFunc http.HandlerFunc) http.Handler {
+	return chain.Then(finalHandlerFunc)
+}
+
 func WriteJson(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
@@ -454,4 +490,38 @@ func validateAndCleanURLPath(rawPath string) (string, error) {
 	}
 
 	return cleanPath, nil
+}
+
+func IsCookieValid(req *http.Request, cookie *http.Cookie) (bool, error) {
+	if req == nil || cookie == nil {
+		return false, fmt.Errorf("missing expected authentication cookie")
+	}
+	if err := cookie.Valid(); err != nil {
+		return false, fmt.Errorf("invalid authentication cookie format: %w", err)
+	}
+	if strings.TrimSpace(cookie.Name) == "" || len(cookie.Name) > 255 || !types.IsASCIIStringPrintable(cookie.Name) {
+		return false, fmt.Errorf("invalid authentication cookie name")
+	}
+	if cookie.Secure && req.TLS == nil {
+		return false, fmt.Errorf("secure authentication cookie sent over non-TLS connection: %s", cookie.Name)
+	}
+	// if cookie.MaxAge <= 0 { // Expire early to allow for creation of new session
+	// 	return false, fmt.Errorf("authentication cookie has MaxAge <= 0 seconds: %s", cookie.Name)
+	// }
+	// if cookie.Expires.Before(time.Now()) {
+	// 	return false, fmt.Errorf("authentication cookie has expired: %s", cookie.Name)
+	// }
+	// if cookie.HttpOnly == false {
+	// 	return false, fmt.Errorf("authentication cookie is not HttpOnly: %s", cookie.Name)
+	// }
+	// if cookie.SameSite != http.SameSiteStrictMode && cookie.SameSite != http.SameSiteLaxMode {
+	// 	return false, fmt.Errorf("authentication cookie does not have SameSite=Strict or SameSite=Lax: %s", cookie.Name)
+	// }
+	if strings.TrimSpace(cookie.Value) == "" || len(cookie.Value) > 4096 {
+		return false, fmt.Errorf("authentication cookie value out of range: %s", cookie.Name)
+	}
+	if !types.IsASCIIStringPrintable(cookie.Value) {
+		return false, fmt.Errorf("authentication cookie contains invalid characters: %s", cookie.Name)
+	}
+	return true, nil
 }

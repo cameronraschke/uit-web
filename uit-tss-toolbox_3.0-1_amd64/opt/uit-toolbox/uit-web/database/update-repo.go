@@ -20,7 +20,6 @@ import (
 )
 
 type Update interface {
-	SetClientJob(ctx context.Context, tag *int64, clientJob *string) (err error)
 	UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryDataRequest) (err error)
 	UpdateClientCPUUsage(ctx context.Context, cpuData *types.CPUData) (err error)
 	UpdateClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUData) (err error)
@@ -621,12 +620,8 @@ func TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err er
 	return nil
 }
 
-func SetAllOnlineClientJobs(ctx context.Context, clientJob *types.ClientJob) (err error) {
-	if clientJob == nil {
-		return fmt.Errorf("%w: %s", types.InvalidStructureError, "ClientJob")
-	}
-
-	if clientJob.JobName == nil || strings.TrimSpace(*clientJob.JobName) == "" {
+func SetAllOnlineClientJobs(ctx context.Context, clientJob string) (err error) {
+	if strings.TrimSpace(clientJob) == "" {
 		return fmt.Errorf("%w: %s", types.MissingFieldError, "job name")
 	}
 
@@ -648,9 +643,19 @@ func SetAllOnlineClientJobs(ctx context.Context, clientJob *types.ClientJob) (er
 		}
 	}()
 
-	const sqlCode = `UPDATE job_queue SET job_name = $1 WHERE NOW() - last_heard < INTERVAL '30 SECONDS' AND job_active = FALSE AND job_queued = FALSE;`
-	_, err = tx.ExecContext(ctx, sqlCode, 
-		ptrStringToString(clientJob.JobName),
+	const sqlCode = `
+		UPDATE 
+			job_queue 
+		SET 
+			job_name = $1 
+		WHERE 
+			CURRENT_TIMESTAMP - last_heard < INTERVAL '30 SECONDS' 
+			AND job_active = FALSE 
+			AND job_queued = FALSE
+	;`
+
+	_, err = tx.ExecContext(ctx, sqlCode,
+		clientJob,
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -658,18 +663,25 @@ func SetAllOnlineClientJobs(ctx context.Context, clientJob *types.ClientJob) (er
 	return nil
 }
 
-func (updateRepo *UpdateRepo) SetClientJob(ctx context.Context, tag *int64, clientJob *string) (err error) {
-	if tag == nil || clientJob == nil {
-		return fmt.Errorf("tag and clientJob are both required")
+func SetClientJob(ctx context.Context, tag int64, clientJob string) (err error) {
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
 
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
+	if strings.TrimSpace(clientJob) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "client job name")
 	}
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+
+	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("error initializing transaction: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
+	}
+
 	defer func() {
 		if err != nil {
 			_ = tx.Rollback()
@@ -678,9 +690,20 @@ func (updateRepo *UpdateRepo) SetClientJob(ctx context.Context, tag *int64, clie
 		}
 	}()
 
-	const sqlCode = `UPDATE job_queue SET job_queued = TRUE, job_name = $1, job_active = FALSE WHERE tagnumber = $2;`
-	var sqlResult sql.Result
-	sqlResult, err = tx.ExecContext(ctx, sqlCode, ptrStringToString(clientJob), ptrToNullInt64(tag))
+	const sqlCode = `
+		UPDATE 
+			job_queue 
+		SET 
+			job_queued = TRUE, 
+			job_name = $1, 
+			job_active = FALSE 
+		WHERE 
+			tagnumber = $2
+	;`
+	sqlResult, err := tx.ExecContext(ctx, sqlCode,
+		clientJob,
+		tag,
+	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
