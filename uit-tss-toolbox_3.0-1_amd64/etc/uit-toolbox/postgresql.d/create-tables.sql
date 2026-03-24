@@ -305,7 +305,7 @@ CREATE TABLE IF NOT EXISTS client_health (
 CREATE TABLE IF NOT EXISTS job_queue (
 	tagnumber INTEGER UNIQUE NOT NULL,
 	job_queued BOOLEAN DEFAULT FALSE,
-	job_name VARCHAR(64) job_name DEFAULT NULL,
+	job_name VARCHAR(64) DEFAULT NULL,
 	job_queued_at TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
 	job_active BOOLEAN DEFAULT FALSE,
 	clone_mode VARCHAR(24) DEFAULT NULL,
@@ -366,7 +366,7 @@ CREATE TABLE IF NOT EXISTS hardware_data (
 	system_model VARCHAR(64) DEFAULT NULL,
 	system_sku VARCHAR(20) DEFAULT NULL,
 	chassis_type VARCHAR(16) DEFAULT NULL,
-	device_type VARCHAR(64) device_type DEFAULT NULL,
+	device_type VARCHAR(64) DEFAULT NULL,
 	cpu_manufacturer VARCHAR(20) DEFAULT NULL,
 	cpu_model VARCHAR(46) DEFAULT NULL,
 	cpu_maxspeed SMALLINT DEFAULT NULL,
