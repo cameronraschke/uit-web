@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sudo dhcpcd --persistent --request UIT_SERVER_WAN_IP_ADDRESS UIT_SERVER_WAN_IF
+# sudo dhcpcd --persistent --request UIT_SERVER_WAN_IP_ADDRESS UIT_SERVER_WAN_IF
 /sbin/uit-firewall
 
 systemctl restart dnsmasq chrony nfs-kernel-server uit-web postgresql

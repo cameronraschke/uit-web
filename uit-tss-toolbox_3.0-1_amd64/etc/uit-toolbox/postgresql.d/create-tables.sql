@@ -59,7 +59,10 @@ CREATE TABLE IF NOT EXISTS jobstats (
 	clone_master BOOLEAN DEFAULT FALSE,
 	clone_time SMALLINT DEFAULT NULL,
 	job_cancelled BOOLEAN DEFAULT FALSE,
-	host_connected BOOLEAN DEFAULT FALSE
+	host_connected BOOLEAN DEFAULT FALSE,
+
+	CONSTRAINT jobstats_valid_tag
+		CHECK (tagnumber > 100000 AND tagnumber < 999999)
 );
 
 CREATE TABLE IF NOT EXISTS historical_hardware_data (
@@ -93,71 +96,11 @@ CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	bios_firmware VARCHAR(8) DEFAULT NULL,
 	memory_serial VARCHAR(128) DEFAULT NULL,
 	memory_capacity_kb BIGINT DEFAULT NULL,
-	memory_speed_mhz SMALLINT DEFAULT NULL
+	memory_speed_mhz SMALLINT DEFAULT NULL,
+
+	CONSTRAINT historical_hardware_data_valid_tag
+		CHECK (tagnumber > 100000 AND tagnumber < 999999)
 );
-
--- INSERT INTO historical_hardware_data (
--- 	tagnumber,
--- 	system_serial,
--- 	ethernet_mac,
--- 	disk_model,
--- 	disk_type,
--- 	disk_size,
--- 	disk_serial,
--- 	disk_writes,
--- 	disk_reads,
--- 	disk_power_on_hours,
--- 	disk_errors,
--- 	disk_power_cycles,
--- 	disk_temp,
--- 	disk_firmware,
--- 	battery_model, 
--- 	battery_serial,
--- 	battery_health,
--- 	battery_charge_cycles,
--- 	battery_capacity,
--- 	battery_manufacturedate,
--- 	bios_version,
--- 	bios_date,
--- 	bios_firmware,
--- 	memory_serial,
--- 	memory_capacity,
--- 	memory_speed_mhz,
--- 	time,
--- 	uuid
--- )
--- SELECT 
--- tagnumber,
--- system_serial,
--- etheraddress,
--- disk_model,
--- disk_type,
--- disk_size,
--- disk_serial,
--- disk_writes,
--- disk_reads,
--- disk_power_on_hours,
--- disk_errors,
--- disk_power_cycles,
--- disk_temp,
--- disk_firmware,
--- battery_model,
--- battery_serial,
--- battery_health,
--- battery_charge_cycles,
--- battery_capacity,
--- battery_manufacturedate,
--- bios_version,
--- bios_date,
--- bios_firmware,
--- ram_serial,
--- ram_capacity,
--- memory_speed_mhz,
--- time,
--- uuid
--- FROM jobstats
--- WHERE tagnumber IS NOT NULL;
-
 
 CREATE TABLE IF NOT EXISTS locations (
 	id SERIAL PRIMARY KEY,
@@ -167,17 +110,36 @@ CREATE TABLE IF NOT EXISTS locations (
 	location VARCHAR(128) DEFAULT NULL,
 	is_broken BOOLEAN DEFAULT NULL,
 	disk_removed BOOLEAN DEFAULT NULL,
-	department_name VARCHAR(64) REFERENCES static_department_info(department_name) DEFAULT NULL,
-	ad_domain VARCHAR(64) REFERENCES static_ad_domains(domain_name) DEFAULT NULL,
+	department_name VARCHAR(64) DEFAULT NULL,
+	ad_domain VARCHAR(64) DEFAULT NULL,
 	note VARCHAR(512) DEFAULT NULL,
-	client_status VARCHAR(24) REFERENCES static_client_statuses(status) DEFAULT NULL,
+	client_status VARCHAR(24) DEFAULT NULL,
 	building VARCHAR(64) DEFAULT NULL,
 	room VARCHAR(64) DEFAULT NULL,
 	property_custodian VARCHAR(64) DEFAULT NULL,
 	acquired_date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
 	retired_date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
 	transaction_uuid UUID DEFAULT NULL,
-	bulk_update BOOLEAN DEFAULT FALSE
+	bulk_update BOOLEAN DEFAULT FALSE,
+	
+	CONSTRAINT locations_valid_tag
+		CHECK (tagnumber > 100000 AND tagnumber < 999999),
+
+	CONSTRAINT locations_department_name_fkey
+		FOREIGN KEY (department_name)
+			REFERENCES static_department_info(department_name)
+		ON UPDATE CASCADE 
+		ON DELETE RESTRICT,
+	CONSTRAINT locations_ad_domain_fkey
+		FOREIGN KEY (ad_domain)
+			REFERENCES static_ad_domains(domain_name)
+		ON UPDATE CASCADE 
+		ON DELETE RESTRICT,
+	CONSTRAINT locations_client_status_fkey
+		FOREIGN KEY (client_status)
+			REFERENCES static_client_statuses(status_name)
+		ON UPDATE CASCADE 
+		ON DELETE RESTRICT
 );
 
 
@@ -242,7 +204,7 @@ INSERT INTO static_disk_stats
 
 
 CREATE TABLE IF NOT EXISTS static_battery_stats (
-	battery_model VARCHAR(24) UNIQUE NOT NULL,
+	battery_model VARCHAR(24) PRIMARY KEY,
 	battery_charge_cycles SMALLINT DEFAULT NULL
 );
 
@@ -263,12 +225,13 @@ INSERT INTO static_battery_stats
 		('X906972', 300),
 		('M1009169', 300),
 		('X910528', 300)
-	ON CONFLICT (battery_model) DO UPDATE SET battery_charge_cycles = EXCLUDED.battery_charge_cycles
-	;
+	ON CONFLICT (battery_model) DO UPDATE SET 
+		battery_charge_cycles = EXCLUDED.battery_charge_cycles
+;
 
 
 CREATE TABLE IF NOT EXISTS static_bios_stats (
-	system_model VARCHAR(64) UNIQUE NOT NULL,
+	system_model VARCHAR(64) PRIMARY KEY,
 	bios_version VARCHAR(24) DEFAULT NULL
 );
 
@@ -309,7 +272,8 @@ VALUES
 	('OptiPlex 5070', '1.31.1'),
 	('OptiPlex 7010', 'A29'),
 	('OptiPlex 7780', '1.36.1')
-ON CONFLICT (system_model) DO UPDATE SET bios_version = EXCLUDED.bios_version
+ON CONFLICT (system_model) DO UPDATE SET 
+	bios_version = EXCLUDED.bios_version
 ;
 
 
@@ -332,13 +296,16 @@ CREATE TABLE IF NOT EXISTS client_health (
 	last_erase_job_time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL, -- add last_erase_job_time
 	total_jobs_completed SMALLINT DEFAULT NULL, -- rename from all_jobs to total_jobs_completed
 	last_hardware_check TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
-	transaction_uuid UUID DEFAULT NULL
+	transaction_uuid UUID DEFAULT NULL,
+
+	CONSTRAINT client_health_valid_tag
+		CHECK (tagnumber > 100000 AND tagnumber < 999999)
 );
 
 CREATE TABLE IF NOT EXISTS job_queue (
 	tagnumber INTEGER UNIQUE NOT NULL,
 	job_queued BOOLEAN DEFAULT FALSE,
-	job_name VARCHAR(64) REFERENCES static_job_names(job_name) DEFAULT NULL,
+	job_name VARCHAR(64) job_name DEFAULT NULL,
 	job_queued_at TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
 	job_active BOOLEAN DEFAULT FALSE,
 	clone_mode VARCHAR(24) DEFAULT NULL,
@@ -364,11 +331,14 @@ CREATE TABLE IF NOT EXISTS job_queue (
 	network_usage INT DEFAULT NULL,
 	link_speed INT DEFAULT NULL,
 
-	CONSTRAINT fkey_job_name 
-	FOREIGN KEY (job_name) 
-	REFERENCES static_job_names(job_name) 
-	ON UPDATE CASCADE 
-	ON DELETE SET NULL
+	CONSTRAINT job_queue_valid_tag
+		CHECK (tagnumber > 100000 AND tagnumber < 999999),
+
+	CONSTRAINT job_queue_job_name_fkey 
+		FOREIGN KEY (job_name) 
+			REFERENCES static_job_names(job_name) 
+		ON UPDATE CASCADE 
+		ON DELETE RESTRICT
 );
 
 DROP table IF EXISTS logins;
@@ -396,7 +366,7 @@ CREATE TABLE IF NOT EXISTS hardware_data (
 	system_model VARCHAR(64) DEFAULT NULL,
 	system_sku VARCHAR(20) DEFAULT NULL,
 	chassis_type VARCHAR(16) DEFAULT NULL,
-	device_type VARCHAR(64) REFERENCES static_device_types(device_type) DEFAULT NULL,
+	device_type VARCHAR(64) device_type DEFAULT NULL,
 	cpu_manufacturer VARCHAR(20) DEFAULT NULL,
 	cpu_model VARCHAR(46) DEFAULT NULL,
 	cpu_maxspeed SMALLINT DEFAULT NULL,
@@ -405,7 +375,16 @@ CREATE TABLE IF NOT EXISTS hardware_data (
 	motherboard_manufacturer VARCHAR(24) DEFAULT NULL,
 	motherboard_serial VARCHAR(24) DEFAULT NULL,
 	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
-	transaction_uuid UUID DEFAULT NULL
+	transaction_uuid UUID DEFAULT NULL,
+
+	CONSTRAINT hardware_data_valid_tag
+		CHECK (tagnumber > 100000 AND tagnumber < 999999),
+
+	CONSTRAINT hardware_data_device_type_fkey
+		FOREIGN KEY (device_type)
+			REFERENCES static_device_types(device_type)
+		ON UPDATE CASCADE
+		ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS static_device_types (
@@ -416,13 +395,13 @@ CREATE TABLE IF NOT EXISTS static_device_types (
 );
 
 CREATE TABLE IF NOT EXISTS bitlocker (
-	tagnumber INTEGER UNIQUE NOT NULL,
+	tagnumber INTEGER PRIMARY KEY,
 	identifier VARCHAR(128) NOT NULL,
 	recovery_key VARCHAR(128) NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS static_tags (
-	tag VARCHAR(128) NOT NULL,
+CREATE TABLE IF NOT EXISTS static_info_tags (
+	tag_name VARCHAR(128) PRIMARY KEY,
 	tag_readable VARCHAR(128) NOT NULL,
 	owner VARCHAR(64) NOT NULL,
 	department VARCHAR(128) NOT NULL
@@ -434,7 +413,7 @@ CREATE TABLE IF NOT EXISTS static_tags (
 -- );
 
 CREATE TABLE IF NOT EXISTS client_images (
-	uuid VARCHAR(128) UNIQUE NOT NULL,
+	uuid VARCHAR(128) PRIMARY KEY,
 	time TIMESTAMP(3) WITH TIME ZONE NOT NULL,
 	tagnumber INTEGER NOT NULL, 
 	filename VARCHAR(128) DEFAULT NULL,
@@ -449,15 +428,11 @@ CREATE TABLE IF NOT EXISTS client_images (
 	note VARCHAR(256) DEFAULT NULL,
 	hidden BOOLEAN DEFAULT FALSE NOT NULL,
 	pinned BOOLEAN DEFAULT FALSE NOT NULL,
-	UNIQUE (tagnumber, sha256_hash, hidden)
-);
 
--- CREATE OR REPLACE FUNCTION live_images_function
--- CREATE OR REPLACE TRIGGER live_images_trigger AFTER UPDATE OF screenshot ON live_images FOR EACH ROW EXECUTE FUNCTION live_images_function();
-CREATE TABLE IF NOT EXISTS live_images (
-	tagnumber INTEGER UNIQUE NOT NULL,
-	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
-	screenshot TEXT DEFAULT NULL
+	UNIQUE (tagnumber, sha256_hash, hidden),
+
+	CONSTRAINT client_images_valid_tag
+		CHECK (tagnumber > 100000 AND tagnumber < 999999)
 );
 
 CREATE TABLE IF NOT EXISTS static_organizations (
@@ -471,7 +446,13 @@ CREATE TABLE IF NOT EXISTS static_department_info (
 	department_name_formatted VARCHAR(64) NOT NULL,
 	department_sort_order  SMALLINT NOT NULL DEFAULT 0,
 	department_owner VARCHAR(64) DEFAULT NULL,
-	organization_name VARCHAR(64) REFERENCES static_organizations(organization_name) DEFAULT NULL
+	organization_name VARCHAR(64) DEFAULT NULL,
+
+	CONSTRAINT static_department_info_organization_name_fkey
+		FOREIGN KEY (organization_name)
+			REFERENCES static_organizations(organization_name)
+		ON UPDATE CASCADE 
+		ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS static_job_names (
@@ -509,36 +490,48 @@ CREATE TABLE IF NOT EXISTS static_ad_domains (
 );
 
 CREATE TABLE IF NOT EXISTS static_image_names (
-    image_name VARCHAR(36) PRIMARY KEY,
-    image_os_author VARCHAR(24) DEFAULT NULL,
-    image_version VARCHAR(24) DEFAULT NULL,
-    image_platform_vendor VARCHAR(24) DEFAULT NULL,
-    image_platform_model VARCHAR(36) DEFAULT NULL,
-    image_name_readable VARCHAR(36) DEFAULT NULL
+	image_name VARCHAR(36) PRIMARY KEY,
+	image_os_author VARCHAR(24) DEFAULT NULL,
+	image_version VARCHAR(24) DEFAULT NULL,
+	image_platform_vendor VARCHAR(24) DEFAULT NULL,
+	image_platform_model VARCHAR(36) DEFAULT NULL,
+	image_name_readable VARCHAR(36) DEFAULT NULL
 );
 
 INSERT INTO
     static_image_names (image_name, image_os_author, image_version, image_platform_vendor, image_platform_model, image_name_readable)
 VALUES
-    ('TechCommons-HP-LaptopsLZ4', 'Microsoft', 'Windows 11', 'HP', 'HP ProBook 450 G6', 'Windows 11'),
-    ('TechCommons-Dell-Desktop-Team-Leads', 'Microsoft', 'Windows 11', 'HP', 'Dell Pro Slim Plus QBS1250', 'Windows 11'),
-    ('TechCommons-Dell-Laptops', 'Microsoft', 'Windows 11', 'Dell', 'Latitude 7400', 'Windows 11'),
-    ('TechCommons-Dell-Desktops', 'Microsoft', 'Windows 11', 'Dell', 'OptiPlex 7000', 'Windows 11'),
-    ('TechCommons-Dell-HelpDesk', 'Microsoft', 'Windows 11', 'Dell', 'Latitude 7420', 'Windows 11'),
-    ('SHRL-Dell-Desktops', 'Microsoft', 'Windows 11', 'Dell', NULL, 'Windows 11'),
-    ('Ubuntu-Desktop', 'Canonical', '24.04.2 LTS', 'Dell', NULL, 'Ubuntu Desktop')
-    ON CONFLICT (image_name) DO NOTHING
-    ;
+	('TechCommons-HP-LaptopsLZ4', 'Microsoft', 'Windows 11', 'HP', 'HP ProBook 450 G6', 'Windows 11'),
+	('TechCommons-Dell-Desktop-Team-Leads', 'Microsoft', 'Windows 11', 'HP', 'Dell Pro Slim Plus QBS1250', 'Windows 11'),
+	('TechCommons-Dell-Laptops', 'Microsoft', 'Windows 11', 'Dell', 'Latitude 7400', 'Windows 11'),
+	('TechCommons-Dell-Desktops', 'Microsoft', 'Windows 11', 'Dell', 'OptiPlex 7000', 'Windows 11'),
+	('TechCommons-Dell-HelpDesk', 'Microsoft', 'Windows 11', 'Dell', 'Latitude 7420', 'Windows 11'),
+	('SHRL-Dell-Desktops', 'Microsoft', 'Windows 11', 'Dell', NULL, 'Windows 11'),
+	('Ubuntu-Desktop', 'Canonical', '24.04.2 LTS', 'Dell', NULL, 'Ubuntu Desktop')
+	ON CONFLICT (image_name) DO UPDATE SET
+		image_os_author = EXCLUDED.image_os_author,
+		image_version = EXCLUDED.image_version,
+		image_platform_vendor = EXCLUDED.image_platform_vendor,
+		image_platform_model = EXCLUDED.image_platform_model,
+		image_name_readable = EXCLUDED.image_name_readable
+;
 
 
 CREATE TABLE IF NOT EXISTS notes (
-    time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP PRIMARY KEY,
-    note_type VARCHAR(64) DEFAULT NULL,
-    note TEXT DEFAULT NULL,
-    todo TEXT DEFAULT NULL,
-    projects TEXT DEFAULT NULL,
-    misc TEXT DEFAULT NULL,
-    bugs TEXT DEFAULT NULL
+	id SERIAL PRIMARY KEY,
+	time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	note_type VARCHAR(64) DEFAULT NULL,
+	note TEXT DEFAULT NULL,
+	todo TEXT DEFAULT NULL,
+	projects TEXT DEFAULT NULL,
+	misc TEXT DEFAULT NULL,
+	bugs TEXT DEFAULT NULL,
+
+	CONSTRAINT notes_note_type_fkey
+		FOREIGN KEY (note_type)
+			REFERENCES static_note_info(note_type)
+		ON UPDATE CASCADE 
+		ON DELETE RESTRICT
 );
 
 
@@ -549,16 +542,20 @@ CREATE TABLE IF NOT EXISTS static_note_info (
 );
 
 INSERT INTO static_note_info (note_type, note_type_readable, sort_order) VALUES 
+	('general', 'General Notes', 0),
 	('todo', 'Short-Term', 10),
 	('projects', 'Projects', 20),
 	('misc', 'Misc. Notes', 30),
 	('bugs', 'Software Bugs 🐛', 40)
-	ON CONFLICT (note_type) DO NOTHING
+	ON CONFLICT (note_type) DO UPDATE SET
+		note_type_readable = EXCLUDED.note_type_readable,
+		sort_order = EXCLUDED.sort_order
 ;
 
 
 CREATE TABLE IF NOT EXISTS checkout_log (
-	log_entry_time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP PRIMARY KEY,
+	id SERIAL PRIMARY KEY,
+	log_entry_time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	transaction_uuid UUID DEFAULT NULL,
 	tagnumber INTEGER NOT NULL,
 	customer_name VARCHAR(48) DEFAULT NULL,
@@ -566,7 +563,10 @@ CREATE TABLE IF NOT EXISTS checkout_log (
 	checkout_date DATE DEFAULT NULL,
 	return_date DATE DEFAULT NULL,
 	checkout_group VARCHAR(48) DEFAULT NULL,
-	note VARCHAR(512) DEFAULT NULL
+	note VARCHAR(512) DEFAULT NULL,
+
+	CONSTRAINT checkout_log_valid_tag
+		CHECK (tagnumber > 100000 AND tagnumber < 999999)
 );
 
 
@@ -624,14 +624,14 @@ CREATE TABLE IF NOT EXISTS checkout_log (
 -- ;
 
 CREATE TABLE IF NOT EXISTS static_client_statuses (
-	status VARCHAR(24) PRIMARY KEY,
+	status_name VARCHAR(24) PRIMARY KEY,
 	status_formatted VARCHAR(36) DEFAULT NULL,
 	sort_order SMALLINT DEFAULT NULL,
 	status_type VARCHAR(24) DEFAULT NULL
 );
 
 INSERT INTO 
-	static_client_statuses (status, status_formatted, sort_order, status_type) 
+	static_client_statuses (status_name, status_formatted, sort_order, status_type) 
 VALUES
 	('in-use', 'In Use', 10, 'Availability'),
 	('needs-imaging', 'Needs Erasing/Imaging', 20, 'Preparation'),
@@ -645,6 +645,8 @@ VALUES
 	('retired', 'Retired', 80, 'Possession'),
 	('lost', 'Lost/Stolen', 90, 'Possession'),
 	('other', 'Other', 100, 'Other')
-ON CONFLICT (status) DO UPDATE
-	SET status_formatted = EXCLUDED.status_formatted, sort_order = EXCLUDED.sort_order, status_type = EXCLUDED.status_type
+ON CONFLICT (status_name) DO UPDATE SET 
+	status_formatted = EXCLUDED.status_formatted, 
+	sort_order = EXCLUDED.sort_order, 
+	status_type = EXCLUDED.status_type
 ;

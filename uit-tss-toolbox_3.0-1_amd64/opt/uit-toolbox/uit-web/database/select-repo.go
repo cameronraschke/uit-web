@@ -940,7 +940,7 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 			LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
 			LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 			LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
-			LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status
+			LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
 			LEFT JOIN static_device_types ON hardware_data.device_type = static_device_types.device_type
 			LEFT JOIN files ON locations.tagnumber = files.tagnumber
 		WHERE 
@@ -1061,7 +1061,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 			 static_client_statuses.status_formatted, locations.is_broken,
 			locations.disk_removed
 		FROM locations
-		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status
+		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
 		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 		ORDER BY locations.tagnumber, locations.time DESC NULLS LAST),
 	latest_historical_hardware_data AS (
@@ -1458,7 +1458,7 @@ func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocatio
 }
 
 func (repo *SelectRepo) GetAllStatuses(ctx context.Context) (map[string][]types.ClientStatus, error) {
-	const sqlQuery = `SELECT status, status_formatted, sort_order, status_type FROM static_client_statuses ORDER BY sort_order;`
+	const sqlQuery = `SELECT status_name, status_formatted, sort_order, status_type FROM static_client_statuses ORDER BY sort_order;`
 
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
