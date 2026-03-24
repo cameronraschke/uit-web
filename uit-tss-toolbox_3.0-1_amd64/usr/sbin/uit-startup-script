@@ -1,7 +1,8 @@
 #!/bin/bash
 
-systemctl restart dnsmasq chrony nfs-kernel-server
+sudo dhcpcd --persistent --request UIT_SERVER_WAN_IP_ADDRESS UIT_SERVER_WAN_IF
+/sbin/uit-firewall
 
-uit-firewall
+systemctl restart dnsmasq chrony nfs-kernel-server uit-web postgresql
 
 mount -o loop /opt/uit-toolbox/debian-live/uit-toolbox-client-amd64.hybrid.iso /srv/uit-toolbox/client/iso/
