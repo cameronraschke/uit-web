@@ -2,12 +2,28 @@ h2 {
 	text-align: center;
 }
 
-#job-queue-header {
+#online-clients-header {
 	width: 93dvw;
 	margin-right: 2rem;
 	justify-content: flex-start;
 	gap: 1rem;
+	scroll-margin-bottom: 60rem;
 }
+#offline-clients-header {
+	width: 93dvw;
+	margin-right: 2rem;
+	justify-content: flex-start;
+	gap: 1rem;
+	scroll-margin-bottom: 60rem;
+}
+
+#jump-to-online-clients {
+	margin-left: auto;
+}
+#jump-to-offline-clients {
+	margin-left: auto;
+}
+
 .client-row-container {
 	background: var(--fg-color);
 	display: flex;

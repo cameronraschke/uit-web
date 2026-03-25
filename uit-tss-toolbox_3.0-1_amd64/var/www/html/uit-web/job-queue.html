@@ -15,25 +15,28 @@
 		
 		<div class="flex-container title pagetitle"><h2>Queue Client Jobs</h2></div>
 		
-		<div id="job-queue-header" class="flex-container horizontal">
+		<div id="online-clients-header" class="flex-container horizontal">
 			<form id="update-all-online-jobs-form">
 				<div id="job-queue-controls" class="flex-container horizontal">
 					<div class="flex-container vertical">
-						<label for="update-all-online-jobs-select">Update all jobs:</label>
 						<select id="update-all-online-jobs-select">
 							<option value="" disabled selected>Update All Online Jobs</option>
 							<!-- Rest of options populated w/ JS -->
 						</select>
 					</div>
-					<button id="update-all-online-jobs-submit" type="submit" disabled>Update All Online Jobs</button>
+					<button id="update-all-online-jobs-submit" type="submit" class="submit" disabled>Update All Online Jobs</button>
 				</div>
 			</form>
 			<p>Total Online: <span id="total-online-clients"></span></p>
+			<button id="jump-to-offline-clients" type="button">Scroll to Offline Clients</button>
 		</div>
 
 			
     <div id="online-clients-container" class="flex-container"></div>
 		
+		<div id="offline-clients-header" class="flex-container horizontal">
+			<button id="jump-to-online-clients" type="button">Scroll to Online Clients</button>
+		</div>
 		<div id="offline-clients-container" class="flex-container"></div>
 
     <div id="uit-footer" class="flex-container horizontal"></div>

@@ -75,8 +75,22 @@ const updateOnlineJobQueueButton = document.getElementById('update-all-online-jo
 const onlineClientsDiv = document.getElementById('online-clients-container') as HTMLDivElement | null;
 const offlineClientsDiv = document.getElementById('offline-clients-container') as HTMLDivElement | null;
 const onlineClientsCount = document.querySelector('#total-online-clients') as HTMLSpanElement | null;
+const scrollToOnlineClientsButton = document.getElementById('jump-to-online-clients') as HTMLButtonElement;
+const scrollToOfflineClientsButton = document.getElementById('jump-to-offline-clients') as HTMLButtonElement;
 
 let jobQueueInterval: number | undefined;
+
+scrollToOnlineClientsButton.addEventListener('click', () => {
+	if (document.getElementById('online-clients-header') !== null) {
+		document.getElementById('online-clients-header')!.scrollIntoView({ block: 'start', behavior: 'instant', inline: 'nearest' });
+	}
+});
+
+scrollToOfflineClientsButton.addEventListener('click', () => {
+	if (document.getElementById('offline-clients-header') !== null) {
+		document.getElementById('offline-clients-header')!.scrollIntoView({ block: 'start', behavior: 'instant', inline: 'nearest' });
+	}
+});
 
 async function fetchAllJobs(purgeCache = false): Promise<AllJobs[]> {
 	const cacheKey = 'uit_all_jobs';
@@ -200,6 +214,8 @@ async function fetchJobQueueData() : Promise<JobQueueTableRowView[] | []> {
 		return [];
 	}
 }
+
+
 
 async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 	if (!data || !Array.isArray(data) || data.length === 0) {
