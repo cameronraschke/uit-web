@@ -12,7 +12,7 @@
 	--light-accent-color: oklch(0.5849 0.2065 23.43);
 	--accent-color: oklch(0.5449 0.2065 23.43);
 	--dark-accent-color: oklch(0.5149 0.2065 23.43);
-	--lighter-submit-color: oklch(0.8 0.106381 172.7396 / 0.5);
+	--lighter-submit-color: oklch(0.8 0.106381 172.7396 / 0.2);
 	--light-submit-color: oklch(0.8 0.106381 172.7396);
 	--submit-color: oklch(0.7 0.106381 172.7396);
 	--warning-color: oklch(0.829 0.1695 87.07);

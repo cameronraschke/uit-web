@@ -1050,14 +1050,15 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	),
 	current_battery_health AS (
 		SELECT 
-			tagnumber, 
+			DISTINCT ON (historical_hardware_data.tagnumber) historical_hardware_data.tagnumber,
 			ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt"
 		FROM 
 			historical_hardware_data
-		WHERE 
-			historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY tagnumber)
-			AND historical_hardware_data.battery_design_capacity IS NOT NULL 
+		WHERE
+			historical_hardware_data.battery_design_capacity IS NOT NULL 
 			AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
+			GROUP BY historical_hardware_data.tagnumber, historical_hardware_data.battery_current_max_capacity, historical_hardware_data.battery_design_capacity
+			ORDER BY historical_hardware_data.tagnumber DESC NULLS LAST
 	),
 	latest_locations AS (
 		SELECT DISTINCT ON (locations.tagnumber) locations.time, locations.tagnumber, locations.system_serial, locations.location,
