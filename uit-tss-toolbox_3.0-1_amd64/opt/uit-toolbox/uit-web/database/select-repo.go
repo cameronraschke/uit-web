@@ -34,7 +34,6 @@ type Select interface {
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
 	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifestView, error)
 	GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableRow, error)
-	GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	GetClientBatteryReport(ctx context.Context) ([]types.ClientReportRow, error)
 	GetAllJobs(ctx context.Context) ([]types.AllJobsRow, error)
 	GetAllLocations(ctx context.Context) ([]types.AllLocationsRow, error)
@@ -301,7 +300,7 @@ func ClientLookupByTag(ctx context.Context, tag *int64) (*types.ClientLookup, er
 
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", types.DatabaseConnError, err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
 	const sqlQuery = `
@@ -1023,7 +1022,12 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 	return results, nil
 }
 
-func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error) {
+func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error) {
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
 	const sqlQuery = `
 	WITH avg_battery_health AS (
 		SELECT system_model, AVG(avg_battery_health_pcnt) AS "avg_battery_health_pcnt" 
@@ -1118,6 +1122,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 		TRUE AS "kernel_updated",
 		job_queue.last_heard,
 		job_queue.system_uptime,
+		job_queue.client_app_uptime,
 		(CASE WHEN EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.last_heard)) < 30 THEN TRUE ELSE FALSE END) AS "online",
 		job_queue.job_active,
 		job_queue.job_queued,
@@ -1206,18 +1211,21 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 	LEFT JOIN job_queue_position ON latest_locations.tagnumber = job_queue_position.tagnumber
 	LEFT JOIN newest_image ON hardware_data.system_model = newest_image.system_model
 	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
+	ORDER BY
+		job_queue.last_heard DESC NULLS LAST
+	LIMIT 50
 	;`
 
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
+	rows, err := dbConn.QueryContext(ctx, sqlQuery)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 	defer rows.Close()
 
 	jobQueueRows := make([]types.JobQueueTableRowView, 0, approxClientCount) // 560 is the approximate # of clients
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error: %w", ctx.Err())
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
 		var row types.JobQueueTableRowView
 		if err := rows.Scan(
@@ -1235,6 +1243,7 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 			&row.KernelUpdated,
 			&row.LastHeard,
 			&row.SystemUptime,
+			&row.AppUptime,
 			&row.Online,
 			&row.JobActive,
 			&row.JobQueued,
@@ -1276,12 +1285,12 @@ func (repo *SelectRepo) GetJobQueueTable(ctx context.Context) ([]types.JobQueueT
 			&row.PluggedIn,
 			&row.PowerUsage,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
 		jobQueueRows = append(jobQueueRows, row)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
 	}
 	if len(jobQueueRows) == 0 {
 		return nil, nil

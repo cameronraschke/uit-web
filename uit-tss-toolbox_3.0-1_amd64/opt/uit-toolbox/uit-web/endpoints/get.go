@@ -536,16 +536,9 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 // Overview section
 func GetJobQueueTable(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetJobQueueTable"))
 
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository (GetJobQueueTable): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	jobQueueTable, err := db.GetJobQueueTable(ctx)
+	jobQueueTable, err := database.GetJobQueueTable(ctx)
 	if err != nil {
 		log.Warn("Query error (GetJobQueueTable): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -557,7 +550,7 @@ func GetJobQueueTable(w http.ResponseWriter, req *http.Request) {
 
 func GetJobQueueOverview(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetJobQueueOverview"))
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
@@ -578,7 +571,7 @@ func GetJobQueueOverview(w http.ResponseWriter, req *http.Request) {
 
 func GetDashboardInventorySummary(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetDashboardInventorySummary"))
 
 	db, err := database.NewSelectRepo()
 	if err != nil {

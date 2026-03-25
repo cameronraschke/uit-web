@@ -267,6 +267,7 @@ type JobQueueTableRowView struct {
 	KernelUpdated          *bool          `json:"kernel_updated"`
 	LastHeard              *time.Time     `json:"last_heard"`
 	SystemUptime           *time.Duration `json:"system_uptime"`
+	AppUptime              *time.Duration `json:"client_app_uptime"`
 	Online                 *bool          `json:"online"`
 	JobActive              *bool          `json:"job_active"`
 	JobQueued              *bool          `json:"job_queued"`

@@ -13,7 +13,7 @@ type ClientRealtimeView struct {
 	NetworkUsage          *int64         `json:"network_usage"`
 	NetworkLinkSpeed      *int64         `json:"network_link_speed"`
 	SystemUptime          *time.Duration `json:"uptime"`
-	AppUptime             *time.Duration `json:"app_uptime"`
+	AppUptime             *time.Duration `json:"client_app_uptime"`
 	JobQueued             *bool          `json:"job_queued"`
 	JobActive             *bool          `json:"job_active"`
 	JobName               *string        `json:"job_name"`

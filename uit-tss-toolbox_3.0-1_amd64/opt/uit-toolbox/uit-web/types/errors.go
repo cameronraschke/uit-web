@@ -15,6 +15,7 @@ var (
 	// Database errors
 	DatabaseConnNilError      = errors.New("database connection is nil/uninitialized")
 	DatabaseConnError         = errors.New("cannot get DB connection from app state")
+	DatabaseQueryError        = errors.New("error executing DB query")
 	DatabaseTransactionError  = errors.New("cannot begin DB transaction")
 	DatabaseUpdateError       = errors.New("cannot update DB")
 	DatabaseAffectedRowsError = errors.New("unexpected number of rows affected")

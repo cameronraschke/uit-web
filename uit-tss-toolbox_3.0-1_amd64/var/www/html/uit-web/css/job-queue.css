@@ -9,6 +9,7 @@ h2 {
 	gap: 1rem;
 }
 .client-row-container {
+	background: var(--fg-color);
 	display: flex;
 	flex-direction: column;
 	position: relative;
@@ -32,9 +33,20 @@ h2 {
 	text-align: left;
 	word-wrap: break-word;
 }
-.client-row-grid.broken {
-	background-color: var(--transparent-accent-color);
+
+.client-row-container.online {
+	background: linear-gradient(90deg, var(--fg-color) 0%, var(--lighter-submit-color) 100%);
 }
+.client-row-container.offline {
+	background: linear-gradient(90deg, var(--bg-color) 0%, var(--bg-color-darker) 100%);
+}
+.client-row-container.broken {
+	background: linear-gradient(90deg, var(--fg-color) 0%, var(--transparent-accent-color) 100%);
+}
+.client-row-container.offline.broken {
+	background: linear-gradient(90deg, var(--bg-color) 0%, var(--bg-color-darker) 30%, var(--transparent-accent-color) 100%);
+}
+
 #client-offline {
 	position:absolute; 
 	top: 50%; 
@@ -98,6 +110,12 @@ button {
 
 #shutdown-button {
 	margin-left: auto;
+}
+
+.separation-div {
+	height: 3rem;
+	width: 90%;
+	margin: 3rem 0 3rem 0;
 }
 
 @media (max-width: 1070px) and (min-width: 881px) {
