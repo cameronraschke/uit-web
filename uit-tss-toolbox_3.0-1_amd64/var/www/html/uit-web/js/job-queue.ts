@@ -288,106 +288,147 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		// Client identifiers and info
 		const clientIdentifiers = document.createElement('div');
 		clientIdentifiers.className = 'grid-item headers';
-		const brokenClient = document.createElement('p');
-		brokenClient.classList.add('bold-text');
-		if (!entry.online) {
-			brokenClient.appendChild(document.createTextNode(' [Offline]'));
+		if (entry.online === false || entry.is_broken === true) {
+			const brokenClient = document.createElement('p');
+			brokenClient.classList.add('bold-text');
+			if (!entry.online) {
+				brokenClient.appendChild(document.createTextNode(' [Offline]'));
+			}
+			if (entry.is_broken) {
+				brokenClient.appendChild(document.createTextNode('[Broken Client]'));
+			}
+			clientIdentifiers.appendChild(brokenClient);
 		}
-		if (entry.is_broken) {
-			brokenClient.appendChild(document.createTextNode('[Broken Client]'));
-		}
-		clientIdentifiers.appendChild(brokenClient);
-
-		
-		const editClientButtonDiv = document.createElement('div');
-		editClientButtonDiv.classList.add('flex-container', 'horizontal');
-		// const tagURL = new URL(`/client`, window.location.origin);
-		const tagURL = new URL(`/inventory`, window.location.origin);
-		tagURL.searchParams.append('tagnumber', entry.tagnumber.toString());
-		tagURL.searchParams.append('update', 'true');
-		const editClientAnchor = document.createElement('a');
-		const editClientButton = document.createElement('button');
-		editClientButton.classList.add('svg-button', 'edit');
-		editClientButton.textContent = 'Edit';
-		editClientButton.title = `Edit Client ${entry.tagnumber !== null ? entry.tagnumber.toString() : 'N/A'}`;
-		editClientAnchor.href = tagURL.toString();
-		editClientAnchor.target = '_blank';
-		editClientAnchor.appendChild(editClientButton);
-		editClientButtonDiv.appendChild(editClientAnchor);
-		editClientButtonDiv.style.justifyContent = 'flex-start';
-		clientIdentifiers.appendChild(editClientButtonDiv);
-
 
 		const tagAndSerialDiv = document.createElement('div');
 		tagAndSerialDiv.classList.add('flex-container', 'horizontal');
 		tagAndSerialDiv.style.justifyContent = 'center';
 
-		const tagSerialText = document.createElement('p');
-		const tagTextNode = document.createElement('span').appendChild(document.createTextNode(entry.tagnumber !== null ? `${entry.tagnumber.toString()}` : 'N/A'));
+		// tagAndSerialDiv.appendChild(editClientAnchor);
+
+		const tagSerialContainer = document.createElement('p');
+		// const tagURL = new URL(`/client`, window.location.origin);
+		const tagURL = new URL(`/inventory`, window.location.origin);
+		tagURL.searchParams.append('tagnumber', entry.tagnumber.toString());
+		tagURL.searchParams.append('system_serial', entry.system_serial || '');
+		tagURL.searchParams.append('update', 'true');
+		const editClientAnchor = document.createElement('a');
+		editClientAnchor.title = `Edit Client ${entry.tagnumber !== null ? entry.tagnumber.toString() : 'N/A'}`;
+		editClientAnchor.textContent = `${entry.tagnumber !== null ? entry.tagnumber.toString() : 'N/A'}`;
+		editClientAnchor.href = tagURL.toString();
+		editClientAnchor.target = '_blank';
+		
+		const editClientSvg = document.createElement('img');
+		editClientSvg.src = '/icons/general/edit_square.svg';
+		editClientAnchor.appendChild(editClientSvg);
+		editClientSvg.style.marginRight = '0.5rem';
+		editClientAnchor.appendChild(editClientSvg);
+		tagSerialContainer.appendChild(editClientAnchor);
+
+		const tagTextNode = document.createElement('span').appendChild(editClientAnchor);
 		const serialTextNode = document.createElement('span').appendChild(document.createTextNode(entry.system_serial ? ` | ${entry.system_serial}` : ' | N/A'));
-		tagSerialText.appendChild(tagTextNode);
-		tagSerialText.appendChild(document.createElement('wbr'));
-		tagSerialText.appendChild(serialTextNode);
-		tagAndSerialDiv.appendChild(tagSerialText);
+		tagSerialContainer.appendChild(tagTextNode);
+		tagSerialContainer.appendChild(document.createElement('wbr'));
+		tagSerialContainer.appendChild(serialTextNode);
+		tagAndSerialDiv.appendChild(tagSerialContainer);
 
 		clientIdentifiers.appendChild(tagAndSerialDiv);
 
-		const manufacturerModelDiv = document.createElement('div');
-		manufacturerModelDiv.classList.add('flex-container', 'horizontal');
-		manufacturerModelDiv.style.justifyContent = 'center';
-		const manufacturerModel = document.createElement('p');
-		manufacturerModel.classList.add('smaller-text')
-		manufacturerModel.textContent = `${entry.system_manufacturer || 'N/A'} | ${entry.system_model || 'N/A'}`;
-		manufacturerModelDiv.appendChild(manufacturerModel);
-		clientIdentifiers.appendChild(manufacturerModelDiv);
+		const manufacturerModelContainer = document.createElement('div');
+		manufacturerModelContainer.classList.add('flex-container', 'horizontal');
+		manufacturerModelContainer.style.justifyContent = 'center';
+		manufacturerModelContainer.style.marginBottom = '1rem';
+		if (entry.system_manufacturer) {
+			manufacturerModelContainer.appendChild(document.createElement('span').appendChild(document.createTextNode(entry.system_manufacturer)));
+		} else {
+			manufacturerModelContainer.appendChild(document.createElement('span').appendChild(document.createTextNode('N/A')));
+		}
+		manufacturerModelContainer.appendChild(document.createElement('span').appendChild(document.createTextNode(' | ')));
+		manufacturerModelContainer.appendChild(document.createElement('wbr'));
+		if (entry.system_model) {
+			manufacturerModelContainer.appendChild(document.createElement('span').appendChild(document.createTextNode(entry.system_model)));
+		} else {
+			manufacturerModelContainer.appendChild(document.createElement('span').appendChild(document.createTextNode('N/A')));
+		}
+		clientIdentifiers.appendChild(manufacturerModelContainer);
 
-		const location = document.createElement('p');
-		location.textContent = `Location: ${entry.location || 'N/A'}`;
-		clientIdentifiers.appendChild(location);
-		const department = document.createElement('p');
-		department.textContent = `Department: ${entry.department_name || 'N/A'}`;
-		clientIdentifiers.appendChild(department);
-		clientIdentifiers.appendChild(document.createElement('p').appendChild(document.createTextNode(`Client Status: ${entry.client_status || 'N/A'}`)));
+		const locationContainer = document.createElement('div');
+		locationContainer.classList.add('flex-container', 'horizontal');
+		locationContainer.classList.add('smaller-text');
+		locationContainer.appendChild(document.createElement('span').appendChild(document.createTextNode('Location: ')));
+		if (entry.location !== null) {
+			locationContainer.appendChild(document.createTextNode(entry.location));
+		} else {
+			locationContainer.appendChild(document.createTextNode('N/A'));
+		}
+		clientIdentifiers.appendChild(locationContainer);
+
+		const departmentContainer = document.createElement('div');
+		departmentContainer.classList.add('flex-container', 'horizontal');
+		departmentContainer.classList.add('smaller-text');
+		departmentContainer.appendChild(document.createElement('span').appendChild(document.createTextNode('Department: ')));
+		if (entry.department_name !== null) {
+			departmentContainer.appendChild(document.createTextNode(entry.department_name));
+		} else {
+			departmentContainer.appendChild(document.createTextNode('N/A'));
+		}
+		clientIdentifiers.appendChild(departmentContainer);
+
+		const clientStatusContainer = document.createElement('div');
+		clientStatusContainer.classList.add('flex-container', 'horizontal');
+		clientStatusContainer.classList.add('smaller-text');
+		clientStatusContainer.appendChild(document.createElement('span').appendChild(document.createTextNode('Client Status: ')));
+		if (entry.client_status !== null) {
+			clientStatusContainer.appendChild(document.createTextNode(entry.client_status));
+		} else {
+			clientStatusContainer.appendChild(document.createTextNode('N/A'));
+		}
+		clientIdentifiers.appendChild(clientStatusContainer);
 
 		// Live view
 		const liveViewContainer = document.createElement('div');
-		liveViewContainer.classList.add('grid-item', 'live-view-container');
+		liveViewContainer.classList.add('grid-item');
+
 		const liveViewHeader = document.createElement('p');
 		liveViewHeader.style.fontStyle = 'italic';
 		liveViewHeader.textContent = 'Live View: ';
 		liveViewContainer.appendChild(liveViewHeader);
+
 		const liveViewScreenshotContainer = document.createElement('div');
 		liveViewScreenshotContainer.classList.add('image-container');
 		if (entry.online) {
 			liveViewScreenshotContainer.classList.add('image-container');
 			liveViewScreenshotContainer.classList.remove('offline');
-			const liveViewImage = document.createElement("img");
+			const liveViewImage = document.createElement('img');
 			liveViewImage.src = `/api/live_image?tagnumber=${entry.tagnumber}`;
 			liveViewImage.loading = "lazy";
-			const liveViewAnchor = document.createElement("a");
+			const liveViewAnchor = document.createElement('a');
 			liveViewAnchor.href = `/api/live_image?tagnumber=${entry.tagnumber}`;
 			liveViewAnchor.target = "_blank";
 			liveViewAnchor.appendChild(liveViewImage);
 			liveViewScreenshotContainer.appendChild(liveViewAnchor);
-		} else {
-			liveViewScreenshotContainer.classList.add('image-container', 'offline');
-			const liveViewOffline = document.createElement('h2');
-			liveViewOffline.textContent = `Live View Offline`;
-			liveViewScreenshotContainer.appendChild(liveViewOffline);
 		}
+
 		liveViewContainer.appendChild(liveViewScreenshotContainer);
 		clientEntryContainer.appendChild(clientGridContainer);
 
 		// Job info
 		const jobInfoContainer = document.createElement('div');
 		jobInfoContainer.classList.add('grid-item');
-		const jobName = document.createElement('p');
-		jobName.textContent = `Job Queued: ${entry.job_name_readable || 'N/A'}`;
-		jobInfoContainer.appendChild(jobName);
-		const jobStatus = document.createElement('p');
-		jobStatus.textContent = `Job Status: ${entry.job_status || 'N/A'}`;
-		jobInfoContainer.appendChild(jobStatus);
 
+		if (entry.online === false || (entry.job_name_readable !== null && entry.job_queued !== null && entry.job_queue_position !== null)) {
+			const jobStatusP = document.createElement('p');
+			jobStatusP.appendChild(document.createTextNode(`Job Status: ${entry.job_status || 'N/A'}`));
+			jobInfoContainer.appendChild(jobStatusP);
+			const jobNameP = document.createElement('p');
+			jobNameP.appendChild(document.createTextNode(`Job Name: ${entry.job_name_readable || 'N/A'}`));
+			jobInfoContainer.appendChild(jobNameP);
+			const jobQueuePositionP = document.createElement('p');
+			jobQueuePositionP.appendChild(document.createTextNode(`Queue Position: ${entry.job_queue_position || 'N/A'}`));
+			jobInfoContainer.appendChild(jobQueuePositionP);
+		}
+
+		// Uptime
 		const clientAppUptimeContainer = document.createElement('p');
 		clientAppUptimeContainer.appendChild(document.createTextNode('App Uptime: '));
 		if (entry.client_app_uptime !== null) {
@@ -396,13 +437,21 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 			const uptimeHours = Math.floor(uptimeMins / 60) || 0;
 			const uptimeDays = Math.floor(uptimeHours / 24) || 0;
 			if (uptimeDays > 0) {
-				clientAppUptimeContainer.appendChild(document.createElement('span').appendChild(document.createTextNode(`${uptimeDays}d ${uptimeHours % 24}h ${uptimeMins % 60}m`)));
+				const span = document.createElement('span');
+				span.appendChild(document.createTextNode(`${uptimeDays}d ${uptimeHours % 24}h ${uptimeMins % 60}m`));
+				clientAppUptimeContainer.appendChild(span);
 			} else if (uptimeHours > 0) {
-				clientAppUptimeContainer.appendChild(document.createElement('span').appendChild(document.createTextNode(`${uptimeHours}h ${uptimeMins % 60}m`)));
+				const span = document.createElement('span');
+				span.appendChild(document.createTextNode(`${uptimeHours}h ${uptimeMins % 60}m`));
+				clientAppUptimeContainer.appendChild(span);
 			} else if (uptimeMins > 0) {
-				clientAppUptimeContainer.appendChild(document.createElement('span').appendChild(document.createTextNode(`${uptimeMins}m ${uptimeSec % 60}s`)));
+				const span = document.createElement('span');
+				span.appendChild(document.createTextNode(`${uptimeMins}m ${uptimeSec % 60}s`));
+				clientAppUptimeContainer.appendChild(span);
 			} else if (uptimeSec > 0) {
-				clientAppUptimeContainer.appendChild(document.createElement('span').appendChild(document.createTextNode(`${uptimeSec}s`)));
+				const span = document.createElement('span');
+				span.appendChild(document.createTextNode(`${uptimeSec}s`));
+				clientAppUptimeContainer.appendChild(span);
 			} else {
 				clientAppUptimeContainer.appendChild(document.createTextNode('N/A'));
 			}
@@ -419,13 +468,21 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 			const uptimeHours = Math.floor(uptimeMins / 60) || 0;
 			const uptimeDays = Math.floor(uptimeHours / 24) || 0;
 			if (uptimeDays > 0) {
-				systemUptimeContainer.appendChild(document.createElement('span').appendChild(document.createTextNode(`${uptimeDays}d ${uptimeHours % 24}h ${uptimeMins % 60}m`)));
+				const span = document.createElement('span');
+				span.appendChild(document.createTextNode(`${uptimeDays}d ${uptimeHours % 24}h ${uptimeMins % 60}m`));
+				systemUptimeContainer.appendChild(span);
 			} else if (uptimeHours > 0) {
-				systemUptimeContainer.appendChild(document.createElement('span').appendChild(document.createTextNode(`${uptimeHours}h ${uptimeMins % 60}m`)));
+				const span = document.createElement('span');
+				span.appendChild(document.createTextNode(`${uptimeHours}h ${uptimeMins % 60}m`));
+				systemUptimeContainer.appendChild(span);
 			} else if (uptimeMins > 0) {
-				systemUptimeContainer.appendChild(document.createElement('span').appendChild(document.createTextNode(`${uptimeMins}m ${uptimeSec % 60}s`)));
+				const span = document.createElement('span');
+				span.appendChild(document.createTextNode(`${uptimeMins}m ${uptimeSec % 60}s`));
+				systemUptimeContainer.appendChild(span);
 			} else if (uptimeSec > 0) {
-				systemUptimeContainer.appendChild(document.createElement('span').appendChild(document.createTextNode(`${uptimeSec}s`)));
+				const span = document.createElement('span');
+				span.appendChild(document.createTextNode(`${uptimeSec}s`));
+				systemUptimeContainer.appendChild(span);
 			} else {
 				systemUptimeContainer.appendChild(document.createTextNode('N/A'));
 			} 
@@ -434,6 +491,10 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		}
 
 		jobInfoContainer.appendChild(systemUptimeContainer);
+
+		const clientActionsContainer = document.createElement('div');
+		clientActionsContainer.classList.add('flex-container', 'horizontal');
+		clientActionsContainer.style.justifyContent = 'flex-start';
 
 		const jobSelectContainer = document.createElement('div');
 		jobSelectContainer.classList.add('flex-container', 'horizontal');
@@ -478,7 +539,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		});
 			
 		
-		jobInfoContainer.appendChild(jobSelect);
+		clientActionsContainer.appendChild(jobSelect);
 		
 		const queueJobButton = document.createElement('button');
 		queueJobButton.removeEventListener('click', async () => {});
@@ -530,15 +591,9 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 				}
 			});
 		}
-		jobSelectContainer.appendChild(jobSelect);
-		jobSelectContainer.appendChild(queueJobButton);
-		if (entry.online) jobInfoContainer.appendChild(jobSelectContainer);
-		if (entry.job_queued && entry.job_queue_position !== null) {
-			jobSelect.value = entry.job_name || '';
-			const queuePosition = document.createElement('p');
-			queuePosition.textContent = `Queue Position: ${entry.job_queue_position || 'N/A'}`;
-			jobInfoContainer.appendChild(queuePosition);
-		}
+		clientActionsContainer.appendChild(queueJobButton);
+
+		if (entry.online) jobInfoContainer.appendChild(clientActionsContainer);
 
 		if (!entry.online) {
 			const lastHeard = document.createElement('p');
