@@ -1,7 +1,7 @@
 let isLoggingOut: boolean = false;
 
-const authChannel = new BroadcastChannel('auth');
-authChannel.onmessage = function(event) {
+const logoutAuthChannel = new BroadcastChannel('auth');
+logoutAuthChannel.onmessage = function(event) {
   console.log(event);
   if (event.data.cmd === 'logout') {
     logout();
@@ -18,24 +18,17 @@ async function logout() {
   if (isLoggingOut) return;
   isLoggingOut = true;
   logoutButton.disabled = true;
-  authChannel.postMessage({cmd: 'logout'});
+  logoutAuthChannel.postMessage({cmd: 'logout'});
   localStorage.clear();
   sessionStorage.clear();
-  try {
-    const response = await fetch("/logout", {
-      method: "GET",
-      credentials: "same-origin"
-    });
-    if (!response.ok) {
-      alert("Logout failed, try again.");
-    }
-  } catch (error) {
-    console.error("Logout error:", error);
-  } finally {
-    isLoggingOut = false;
-    logoutButton.disabled = false;
-    window.location.replace("/login");
+
+  let logoutUrl = "/logout";
+  const currentPath = window.location.pathname;
+  if (currentPath !== "/login" && currentPath !== "/logout") {
+    logoutUrl += "?redirect=" + encodeURIComponent(currentPath + window.location.search);
   }
+
+  window.location.replace(logoutUrl);
 }
 
 if (window.location.pathname === '/logout') {

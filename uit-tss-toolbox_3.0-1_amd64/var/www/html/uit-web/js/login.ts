@@ -1,10 +1,5 @@
 let loginSubmitInProgress: boolean = false;
 
-interface LoginInfo {
-	username: string;
-	password: string;
-}
-
 const loginForm = document.querySelector("#login-form") as HTMLFormElement;
 const usernameInput = document.getElementById("username") as HTMLInputElement;
 const passwordInput = document.getElementById("password") as HTMLInputElement;
@@ -14,64 +9,65 @@ const passwordStar = document.getElementById("password-star") as HTMLElement;
 const errorMsg = document.getElementById("login-error") as HTMLElement;
 
 function checkUsernameValidity(): void {
-    const usernameValid = usernameInput.checkValidity();
-    if (!usernameValid) {
-        usernameStar.style.display = "inline-block";
-        usernameStar.style.color = "red";
-    } else {
-        usernameStar.style.display = "none";
-        usernameStar.style.color = "black";
-    }
+	const usernameValid = usernameInput.checkValidity();
+	if (!usernameValid) {
+		usernameStar.style.display = "inline-block";
+		usernameStar.style.color = "red";
+	} else {
+		usernameStar.style.display = "none";
+		usernameStar.style.color = "black";
+	}
 }
 
 function checkPasswordValidity(): void {
-    const passwordValid = passwordInput.checkValidity();
-    if (!passwordValid) {
-        passwordStar.style.display = "inline-block";
-        passwordStar.style.color = "red";
-    } else {
-        passwordStar.style.display = "none";
-        passwordStar.style.color = "black";
-    }
+	const passwordValid = passwordInput.checkValidity();
+	if (!passwordValid) {
+		passwordStar.style.display = "inline-block";
+		passwordStar.style.color = "red";
+	} else {
+		passwordStar.style.display = "none";
+		passwordStar.style.color = "black";
+	}
 }
 
 checkUsernameValidity();
 usernameInput.addEventListener("keyup", () => {
-    checkUsernameValidity();
+	checkUsernameValidity();
 });
 
 checkPasswordValidity();
 passwordInput.addEventListener("keyup", () => {
-    checkPasswordValidity();
+	checkPasswordValidity();
 });
 
 loginForm.addEventListener("submit", async (event) => {
 	if (loginSubmitInProgress) return;
 	loginSubmitInProgress = true;
+
 	event.preventDefault();
 	const usernameValid = usernameInput.reportValidity();
 	const passwordValid = passwordInput.reportValidity();
 	const formData = new FormData(loginForm);
-	if (!formData.has("username") || !formData.has("password")) {
+	if ((!formData.has("username") && formData.get("username") === null) || (!formData.has("password") && formData.get("password") === null)) {
 		console.log("Username or password not provided");
 		loginSubmitInProgress = false;
 		return;
 	}
 
-	const username: string = formData.get("username") as string;
-	const password: string = formData.get("password") as string;
-	if (username === "" || password === "") {
+	const providedUsername: string = formData.get("username") as string;
+	const providedPassword: string = formData.get("password") as string;
+	if (providedUsername === "" || providedPassword === "") {
 		console.log("Username or password is empty");
 		loginSubmitInProgress = false;
 		return;
 	}
-	if (username.length > 20 || password.length > 64) {
-		console.log("Username or password is too long");
+	if (providedUsername.length > 20 || providedPassword.length > 64) {
+		console.log("Username or password exceeds maximum length");
 		loginSubmitInProgress = false;
 		return;
 	}
-	if (username.length < 3 || password.length < 8) {
-		console.log("Username or password is too short");
+	if (providedUsername.length < 3 || providedPassword.length < 8) {
+		console.log("Username or password does not meet minimum length requirements");
 		loginSubmitInProgress = false;
 		return;
 	}
@@ -83,10 +79,10 @@ loginForm.addEventListener("submit", async (event) => {
 
 	try {
 		const jsonObj = {
-			username: await generateSHA256Hash(username),
-			password: await generateSHA256Hash(password)
-		} as LoginInfo
-		if (!jsonObj || jsonObj.username.length !== 64 || jsonObj.password.length !== 64) throw new Error('Missing/invalid data in login request');
+			username: await generateSHA256Hash(providedUsername),
+			password: await generateSHA256Hash(providedPassword)
+		};
+		if (!jsonObj || jsonObj.username.length !== 64 || jsonObj.password.length !== 64) throw new Error('Invalid hash format for username and/or password');
 
 		const base64Payload = jsonToBase64(JSON.stringify(jsonObj));
 		if (!base64Payload || base64Payload.length === 0) throw new Error('Failed to encode login payload json to base64');
@@ -110,23 +106,30 @@ loginForm.addEventListener("submit", async (event) => {
 			}
 		}
 		const jsonResponse: AuthStatusResponse = await response.json();
-		if (!jsonResponse) throw new Error("Error parsing server response JSON")
-		if (jsonResponse.status?.toLowerCase() !== "authenticated") {
+		if (!jsonResponse || typeof jsonResponse !== "object") throw new Error("Error parsing server response JSON")
+		if (jsonResponse.status && jsonResponse.status.toLowerCase() !== "authenticated") {
 			errorMsg.style.display = "block";
 			errorMsg.innerText = "Authentication failed. Please check your credentials and try again.";
 			throw new Error("Authentication failed: " + (jsonResponse.status ?? "unknown error"));
 		}
-		if (jsonResponse.expires_at === null || jsonResponse.ttl === null) {
+		if (jsonResponse.expires_at === null || jsonResponse.expires_at <= new Date()) {
 			errorMsg.style.display = "block";
 			errorMsg.innerText = "Invalid response from server. Please try again later.";
-			throw new Error("Invalid authentication response: missing expires_at or ttl");
+			throw new Error("Invalid authentication response: token is already expired or expires_at field is missing/null");
 		}
 
-		const redirectURL = new URL(new URLSearchParams(window.location.search).get("redirect") ?? "", window.location.origin);
-		if (redirectURL.pathname === "/" || redirectURL.pathname === "/logout" || !redirectURL.pathname.startsWith("/") || redirectURL.pathname.startsWith("//") || redirectURL.pathname.includes("/login")) {
-			window.location.href = "/dashboard";
-			return;
+		if (jsonResponse.ttl === null || jsonResponse.ttl <= 0) {
+			errorMsg.style.display = "block";
+			errorMsg.innerText = "Invalid response from server. Please try again later.";
+			throw new Error("Invalid authentication response: ttl is missing or invalid");
 		}
+
+		const redirectQuery = new URLSearchParams(window.location.search).get("redirect") ?? "";
+		const redirectURL = new URL(redirectQuery, window.location.origin);
+		// if (redirectURL.pathname === "/" || redirectURL.pathname === "/logout" || !redirectURL.pathname.startsWith("/") || redirectURL.pathname.startsWith("//") || redirectURL.pathname.includes("/login")) {
+		// 	window.location.href = "/dashboard";
+		// 	return;
+		// }
 		window.location.href = window.location.origin + redirectURL.pathname + redirectURL.search;
 	} catch (error) {
 		console.error('There was a problem with the fetch operation:', error);
@@ -135,25 +138,3 @@ loginForm.addEventListener("submit", async (event) => {
 		loginSubmitInProgress = false;
 	}
 });
-
-async function setKeyFromIndexDB(key: string, value: string): Promise<void> {
-  if (typeof key !== "string" || key.trim() === "" ||
-      typeof value !== "string" || value.trim() === "") {
-    throw new Error("Invalid key/value");
-  }
-
-  const db = await openTokenDB() as IDBDatabase;
-
-  return new Promise((resolve, reject) => {
-    try {
-      const tx = db.transaction("uitTokens", "readwrite");
-      const store = tx.objectStore("uitTokens");
-      store.put({ tokenType: key, value: value });
-      tx.oncomplete = () => resolve(void 0);
-      tx.onerror = (e) => reject((e.target as IDBRequest).error);
-      tx.onabort = (e) => reject((e.target as IDBRequest).error);
-    } catch (err) {
-      reject(err);
-    }
-  });
-}

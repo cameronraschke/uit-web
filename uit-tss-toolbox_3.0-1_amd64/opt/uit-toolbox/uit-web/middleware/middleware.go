@@ -839,7 +839,24 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 
 		var redirectURL string
 		if requestPath == "/login" || requestPath == "/logout" {
-			redirectURL = "/login" + "?redirect=" + url.QueryEscape("/dashboard")
+			if req.URL.Query().Get("redirect") != "" {
+				redirectURL = "/login" + "?redirect=" + url.QueryEscape(req.URL.Query().Get("redirect"))
+			} else {
+				target := "/dashboard"
+				if referer := req.Referer(); referer != "" {
+					if parsed, err := url.Parse(referer); err == nil {
+						// Minimal validation: must be same host (if host present) and not login/logout
+						if (parsed.Host == "" || parsed.Host == req.Host) &&
+							parsed.Path != "/login" && parsed.Path != "/logout" {
+							target = parsed.Path
+							if parsed.RawQuery != "" {
+								target += "?" + parsed.RawQuery
+							}
+						}
+					}
+				}
+				redirectURL = "/login" + "?redirect=" + url.QueryEscape(target)
+			}
 		} else {
 			redirectURL = "/login" + "?redirect=" + url.QueryEscape((&url.URL{
 				Path:     requestPath,

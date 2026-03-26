@@ -1,5 +1,16 @@
 const currentPath = window.location.pathname;
 
+const headerAuthChannel = new BroadcastChannel('auth');
+headerAuthChannel.onmessage = function(event) {
+  if (event.data.cmd === 'logout') {
+    if (window.location.pathname !== '/login' && window.location.pathname !== '/logout') {
+			localStorage.clear();
+			sessionStorage.clear();
+			window.location.replace("/logout");
+    }
+  }
+};
+
 const pathMap : Map<string, string> = new Map([
 	["/dashboard", "menu-dashboard"],
 	["/inventory", "menu-inventory"],
@@ -57,6 +68,24 @@ function initHeader() {
 	});
 }
 
+function initLogout() {
+	const logoutButton = document.getElementById("menu-logout-button") as HTMLAnchorElement;
+	if (!logoutButton) return;
+	
+	logoutButton.addEventListener("click", (event) => {
+		event.preventDefault();
+		headerAuthChannel.postMessage({cmd: 'logout'});
+		localStorage.clear();
+		sessionStorage.clear();
+
+    let logoutUrl = "/logout";
+    if (currentPath !== "/login" && currentPath !== "/logout") {
+        logoutUrl += "?redirect=" + encodeURIComponent(currentPath + window.location.search);
+    }
+    window.location.href = logoutUrl;
+	});
+}
+
 document.addEventListener("DOMContentLoaded", () => {
 	drawHeader().then(() => {
 		for (const [path, elementId] of pathMap) {
@@ -69,6 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				menuItem.classList.remove("active");
 			}
 		}
+		initLogout();
 	}).catch(
 		(error) => {
 			console.error("Error in drawHeader:", error);
