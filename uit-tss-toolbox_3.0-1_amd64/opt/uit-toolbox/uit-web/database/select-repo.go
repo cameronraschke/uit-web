@@ -1020,6 +1020,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 				ELSE FALSE
 			END) AS "bios_updated",
 			latest_historical_hardware_data.bios_version,
+			locations.client_status,
 			static_client_statuses.status_formatted,
 			locations.is_broken, 
 			locations.disk_removed,
@@ -1056,6 +1057,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			client_health.last_hardware_check,
 			static_bios_stats.bios_version,
 			latest_historical_hardware_data.bios_version,
+			locations.client_status,
 			static_client_statuses.status_formatted,
 			locations.is_broken,
 			locations.disk_removed,
@@ -1103,6 +1105,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&row.BIOSUpdated,
 			&row.BIOSVersion,
 			&row.Status,
+			&row.StatusFormatted,
 			&row.IsBroken,
 			&row.DiskRemoved,
 			&row.Note,

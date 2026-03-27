@@ -81,6 +81,7 @@ type InventoryTableRow struct {
 	BIOSUpdated         *bool      `json:"bios_updated"`
 	BIOSVersion         *string    `json:"bios_version"`
 	Status              *string    `json:"status"`
+	StatusFormatted     *string    `json:"status_formatted"`
 	IsBroken            *bool      `json:"is_broken"`
 	DiskRemoved         *bool      `json:"disk_removed"`
 	Note                *string    `json:"note"`

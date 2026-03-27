@@ -10,7 +10,7 @@ type InventoryTableRow = {
 	device_type_formatted: string | "";
 	department_formatted: string | "";
 	ad_domain_formatted: string | "";
-	status: string | "";
+	status_formatted: string | "";
 	is_broken: boolean | null;
 	note: string | "";
 	last_updated: string | "";
@@ -323,7 +323,7 @@ async function renderInventoryTable() {
 			tr.appendChild(createTextCell(undefined, 'ad_domain', inventoryRow.ad_domain_formatted, 20, undefined));
 
 			// Status
-			tr.appendChild(createTextCell(undefined, 'status', inventoryRow.status, undefined, undefined));
+			tr.appendChild(createTextCell(undefined, 'status', inventoryRow.status_formatted, undefined, undefined));
 
 			// Note (truncated)
 			tr.appendChild(createTextCell(undefined, 'note', inventoryRow.note, 60, ''));
