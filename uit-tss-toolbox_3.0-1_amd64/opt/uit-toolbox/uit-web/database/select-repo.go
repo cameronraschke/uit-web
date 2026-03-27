@@ -1014,6 +1014,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			static_ad_domains.domain_name_formatted, 
 			client_health.os_installed, 
 			client_health.os_name, 
+			client_health.last_hardware_check,
 			(CASE 
 				WHEN latest_historical_hardware_data.bios_version = static_bios_stats.bios_version THEN TRUE
 				ELSE FALSE
@@ -1097,6 +1098,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&row.DomainFormatted,
 			&row.OsInstalled,
 			&row.OsName,
+			&row.LastHardwareCheck,
 			&row.BIOSUpdated,
 			&row.BIOSVersion,
 			&row.Status,
@@ -1154,7 +1156,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			results[i].ClientErrors = append(results[i].ClientErrors, osOutdated)
 		}
 		// If OS is installed but OS name is missing (need to update OS info)
-		if results[i].OsInstalled == nil || (results[i].OsInstalled != nil && *results[i].OsInstalled) {
+		if results[i].OsInstalled != nil && *results[i].OsInstalled {
 			if results[i].OsName == nil || strings.TrimSpace(*results[i].OsName) == "" {
 				osMissing := types.OSOutdated.String()
 				results[i].ClientErrors = append(results[i].ClientErrors, osMissing)
@@ -1162,9 +1164,13 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		} else { // If OS is not installed
 			osNotInstalled := types.OSNotInstalled.String()
 			results[i].ClientErrors = append(results[i].ClientErrors, osNotInstalled)
+			// if results[i].DiskRemoved != nil && !*results[i].DiskRemoved {
+			// 	osNotInstalled := types.OSNotInstalled.String()
+			// 	results[i].ClientErrors = append(results[i].ClientErrors, osNotInstalled)
+			// }
 		}
 		// If BIOS out of date
-		if results[i].BIOSUpdated == nil || (results[i].BIOSUpdated != nil && !*results[i].BIOSUpdated) {
+		if results[i].BIOSVersion != nil && (results[i].BIOSUpdated != nil && !*results[i].BIOSUpdated) {
 			biosOutdated := types.BIOSOutdated.String()
 			if results[i].BIOSVersion != nil {
 				results[i].ClientErrors = append(results[i].ClientErrors, biosOutdated+": "+*results[i].BIOSVersion)
@@ -1173,7 +1179,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			}
 		}
 		// If no hardware check in over 3 months
-		if results[i].LastUpdated == nil || (results[i].LastUpdated != nil && time.Since(*results[i].LastUpdated) > 90*24*time.Hour) {
+		if results[i].LastHardwareCheck == nil || (results[i].LastHardwareCheck != nil && time.Since(*results[i].LastHardwareCheck) > 90*24*time.Hour) {
 			needsHardwareCheck := types.NeedsHardwareCheck.String()
 			results[i].ClientErrors = append(results[i].ClientErrors, needsHardwareCheck)
 		}

@@ -77,6 +77,7 @@ type InventoryTableRow struct {
 	DomainFormatted     *string    `json:"ad_domain_formatted"`
 	OsInstalled         *bool      `json:"os_installed"`
 	OsName              *string    `json:"os_name"`
+	LastHardwareCheck   *time.Time `json:"last_hardware_check"`
 	BIOSUpdated         *bool      `json:"bios_updated"`
 	BIOSVersion         *string    `json:"bios_version"`
 	Status              *string    `json:"status"`
