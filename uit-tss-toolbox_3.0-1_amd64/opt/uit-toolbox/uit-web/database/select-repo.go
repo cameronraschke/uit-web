@@ -912,6 +912,9 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 	whereArgs := make([]any, 0, 12)
 	i := 1
 
+	// Make sure WHERE clause is never empty
+	whereClause = append(whereClause, "locations.tagnumber IS NOT NULL")
+
 	// Tag filter
 	if filterOptions.Tagnumber != nil {
 		whereClause = append(whereClause, fmt.Sprintf("locations.tagnumber = $%d", i))
@@ -981,8 +984,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		}
 	}
 
-	// Always enforce a non-null tagnumber base predicate.
-	whereClause = append(whereClause, "locations.tagnumber IS NOT NULL")
+	whereSQL := strings.Join(whereClause, "\n  AND ")
 
 	sqlQuery := fmt.Sprintf(`
 		WITH files AS (
@@ -1033,7 +1035,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			LEFT JOIN files ON locations.tagnumber = files.tagnumber
 			LEFT JOIN latest_historical_hardware_data ON locations.tagnumber = latest_historical_hardware_data.tagnumber
 			LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
-		WHEN %s
+		WHERE %s
 		GROUP BY 
 			locations.tagnumber, 
 			locations.system_serial,
@@ -1059,7 +1061,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			locations.time,
 			files.file_count
 		ORDER BY locations.tagnumber, locations.time DESC NULLS LAST
-	;`, strings.Join(whereClause, "\n  AND "))
+	;`, whereSQL)
 
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
