@@ -913,7 +913,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 	i := 1
 
 	// Make sure WHERE clause is never empty
-	whereClause = append(whereClause, "locations.tagnumber IS NOT NULL")
+	whereClause = append(whereClause, "locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)")
 
 	// Tag filter
 	if filterOptions.Tagnumber != nil {
@@ -1064,7 +1064,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			locations.note,
 			locations.time,
 			files.file_count
-		ORDER BY locations.tagnumber, locations.time DESC NULLS LAST
+		ORDER BY locations.time DESC NULLS LAST
 	;`, whereSQL)
 
 	dbConn, err := config.GetDatabaseConn()
