@@ -1142,16 +1142,18 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			results[i].ClientErrors = append(results[i].ClientErrors, isBroken)
 		}
 		// If client has status pre-property or retired status, it need to be erased
-		if results[i].Status == nil || (results[i].Status != nil && (*results[i].Status == "pre-property" || *results[i].Status == "retired")) {
-			needsErasing := types.NeedsErasing.String()
-			results[i].ClientErrors = append(results[i].ClientErrors, needsErasing)
+		if results[i].Status != nil && (*results[i].Status == "pre-property" || *results[i].Status == "retired") {
+			if results[i].OsInstalled != nil && *results[i].OsInstalled {
+				needsErasing := types.NeedsErasing.String()
+				results[i].ClientErrors = append(results[i].ClientErrors, needsErasing)
+			}
 			// If client has status pre-property or retired status but disk is not removed
 			if results[i].DiskRemoved != nil && !*results[i].DiskRemoved {
 				diskNotRemoved := types.DiskNotRemoved.String()
 				results[i].ClientErrors = append(results[i].ClientErrors, diskNotRemoved)
 			}
 		}
-		// If disk is removed but OS is installed (need to update OS info)
+		// If disk is removed but OS is still marked as installed (need to update OS info in DB)
 		if (results[i].DiskRemoved != nil && *results[i].DiskRemoved) && (results[i].OsInstalled == nil || (results[i].OsInstalled != nil && *results[i].OsInstalled)) {
 			osOutdated := types.OSOutdated.String()
 			results[i].ClientErrors = append(results[i].ClientErrors, osOutdated)
