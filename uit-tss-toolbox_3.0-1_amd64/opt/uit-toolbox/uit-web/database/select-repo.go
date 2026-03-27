@@ -1119,7 +1119,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 
 	// Set client configuration errors
 	for i := range results {
-		// Missing required info
+		// If client is missing required info in the DB
 		if results[i].Tagnumber == nil ||
 			results[i].SystemSerial == nil ||
 			results[i].Location == nil ||
@@ -1139,7 +1139,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			results[i].ClientErrors = append(results[i].ClientErrors, isBroken)
 		}
 		// If client has status pre-property or retired status, it need to be erased
-		if results[i].Status != nil && (*results[i].Status == "pre-property" || *results[i].Status == "retired") {
+		if results[i].Status == nil || (results[i].Status != nil && (*results[i].Status == "pre-property" || *results[i].Status == "retired")) {
 			needsErasing := types.NeedsErasing.String()
 			results[i].ClientErrors = append(results[i].ClientErrors, needsErasing)
 			// If client has status pre-property or retired status but disk is not removed
@@ -1149,12 +1149,12 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			}
 		}
 		// If disk is removed but OS is installed (need to update OS info)
-		if (results[i].DiskRemoved != nil && *results[i].DiskRemoved) && (results[i].OsInstalled != nil && *results[i].OsInstalled) {
+		if (results[i].DiskRemoved != nil && *results[i].DiskRemoved) && (results[i].OsInstalled == nil || (results[i].OsInstalled != nil && *results[i].OsInstalled)) {
 			osOutdated := types.OSOutdated.String()
 			results[i].ClientErrors = append(results[i].ClientErrors, osOutdated)
 		}
 		// If OS is installed but OS name is missing (need to update OS info)
-		if results[i].OsInstalled != nil && *results[i].OsInstalled {
+		if results[i].OsInstalled == nil || (results[i].OsInstalled != nil && *results[i].OsInstalled) {
 			if results[i].OsName == nil || strings.TrimSpace(*results[i].OsName) == "" {
 				osMissing := types.OSOutdated.String()
 				results[i].ClientErrors = append(results[i].ClientErrors, osMissing)
@@ -1163,29 +1163,29 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			osNotInstalled := types.OSNotInstalled.String()
 			results[i].ClientErrors = append(results[i].ClientErrors, osNotInstalled)
 		}
-		// If no hardware check in over 3 months
-		if results[i].LastUpdated != nil && time.Since(*results[i].LastUpdated) > 90*24*time.Hour {
-			needsHardwareCheck := types.NeedsHardwareCheck.String()
-			results[i].ClientErrors = append(results[i].ClientErrors, needsHardwareCheck)
-		}
-		// If client is missing images of itself
-		if results[i].FileCount != nil && *results[i].FileCount <= 0 {
-			missingImages := types.MissingImages.String()
-			results[i].ClientErrors = append(results[i].ClientErrors, missingImages)
-		}
-		// if AD domain not joined
-		if results[i].ADDomain != nil && strings.TrimSpace(*results[i].ADDomain) == "" {
-			domainNotJoined := types.DomainNotJoined.String()
-			results[i].ClientErrors = append(results[i].ClientErrors, domainNotJoined)
-		}
 		// If BIOS out of date
-		if results[i].BIOSUpdated != nil && !*results[i].BIOSUpdated {
+		if results[i].BIOSUpdated == nil || (results[i].BIOSUpdated != nil && !*results[i].BIOSUpdated) {
 			biosOutdated := types.BIOSOutdated.String()
 			if results[i].BIOSVersion != nil {
 				results[i].ClientErrors = append(results[i].ClientErrors, biosOutdated+": "+*results[i].BIOSVersion)
 			} else {
 				results[i].ClientErrors = append(results[i].ClientErrors, biosOutdated)
 			}
+		}
+		// If no hardware check in over 3 months
+		if results[i].LastUpdated == nil || (results[i].LastUpdated != nil && time.Since(*results[i].LastUpdated) > 90*24*time.Hour) {
+			needsHardwareCheck := types.NeedsHardwareCheck.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, needsHardwareCheck)
+		}
+		// If AD domain not joined
+		if results[i].ADDomain == nil || (results[i].ADDomain != nil && strings.TrimSpace(*results[i].ADDomain) == "") {
+			domainNotJoined := types.DomainNotJoined.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, domainNotJoined)
+		}
+		// If client is missing images of itself
+		if results[i].FileCount == nil || (results[i].FileCount != nil && *results[i].FileCount <= 0) {
+			missingImages := types.MissingImages.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, missingImages)
 		}
 	}
 

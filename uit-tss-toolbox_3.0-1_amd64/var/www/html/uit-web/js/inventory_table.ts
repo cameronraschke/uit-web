@@ -24,6 +24,64 @@ const rowCountElement = document.getElementById('inventory-table-rowcount') as H
 const inventoryTableSearch = document.getElementById('inventory-table-search') as HTMLInputElement;
 const inventoryTableSortBy = document.getElementById('inventory-table-sort-by') as HTMLSelectElement;
 let inventoryTableSearchDebounce: ReturnType<typeof setTimeout> | null = null;
+let activePortalTooltip: HTMLDivElement | null = null;
+let hasPortalTooltipGlobalListeners = false;
+
+function removePortalTooltip() {
+	if (activePortalTooltip !== null) {
+		activePortalTooltip.remove();
+		activePortalTooltip = null;
+	}
+}
+
+function ensurePortalTooltipListeners() {
+	if (hasPortalTooltipGlobalListeners) {
+		return;
+	}
+	hasPortalTooltipGlobalListeners = true;
+	window.addEventListener('scroll', removePortalTooltip, true);
+	window.addEventListener('resize', removePortalTooltip);
+}
+
+function showPortalTooltip(anchor: HTMLElement, text: string) {
+	removePortalTooltip();
+
+	const tooltip = document.createElement('div');
+	tooltip.classList.add('portal-tooltip');
+	tooltip.textContent = text;
+	document.body.appendChild(tooltip);
+
+	const margin = 8;
+	const anchorRect = anchor.getBoundingClientRect();
+	const tipRect = tooltip.getBoundingClientRect();
+
+	let top = anchorRect.top + window.scrollY - tipRect.height - margin;
+	if (top < window.scrollY + margin) {
+		top = anchorRect.bottom + window.scrollY + margin;
+	}
+
+	let left = anchorRect.left + window.scrollX + (anchorRect.width / 2) - (tipRect.width / 2);
+	const minLeft = window.scrollX + margin;
+	const maxLeft = window.scrollX + window.innerWidth - tipRect.width - margin;
+	if (left < minLeft) {
+		left = minLeft;
+	}
+	if (left > maxLeft) {
+		left = maxLeft;
+	}
+
+	tooltip.style.top = `${Math.round(top)}px`;
+	tooltip.style.left = `${Math.round(left)}px`;
+	activePortalTooltip = tooltip;
+}
+
+function attachPortalTooltip(anchor: HTMLElement, text: string) {
+	ensurePortalTooltipListeners();
+	anchor.addEventListener('mouseenter', () => showPortalTooltip(anchor, text));
+	anchor.addEventListener('mouseleave', removePortalTooltip);
+	anchor.addEventListener('focus', () => showPortalTooltip(anchor, text));
+	anchor.addEventListener('blur', removePortalTooltip);
+}
 
 function createManufacturerModelCell(inventoryRow: InventoryTableRow) {
   const cell = document.createElement('td');
@@ -74,6 +132,7 @@ function renderEmptyTable(tableBody: HTMLElement, message: string) {
 
 async function renderInventoryTable() {
 	updateURLFromFilters(); // necessary, fetchFilteredInventoryData relies on URL parameters
+	removePortalTooltip();
 	try {
 		const tableData: InventoryTableRow[] | null = await fetchFilteredInventoryData();
 		if (tableData === null) {
@@ -155,20 +214,25 @@ async function renderInventoryTable() {
 			const serialDiv = document.createElement('div');
 
 			idContainer.classList.add('flex-container', 'vertical');
-			tagDiv.classList.add('flex-container', 'horizontal');
+			tagDiv.classList.add('flex-container', 'horizontal', 'inventory-tooltip-container');
+			tagDiv.style.justifyContent = 'center';
 			serialDiv.classList.add('flex-container', 'horizontal', 'smaller-text');
 			
-			tagDiv.appendChild(document.createTextNode(tagnumber));
+			// Tag number
+			const tagSpan = document.createElement('span');
+			tagSpan.appendChild(document.createTextNode(tagnumber));
+			tagDiv.appendChild(tagSpan);
+			// Tooltip to show errors
 			if (inventoryRow.client_configuration_errors && inventoryRow.client_configuration_errors.length > 0) {
-				tagDiv.appendChild(document.createTextNode(' ⚠'));
-				const tooltip = document.createElement('span');
-				tooltip.classList.add('tooltip');
-				const tooltipText = document.createElement('span');
-				tooltipText.classList.add('tooltiptext');
-				tooltipText.textContent = 'Configuration Errors: ' + inventoryRow.client_configuration_errors.join(', ');
-				tooltipText.style.color = 'red';
-				tooltip.appendChild(tooltipText);
-				tagDiv.appendChild(tooltip);
+				const tooltipIndicator = document.createElement('span');
+				tooltipIndicator.classList.add('tooltip-indicator');
+				tooltipIndicator.textContent = '⚠';
+				tooltipIndicator.tabIndex = 0;
+				attachPortalTooltip(
+					tooltipIndicator,
+					'Configuration Error(s): ' + inventoryRow.client_configuration_errors.join(', '),
+				);
+				tagDiv.appendChild(tooltipIndicator);
 			}
 			serialDiv.textContent = systemSerial;
 
