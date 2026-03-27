@@ -997,7 +997,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			FROM historical_hardware_data
 			ORDER BY historical_hardware_data.tagnumber, historical_hardware_data.time DESC NULLS LAST
 		)
-		SELECT DISTINCT ON (locations.tagnumber)
+		SELECT
 			locations.tagnumber, 
 			locations.system_serial, 
 			locations.location, 
