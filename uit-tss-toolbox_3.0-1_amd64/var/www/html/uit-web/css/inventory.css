@@ -51,6 +51,34 @@
 	margin-right: var(--select-element-extended-margin);
 }
 
+.tooltip {
+  position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted black;
+}
+
+.tooltip .tooltiptext {
+	visibility: hidden;
+	width: 20rem;
+	background-color: var(--bg-color);
+	text-align: center;
+	border-radius: var(--border-radius);
+	padding: var(--container-padding);
+	position: absolute;
+	z-index: 1;
+	bottom: 0%;
+	left: 0%;
+	transform: translateX(-50%);
+	opacity: 0;
+	transition: opacity 0.3s;
+	margin-left: 1rem;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
+
 #inventory-table-search-container {
 	justify-content: flex-start;
 	gap: 1rem;

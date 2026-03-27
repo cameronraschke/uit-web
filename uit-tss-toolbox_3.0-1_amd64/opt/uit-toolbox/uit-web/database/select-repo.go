@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 	"uit-toolbox/config"
 	"uit-toolbox/types"
 )
@@ -757,11 +758,11 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		&inventoryUpdate.SystemModel,
 		&inventoryUpdate.DeviceType,
 		&inventoryUpdate.Department,
-		&inventoryUpdate.Domain,
+		&inventoryUpdate.ADDomain,
 		&inventoryUpdate.PropertyCustodian,
 		&inventoryUpdate.AcquiredDate,
 		&inventoryUpdate.RetiredDate,
-		&inventoryUpdate.Broken,
+		&inventoryUpdate.IsBroken,
 		&inventoryUpdate.DiskRemoved,
 		&inventoryUpdate.LastHardwareCheck,
 		&inventoryUpdate.ClientStatus,
@@ -953,10 +954,10 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Department))
 		i++
 	}
-	// Domain filter
-	if filterOptions.Domain != nil && strings.TrimSpace(*filterOptions.Domain) != "" {
+	// AD Domain filter
+	if filterOptions.ADDomain != nil && strings.TrimSpace(*filterOptions.ADDomain) != "" {
 		whereClause = append(whereClause, fmt.Sprintf("locations.ad_domain = $%d", i))
-		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Domain))
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.ADDomain))
 		i++
 	}
 	// Status filter
@@ -965,10 +966,10 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Status))
 		i++
 	}
-	// Broken filter
-	if filterOptions.Broken != nil {
+	// IsBroken filter
+	if filterOptions.IsBroken != nil {
 		whereClause = append(whereClause, fmt.Sprintf("locations.is_broken = $%d", i))
-		whereArgs = append(whereArgs, *filterOptions.Broken)
+		whereArgs = append(whereArgs, *filterOptions.IsBroken)
 		i++
 	}
 	// Has Images filter
@@ -986,6 +987,13 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 	sqlQuery := fmt.Sprintf(`
 		WITH files AS (
 			SELECT tagnumber, COUNT(*) AS file_count from client_images WHERE hidden = FALSE GROUP BY tagnumber
+		),
+		latest_historical_hardware_data AS (
+			SELECT DISTINCT ON (historical_hardware_data.tagnumber) 
+				historical_hardware_data.tagnumber, 
+				historical_hardware_data.bios_version
+			FROM historical_hardware_data
+			ORDER BY historical_hardware_data.tagnumber, historical_hardware_data.time DESC NULLS LAST
 		)
 		SELECT DISTINCT ON (locations.tagnumber)
 			locations.tagnumber, 
@@ -1004,8 +1012,14 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			static_ad_domains.domain_name_formatted, 
 			client_health.os_installed, 
 			client_health.os_name, 
+			(CASE 
+				WHEN latest_historical_hardware_data.bios_version = static_bios_stats.bios_version THEN TRUE
+				ELSE FALSE
+			END) AS "bios_updated",
+			latest_historical_hardware_data.bios_version,
 			static_client_statuses.status_formatted,
 			locations.is_broken, 
+			locations.disk_removed,
 			locations.note, 
 			locations.time AS last_updated, 
 			files.file_count
@@ -1017,7 +1031,9 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
 			LEFT JOIN static_device_types ON hardware_data.device_type = static_device_types.device_type
 			LEFT JOIN files ON locations.tagnumber = files.tagnumber
-		WHERE %s
+			LEFT JOIN latest_historical_hardware_data ON locations.tagnumber = latest_historical_hardware_data.tagnumber
+			LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
+		WHEN %s
 		GROUP BY 
 			locations.tagnumber, 
 			locations.system_serial,
@@ -1034,8 +1050,11 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			static_ad_domains.domain_name_formatted,
 			client_health.os_installed,
 			client_health.os_name,
+			static_bios_stats.bios_version,
+			latest_historical_hardware_data.bios_version,
 			static_client_statuses.status_formatted,
 			locations.is_broken,
+			locations.disk_removed,
 			locations.note,
 			locations.time,
 			files.file_count
@@ -1072,12 +1091,15 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&row.DeviceTypeFormatted,
 			&row.Department,
 			&row.DepartmentFormatted,
-			&row.Domain,
+			&row.ADDomain,
 			&row.DomainFormatted,
 			&row.OsInstalled,
 			&row.OsName,
+			&row.BIOSUpdated,
+			&row.BIOSVersion,
 			&row.Status,
-			&row.Broken,
+			&row.IsBroken,
+			&row.DiskRemoved,
 			&row.Note,
 			&row.LastUpdated,
 			&row.FileCount,
@@ -1095,6 +1117,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 
 	// Set client configuration errors
 	for i := range results {
+		// Missing required info
 		if results[i].Tagnumber == nil ||
 			results[i].SystemSerial == nil ||
 			results[i].Location == nil ||
@@ -1105,8 +1128,62 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			results[i].DeviceType == nil ||
 			results[i].Department == nil ||
 			results[i].Status == nil {
-			errorCode := types.MissingInfo
-			results[i].ErrorCode = &errorCode
+			missingRequiredInfo := types.MissingRequiredInfo.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, missingRequiredInfo)
+		}
+		// If client is broken
+		if results[i].IsBroken != nil && *results[i].IsBroken {
+			isBroken := types.IsBroken.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, isBroken)
+		}
+		// If client has status pre-property or retired status, it need to be erased
+		if results[i].Status != nil && (*results[i].Status == "pre-property" || *results[i].Status == "retired") {
+			needsErasing := types.NeedsErasing.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, needsErasing)
+			// If client has status pre-property or retired status but disk is not removed
+			if results[i].DiskRemoved != nil && !*results[i].DiskRemoved {
+				diskNotRemoved := types.DiskNotRemoved.String()
+				results[i].ClientErrors = append(results[i].ClientErrors, diskNotRemoved)
+			}
+		}
+		// If disk is removed but OS is installed (need to update OS info)
+		if (results[i].DiskRemoved != nil && *results[i].DiskRemoved) && (results[i].OsInstalled != nil && *results[i].OsInstalled) {
+			osOutdated := types.OSOutdated.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, osOutdated)
+		}
+		// If OS is installed but OS name is missing (need to update OS info)
+		if results[i].OsInstalled != nil && *results[i].OsInstalled {
+			if results[i].OsName == nil || strings.TrimSpace(*results[i].OsName) == "" {
+				osMissing := types.OSOutdated.String()
+				results[i].ClientErrors = append(results[i].ClientErrors, osMissing)
+			}
+		} else { // If OS is not installed
+			osNotInstalled := types.OSNotInstalled.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, osNotInstalled)
+		}
+		// If no hardware check in over 3 months
+		if results[i].LastUpdated != nil && time.Since(*results[i].LastUpdated) > 90*24*time.Hour {
+			needsHardwareCheck := types.NeedsHardwareCheck.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, needsHardwareCheck)
+		}
+		// If client is missing images of itself
+		if results[i].FileCount != nil && *results[i].FileCount <= 0 {
+			missingImages := types.MissingImages.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, missingImages)
+		}
+		// if AD domain not joined
+		if results[i].ADDomain != nil && strings.TrimSpace(*results[i].ADDomain) == "" {
+			domainNotJoined := types.DomainNotJoined.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, domainNotJoined)
+		}
+		// If BIOS out of date
+		if results[i].BIOSUpdated != nil && !*results[i].BIOSUpdated {
+			biosOutdated := types.BIOSOutdated.String()
+			if results[i].BIOSVersion != nil {
+				results[i].ClientErrors = append(results[i].ClientErrors, biosOutdated+": "+*results[i].BIOSVersion)
+			} else {
+				results[i].ClientErrors = append(results[i].ClientErrors, biosOutdated)
+			}
 		}
 	}
 

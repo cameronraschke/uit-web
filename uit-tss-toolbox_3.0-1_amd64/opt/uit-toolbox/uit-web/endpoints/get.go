@@ -602,9 +602,9 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		SystemModel:        middleware.GetStrQuery(requestQueries, "system_model"),
 		DeviceType:         middleware.GetStrQuery(requestQueries, "device_type"),
 		Department:         middleware.GetStrQuery(requestQueries, "department_name"),
-		Domain:             middleware.GetStrQuery(requestQueries, "ad_domain"),
+		ADDomain:             middleware.GetStrQuery(requestQueries, "ad_domain"),
 		Status:             middleware.GetStrQuery(requestQueries, "status"),
-		Broken:             middleware.GetBoolQuery(requestQueries, "is_broken"),
+		IsBroken:           middleware.GetBoolQuery(requestQueries, "is_broken"),
 		HasImages:          middleware.GetBoolQuery(requestQueries, "has_images"),
 	}
 

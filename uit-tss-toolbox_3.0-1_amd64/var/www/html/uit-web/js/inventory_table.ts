@@ -15,6 +15,7 @@ type InventoryTableRow = {
 	note: string | "";
 	last_updated: string | "";
 	file_count: number | null;
+	client_configuration_errors: string[] | null;
 };
 
 // Table elements
@@ -157,7 +158,18 @@ async function renderInventoryTable() {
 			tagDiv.classList.add('flex-container', 'horizontal');
 			serialDiv.classList.add('flex-container', 'horizontal', 'smaller-text');
 			
-			tagDiv.textContent = tagnumber;
+			tagDiv.appendChild(document.createTextNode(tagnumber));
+			if (inventoryRow.client_configuration_errors && inventoryRow.client_configuration_errors.length > 0) {
+				tagDiv.appendChild(document.createTextNode(' ⚠'));
+				const tooltip = document.createElement('span');
+				tooltip.classList.add('tooltip');
+				const tooltipText = document.createElement('span');
+				tooltipText.classList.add('tooltiptext');
+				tooltipText.textContent = 'Configuration Errors: ' + inventoryRow.client_configuration_errors.join(', ');
+				tooltipText.style.color = 'red';
+				tooltip.appendChild(tooltipText);
+				tagDiv.appendChild(tooltip);
+			}
 			serialDiv.textContent = systemSerial;
 
 			idContainer.appendChild(tagDiv);
@@ -243,7 +255,7 @@ async function renderInventoryTable() {
 			tr.appendChild(manufacturerModelCell);
 			
 
-			// Domain
+			// AD Domain
 			tr.appendChild(createTextCell(undefined, 'ad_domain', inventoryRow.ad_domain_formatted, 20, undefined));
 
 			// Status

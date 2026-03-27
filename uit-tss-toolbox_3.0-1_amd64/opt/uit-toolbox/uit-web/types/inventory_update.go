@@ -20,11 +20,11 @@ type InventoryUpdateRequest struct {
 	SystemModel        *string    `json:"system_model"`
 	DeviceType         *string    `json:"device_type"`
 	Department         *string    `json:"department_name"`
-	Domain             *string    `json:"ad_domain"`
+	ADDomain             *string    `json:"ad_domain"`
 	PropertyCustodian  *string    `json:"property_custodian"`
 	AcquiredDate       *time.Time `json:"acquired_date"`
 	RetiredDate        *time.Time `json:"retired_date"`
-	Broken             *bool      `json:"is_broken"`
+	IsBroken           *bool      `json:"is_broken"`
 	DiskRemoved        *bool      `json:"disk_removed"`
 	LastHardwareCheck  *time.Time `json:"last_hardware_check"`
 	ClientStatus       *string    `json:"status"`
@@ -34,7 +34,7 @@ type InventoryUpdateRequest struct {
 	Note               *string    `json:"note"`
 }
 
-// Domain model for inventory update operations after ingress
+// ADDomain model for inventory update operations after ingress
 type InventoryUpdateDTO struct {
 	Tagnumber          int64
 	SystemSerial       string
@@ -45,11 +45,11 @@ type InventoryUpdateDTO struct {
 	SystemModel        *string
 	DeviceType         *string
 	Department         string
-	Domain             string
+	ADDomain             string
 	PropertyCustodian  *string
 	AcquiredDate       *time.Time
 	RetiredDate        *time.Time
-	Broken             *bool
+	IsBroken           *bool
 	DiskRemoved        *bool
 	LastHardwareCheck  *time.Time
 	ClientStatus       string
@@ -68,11 +68,11 @@ type InventoryLocationWriteModel struct {
 	Building          *string
 	Room              *string
 	Department        string
-	Domain            string
+	ADDomain            string
 	PropertyCustodian *string
 	AcquiredDate      *time.Time
 	RetiredDate       *time.Time
-	Broken            *bool
+	IsBroken          *bool
 	DiskRemoved       *bool
 	ClientStatus      string
 	Note              *string
@@ -187,14 +187,14 @@ func CreateInventoryUpdateDTO(updateRequest *InventoryUpdateRequest, htmlFormCon
 		return nil, fmt.Errorf("non-printable ASCII characters in department_name field")
 	}
 
-	// Domain (required, min 1 char, max 64 chars)
-	if updateRequest.Domain == nil || strings.TrimSpace(*updateRequest.Domain) == "" {
+	// ADDomain (required, min 1 char, max 64 chars)
+	if updateRequest.ADDomain == nil || strings.TrimSpace(*updateRequest.ADDomain) == "" {
 		return nil, fmt.Errorf("ad_domain is required")
 	}
-	if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.Domain)) < htmlFormConstraints.InventoryForm.DomainMinChars || utf8.RuneCountInString(*updateRequest.Domain) > htmlFormConstraints.InventoryForm.DomainMaxChars {
+	if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.ADDomain)) < htmlFormConstraints.InventoryForm.DomainMinChars || utf8.RuneCountInString(*updateRequest.ADDomain) > htmlFormConstraints.InventoryForm.DomainMaxChars {
 		return nil, fmt.Errorf("ad_domain must be between %d and %d characters", htmlFormConstraints.InventoryForm.DomainMinChars, htmlFormConstraints.InventoryForm.DomainMaxChars)
 	}
-	if !IsASCIIStringPrintable(*updateRequest.Domain) {
+	if !IsASCIIStringPrintable(*updateRequest.ADDomain) {
 		return nil, fmt.Errorf("non-printable ASCII characters in domain field")
 	}
 
@@ -222,8 +222,8 @@ func CreateInventoryUpdateDTO(updateRequest *InventoryUpdateRequest, htmlFormCon
 		}
 	}
 
-	// Broken (optional, bool)
-	if updateRequest.Broken == nil {
+	// IsBroken (optional, bool)
+	if updateRequest.IsBroken == nil {
 		// return nil, fmt.Errorf("is_broken is required")
 	}
 
@@ -284,11 +284,11 @@ func CreateInventoryUpdateDTO(updateRequest *InventoryUpdateRequest, htmlFormCon
 		SystemModel:        copyTrimmedStringPtr(updateRequest.SystemModel),
 		DeviceType:         copyTrimmedStringPtr(updateRequest.DeviceType),
 		Department:         strings.TrimSpace(*updateRequest.Department),
-		Domain:             strings.TrimSpace(*updateRequest.Domain),
+		ADDomain:             strings.TrimSpace(*updateRequest.ADDomain),
 		PropertyCustodian:  copyTrimmedStringPtr(updateRequest.PropertyCustodian),
 		AcquiredDate:       timePtrToUTC(updateRequest.AcquiredDate),
 		RetiredDate:        timePtrToUTC(updateRequest.RetiredDate),
-		Broken:             copyBoolPtr(updateRequest.Broken),
+		IsBroken:           copyBoolPtr(updateRequest.IsBroken),
 		DiskRemoved:        copyBoolPtr(updateRequest.DiskRemoved),
 		LastHardwareCheck:  timePtrToUTC(updateRequest.LastHardwareCheck),
 		ClientStatus:       strings.TrimSpace(*updateRequest.ClientStatus),
@@ -313,11 +313,11 @@ func MapInventoryUpdateDomainToLocationWriteModel(transactionUUID uuid.UUID, dom
 		Building:          copyStringPtr(domain.Building),
 		Room:              copyStringPtr(domain.Room),
 		Department:        domain.Department,
-		Domain:            domain.Domain,
+		ADDomain:            domain.ADDomain,
 		PropertyCustodian: copyStringPtr(domain.PropertyCustodian),
 		AcquiredDate:      copyTimePtr(domain.AcquiredDate),
 		RetiredDate:       copyTimePtr(domain.RetiredDate),
-		Broken:            copyBoolPtr(domain.Broken),
+		IsBroken:          copyBoolPtr(domain.IsBroken),
 		DiskRemoved:       copyBoolPtr(domain.DiskRemoved),
 		ClientStatus:      domain.ClientStatus,
 		Note:              copyStringPtr(domain.Note),

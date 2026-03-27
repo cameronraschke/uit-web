@@ -354,7 +354,7 @@ async function populateDomainSelect(el: HTMLSelectElement, purgeCache: boolean =
 			return (a.ad_domain_formatted || '').localeCompare(b.ad_domain_formatted || '');
 		});
 
-		resetSelectElement(el, 'Domain', false, undefined);
+		resetSelectElement(el, 'AD Domain', false, undefined);
 
 		for (const domain of domainData) {
 			const option = document.createElement('option');

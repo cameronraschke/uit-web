@@ -645,10 +645,8 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		}
 		softwareInfoContainer.appendChild(osInfo);
 		const domainJoined = document.createElement('p');
-		domainJoined.appendChild(document.createTextNode('Domain Joined: '));
+		domainJoined.appendChild(document.createTextNode('AD Domain: '));
 		if (entry.domain_joined === true && entry.ad_domain_formatted !== null) {
-			domainJoined.appendChild(document.createTextNode('Yes - '))
-			domainJoined.appendChild(document.createElement('wbr'));
 			domainJoined.appendChild(document.createTextNode(entry.ad_domain_formatted))
 		} else {
 			domainJoined.appendChild(document.createTextNode('No'));

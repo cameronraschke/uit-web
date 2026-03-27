@@ -246,9 +246,9 @@ type InventoryAdvSearchOptions struct {
 	SystemModel        *string `json:"system_model"`
 	DeviceType         *string `json:"device_type"`
 	Department         *string `json:"department_name"`
-	Domain             *string `json:"ad_domain"`
+	ADDomain           *string `json:"ad_domain"`
 	Status             *string `json:"status"`
-	Broken             *bool   `json:"is_broken"`
+	IsBroken           *bool   `json:"is_broken"`
 	HasImages          *bool   `json:"has_images"`
 }
 

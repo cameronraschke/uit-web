@@ -235,7 +235,7 @@ func ConvertInventoryTableDataToCSV(ctx context.Context, dbQueryData []types.Inv
 		"Device Type",
 		"Manufacturer",
 		"Model",
-		"Domain",
+		"AD Domain",
 		"OS Name",
 		"Status",
 		"Broken",
@@ -265,7 +265,7 @@ func ConvertInventoryTableDataToCSV(ctx context.Context, dbQueryData []types.Inv
 			ptrStringToString(row.DomainFormatted),
 			ptrStringToString(row.OsName),
 			ptrStringToString(row.Status),
-			ptrBoolToString(row.Broken),
+			ptrBoolToString(row.IsBroken),
 			ptrStringToString(row.Note),
 			ptrTimeToString(row.LastUpdated),
 		}

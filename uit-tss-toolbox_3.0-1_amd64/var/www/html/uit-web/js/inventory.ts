@@ -527,7 +527,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		console.error(`Could not fetch all departments: ${errorMessage}`)
 	}
 
-	resetSelectElement(adDomainUpdate, "Select Domain", false, "empty-required-input");
+	resetSelectElement(adDomainUpdate, "Select AD Domain", false, "empty-required-input");
 	try { 
 		await populateDomainSelect(adDomainUpdate);
 		adDomainUpdate.classList.add("empty-required-input");
