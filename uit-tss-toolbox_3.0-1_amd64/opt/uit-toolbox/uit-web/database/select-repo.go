@@ -1053,6 +1053,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			static_ad_domains.domain_name_formatted,
 			client_health.os_installed,
 			client_health.os_name,
+			client_health.last_hardware_check,
 			static_bios_stats.bios_version,
 			latest_historical_hardware_data.bios_version,
 			static_client_statuses.status_formatted,
