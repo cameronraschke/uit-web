@@ -1182,6 +1182,10 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			domainNotJoined := types.DomainNotJoined.String()
 			results[i].ClientErrors = append(results[i].ClientErrors, domainNotJoined)
 		}
+		if results[i].ADDomain != nil && *results[i].ADDomain == "none" {
+			domainNotJoined := types.DomainNotJoined.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, domainNotJoined)
+		}
 		// If client is missing images of itself
 		if results[i].FileCount == nil || (results[i].FileCount != nil && *results[i].FileCount <= 0) {
 			missingImages := types.MissingImages.String()
