@@ -33,7 +33,6 @@ type Select interface {
 	GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryFormPrefill, error)
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
 	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifestView, error)
-	GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableRow, error)
 	GetClientBatteryReport(ctx context.Context) ([]types.ClientReportRow, error)
 	GetAllJobs(ctx context.Context) ([]types.AllJobsRow, error)
 	GetAllLocations(ctx context.Context) ([]types.AllLocationsRow, error)
@@ -903,16 +902,92 @@ func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumb
 	return imageManifests, nil
 }
 
-func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableRow, error) {
+func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableRow, error) {
 	if filterOptions == nil {
-		return nil, fmt.Errorf("filterOptions cannot be nil")
+		return nil, fmt.Errorf("%w: %s", types.InvalidStructureError, "filterOptions")
 	}
 
-	const sqlQuery = `
+	whereClause := make([]string, 0, 12)
+	whereArgs := make([]any, 0, 12)
+	i := 1
+
+	// Tag filter
+	if filterOptions.Tagnumber != nil {
+		whereClause = append(whereClause, fmt.Sprintf("locations.tagnumber = $%d", i))
+		whereArgs = append(whereArgs, *filterOptions.Tagnumber)
+		i++
+	}
+	// System Serial filter
+	if filterOptions.SystemSerial != nil && strings.TrimSpace(*filterOptions.SystemSerial) != "" {
+		whereClause = append(whereClause, fmt.Sprintf("locations.system_serial = $%d", i))
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.SystemSerial))
+		i++
+	}
+	// Location filter
+	if filterOptions.Location != nil && strings.TrimSpace(*filterOptions.Location) != "" {
+		whereClause = append(whereClause, fmt.Sprintf("locations.location = $%d", i))
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Location))
+		i++
+	}
+	// Manufacturer filter
+	if filterOptions.SystemManufacturer != nil && strings.TrimSpace(*filterOptions.SystemManufacturer) != "" {
+		whereClause = append(whereClause, fmt.Sprintf("hardware_data.system_manufacturer = $%d", i))
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.SystemManufacturer))
+		i++
+	}
+	// Model filter
+	if filterOptions.SystemModel != nil && strings.TrimSpace(*filterOptions.SystemModel) != "" {
+		whereClause = append(whereClause, fmt.Sprintf("hardware_data.system_model = $%d", i))
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.SystemModel))
+		i++
+	}
+	// Device Type filter
+	if filterOptions.DeviceType != nil && strings.TrimSpace(*filterOptions.DeviceType) != "" {
+		whereClause = append(whereClause, fmt.Sprintf("hardware_data.device_type = $%d", i))
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.DeviceType))
+		i++
+	}
+	// Department filter
+	if filterOptions.Department != nil && strings.TrimSpace(*filterOptions.Department) != "" {
+		whereClause = append(whereClause, fmt.Sprintf("locations.department_name = $%d", i))
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Department))
+		i++
+	}
+	// Domain filter
+	if filterOptions.Domain != nil && strings.TrimSpace(*filterOptions.Domain) != "" {
+		whereClause = append(whereClause, fmt.Sprintf("locations.ad_domain = $%d", i))
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Domain))
+		i++
+	}
+	// Status filter
+	if filterOptions.Status != nil && strings.TrimSpace(*filterOptions.Status) != "" {
+		whereClause = append(whereClause, fmt.Sprintf("locations.client_status = $%d", i))
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Status))
+		i++
+	}
+	// Broken filter
+	if filterOptions.Broken != nil {
+		whereClause = append(whereClause, fmt.Sprintf("locations.is_broken = $%d", i))
+		whereArgs = append(whereArgs, *filterOptions.Broken)
+		i++
+	}
+	// Has Images filter
+	if filterOptions.HasImages != nil {
+		if *filterOptions.HasImages {
+			whereClause = append(whereClause, "COALESCE(files.file_count, 0) > 0")
+		} else {
+			whereClause = append(whereClause, "COALESCE(files.file_count, 0) = 0")
+		}
+	}
+
+	// Always enforce a non-null tagnumber base predicate.
+	whereClause = append(whereClause, "locations.tagnumber IS NOT NULL")
+
+	sqlQuery := fmt.Sprintf(`
 		WITH files AS (
 			SELECT tagnumber, COUNT(*) AS file_count from client_images WHERE hidden = FALSE GROUP BY tagnumber
 		)
-		SELECT 
+		SELECT DISTINCT ON (locations.tagnumber)
 			locations.tagnumber, 
 			locations.system_serial, 
 			locations.location, 
@@ -942,39 +1017,37 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 			LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
 			LEFT JOIN static_device_types ON hardware_data.device_type = static_device_types.device_type
 			LEFT JOIN files ON locations.tagnumber = files.tagnumber
-		WHERE 
-			locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-			AND ($1::bigint IS NULL OR locations.tagnumber = $1)
-			AND ($2::text IS NULL OR locations.system_serial = $2)
-			AND ($3::text IS NULL OR locations.location = $3)
-			AND ($4::text IS NULL OR hardware_data.system_manufacturer = $4)
-			AND ($5::text IS NULL OR hardware_data.system_model = $5)
-			AND ($6::text IS NULL OR hardware_data.device_type = $6)
-			AND ($7::text IS NULL OR locations.department_name = $7)
-			AND ($8::text IS NULL OR locations.ad_domain = $8)
-			AND ($9::text IS NULL OR locations.client_status = $9)
-			AND ($10::boolean IS NULL OR locations.is_broken = $10)
-			AND (
-				$11::boolean IS NULL OR 
-				(
-					($11 = TRUE AND EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber))
-					OR ($11 = FALSE AND NOT EXISTS (SELECT 1 FROM client_images WHERE client_images.tagnumber = locations.tagnumber)))
-				)
-			ORDER BY locations.time DESC NULLS LAST;`
+		WHERE %s
+		GROUP BY 
+			locations.tagnumber, 
+			locations.system_serial,
+			locations.location,
+			locations.building,
+			locations.room,
+			hardware_data.system_manufacturer,
+			hardware_data.system_model,
+			hardware_data.device_type,
+			static_device_types.device_type_formatted,
+			locations.department_name,
+			static_department_info.department_name_formatted,
+			locations.ad_domain,
+			static_ad_domains.domain_name_formatted,
+			client_health.os_installed,
+			client_health.os_name,
+			static_client_statuses.status_formatted,
+			locations.is_broken,
+			locations.note,
+			locations.time,
+			files.file_count
+		ORDER BY locations.tagnumber, locations.time DESC NULLS LAST
+	;`, strings.Join(whereClause, "\n  AND "))
 
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery,
-		ptrToNullInt64(filterOptions.Tagnumber),
-		ptrToNullString(filterOptions.SystemSerial),
-		ptrToNullString(filterOptions.Location),
-		ptrToNullString(filterOptions.SystemManufacturer),
-		ptrToNullString(filterOptions.SystemModel),
-		ptrToNullString(filterOptions.DeviceType),
-		ptrToNullString(filterOptions.Department),
-		ptrToNullString(filterOptions.Domain),
-		ptrToNullString(filterOptions.Status),
-		ptrToNullBool(filterOptions.Broken),
-		ptrToNullBool(filterOptions.HasImages),
-	)
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	rows, err := dbConn.QueryContext(ctx, sqlQuery, whereArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("query error: %w", err)
 	}
@@ -1019,6 +1092,24 @@ func (repo *SelectRepo) GetInventoryTableData(ctx context.Context, filterOptions
 	if len(results) == 0 {
 		return nil, nil
 	}
+
+	// Set client configuration errors
+	for i := range results {
+		if results[i].Tagnumber == nil ||
+			results[i].SystemSerial == nil ||
+			results[i].Location == nil ||
+			results[i].Building == nil ||
+			results[i].Room == nil ||
+			results[i].SystemManufacturer == nil ||
+			results[i].SystemModel == nil ||
+			results[i].DeviceType == nil ||
+			results[i].Department == nil ||
+			results[i].Status == nil {
+			errorCode := types.MissingInfo
+			results[i].ErrorCode = &errorCode
+		}
+	}
+
 	return results, nil
 }
 

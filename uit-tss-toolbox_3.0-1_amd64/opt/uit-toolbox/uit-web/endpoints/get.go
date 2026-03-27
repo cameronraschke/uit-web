@@ -610,14 +610,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 
 	// log.Debug(fmt.Sprintf("Filter options: %+v", filterOptions))
 
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository (GetInventoryTableData): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	inventoryTableData, err := db.GetInventoryTableData(ctx, filterOptions)
+	inventoryTableData, err := database.GetInventoryTableData(ctx, filterOptions)
 	if err != nil {
 		log.Warn("Query error (GetInventoryTableData): " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
