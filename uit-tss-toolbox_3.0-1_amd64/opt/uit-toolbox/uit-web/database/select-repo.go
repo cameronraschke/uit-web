@@ -1735,7 +1735,7 @@ func (repo *SelectRepo) GetAllStatuses(ctx context.Context) (map[string][]types.
 	var allStatuses []types.AllClientStatuses
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error: %w", ctx.Err())
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
 		var status types.AllClientStatuses
 		if err := rows.Scan(
@@ -1745,12 +1745,12 @@ func (repo *SelectRepo) GetAllStatuses(ctx context.Context) (map[string][]types.
 			&status.StatusType,
 			&status.ClientCount,
 		); err != nil {
-			return nil, fmt.Errorf("%w: %w", types.DatabaseScanError, err)
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
 		allStatuses = append(allStatuses, status)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", types.DatabaseIterationError, err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
 	}
 	if len(allStatuses) == 0 {
 		return nil, nil
