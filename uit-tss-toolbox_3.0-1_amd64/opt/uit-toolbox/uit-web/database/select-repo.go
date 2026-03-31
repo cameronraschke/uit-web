@@ -1716,17 +1716,17 @@ func GetAllStatuses(ctx context.Context) (map[string][]types.AllClientStatuses, 
 			GROUP BY client_status
 		)
 		SELECT 
-			status_name, 
-			status_formatted, 
-			sort_order, 
-			status_type,
+			static_client_statuses.status_name, 
+			static_client_statuses.status_formatted, 
+			static_client_statuses.sort_order, 
+			static_client_statuses.status_type,
 			latest_statuses.status_count
 		FROM 
 			static_client_statuses 
-		WHERE 
-			status_name IS NOT NULL
 		LEFT JOIN latest_statuses ON 
 			static_client_statuses.status_name = latest_statuses.client_status
+		WHERE 
+			static_client_statuses.status_name IS NOT NULL
 	;`
 
 	rows, err := dbConn.QueryContext(ctx, sqlQuery)
