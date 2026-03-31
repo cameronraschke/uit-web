@@ -1721,7 +1721,10 @@ func GetAllStatuses(ctx context.Context) (map[string][]types.AllClientStatuses, 
 			sort_order, 
 			status_type,
 			latest_statuses.status_count
-		FROM static_client_statuses 
+		FROM 
+			static_client_statuses 
+		WHERE 
+			status_name IS NOT NULL
 		LEFT JOIN latest_statuses ON 
 			static_client_statuses.status_name = latest_statuses.client_status
 	;`
@@ -1757,7 +1760,10 @@ func GetAllStatuses(ctx context.Context) (map[string][]types.AllClientStatuses, 
 	}
 	statusMap := make(map[string][]types.AllClientStatuses)
 	for _, status := range allStatuses {
-		statusMap[status.StatusType] = append(statusMap[status.StatusType], status)
+		if status.StatusType == nil {
+			continue
+		}
+		statusMap[*status.StatusType] = append(statusMap[*status.StatusType], status)
 	}
 	return statusMap, nil
 }
