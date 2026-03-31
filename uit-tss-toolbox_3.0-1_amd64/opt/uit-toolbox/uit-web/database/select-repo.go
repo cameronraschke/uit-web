@@ -1697,7 +1697,7 @@ func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocatio
 	return allLocations, nil
 }
 
-func (repo *SelectRepo) GetAllStatuses(ctx context.Context) (map[string][]types.AllClientStatuses, error) {
+func GetAllStatuses(ctx context.Context) (map[string][]types.AllClientStatuses, error) {
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
