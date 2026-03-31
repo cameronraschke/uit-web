@@ -19,11 +19,12 @@ type ClientUptime struct {
 	SystemUptime    time.Duration `json:"system_uptime"`
 }
 
-type ClientStatus struct {
+type AllClientStatuses struct {
 	Status          string `json:"status"`
 	StatusFormatted string `json:"status_formatted"`
 	SortOrder       int64  `json:"status_sort_order"`
 	StatusType      string `json:"status_type"`
+	ClientCount     int64  `json:"client_count"`
 }
 
 type ActiveJobs struct {

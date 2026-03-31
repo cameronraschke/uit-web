@@ -2,6 +2,7 @@ type AllDomainsRow = {
 	ad_domain: string;
 	ad_domain_formatted: string;
 	domain_sort_order: number;
+	client_count: number;
 };
 
 type DomainCache = {
@@ -26,6 +27,7 @@ type Statuses = {
 	status_formatted: string,
 	status_sort_order: number,
 	status_type: string;
+	client_count: number;
 };
 
 type StatusCache = {
@@ -359,7 +361,7 @@ async function populateDomainSelect(el: HTMLSelectElement, purgeCache: boolean =
 		for (const domain of domainData) {
 			const option = document.createElement('option');
 			option.value = domain.ad_domain;
-			option.textContent = domain.ad_domain_formatted || domain.ad_domain;
+			option.textContent = domain.ad_domain_formatted + (domain.client_count !== null ? ` (${domain.client_count})` : '');
 			el.appendChild(option);
 		}
 
@@ -404,7 +406,7 @@ async function populateDepartmentSelect(el: HTMLSelectElement, purgeCache: boole
 		for (const department of departmentsData) {
 			const option = document.createElement('option');
 			option.value = department.department_name;
-			option.textContent = department.department_name_formatted || department.department_name;
+			option.textContent = department.department_name_formatted + (department.client_count !== null ? ` (${department.client_count})` : '');
 			const parentOptGroup = Array.from(el.getElementsByTagName('optgroup')).find(group => group.label === (department.organization_name_formatted ? department.organization_name_formatted : (department.organization_name ? department.organization_name : 'N/A')));
 			if (parentOptGroup) {
 				parentOptGroup.appendChild(option);
@@ -481,7 +483,7 @@ async function populateStatusSelect(el: HTMLSelectElement, purgeCache: boolean =
 			for (const status of statuses) {
 				const option = document.createElement('option');
 				option.value = status.status;
-				option.textContent = status.status_formatted || status.status;
+				option.textContent = status.status_formatted + (status.client_count !== null ? ` (${status.client_count})` : '');
 				optGroup.appendChild(option);
 
 				if (initialValue && (initialValue === status.status || initialValue === status.status_formatted)) {

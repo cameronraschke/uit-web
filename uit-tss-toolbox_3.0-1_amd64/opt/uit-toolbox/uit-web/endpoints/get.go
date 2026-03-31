@@ -602,7 +602,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		SystemModel:        middleware.GetStrQuery(requestQueries, "system_model"),
 		DeviceType:         middleware.GetStrQuery(requestQueries, "device_type"),
 		Department:         middleware.GetStrQuery(requestQueries, "department_name"),
-		ADDomain:             middleware.GetStrQuery(requestQueries, "ad_domain"),
+		ADDomain:           middleware.GetStrQuery(requestQueries, "ad_domain"),
 		Status:             middleware.GetStrQuery(requestQueries, "status"),
 		IsBroken:           middleware.GetBoolQuery(requestQueries, "is_broken"),
 		HasImages:          middleware.GetBoolQuery(requestQueries, "has_images"),
@@ -684,20 +684,13 @@ func GetManufacturersAndModels(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, manufacturersAndModels)
 }
 
-func GetDomains(w http.ResponseWriter, req *http.Request) {
+func GetAllDomains(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetAllDomains"))
 
-	db, err := database.NewSelectRepo()
+	domains, err := database.GetAllDomains(ctx)
 	if err != nil {
-		log.Warn("Error creating select repository in GetDomains: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	domains, err := db.GetDomains(ctx)
-	if err != nil {
-		log.Warn("Query error in GetDomains: " + err.Error())
+		log.Warn("Query error: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -706,18 +699,11 @@ func GetDomains(w http.ResponseWriter, req *http.Request) {
 
 func GetDepartments(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetDepartments"))
 
-	db, err := database.NewSelectRepo()
+	departments, err := database.GetAllDepartments(ctx)
 	if err != nil {
-		log.Warn("Error creating select repository in GetDepartments: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	departments, err := db.GetDepartments(ctx)
-	if err != nil {
-		log.Warn("Query error in GetDepartments: " + err.Error())
+		log.Warn("Query error: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -786,17 +772,11 @@ func GetAllLocations(w http.ResponseWriter, req *http.Request) {
 
 func GetAllStatuses(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetAllStatuses"))
 
-	db, err := database.NewSelectRepo()
+	allStatuses, err := database.GetAllStatuses(ctx)
 	if err != nil {
-		log.Warn("Error creating select repository in GetAllStatuses: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	allStatuses, err := db.GetAllStatuses(ctx)
-	if err != nil {
-		log.Warn("Query error in GetAllStatuses: " + err.Error())
+		log.Warn("Query error: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -805,7 +785,7 @@ func GetAllStatuses(w http.ResponseWriter, req *http.Request) {
 
 func GetAllDeviceTypes(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetAllDeviceTypes"))
 
 	db, err := database.NewSelectRepo()
 	if err != nil {

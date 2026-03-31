@@ -32,6 +32,7 @@ type AllDomainsRow struct {
 	DomainName          *string `json:"ad_domain"`
 	DomainNameFormatted *string `json:"ad_domain_formatted"`
 	DomainSortOrder     *int64  `json:"domain_sort_order"`
+	ClientCount         *int64  `json:"client_count"`
 }
 
 type AllDepartmentsRow struct {
@@ -41,6 +42,7 @@ type AllDepartmentsRow struct {
 	OrganizationName          *string `json:"organization_name"`
 	OrganizationNameFormatted *string `json:"organization_name_formatted"`
 	OrganizationSortOrder     *int64  `json:"organization_sort_order"`
+	ClientCount               *int64  `json:"client_count"`
 }
 
 type AllJobsRow struct {

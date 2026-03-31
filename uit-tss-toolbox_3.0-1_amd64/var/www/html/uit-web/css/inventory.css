@@ -51,65 +51,16 @@
 	margin-right: var(--select-element-extended-margin);
 }
 
-.tooltip {
-	position: relative;
-	display: inline-block;
-	border-bottom: 1px dotted black;
-}
-
-.tooltip .tooltiptext {
-	visibility: hidden;
-	width: 20rem;
-	background-color: black;
-	color: white;
-	text-align: center;
-	padding: 0.5rem 0;
-	border-radius: var(--border-radius);
-	position: absolute;
-	z-index: 10;
-	bottom: 0%;
-	left: 0%;
-	margin-left: -10rem;
-	opacity: 0;
-	transition: opacity 0.3s;
-}
-
-/* Tooltip arrow */
-.tooltip .tooltiptext::after {
-	content: "";
-	position: absolute;
-	top: 100%;
-	left: 50%;
-	margin-left: -5px;
-	border-width: 5px;
-	border-style: solid;
-	border-color: black transparent transparent transparent;
-}
-
-.tooltip:hover .tooltiptext {
-	visibility: visible;
-	opacity: 1;
-}
-
-#inventory-table .inventory-tooltip-container {
-  overflow: visible !important;
-  position: relative;
-}
-#inventory-table .tooltip .tooltiptext {
-  z-index: 2000;
-  pointer-events: none;
-}
-
-.tooltip-indicator {
+.tooltip-image {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	min-width: 1.1rem;
 	margin-left: 0.25rem;
-	color: #b00020;
-	font-weight: bold;
+	padding-right: 0.4rem;
 	cursor: help;
 	user-select: none;
+	filter: invert(31%) sepia(40%) saturate(3320%) hue-rotate(333deg) brightness(86%) contrast(100%); /* --light-accent-color */
 }
 
 .portal-tooltip {

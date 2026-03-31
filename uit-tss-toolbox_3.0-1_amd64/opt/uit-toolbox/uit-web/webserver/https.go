@@ -72,7 +72,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/files/images", httpsFullAPIChain.ThenFunc(endpoints.GetImage))
 	httpsRouter.Handle("GET /api/overview/inventory_table", httpsFullAPIChain.ThenFunc(endpoints.GetInventoryTableData))
 	httpsRouter.Handle("GET /api/overview/all_models", httpsFullAPIChain.ThenFunc(endpoints.GetManufacturersAndModels))
-	httpsRouter.Handle("GET /api/overview/all_domains", httpsFullAPIChain.ThenFunc(endpoints.GetDomains))
+	httpsRouter.Handle("GET /api/overview/all_domains", httpsFullAPIChain.ThenFunc(endpoints.GetAllDomains))
 	httpsRouter.Handle("GET /api/overview/all_departments", httpsFullAPIChain.ThenFunc(endpoints.GetDepartments))
 	httpsRouter.Handle("GET /api/check_auth", httpsFullAPIChain.ThenFunc(endpoints.RejectRequest))
 	httpsRouter.Handle("GET /api/reports/battery", httpsFullAPIChain.ThenFunc(endpoints.FetchBatteryStandardDeviation))

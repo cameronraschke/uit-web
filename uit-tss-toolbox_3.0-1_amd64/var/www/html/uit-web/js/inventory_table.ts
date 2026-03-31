@@ -75,12 +75,12 @@ function showPortalTooltip(anchor: HTMLElement, text: string) {
 	activePortalTooltip = tooltip;
 }
 
-function attachPortalTooltip(anchor: HTMLElement, text: string) {
+function attachPortalTooltip(anchor: HTMLElement, text: string) {				
 	ensurePortalTooltipListeners();
 	anchor.addEventListener('mouseenter', () => showPortalTooltip(anchor, text));
 	anchor.addEventListener('mouseleave', removePortalTooltip);
-	anchor.addEventListener('focus', () => showPortalTooltip(anchor, text));
-	anchor.addEventListener('blur', removePortalTooltip);
+	// anchor.addEventListener('focus', () => showPortalTooltip(anchor, text));
+	// anchor.addEventListener('blur', removePortalTooltip);
 }
 
 function createManufacturerModelCell(inventoryRow: InventoryTableRow) {
@@ -136,7 +136,7 @@ async function renderInventoryTable() {
 	try {
 		const tableData: InventoryTableRow[] | null = await fetchFilteredInventoryData();
 		if (tableData === null) {
-			renderEmptyTable(tableBody, 'Error loading inventory data. Please try again.');
+			renderEmptyTable(tableBody, 'No results found.');
 			return;
 		}
 		if (!Array.isArray(tableData) || tableData.length === 0) {
@@ -214,7 +214,7 @@ async function renderInventoryTable() {
 			const serialDiv = document.createElement('div');
 
 			idContainer.classList.add('flex-container', 'vertical');
-			tagDiv.classList.add('flex-container', 'horizontal', 'inventory-tooltip-container');
+			tagDiv.classList.add('flex-container', 'horizontal');
 			tagDiv.style.justifyContent = 'center';
 			serialDiv.classList.add('flex-container', 'horizontal', 'smaller-text');
 			
@@ -224,9 +224,11 @@ async function renderInventoryTable() {
 			tagDiv.appendChild(tagSpan);
 			// Tooltip to show errors
 			if (inventoryRow.client_configuration_errors && inventoryRow.client_configuration_errors.length > 0) {
-				const tooltipIndicator = document.createElement('span');
-				tooltipIndicator.classList.add('tooltip-indicator');
-				tooltipIndicator.textContent = '⚠';
+				const tooltipIndicator = document.createElement('img');
+				tooltipIndicator.title = 'Configuration Error(s)';
+				tooltipIndicator.alt = 'Configuration Error(s)';
+				tooltipIndicator.src = '/icons/general/info.svg';
+				tooltipIndicator.classList.add('tooltip-image');
 				tooltipIndicator.tabIndex = 0;
 				attachPortalTooltip(
 					tooltipIndicator,

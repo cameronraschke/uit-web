@@ -38,6 +38,7 @@ type Department = {
 	organization_name: string;
 	organization_name_formatted: string;
 	organization_sort_order: number;
+	client_count: number;
 };
 
 type DepartmentsCache = {

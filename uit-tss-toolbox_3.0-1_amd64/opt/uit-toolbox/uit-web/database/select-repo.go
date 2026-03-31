@@ -19,8 +19,6 @@ import (
 )
 
 type Select interface {
-	GetDepartments(ctx context.Context) ([]types.AllDepartmentsRow, error)
-	GetDomains(ctx context.Context) ([]types.AllDomainsRow, error)
 	GetManufacturersAndModels(ctx context.Context) ([]types.AllManufacturersAndModelsRow, error)
 	CheckTwoFactorCode(ctx context.Context, twoFactorCode *string) (string, error)
 	CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error)
@@ -37,7 +35,6 @@ type Select interface {
 	GetClientBatteryReport(ctx context.Context) ([]types.ClientReportRow, error)
 	GetAllJobs(ctx context.Context) ([]types.AllJobsRow, error)
 	GetAllLocations(ctx context.Context) ([]types.AllLocationsRow, error)
-	GetAllStatuses(ctx context.Context) (map[string][]types.ClientStatus, error)
 	GetAllDeviceTypes(ctx context.Context) ([]types.DeviceType, error)
 	GetClientHardwareOverview(ctx context.Context, tag int64) ([]types.ClientHardwareView, error)
 	GetJobQueuePosition(ctx context.Context, tag int64) (int64, error)
@@ -86,7 +83,7 @@ func GetGlobalSearchData(ctx context.Context) ([]types.GlobalLookupRow, error) {
 	var globalLookupRow []types.GlobalLookupRow
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error: %w", ctx.Err())
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
 		var tag types.GlobalLookupRow
 		if err := rows.Scan(
@@ -108,19 +105,38 @@ func GetGlobalSearchData(ctx context.Context) ([]types.GlobalLookupRow, error) {
 	return globalLookupRow, nil
 }
 
-func (repo *SelectRepo) GetDepartments(ctx context.Context) ([]types.AllDepartmentsRow, error) {
-	const sqlQuery = `SELECT 
+func GetAllDepartments(ctx context.Context) ([]types.AllDepartmentsRow, error) {
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	const sqlQuery = `
+		WITH department_counts AS (
+			SELECT department_name, COUNT(*) AS "department_count"
+			FROM locations
+			WHERE department_name IS NOT NULL
+			AND time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
+			GROUP BY department_name
+		)
+		SELECT 
 			static_department_info.department_name, 
 			static_department_info.department_name_formatted, 
 			static_department_info.department_sort_order,
-			COALESCE(static_organizations.organization_name, ''),
-			COALESCE(static_organizations.organization_name_formatted, ''),
-			COALESCE(static_organizations.organization_sort_order, 101)
-		FROM static_department_info 
-		LEFT JOIN static_organizations ON static_organizations.organization_name = static_department_info.organization_name
-		ORDER BY static_organizations.organization_sort_order, static_department_info.department_sort_order;`
+			COALESCE(static_organizations.organization_name, '') AS organization_name,
+			COALESCE(static_organizations.organization_name_formatted, '') AS organization_name_formatted,
+			COALESCE(static_organizations.organization_sort_order, 101) AS organization_sort_order,
+			department_counts.department_count AS client_count
+		FROM department_counts
+			JOIN static_department_info ON department_counts.department_name = static_department_info.department_name
+		LEFT JOIN static_organizations ON 
+			static_organizations.organization_name = static_department_info.organization_name
+		ORDER BY 
+			static_organizations.organization_sort_order, 
+			static_department_info.department_sort_order
+	;`
 
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
+	rows, err := dbConn.QueryContext(ctx, sqlQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error executing query: %w", err)
 	}
@@ -129,7 +145,7 @@ func (repo *SelectRepo) GetDepartments(ctx context.Context) ([]types.AllDepartme
 	var departments []types.AllDepartmentsRow
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error: %w", ctx.Err())
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
 		var dept types.AllDepartmentsRow
 		if err := rows.Scan(
@@ -139,13 +155,14 @@ func (repo *SelectRepo) GetDepartments(ctx context.Context) ([]types.AllDepartme
 			&dept.OrganizationName,
 			&dept.OrganizationNameFormatted,
 			&dept.OrganizationSortOrder,
+			&dept.ClientCount,
 		); err != nil {
-			return nil, fmt.Errorf("error during row scan: %w", err)
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
 		departments = append(departments, dept)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
 	}
 	if len(departments) == 0 {
 		return nil, nil
@@ -154,29 +171,56 @@ func (repo *SelectRepo) GetDepartments(ctx context.Context) ([]types.AllDepartme
 	return departments, nil
 }
 
-func (repo *SelectRepo) GetDomains(ctx context.Context) ([]types.AllDomainsRow, error) {
-	const sqlQuery = `SELECT domain_name, domain_name_formatted 
-		FROM static_ad_domains 
-		ORDER BY domain_sort_order NULLS LAST;`
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
+func GetAllDomains(ctx context.Context) ([]types.AllDomainsRow, error) {
+	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return nil, fmt.Errorf("error executing query: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	const sqlQuery = `
+		WITH domain_counts AS (
+			SELECT ad_domain, COUNT(*) AS "domain_count"
+			FROM locations
+			WHERE ad_domain IS NOT NULL
+			AND time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
+			GROUP BY ad_domain
+		)
+		SELECT 
+			domain_name, 
+			domain_name_formatted,
+			domain_sort_order,
+			domain_counts.domain_count AS "client_count"
+		FROM static_ad_domains 
+		LEFT JOIN domain_counts ON 
+			static_ad_domains.domain_name = domain_counts.ad_domain
+		ORDER BY 
+			domain_sort_order NULLS LAST
+	;`
+
+	rows, err := dbConn.QueryContext(ctx, sqlQuery)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 	defer rows.Close()
 
 	var domains []types.AllDomainsRow
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error: %w", ctx.Err())
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
 		var domain types.AllDomainsRow
-		if err := rows.Scan(&domain.DomainName, &domain.DomainNameFormatted); err != nil {
-			return nil, fmt.Errorf("error during row scan: %w", err)
+		if err := rows.Scan(
+			&domain.DomainName,
+			&domain.DomainNameFormatted,
+			&domain.DomainSortOrder,
+			&domain.ClientCount,
+		); err != nil {
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
 		domains = append(domains, domain)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
 	}
 	if len(domains) == 0 {
 		return nil, nil
@@ -1653,38 +1697,65 @@ func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocatio
 	return allLocations, nil
 }
 
-func (repo *SelectRepo) GetAllStatuses(ctx context.Context) (map[string][]types.ClientStatus, error) {
-	const sqlQuery = `SELECT status_name, status_formatted, sort_order, status_type FROM static_client_statuses ORDER BY sort_order;`
-
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
+func (repo *SelectRepo) GetAllStatuses(ctx context.Context) (map[string][]types.AllClientStatuses, error) {
+	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return nil, fmt.Errorf("error during query execution: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	const sqlQuery = `
+		WITH latest_statuses AS (
+			SELECT 
+				COUNT(*) AS status_count,
+				client_status
+			FROM 
+				locations
+			WHERE 
+				client_status IS NOT NULL
+				AND time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
+			GROUP BY client_status
+		)
+		SELECT 
+			status_name, 
+			status_formatted, 
+			sort_order, 
+			status_type,
+			latest_statuses.status_count
+		FROM static_client_statuses 
+		LEFT JOIN latest_statuses ON 
+			static_client_statuses.status_name = latest_statuses.client_status
+	;`
+
+	rows, err := dbConn.QueryContext(ctx, sqlQuery)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 	defer rows.Close()
 
-	var allStatuses []types.ClientStatus
+	var allStatuses []types.AllClientStatuses
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var status types.ClientStatus
+		var status types.AllClientStatuses
 		if err := rows.Scan(
 			&status.Status,
 			&status.StatusFormatted,
 			&status.SortOrder,
 			&status.StatusType,
+			&status.ClientCount,
 		); err != nil {
-			return nil, fmt.Errorf("error during row scan: %w", err)
+			return nil, fmt.Errorf("%w: %w", types.DatabaseScanError, err)
 		}
 		allStatuses = append(allStatuses, status)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseIterationError, err)
 	}
 	if len(allStatuses) == 0 {
 		return nil, nil
 	}
-	statusMap := make(map[string][]types.ClientStatus)
+	statusMap := make(map[string][]types.AllClientStatuses)
 	for _, status := range allStatuses {
 		statusMap[status.StatusType] = append(statusMap[status.StatusType], status)
 	}
