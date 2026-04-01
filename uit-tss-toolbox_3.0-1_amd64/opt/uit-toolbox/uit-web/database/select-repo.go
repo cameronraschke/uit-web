@@ -959,73 +959,94 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 	// Make sure WHERE clause is never empty
 	whereClause = append(whereClause, "locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)")
 
-	// Tag filter
-	if filterOptions.Tagnumber != nil {
-		whereClause = append(whereClause, fmt.Sprintf("locations.tagnumber = $%d", i))
-		whereArgs = append(whereArgs, *filterOptions.Tagnumber)
-		i++
-	}
-	// System Serial filter
-	if filterOptions.SystemSerial != nil && strings.TrimSpace(*filterOptions.SystemSerial) != "" {
-		whereClause = append(whereClause, fmt.Sprintf("locations.system_serial = $%d", i))
-		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.SystemSerial))
-		i++
-	}
 	// Location filter
-	if filterOptions.Location != nil && strings.TrimSpace(*filterOptions.Location) != "" {
-		whereClause = append(whereClause, fmt.Sprintf("locations.location = $%d", i))
-		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Location))
+	if filterOptions.Location != nil && strings.TrimSpace(*filterOptions.Location.ParamValue) != "" {
+		if filterOptions.Location.Not != nil && *filterOptions.Location.Not {
+			whereClause = append(whereClause, fmt.Sprintf("NOT locations.location = $%d", i))
+		} else {
+			whereClause = append(whereClause, fmt.Sprintf("locations.location = $%d", i))
+		}
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Location.ParamValue))
 		i++
 	}
 	// Manufacturer filter
-	if filterOptions.SystemManufacturer != nil && strings.TrimSpace(*filterOptions.SystemManufacturer) != "" {
-		whereClause = append(whereClause, fmt.Sprintf("hardware_data.system_manufacturer = $%d", i))
-		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.SystemManufacturer))
+	if filterOptions.SystemManufacturer != nil && strings.TrimSpace(*filterOptions.SystemManufacturer.ParamValue) != "" {
+		if filterOptions.SystemManufacturer.Not != nil && *filterOptions.SystemManufacturer.Not {
+			whereClause = append(whereClause, fmt.Sprintf("NOT hardware_data.system_manufacturer = $%d", i))
+		} else {
+			whereClause = append(whereClause, fmt.Sprintf("hardware_data.system_manufacturer = $%d", i))
+		}
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.SystemManufacturer.ParamValue))
 		i++
 	}
 	// Model filter
-	if filterOptions.SystemModel != nil && strings.TrimSpace(*filterOptions.SystemModel) != "" {
-		whereClause = append(whereClause, fmt.Sprintf("hardware_data.system_model = $%d", i))
-		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.SystemModel))
+	if filterOptions.SystemModel != nil && strings.TrimSpace(*filterOptions.SystemModel.ParamValue) != "" {
+		if filterOptions.SystemModel.Not != nil && *filterOptions.SystemModel.Not {
+			whereClause = append(whereClause, fmt.Sprintf("NOT hardware_data.system_model = $%d", i))
+		} else {
+			whereClause = append(whereClause, fmt.Sprintf("hardware_data.system_model = $%d", i))
+		}
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.SystemModel.ParamValue))
 		i++
 	}
 	// Device Type filter
-	if filterOptions.DeviceType != nil && strings.TrimSpace(*filterOptions.DeviceType) != "" {
-		whereClause = append(whereClause, fmt.Sprintf("hardware_data.device_type = $%d", i))
-		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.DeviceType))
+	if filterOptions.DeviceType != nil && strings.TrimSpace(*filterOptions.DeviceType.ParamValue) != "" {
+		if filterOptions.DeviceType.Not != nil && *filterOptions.DeviceType.Not {
+			whereClause = append(whereClause, fmt.Sprintf("NOT hardware_data.device_type = $%d", i))
+		} else {
+			whereClause = append(whereClause, fmt.Sprintf("hardware_data.device_type = $%d", i))
+		}
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.DeviceType.ParamValue))
 		i++
 	}
 	// Department filter
-	if filterOptions.Department != nil && strings.TrimSpace(*filterOptions.Department) != "" {
-		whereClause = append(whereClause, fmt.Sprintf("locations.department_name = $%d", i))
-		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Department))
+	if filterOptions.Department != nil && strings.TrimSpace(*filterOptions.Department.ParamValue) != "" {
+		if filterOptions.Department.Not != nil && *filterOptions.Department.Not {
+			whereClause = append(whereClause, fmt.Sprintf("NOT locations.department_name = $%d", i))
+		} else {
+			whereClause = append(whereClause, fmt.Sprintf("locations.department_name = $%d", i))
+		}
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Department.ParamValue))
 		i++
 	}
 	// AD Domain filter
-	if filterOptions.ADDomain != nil && strings.TrimSpace(*filterOptions.ADDomain) != "" {
-		whereClause = append(whereClause, fmt.Sprintf("locations.ad_domain = $%d", i))
-		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.ADDomain))
+	if filterOptions.ADDomain != nil && strings.TrimSpace(*filterOptions.ADDomain.ParamValue) != "" {
+		if filterOptions.ADDomain.Not != nil && *filterOptions.ADDomain.Not {
+			whereClause = append(whereClause, fmt.Sprintf("NOT locations.ad_domain = $%d", i))
+		} else {
+			whereClause = append(whereClause, fmt.Sprintf("locations.ad_domain = $%d", i))
+		}
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.ADDomain.ParamValue))
 		i++
 	}
 	// Status filter
-	if filterOptions.Status != nil && strings.TrimSpace(*filterOptions.Status) != "" {
-		whereClause = append(whereClause, fmt.Sprintf("locations.client_status = $%d", i))
-		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Status))
+	if filterOptions.Status != nil && strings.TrimSpace(*filterOptions.Status.ParamValue) != "" {
+		if filterOptions.Status.Not != nil && *filterOptions.Status.Not {
+			whereClause = append(whereClause, fmt.Sprintf("NOT locations.client_status = $%d", i))
+		} else {
+			whereClause = append(whereClause, fmt.Sprintf("locations.client_status = $%d", i))
+		}
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Status.ParamValue))
 		i++
 	}
 	// IsBroken filter
-	if filterOptions.IsBroken != nil {
-		whereClause = append(whereClause, fmt.Sprintf("locations.is_broken = $%d", i))
-		whereArgs = append(whereArgs, *filterOptions.IsBroken)
+	if filterOptions.IsBroken != nil && filterOptions.IsBroken.ParamValue != nil {
+		if filterOptions.IsBroken.Not != nil && *filterOptions.IsBroken.Not {
+			whereClause = append(whereClause, fmt.Sprintf("NOT locations.is_broken = $%d", i))
+		} else {
+			whereClause = append(whereClause, fmt.Sprintf("locations.is_broken = $%d", i))
+		}
+		whereArgs = append(whereArgs, *filterOptions.IsBroken.ParamValue)
 		i++
 	}
 	// Has Images filter
-	if filterOptions.HasImages != nil {
-		if *filterOptions.HasImages {
+	if filterOptions.HasImages != nil && filterOptions.HasImages.ParamValue != nil {
+		if *filterOptions.HasImages.ParamValue {
 			whereClause = append(whereClause, "COALESCE(files.file_count, 0) > 0")
 		} else {
 			whereClause = append(whereClause, "COALESCE(files.file_count, 0) = 0")
 		}
+		// No whereArgs needed here, can cause issues with index
 	}
 
 	whereSQL := strings.Join(whereClause, "\n  AND ")

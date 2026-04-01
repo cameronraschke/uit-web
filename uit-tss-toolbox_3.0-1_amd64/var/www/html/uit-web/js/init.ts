@@ -280,7 +280,10 @@ function resetSelectElement(selectElement: HTMLSelectElement, defaultText: strin
 	defaultOption.value = "";
 	defaultOption.textContent = defaultText;
 	selectElement.required = false;
-	selectElement.disabled = isDisabled;
+	if (isDisabled === true) {
+		selectElement.disabled = true;
+		selectElement.classList.add('disabled');
+	}
 	defaultOption.selected = true;
 	// defaultOption.hidden = true;
 	selectElement.appendChild(defaultOption);
@@ -376,19 +379,11 @@ function base64ToJson(inputStr: string) {
 	}
 }
 
-function getURLParamName(filterElement: HTMLSelectElement): string {
-	for (const param of advSearchParams) {
-		if (param.inputElement === filterElement) {
-			return param.paramString;
-		}
-	}
-	return '';
-}
-
 function updateURLFromFilters(): void {
-	for (const param of advSearchParams) {
-		if (!param.inputElement || !param.paramString) continue;
-		setURLParameter(param.paramString, param.inputElement.value ? param.inputElement.value : null);
+	for (const paramName in advSearchParams) {
+		const param = advSearchParams[paramName];
+		if (!param.inputElement) continue;
+		setURLParameter(paramName, param.inputElement.value ? param.inputElement.value : null);
 	}
 }
 

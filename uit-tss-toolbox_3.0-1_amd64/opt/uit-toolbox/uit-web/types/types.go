@@ -239,17 +239,25 @@ func ConvertAndVerifyTagnumber(tagStr string) (*int64, error) {
 }
 
 type InventoryAdvSearchOptions struct {
-	Tagnumber          *int64  `json:"tagnumber"`
-	SystemSerial       *string `json:"system_serial"`
-	Location           *string `json:"location"`
-	SystemManufacturer *string `json:"system_manufacturer"`
-	SystemModel        *string `json:"system_model"`
-	DeviceType         *string `json:"device_type"`
-	Department         *string `json:"department_name"`
-	ADDomain           *string `json:"ad_domain"`
-	Status             *string `json:"status"`
-	IsBroken           *bool   `json:"is_broken"`
-	HasImages          *bool   `json:"has_images"`
+	Location           *AdvSearchOptionString `json:"filter_location"`
+	SystemManufacturer *AdvSearchOptionString `json:"filter_system_manufacturer"`
+	SystemModel        *AdvSearchOptionString `json:"filter_system_model"`
+	DeviceType         *AdvSearchOptionString `json:"filter_device_type"`
+	Department         *AdvSearchOptionString `json:"filter_department_name"`
+	ADDomain           *AdvSearchOptionString `json:"filter_ad_domain"`
+	Status             *AdvSearchOptionString `json:"filter_status"`
+	IsBroken           *AdvSearchOptionBool   `json:"filter_is_broken"`
+	HasImages          *AdvSearchOptionBool   `json:"filter_has_images"`
+}
+
+type AdvSearchOptionString struct {
+	ParamValue *string `json:"param_value"`
+	Not        *bool   `json:"not"`
+}
+
+type AdvSearchOptionBool struct {
+	ParamValue *bool `json:"param_value"`
+	Not        *bool `json:"not"`
 }
 
 type JobQueueTableRowView struct {

@@ -1,144 +1,98 @@
-type AllDomainsRow = {
-	ad_domain: string;
-	ad_domain_formatted: string;
-	domain_sort_order: number;
-	client_count: number;
-};
-
-type DomainCache = {
-	timestamp: number;
-	domains: AllDomainsRow[];
-};
-
-type AllManufacturersAndModelsRow = {
-	system_manufacturer: string;
-	system_model: string;
-	system_model_count: number;
-	system_manufacturer_count?: number;
-};
-
-type ManufacturerAndModelsCache = {
-	timestamp: number;
-	manufacturers_and_models: AllManufacturersAndModelsRow[];
-};
-
-type Statuses = {
-	status: string,
-	status_formatted: string,
-	status_sort_order: number,
-	status_type: string;
-	client_count: number;
-};
-
-type StatusCache = {
-	timestamp: number;
-	statuses: Record<string, Statuses[]>;
+function getAdvSearchParamName(filterElement: HTMLSelectElement): string {
+	for (const paramName in advSearchParams) {
+		const param = advSearchParams[paramName];
+		if (param.inputElement === filterElement) {
+			return paramName;
+		}
+	}
+	return '';
 }
 
-type AdvSearchFilterParams = {
-	inputElement: HTMLSelectElement;
-	resetElement: HTMLElement;
-	paramString: string;
-};
-
-const inventoryFilterForm = document.getElementById('adv-search-form') as HTMLFormElement;
-const advSearchFormReset = document.getElementById('adv-search-form-reset-button') as HTMLElement;
-const advSearchLocation = document.getElementById('adv-search-location') as HTMLSelectElement;
-const advSearchLocationReset = document.getElementById('adv-search-location-reset') as HTMLElement;
-const filterDepartment = document.getElementById('adv-search-department') as HTMLSelectElement;
-const filterDepartmentReset = document.getElementById('adv-search-department-reset') as HTMLElement;
-const filterManufacturer = document.getElementById('adv-search-manufacturer') as HTMLSelectElement;
-const filterManufacturerReset = document.getElementById('adv-search-manufacturer-reset') as HTMLElement;
-const filterModel = document.getElementById('adv-search-model') as HTMLSelectElement;
-const filterModelReset = document.getElementById('adv-search-model-reset') as HTMLElement;
-const filterDomain = document.getElementById('adv-search-ad-domain') as HTMLSelectElement;
-const filterDomainReset = document.getElementById('adv-search-ad-domain-reset') as HTMLElement;
-const filterStatus = document.getElementById('adv-search-status') as HTMLSelectElement;
-const filterStatusReset = document.getElementById('adv-search-status-reset') as HTMLElement;
-const filterBroken = document.getElementById('adv-search-is-broken') as HTMLSelectElement;
-const filterBrokenReset = document.getElementById('adv-search-is-broken-reset') as HTMLElement;
-const filterHasImages = document.getElementById('adv-search-has-images') as HTMLSelectElement;
-const filterHasImagesReset = document.getElementById('adv-search-has-images-reset') as HTMLElement;
-const filterDeviceType = document.getElementById('adv-search-device-type') as HTMLSelectElement;
-const filterDeviceTypeReset = document.getElementById('adv-search-device-type-reset') as HTMLElement;
-
-const advSearchParams: AdvSearchFilterParams[] = [
-	{ inputElement: advSearchLocation, resetElement: advSearchLocationReset, paramString: 'location' },
-	{ inputElement: filterDepartment, resetElement: filterDepartmentReset, paramString: 'department_name' },
-	{ inputElement: filterManufacturer, resetElement: filterManufacturerReset, paramString: 'system_manufacturer' },
-	{ inputElement: filterModel, resetElement: filterModelReset, paramString: 'system_model' },
-	{ inputElement: filterDomain, resetElement: filterDomainReset, paramString: 'ad_domain' },
-	{ inputElement: filterStatus, resetElement: filterStatusReset, paramString: 'status' },
-	{ inputElement: filterBroken, resetElement: filterBrokenReset, paramString: 'is_broken' },
-	{ inputElement: filterHasImages, resetElement: filterHasImagesReset, paramString: 'has_images' },
-	{ inputElement: filterDeviceType, resetElement: filterDeviceTypeReset, paramString: 'device_type' }
-];
-
-let allModelsData: string[] = [];
-
 function resetAdvSearchURLParameters() {
-	for (const param of advSearchParams) {
-		if (!param.paramString) continue;
-		setURLParameter(param.paramString, null);
+	for (const paramName in advSearchParams) {
+		if (!paramName) continue;
+		setURLParameter(paramName, null);
 	}
 }
 
 function updateFiltersFromURL() {
 	const currentParams = new URLSearchParams(window.location.search);
-	for (const param of advSearchParams) {
-		if (!param.inputElement || !param.paramString) continue;
-		const urlValue = currentParams.get(param.paramString);
-		if (urlValue && urlValue.trim().length > 0) param.inputElement.value = urlValue;
-		handleAdvSearchInputChange(param.inputElement, param.resetElement);
-	}
-}
-
-function handleAdvSearchInputChange(filterEl: HTMLSelectElement, resetEl: HTMLElement) {
-	if (!filterEl || !resetEl) {
-		console.warn("Filter inputElement or reset button not found.");
-		return;
-	}
-	const paramString = getURLParamName(filterEl);
-	// Testing a string here, otherwise "false" would not show the reset button
-	if (filterEl.value !== '' && filterEl.value.trim().length > 0) {
-		setURLParameter(paramString, filterEl.value);
-		resetEl.style.display = 'inline-block';
-		filterEl.classList.add('changed-input');
-	} else {
-		setURLParameter(paramString, null);
-		resetEl.style.display = 'none';
-		filterEl.classList.remove('changed-input');
-	}
-}
-
-function initializeAdvSearchListeners(filterEl: HTMLSelectElement, resetEl: HTMLElement) {
-	filterEl.addEventListener("change", async () => {
-		handleAdvSearchInputChange(filterEl, resetEl);
-		try {
-			if (filterEl === filterManufacturer || filterEl === filterModel) {
-				await Promise.all([populateManufacturerSelect(filterManufacturer, filterManufacturerReset).then(() => populateModelSelect(filterModel, filterModelReset)), renderInventoryTable()]);
-			} else {
-				await renderInventoryTable();
-			}
-		} catch (err) {
-			console.error(`Error fetching data from filterEl on change event listener:`, err);
+	for (const paramName in advSearchParams) {
+		const param = advSearchParams[paramName];
+		if (!param.inputElement || paramName === '') continue;
+		if (currentParams.has(paramName)) {
+			const urlValue: AdvSearchOptionString = JSON.parse(currentParams.get(paramName) || 'null');
+			if (urlValue && urlValue.param_value && urlValue.param_value.trim().length > 0) param.inputElement.value = urlValue.param_value;
+			handleAdvSearchInputChange([param]);
 		}
-	});
+	}
+}
+
+function handleAdvSearchInputChange(filterEls: AdvSearchFilterElement[]) {
+	for (const filterEl of filterEls) {
+		if (!filterEl || !filterEl.inputElement || !filterEl.resetElement) {
+			console.warn("Filter element is missing input or reset element: ", filterEl);
+			return;
+		}
+		// Testing a string here, otherwise "false" would not show the reset button
+		if (filterEl.inputElement.value !== '' && filterEl.inputElement.value.trim().length > 0) {
+			const urlValue: AdvSearchOptionString = { param_value: filterEl.inputElement.value, not: null };
+			if (filterEl.negationElement.checked === true) urlValue.not = true;
+			setURLParameter(getAdvSearchParamName(filterEl.inputElement), JSON.stringify(urlValue));
+			filterEl.resetElement.style.display = 'inline-block';
+			filterEl.inputElement.classList.add('changed-input');
+		} else {
+			setURLParameter(getAdvSearchParamName(filterEl.inputElement), null);
+			filterEl.resetElement.style.display = 'none';
+			filterEl.inputElement.classList.remove('changed-input');
+		}
+	}
+}
+
+function initializeAdvSearchListeners(filterEls: AdvSearchFilterElement[]) {
+	for (const filterEl of filterEls) {
+		filterEl.inputElement.addEventListener("change", async () => {
+			handleAdvSearchInputChange([filterEl]);
+			try {
+				if (filterEl.inputElement === filterManufacturer || filterEl.inputElement === filterModel) {
+					await Promise.all([populateManufacturerSelect(advSearchParams['filter_system_manufacturer'].inputElement).then(() => populateModelSelect(advSearchParams['filter_system_model'].inputElement)), renderInventoryTable()]);
+				} else {
+					await renderInventoryTable();
+				}
+			} catch (err) {
+				console.error(`Error fetching data from filterEl on change event listener:`, err);
+			}
+		});
+
+		filterEl.negationElement.addEventListener("change", async () => {
+			handleAdvSearchInputChange([filterEl]);
+			try {
+				if (filterEl.inputElement === filterManufacturer || filterEl.inputElement === filterModel) {
+					await Promise.all([populateManufacturerSelect(advSearchParams['filter_system_manufacturer'].inputElement).then(() => populateModelSelect(advSearchParams['filter_system_model'].inputElement)), renderInventoryTable()]);
+				} else {
+					await renderInventoryTable();
+				}
+			} catch (err) {
+				console.error(`Error fetching data from filterEl on negation change event listener:`, err);
+			}
+		});
   
-	resetEl.addEventListener("click", async (event) => {
-		event.preventDefault();
-		filterEl.value = "";
-		handleAdvSearchInputChange(filterEl, resetEl);
-		try {
-			if (filterEl === filterManufacturer || filterEl === filterModel) {
-				await Promise.all([populateManufacturerSelect(filterManufacturer, filterManufacturerReset).then(() => populateModelSelect(filterModel, filterModelReset)), renderInventoryTable()]);
-			} else {
-				await renderInventoryTable();
+		filterEl.resetElement.addEventListener("click", async (event) => {
+			event.preventDefault();
+			filterEl.inputElement.value = "";
+			filterEl.negationElement.checked = false;
+			handleAdvSearchInputChange([filterEl]);
+			try {
+				if (filterEl.inputElement === filterManufacturer || filterEl.inputElement === filterModel) {
+					await Promise.all([populateManufacturerSelect(advSearchParams['filter_system_manufacturer'].inputElement).then(() => populateModelSelect(advSearchParams['filter_system_model'].inputElement)), renderInventoryTable()]);
+				} else {
+					await renderInventoryTable();
+				}
+			} catch (err) {
+				console.error(`Error fetching data from filterEl on reset event listener:`, err);
 			}
-		} catch (err) {
-			console.error(`Error fetching data from filterEl on change event listener:`, err);
-		}
-	});
+		});
+	}
 }
 
 async function fetchFilteredInventoryData(csvDownload = false): Promise<InventoryTableRow[] | null> {
@@ -195,20 +149,19 @@ async function fetchAllManufacturersAndModels(purgeCache: boolean = false): Prom
   }
 }
 
-async function populateManufacturerSelect(selectEl: HTMLSelectElement, resetEl: HTMLElement, purgeCache: boolean = false) {
-  if (!selectEl || !resetEl) return;
+async function populateManufacturerSelect(manufacturerFilterEl: HTMLSelectElement, purgeCache: boolean = false) {
+  if (!manufacturerFilterEl) return;
 
-	const initialValue = selectEl.value ? selectEl.value : (new URLSearchParams(window.location.search).get('system_manufacturer') || '');
+	manufacturerFilterEl.disabled = true;
+	manufacturerFilterEl.classList.add('disabled');
+
+	const initialValue = manufacturerFilterEl.value ?? (new URLSearchParams(window.location.search).get('system_manufacturer') || '');
 	if (initialValue !== '' && initialValue.trim().length > 0) {
-		filterManufacturer.value = initialValue;
-		filterModel.disabled = false;
-		handleAdvSearchInputChange(selectEl, resetEl);
-	} else {
-		handleAdvSearchInputChange(selectEl, resetEl);
-		resetSelectElement(filterModel, 'Model', true);
+		manufacturerFilterEl.value = initialValue;
+		manufacturerFilterEl.disabled = false;
+		manufacturerFilterEl.classList.remove('disabled');
 	}
-
-	selectEl.disabled = true; // temporary while we update it
+	resetSelectElement(manufacturerFilterEl, 'Model', true, undefined);
 
 	try {
   	const data: AllManufacturersAndModelsRow[] = await fetchAllManufacturersAndModels(purgeCache);
@@ -230,7 +183,7 @@ async function populateManufacturerSelect(selectEl: HTMLSelectElement, resetEl: 
 		});
 
 		// Clear and rebuild manufacturer select options
-		resetSelectElement(selectEl, 'Manufacturer');
+		resetSelectElement(manufacturerFilterEl, 'Manufacturer', false, undefined);
 
 		// Sort by formatted name
 		for (const item of uniqueManufacturerArr) {
@@ -238,37 +191,33 @@ async function populateManufacturerSelect(selectEl: HTMLSelectElement, resetEl: 
 			const option = document.createElement('option');
 			option.value = item.system_manufacturer;
 			option.textContent = `${item.system_manufacturer} (${item.system_manufacturer_count || 0})`;
-			selectEl.appendChild(option);
+			manufacturerFilterEl.appendChild(option);
 		}
 
 		const newValue = (initialValue && uniqueManufacturerArr.some(item => item.system_manufacturer === initialValue)) ? initialValue : '';
-		selectEl.value = newValue;
+		manufacturerFilterEl.value = newValue;
 
-		if (newValue) {
-			setURLParameter('system_manufacturer', selectEl.value);
-		} else {
-			setURLParameter('system_manufacturer', null);
-		}
+		handleAdvSearchInputChange([advSearchParams['filter_system_manufacturer']]);
 	} catch (error) {
 		console.error('Error fetching manufacturers and models:', error);
 	} finally {
-		selectEl.disabled = false;
+		manufacturerFilterEl.disabled = false;
+		manufacturerFilterEl.classList.remove('disabled');
 	}
 }
 
-async function populateModelSelect(selectEl: HTMLSelectElement, resetEl: HTMLElement, purgeCache: boolean = false) {
-  if (!selectEl || !resetEl || !filterManufacturer || !filterManufacturerReset) {
+async function populateModelSelect(modelSelectEl: HTMLSelectElement, purgeCache: boolean = false) {
+  if (!modelSelectEl || !modelSelectEl || !filterManufacturer || !filterManufacturerReset) {
 		console.warn("Model select element or reset button not found.");
 		return;
 	};
 	
-	const initialValue = selectEl.value ? selectEl.value : (new URLSearchParams(window.location.search)).get('system_model') || '';
+	const initialValue = modelSelectEl.value ? modelSelectEl.value : (new URLSearchParams(window.location.search)).get('system_model') || '';
 
 	if (!filterManufacturer || filterManufacturer.value === '' || filterManufacturer.value.trim().length === 0) {
 		// Reset model if no manufacturer is selected
-		resetSelectElement(selectEl, 'Model', true);
-		handleAdvSearchInputChange(filterManufacturer, filterManufacturerReset);
-		handleAdvSearchInputChange(selectEl, resetEl);
+		resetSelectElement(modelSelectEl, 'Model', true);
+		handleAdvSearchInputChange([advSearchParams['filter_system_manufacturer'], advSearchParams['filter_system_model']]);
 		return;
 	}
 
@@ -284,26 +233,25 @@ async function populateModelSelect(selectEl: HTMLSelectElement, resetEl: HTMLEle
 
 		const filteredData = data.filter(item => item.system_manufacturer === filterManufacturer.value);
 
-		resetSelectElement(selectEl, 'Model');
-		resetEl.style.display = 'none';
+		resetSelectElement(modelSelectEl, 'Model');
 
 		for (const item of filteredData) {
 			if (!item.system_model) console.warn("Missing system_model in filteredData:", item);
 			const option = document.createElement('option');
 			option.value = item.system_model;
 			option.textContent = item.system_model + ` (${item.system_model_count || 0})`;
-			selectEl.appendChild(option);
+			modelSelectEl.appendChild(option);
 		}
 
 		const newValue = (initialValue && filteredData.some(item => item.system_model === initialValue)) ? initialValue : '';
-		selectEl.value = newValue || '';
+		modelSelectEl.value = newValue || '';
+		handleAdvSearchInputChange([advSearchParams['filter_system_manufacturer'], advSearchParams['filter_system_model']]);
 	} catch (error) {
 		console.error('Error fetching manufacturers and models:', error);
 		return;
 	} finally {
-		handleAdvSearchInputChange(selectEl, resetEl);
-		handleAdvSearchInputChange(filterManufacturer, filterManufacturerReset);
-		selectEl.disabled = false;
+		handleAdvSearchInputChange([advSearchParams['filter_system_manufacturer'], advSearchParams['filter_system_model']]);
+		modelSelectEl.disabled = false;
 	}
 }
 
@@ -535,32 +483,42 @@ async function populateLocationSelect(el: HTMLSelectElement, purgeCache: boolean
 }
 		
 
-inventoryFilterForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  renderInventoryTable();
-});
+if (inventoryFilterForm) {
+	inventoryFilterForm.addEventListener("submit", (event) => {
+		event.preventDefault();
+		renderInventoryTable();
+	});
+}
 
-advSearchFormReset.addEventListener("click", async (event) => {
-  event.preventDefault();
+if (advSearchFormReset) {
+	advSearchFormReset.addEventListener("click", async (event) => {
+		event.preventDefault();
 
-	inventoryTableSearch.value = '';
-	inventoryTableSortBy.value = 'time-desc';
+		inventoryTableSearch.value = '';
+		inventoryTableSortBy.value = 'time-desc';
 
-	for (const param of advSearchParams) {
-		if (!param.inputElement || !param.paramString) continue;
-		param.inputElement.value = '';
-		handleAdvSearchInputChange(param.inputElement, param.resetElement);
-	}
+		for (const paramName in advSearchParams) {
+			const param = advSearchParams[paramName];
+			if (!param.inputElement) continue;
+			param.inputElement.value = '';
+			handleAdvSearchInputChange([param]);
+		}
 
-	try{
-		await Promise.all([
-			populateDepartmentSelect(filterDepartment),
-			populateLocationSelect(advSearchLocation),
-			populateManufacturerSelect(filterManufacturer, filterManufacturerReset).then(() => populateModelSelect(filterModel, filterModelReset)),
-			populateDomainSelect(filterDomain),
-			renderInventoryTable(),
-		]);
-	} catch (error) {
-		console.error("Error resetting filters and fetching data:", error);
-	}
-});
+		try {
+			if (!(filterDepartment && advSearchLocation && advSearchParams['filter_system_manufacturer'].inputElement && advSearchParams['filter_system_model'].inputElement && filterDomain)) {
+				console.warn("One or more filter elements not found, cannot reset filters properly");
+				await renderInventoryTable();
+				return;
+			}
+			await Promise.all([
+				populateDepartmentSelect(filterDepartment),
+				populateLocationSelect(advSearchLocation),
+				populateManufacturerSelect(advSearchParams['filter_system_manufacturer'].inputElement).then(() => populateModelSelect(advSearchParams['filter_system_model'].inputElement)),
+				populateDomainSelect(filterDomain),
+				renderInventoryTable(),
+			]);
+		} catch (error) {
+			console.error("Error resetting filters and fetching data:", error);
+		}
+	});
+}

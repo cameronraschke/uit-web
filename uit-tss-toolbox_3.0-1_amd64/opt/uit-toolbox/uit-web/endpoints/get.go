@@ -594,18 +594,96 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetInventoryTableData"))
 	requestQueries := req.URL.Query()
 
-	filterOptions := &types.InventoryAdvSearchOptions{
-		Tagnumber:          middleware.GetInt64Query(requestQueries, "tagnumber"),
-		SystemSerial:       middleware.GetStrQuery(requestQueries, "system_serial"),
-		Location:           middleware.GetStrQuery(requestQueries, "location"),
-		SystemManufacturer: middleware.GetStrQuery(requestQueries, "system_manufacturer"),
-		SystemModel:        middleware.GetStrQuery(requestQueries, "system_model"),
-		DeviceType:         middleware.GetStrQuery(requestQueries, "device_type"),
-		Department:         middleware.GetStrQuery(requestQueries, "department_name"),
-		ADDomain:           middleware.GetStrQuery(requestQueries, "ad_domain"),
-		Status:             middleware.GetStrQuery(requestQueries, "status"),
-		IsBroken:           middleware.GetBoolQuery(requestQueries, "is_broken"),
-		HasImages:          middleware.GetBoolQuery(requestQueries, "has_images"),
+	filterOptions := new(types.InventoryAdvSearchOptions)
+
+	if ok := req.URL.Query().Has("filter_location") && req.URL.Query().Get("filter_location") != ""; ok {
+		locationFilter := new(types.AdvSearchOptionString)
+		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_location")), locationFilter)
+		if err != nil {
+			log.Warn("Error parsing filter_location: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+	}
+
+	if ok := req.URL.Query().Has("filter_system_manufacturer") && req.URL.Query().Get("filter_system_manufacturer") != ""; ok {
+		manufacturerFilter := new(types.AdvSearchOptionString)
+		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_system_manufacturer")), manufacturerFilter)
+		if err != nil {
+			log.Warn("Error parsing filter_system_manufacturer: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+	}
+
+	if ok := req.URL.Query().Has("filter_system_model") && req.URL.Query().Get("filter_system_model") != ""; ok {
+		modelFilter := new(types.AdvSearchOptionString)
+		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_system_model")), modelFilter)
+		if err != nil {
+			log.Warn("Error parsing filter_system_model: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+	}
+
+	if ok := req.URL.Query().Has("filter_device_type") && req.URL.Query().Get("filter_device_type") != ""; ok {
+		deviceTypeFilter := new(types.AdvSearchOptionString)
+		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_device_type")), deviceTypeFilter)
+		if err != nil {
+			log.Warn("Error parsing filter_device_type: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+	}
+
+	if ok := req.URL.Query().Has("filter_department_name") && req.URL.Query().Get("filter_department_name") != ""; ok {
+		departmentFilter := new(types.AdvSearchOptionString)
+		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_department_name")), departmentFilter)
+		if err != nil {
+			log.Warn("Error parsing filter_department_name: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+	}
+
+	if ok := req.URL.Query().Has("filter_ad_domain") && req.URL.Query().Get("filter_ad_domain") != ""; ok {
+		adDomainFilter := new(types.AdvSearchOptionString)
+		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_ad_domain")), adDomainFilter)
+		if err != nil {
+			log.Warn("Error parsing filter_ad_domain: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+	}
+
+	if ok := req.URL.Query().Has("filter_status") && req.URL.Query().Get("filter_status") != ""; ok {
+		statusFilter := new(types.AdvSearchOptionString)
+		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_status")), statusFilter)
+		if err != nil {
+			log.Warn("Error parsing filter_status: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+	}
+
+	if ok := req.URL.Query().Has("filter_is_broken") && req.URL.Query().Get("filter_is_broken") != ""; ok {
+		isBrokenFilter := new(types.AdvSearchOptionBool)
+		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_is_broken")), isBrokenFilter)
+		if err != nil {
+			log.Warn("Error parsing filter_is_broken: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+	}
+
+	if ok := req.URL.Query().Has("filter_has_images") && req.URL.Query().Get("filter_has_images") != ""; ok {
+		hasImagesFilter := new(types.AdvSearchOptionBool)
+		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_has_images")), hasImagesFilter)
+		if err != nil {
+			log.Warn("Error parsing filter_has_images: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
 	}
 
 	// log.Debug(fmt.Sprintf("Filter options: %+v", filterOptions))

@@ -1,183 +1,3 @@
-let updatingInventory = false;
-
-type BulkUpdateRequest = {
-	bulk_location: string | null;
-	bulk_tagnumbers: number[];
-};
-
-type InventoryForm = {
-	time: string | null;
-	tagnumber: number | null;
-	system_serial: string | null;
-	location: string | null;
-	building: string | null;
-	room: string | null;
-	system_manufacturer: string | null;
-	system_model: string | null;
-	device_type: string | null;
-	department_name: string | null;
-	ad_domain: string | null;
-	property_custodian: string | null;
-	acquired_date: Date | null;
-	retired_date: Date | null;
-	is_broken: boolean | null;
-	disk_removed: boolean | null;
-	last_hardware_check: Date | null;
-	status: string | null;
-	checkout_bool: boolean | null;
-	checkout_date: Date | null;
-	return_date: Date | null;
-	note: string | null;
-	file_count: number | null;
-};
-
-type Department = {
-	department_name: string;
-	department_name_formatted: string;
-	department_sort_order: number;
-	organization_name: string;
-	organization_name_formatted: string;
-	organization_sort_order: number;
-	client_count: number;
-};
-
-type DepartmentsCache = {
-	timestamp: number;
-	departments: Department[];
-};
-
-type ClientLookupResult = {
-	tagnumber: number | null;
-	system_serial: string | null;
-};
-
-type AllLocations = {
-	timestamp: Date | null;
-	location: string | null;
-	location_formatted: string | null;
-	location_count: number | null;
-};
-
-type AllLocationsCache = {
-	timestamp: number;
-	locations: AllLocations[];
-};
-
-// Bulk update form 
-const toggleBulkUpdate = document.querySelector('#inventory-toggle-bulk') as HTMLButtonElement;
-const bulkUpdateForm = document.querySelector('#inventory-bulk-update') as HTMLFormElement;
-const bulkUpdateLocationInput = document.querySelector('#bulk_location') as HTMLInputElement;
-const bulkUpdateTagInput = document.querySelector('#bulk_tagnumbers') as HTMLInputElement;
-const bulkUpdateSubmitButton = document.querySelector('#inventory-bulk-update-submit') as HTMLButtonElement;
-const bulkUpdateCancelButton = document.querySelector('#inventory-bulk-update-cancel') as HTMLButtonElement;
-
-// Inventory lookup form elements
-const clientLookupForm = document.querySelector('#inventory-lookup-form') as HTMLFormElement;
-const updateFormContainer = document.getElementById('inventory-form-container') as HTMLElement;
-const clientLookupWarningMessage = document.getElementById('existing-inventory-message') as HTMLElement;
-const clientLookupTagInput = document.getElementById('inventory-tag-lookup') as HTMLInputElement;
-const clientLookupSerial = document.getElementById('inventory-serial-lookup') as HTMLInputElement;
-const clientLookupSubmitButton = document.getElementById('inventory-lookup-submit-button') as HTMLButtonElement;
-const clientMoreDetails = document.getElementById('inventory-lookup-more-details') as HTMLButtonElement;
-const clientViewPhotos = document.getElementById('inventory-lookup-photo-album') as HTMLButtonElement;
-const clientAddPhotos = document.getElementById('inventory-lookup-add-photos') as HTMLButtonElement;
-const allTagsDatalist = document.getElementById('inventory-tag-suggestions') as HTMLDataListElement;
-const advSearchDepartment = document.getElementById('adv-search-department') as HTMLSelectElement;
-const advSearchDomain = document.getElementById('adv-search-ad-domain') as HTMLSelectElement;
-const advSearchStatus = document.getElementById('adv-search-status') as HTMLSelectElement;
-const advSearchDeviceType = document.getElementById('adv-search-device-type') as HTMLSelectElement;
-const csvDownloadButton = document.getElementById('adv-search-download-csv') as HTMLButtonElement;
-const printCheckoutLink = document.getElementById('print-checkout-link') as HTMLElement;
-const printCheckoutContainer = document.getElementById('print-checkout-container') as HTMLElement;
-
-// Inventory update form elements
-const formAnchor = document.querySelector('#update-and-search-container') as HTMLElement;
-const updateForm = document.getElementById('inventory-update-form') as HTMLFormElement;
-const lastUpdateTime = document.getElementById('last-update-time-message') as HTMLElement;
-const locationEl = document.getElementById('location') as HTMLInputElement;
-const buildingUpdate = updateForm.querySelector("#building") as HTMLInputElement;
-const roomUpdate = updateForm.querySelector("#room") as HTMLInputElement;
-const manufacturerUpdate = updateForm.querySelector("#system_manufacturer") as HTMLInputElement;
-const modelUpdate = updateForm.querySelector("#system_model") as HTMLInputElement;
-const deviceTypeUpdate = updateForm.querySelector("#device_type") as HTMLSelectElement;
-const departmentEl = document.getElementById('department_name') as HTMLSelectElement;
-const adDomainUpdate = updateForm.querySelector("#ad_domain") as HTMLSelectElement;
-const propertyCustodianUpdate = updateForm.querySelector("#property_custodian") as HTMLInputElement;
-const acquiredDateUpdate = updateForm.querySelector("#acquired_date") as HTMLInputElement;
-const retiredDateUpdate = updateForm.querySelector("#retired_date") as HTMLInputElement;
-const isBrokenUpdate = updateForm.querySelector("#is_broken") as HTMLSelectElement;
-const diskRemovedUpdate = updateForm.querySelector("#disk_removed") as HTMLSelectElement;
-const lastHardwareCheckUpdate = updateForm.querySelector("#last_hardware_check") as HTMLInputElement;
-const clientStatusUpdate = updateForm.querySelector("#status") as HTMLSelectElement;
-const checkoutBoolUpdate = updateForm.querySelector("#checkout_bool") as HTMLSelectElement;
-const checkoutDateUpdate = updateForm.querySelector("#checkout_date") as HTMLInputElement;
-const returnDateUpdate = updateForm.querySelector("#return_date") as HTMLInputElement;
-const noteUpdate = updateForm.querySelector("#note") as HTMLInputElement;
-const fileInputUpdate = updateForm.querySelector("#inventory-file-input") as HTMLInputElement;
-const submitUpdate = document.getElementById('inventory-update-submit-button') as HTMLButtonElement;
-const cancelUpdate = document.getElementById('inventory-update-cancel-button') as HTMLButtonElement;
-
-// Show/hide parts of form
-const showLocationPart = document.querySelector("#show-location-data") as HTMLButtonElement;
-const showHardwarePart = document.querySelector("#show-hardware-data") as HTMLButtonElement;
-const showSoftwarePart = document.querySelector("#show-software-data") as HTMLButtonElement;
-const showPropertyPart = document.querySelector("#show-property-data") as HTMLButtonElement;
-const showNotesFilesPart = document.querySelector("#show-notes-files-data") as HTMLButtonElement;
-
-const locationPart = document.querySelectorAll("[data-location-part]") as NodeListOf<HTMLDivElement>;
-const hardwarePart = document.querySelectorAll("[data-hardware-part]") as NodeListOf<HTMLDivElement>;
-const softwarePart = document.querySelectorAll("[data-software-part]") as NodeListOf<HTMLDivElement>;
-const propertyPart = document.querySelectorAll("[data-property-part]") as NodeListOf<HTMLDivElement>;
-const notesFilesPart = document.querySelectorAll("[data-note-files-part]") as NodeListOf<HTMLDivElement>;
-
-const locationFormShowSections = [showLocationPart, showHardwarePart, showSoftwarePart, showPropertyPart, showNotesFilesPart];
-
-const allowedFileNameRegex = /^[a-zA-Z0-9.\-_ ()]+\.(jpg|jpeg|jfif|png|mp4)$/i; // file name + extension
-const allowedFileExtensions = [".jpg", ".jpeg", ".jfif", ".png", ".mp4"];
-
-const statusesThatIndicateBroken = ["needs-repair"];
-const statusesThatIndicateCheckout = ["checked-out", "reserved-for-checkout"];
-
-const allInventoryUpdateFields = [
-	clientLookupTagInput,
-	clientLookupSerial,
-	locationEl,
-	buildingUpdate,
-	roomUpdate,
-	manufacturerUpdate,
-	modelUpdate,
-	deviceTypeUpdate,
-	departmentEl,
-	adDomainUpdate,
-	propertyCustodianUpdate,
-	acquiredDateUpdate,
-	retiredDateUpdate,
-	isBrokenUpdate,
-	diskRemovedUpdate,
-	lastHardwareCheckUpdate,
-	clientStatusUpdate,
-	checkoutBoolUpdate,
-	checkoutDateUpdate,
-	returnDateUpdate,
-	noteUpdate,
-	fileInputUpdate,
-];
-
-const requiredInventoryUpdateFields = [
-	clientLookupTagInput,
-	clientLookupSerial,
-	locationEl,
-	departmentEl,
-	adDomainUpdate,
-	clientStatusUpdate
-];
-
-const buttonsVisibleWhenUpdating = [
-	clientMoreDetails,
-	clientViewPhotos,
-	clientAddPhotos,
-];
-
 async function fetchAllLocations(purgeCache: boolean = false): Promise<AllLocations[] | []> {
 	const cached = sessionStorage.getItem("uit_all_locations");
 
@@ -936,27 +756,29 @@ async function populateDeviceTypeSelect(selectEl: HTMLSelectElement, purgeCache:
 async function initializeInventoryPage() {
 	const urlParams = new URLSearchParams(window.location.search);
 
-	for (const param of advSearchParams) {
-		if (!param.inputElement || !param.paramString) continue;
-		initializeAdvSearchListeners(param.inputElement, param.resetElement);
-		param.inputElement.dataset.initialValue = urlParams.get(param.paramString) || "";
+	for (const paramName in advSearchParams) {
+		const param = advSearchParams[paramName];
+		if (!param.inputElement) continue;
+		initializeAdvSearchListeners([param]);
+		param.inputElement.dataset.initialValue = urlParams.get(paramName) || "";
 	}
 	filterModel.disabled = !filterManufacturer.value;
 
 	try {
 		await Promise.all([
-			populateLocationSelect(advSearchLocation, true),
-			populateDepartmentSelect(advSearchDepartment, true),
-			populateManufacturerSelect(filterManufacturer, filterManufacturerReset, true).then(() => populateModelSelect(filterModel, filterModelReset, true)),
-			populateDomainSelect(advSearchDomain, true),
-			populateStatusSelect(advSearchStatus),
-			populateDeviceTypeSelect(advSearchDeviceType, true)
+			populateLocationSelect(advSearchParams['filter_location'].inputElement, true),
+			populateDepartmentSelect(advSearchParams['filter_department_name'].inputElement, true),
+			populateManufacturerSelect(advSearchParams['filter_system_manufacturer'].inputElement, true).then(() => populateModelSelect(advSearchParams['filter_system_model'].inputElement, true)),
+			populateDomainSelect(advSearchParams['filter_ad_domain'].inputElement, true),
+			populateStatusSelect(advSearchParams['filter_status'].inputElement, true),
+			populateDeviceTypeSelect(advSearchParams['filter_device_type'].inputElement, true)
 		]);
 
-		for (const param of advSearchParams) {
-			if (!param.inputElement || !param.paramString) continue;
+		for (const paramName in advSearchParams) {
+			const param = advSearchParams[paramName];
+			if (!param.inputElement) continue;
 			param.inputElement.value = param.inputElement.dataset.initialValue || "";
-			handleAdvSearchInputChange(param.inputElement, param.resetElement);
+			handleAdvSearchInputChange([param]);
 		}
 
 		// Check URL parameters for auto lookup

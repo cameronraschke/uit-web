@@ -1,32 +1,3 @@
-type InventoryTableRow = {
-	tagnumber: number | 0;
-	system_serial: string | "";
-	location_formatted: string | "";
-	building: string | "";
-	room: string | "";
-	system_manufacturer: string | "";
-	system_model: string | "";
-	device_type: string | "";
-	device_type_formatted: string | "";
-	department_formatted: string | "";
-	ad_domain_formatted: string | "";
-	status_formatted: string | "";
-	is_broken: boolean | null;
-	note: string | "";
-	last_updated: string | "";
-	file_count: number | null;
-	client_configuration_errors: string[] | null;
-};
-
-// Table elements
-const tableBody = document.getElementById('inventory-table-body') as HTMLElement;
-const rowCountElement = document.getElementById('inventory-table-rowcount') as HTMLElement;
-const inventoryTableSearch = document.getElementById('inventory-table-search') as HTMLInputElement;
-const inventoryTableSortBy = document.getElementById('inventory-table-sort-by') as HTMLSelectElement;
-let inventoryTableSearchDebounce: ReturnType<typeof setTimeout> | null = null;
-let activePortalTooltip: HTMLDivElement | null = null;
-let hasPortalTooltipGlobalListeners = false;
-
 function removePortalTooltip() {
 	if (activePortalTooltip !== null) {
 		activePortalTooltip.remove();

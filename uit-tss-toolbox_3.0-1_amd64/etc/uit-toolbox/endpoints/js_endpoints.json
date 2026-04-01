@@ -31,6 +31,11 @@
     "endpoint_type": "web_content",
     "content_type": "text/javascript; charset=utf-8"
   },
+	"/js/inventory_types.js": {
+    "file_path": "/var/www/html/uit-web/js/inventory_types.js",
+    "endpoint_type": "web_content",
+    "content_type": "text/javascript; charset=utf-8"
+  },
   "/js/inventory.js": {
     "file_path": "/var/www/html/uit-web/js/inventory.js",
     "endpoint_type": "web_content",
