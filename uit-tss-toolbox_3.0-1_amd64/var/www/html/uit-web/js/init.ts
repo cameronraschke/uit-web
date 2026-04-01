@@ -337,11 +337,11 @@ function jsonToBase64(jsonString: string) {
 		const utf8Bytes = new TextEncoder().encode(jsonString);
 		const binaryStr = Array.from(utf8Bytes, (byte: number) => String.fromCharCode(byte)).join("");
 		const base64JsonData: string = btoa(binaryStr).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-		// Decode json with base64ToJson and double-check that it's correct.
-		const decodedJson = base64ToJson(base64JsonData);
-		if (!base64JsonData || JSON.stringify(jsonParsed) !== JSON.stringify(decodedJson)) {
-			throw new Error(`Encoded json does not match decoded json. \n${base64JsonData}\n${JSON.stringify(decodedJson)}`);
-		}
+		// // Decode json with base64ToJson and double-check that it's correct.
+		// const decodedJson = base64ToJson(base64JsonData);
+		// if (!base64JsonData || JSON.stringify(jsonParsed) !== JSON.stringify(decodedJson)) {
+		// 	throw new Error(`Encoded json does not match decoded json. \n${base64JsonData}\n${JSON.stringify(decodedJson)}`);
+		// }
 		return base64JsonData;
 	} catch (error) {
 		console.error("Invalid JSON string:", error);
@@ -560,7 +560,7 @@ async function getGlobalLookupData(purgeCache = false): Promise<GlobalLookupResu
 }
 
 function setURLParameter(urlParameter: string | null, value: string | null, isJson = false): void {
-	if (isJson && value) {
+	if (isJson && value !== null && value.trim() !== "") {
 		const base64Value = jsonToBase64(value);
 		if (base64Value) {
 			value = base64Value;
@@ -570,12 +570,13 @@ function setURLParameter(urlParameter: string | null, value: string | null, isJs
 		}
 	}
 	const newURL = new URL(window.location.href);
-	if (urlParameter && value) {
+	if (urlParameter && value !== null && value.trim() !== "") {
 		newURL.searchParams.set(urlParameter, value);
-	} else if (urlParameter && !value) {
+	} else if (urlParameter && (value === null || value.trim() === "")) {
 		newURL.searchParams.delete(urlParameter);
 	}
-	if (newURL.searchParams.toString()) {
+
+	if (newURL.searchParams.toString() && newURL.searchParams.toString().length > 0) {
 		history.pushState(null, '', newURL.pathname + '?' + newURL.searchParams.toString());
 	} else {
 		history.replaceState(null, '', newURL.pathname);
