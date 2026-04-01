@@ -3,6 +3,7 @@ package endpoints
 import (
 	"bytes"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,6 +23,24 @@ import (
 	"uit-toolbox/middleware"
 	"uit-toolbox/types"
 )
+
+func decodeMaybeBase64URLJSON(raw string) ([]byte, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return nil, fmt.Errorf("empty query value")
+	}
+
+	// Backward compatible: allow plain JSON in URL parameters.
+	if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
+		return []byte(trimmed), nil
+	}
+
+	decoded, err := base64.RawURLEncoding.DecodeString(trimmed)
+	if err != nil {
+		return nil, fmt.Errorf("invalid base64url json: %w", err)
+	}
+	return decoded, nil
+}
 
 // Per-client functions
 func GetServerTime(w http.ResponseWriter, req *http.Request) {
@@ -598,92 +617,155 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 
 	if ok := req.URL.Query().Has("filter_location") && req.URL.Query().Get("filter_location") != ""; ok {
 		locationFilter := new(types.AdvSearchOptionString)
-		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_location")), locationFilter)
+		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_location"))
+		if err != nil {
+			log.Warn("Error decoding filter_location: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		err = json.Unmarshal(jsonValue, locationFilter)
 		if err != nil {
 			log.Warn("Error parsing filter_location: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
+		filterOptions.Location = locationFilter
 	}
 
 	if ok := req.URL.Query().Has("filter_system_manufacturer") && req.URL.Query().Get("filter_system_manufacturer") != ""; ok {
 		manufacturerFilter := new(types.AdvSearchOptionString)
-		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_system_manufacturer")), manufacturerFilter)
+		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_system_manufacturer"))
+		if err != nil {
+			log.Warn("Error decoding filter_system_manufacturer: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		err = json.Unmarshal(jsonValue, manufacturerFilter)
 		if err != nil {
 			log.Warn("Error parsing filter_system_manufacturer: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
+		filterOptions.SystemManufacturer = manufacturerFilter
 	}
 
 	if ok := req.URL.Query().Has("filter_system_model") && req.URL.Query().Get("filter_system_model") != ""; ok {
 		modelFilter := new(types.AdvSearchOptionString)
-		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_system_model")), modelFilter)
+		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_system_model"))
+		if err != nil {
+			log.Warn("Error decoding filter_system_model: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		err = json.Unmarshal(jsonValue, modelFilter)
 		if err != nil {
 			log.Warn("Error parsing filter_system_model: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
+		filterOptions.SystemModel = modelFilter
 	}
 
 	if ok := req.URL.Query().Has("filter_device_type") && req.URL.Query().Get("filter_device_type") != ""; ok {
 		deviceTypeFilter := new(types.AdvSearchOptionString)
-		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_device_type")), deviceTypeFilter)
+		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_device_type"))
+		if err != nil {
+			log.Warn("Error decoding filter_device_type: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		err = json.Unmarshal(jsonValue, deviceTypeFilter)
 		if err != nil {
 			log.Warn("Error parsing filter_device_type: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
+		filterOptions.DeviceType = deviceTypeFilter
 	}
 
 	if ok := req.URL.Query().Has("filter_department_name") && req.URL.Query().Get("filter_department_name") != ""; ok {
 		departmentFilter := new(types.AdvSearchOptionString)
-		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_department_name")), departmentFilter)
+		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_department_name"))
+		if err != nil {
+			log.Warn("Error decoding filter_department_name: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		err = json.Unmarshal(jsonValue, departmentFilter)
 		if err != nil {
 			log.Warn("Error parsing filter_department_name: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
+		filterOptions.Department = departmentFilter
 	}
 
 	if ok := req.URL.Query().Has("filter_ad_domain") && req.URL.Query().Get("filter_ad_domain") != ""; ok {
 		adDomainFilter := new(types.AdvSearchOptionString)
-		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_ad_domain")), adDomainFilter)
+		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_ad_domain"))
+		if err != nil {
+			log.Warn("Error decoding filter_ad_domain: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		err = json.Unmarshal(jsonValue, adDomainFilter)
 		if err != nil {
 			log.Warn("Error parsing filter_ad_domain: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
+		filterOptions.ADDomain = adDomainFilter
 	}
 
 	if ok := req.URL.Query().Has("filter_status") && req.URL.Query().Get("filter_status") != ""; ok {
 		statusFilter := new(types.AdvSearchOptionString)
-		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_status")), statusFilter)
+		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_status"))
+		if err != nil {
+			log.Warn("Error decoding filter_status: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		err = json.Unmarshal(jsonValue, statusFilter)
 		if err != nil {
 			log.Warn("Error parsing filter_status: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
+		filterOptions.Status = statusFilter
 	}
 
 	if ok := req.URL.Query().Has("filter_is_broken") && req.URL.Query().Get("filter_is_broken") != ""; ok {
 		isBrokenFilter := new(types.AdvSearchOptionBool)
-		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_is_broken")), isBrokenFilter)
+		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_is_broken"))
+		if err != nil {
+			log.Warn("Error decoding filter_is_broken: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		err = json.Unmarshal(jsonValue, isBrokenFilter)
 		if err != nil {
 			log.Warn("Error parsing filter_is_broken: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
+		filterOptions.IsBroken = isBrokenFilter
 	}
 
 	if ok := req.URL.Query().Has("filter_has_images") && req.URL.Query().Get("filter_has_images") != ""; ok {
 		hasImagesFilter := new(types.AdvSearchOptionBool)
-		err := json.Unmarshal([]byte(req.URL.Query().Get("filter_has_images")), hasImagesFilter)
+		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_has_images"))
+		if err != nil {
+			log.Warn("Error decoding filter_has_images: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		err = json.Unmarshal(jsonValue, hasImagesFilter)
 		if err != nil {
 			log.Warn("Error parsing filter_has_images: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
+		filterOptions.HasImages = hasImagesFilter
 	}
 
 	// log.Debug(fmt.Sprintf("Filter options: %+v", filterOptions))

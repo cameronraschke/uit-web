@@ -11,22 +11,22 @@ function getAdvSearchParamName(filterElement: HTMLSelectElement): string {
 function resetAdvSearchURLParameters() {
 	for (const paramName in advSearchParams) {
 		if (!paramName) continue;
-		setURLParameter(paramName, null);
+		setURLParameter(paramName, null, false);
 	}
 }
 
-function updateFiltersFromURL() {
-	const currentParams = new URLSearchParams(window.location.search);
-	for (const paramName in advSearchParams) {
-		const param = advSearchParams[paramName];
-		if (!param.inputElement || paramName === '') continue;
-		if (currentParams.has(paramName)) {
-			const urlValue: AdvSearchOptionString = JSON.parse(currentParams.get(paramName) || 'null');
-			if (urlValue && urlValue.param_value && urlValue.param_value.trim().length > 0) param.inputElement.value = urlValue.param_value;
-			handleAdvSearchInputChange([param]);
-		}
-	}
-}
+// function updateFiltersFromURL() {
+// 	const currentParams = new URLSearchParams(window.location.search);
+// 	for (const paramName in advSearchParams) {
+// 		const param = advSearchParams[paramName];
+// 		if (!param.inputElement || paramName === '') continue;
+// 		if (currentParams.has(paramName)) {
+// 			const urlValue: AdvSearchOptionString = JSON.parse(currentParams.get(paramName) || 'null');
+// 			if (urlValue && urlValue.param_value && urlValue.param_value.trim().length > 0) param.inputElement.value = urlValue.param_value;
+// 			handleAdvSearchInputChange([param]);
+// 		}
+// 	}
+// }
 
 function handleAdvSearchInputChange(filterEls: AdvSearchFilterElement[]) {
 	for (const filterEl of filterEls) {
@@ -37,8 +37,8 @@ function handleAdvSearchInputChange(filterEls: AdvSearchFilterElement[]) {
 		// Testing a string here, otherwise "false" would not show the reset button
 		if (filterEl.inputElement.value !== '' && filterEl.inputElement.value.trim().length > 0) {
 			const urlValue: AdvSearchOptionString = { param_value: filterEl.inputElement.value, not: null };
-			if (filterEl.negationElement.checked === true) urlValue.not = true;
-			setURLParameter(getAdvSearchParamName(filterEl.inputElement), JSON.stringify(urlValue));
+			if (filterEl.negationElement && filterEl.negationElement.checked === true) urlValue.not = true;
+			setURLParameter(getAdvSearchParamName(filterEl.inputElement), JSON.stringify(urlValue), true);
 			filterEl.resetElement.style.display = 'inline-block';
 			filterEl.inputElement.classList.add('changed-input');
 		} else {
@@ -64,23 +64,25 @@ function initializeAdvSearchListeners(filterEls: AdvSearchFilterElement[]) {
 			}
 		});
 
-		filterEl.negationElement.addEventListener("change", async () => {
-			handleAdvSearchInputChange([filterEl]);
-			try {
-				if (filterEl.inputElement === filterManufacturer || filterEl.inputElement === filterModel) {
-					await Promise.all([populateManufacturerSelect(advSearchParams['filter_system_manufacturer'].inputElement).then(() => populateModelSelect(advSearchParams['filter_system_model'].inputElement)), renderInventoryTable()]);
-				} else {
-					await renderInventoryTable();
+		if (filterEl.negationElement) {
+			filterEl.negationElement.addEventListener("change", async () => {
+				handleAdvSearchInputChange([filterEl]);
+				try {
+					if (filterEl.inputElement === filterManufacturer || filterEl.inputElement === filterModel) {
+						await Promise.all([populateManufacturerSelect(advSearchParams['filter_system_manufacturer'].inputElement).then(() => populateModelSelect(advSearchParams['filter_system_model'].inputElement)), renderInventoryTable()]);
+					} else {
+						await renderInventoryTable();
+					}
+				} catch (err) {
+					console.error(`Error fetching data from filterEl on negation change event listener:`, err);
 				}
-			} catch (err) {
-				console.error(`Error fetching data from filterEl on negation change event listener:`, err);
-			}
-		});
+			});
+		}
   
 		filterEl.resetElement.addEventListener("click", async (event) => {
 			event.preventDefault();
 			filterEl.inputElement.value = "";
-			filterEl.negationElement.checked = false;
+			if (filterEl.negationElement) filterEl.negationElement.checked = false;
 			handleAdvSearchInputChange([filterEl]);
 			try {
 				if (filterEl.inputElement === filterManufacturer || filterEl.inputElement === filterModel) {

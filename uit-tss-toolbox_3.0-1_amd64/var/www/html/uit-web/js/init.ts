@@ -567,7 +567,16 @@ async function getGlobalLookupData(purgeCache = false): Promise<GlobalLookupResu
 	}
 }
 
-function setURLParameter(urlParameter: string | null, value: string | null) {
+function setURLParameter(urlParameter: string | null, value: string | null, isJson = false): void {
+	if (isJson && value) {
+		const base64Value = jsonToBase64(value);
+		if (base64Value) {
+			value = base64Value;
+		} else {
+			console.warn("Failed to convert JSON to base64 for URL parameter: " + urlParameter);
+			return;
+		}
+	}
 	const newURL = new URL(window.location.href);
 	if (urlParameter && value) {
 		newURL.searchParams.set(urlParameter, value);

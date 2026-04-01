@@ -7,7 +7,6 @@
 		<link rel="stylesheet" href="/css/desktop.css" />
 		<link rel="stylesheet" href="/css/inventory.css" />
 		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/init.js"></script>
-		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/inventory_types.js"></script>
 		<title>Inventory - ITSC Mgmt</title>
 	</head>
 	<body>
@@ -280,28 +279,43 @@
 						<div class="flex-container vertical"><h3>Advanced Search</h3></div>
 						<div class="flex-container vertical">
 							<div class="flex-container horizontal">
+								<input type="checkbox" id="adv-search-location-negation">
 								<select id="adv-search-location" name="filter_location" form="adv-search-form" class="svg-select location"></select>
 								<a id="adv-search-location-reset" class="adv-search-reset" href="">x</a>
+
+								<input type="checkbox" id="adv-search-building-negation">
 								<select id="adv-search-building" name="filter_building" form="adv-search-form" class="svg-select building">
 									<option value="" disabled selected>Building (Placeholder)</option>
 								</select>
 								<a id="adv-search-building-reset" class="adv-search-reset" href="">x</a>
 							</div>
+
 							<div class="flex-container horizontal">
+								<input type="checkbox" id="adv-search-manufacturer-negation">
 								<select id="adv-search-manufacturer" name="filter_manufacturer" form="adv-search-form" class="svg-select manufacturer"></select>
 								<a id="adv-search-manufacturer-reset" class="adv-search-reset" href="">x</a>
+
+								<input type="checkbox" id="adv-search-model-negation">
 								<select id="adv-search-model" name="filter_model" form="adv-search-form"></select>
 								<a id="adv-search-model-reset" class="adv-search-reset" href="">x</a>
 							</div>
+
 							<div class="flex-container horizontal">
+								<input type="checkbox" id="adv-search-department-negation">
 								<select id="adv-search-department" name="filter_department_name" form="adv-search-form" class="svg-select department"></select>
 								<a id="adv-search-department-reset" class="adv-search-reset" href="">x</a>
+
+								<input type="checkbox" id="adv-search-ad-domain-negation">
 								<select id="adv-search-ad-domain" name="filter_ad_domain" form="adv-search-form" class="svg-select domain"></select>
 								<a id="adv-search-ad-domain-reset" class="adv-search-reset" href="">x</a>
 							</div>
+
 							<div class="flex-container horizontal">
+								<input type="checkbox" id="adv-search-status-negation">
 								<select id="adv-search-status" name="filter_status" form="adv-search-form" class="svg-select status"></select>
 								<a id="adv-search-status-reset" class="adv-search-reset" href="">x</a>
+
+								<input type="checkbox" id="adv-search-is-broken-negation">
 								<select id="adv-search-is-broken" name="filter_is_broken" form="adv-search-form" class="svg-select is-broken">
 									<option value="" disabled selected>Broken?</option>
 									<option value="true">Yes - Is broken</option>
@@ -309,17 +323,21 @@
 								</select>
 								<a id="adv-search-is-broken-reset" class="adv-search-reset" href="">x</a>
 							</div>
+
 							<div class="flex-container horizontal">
+								<input type="checkbox" id="adv-search-has-images-negation">
 								<select id="adv-search-has-images" name="filter_has_images" form="adv-search-form" class="svg-select image-search">
 									<option value="" disabled selected>Has Images?</option>
 									<option value="true">Yes - Has images</option>
 									<option value="false">No - Missing images</option>
 								</select>
 								<a id="adv-search-has-images-reset" class="adv-search-reset" href="">x</a>
-								<input type="checkbox" id="adv-search-has-images-negation" name="filter_device_type_negation">
+
+								<input type="checkbox" id="adv-search-device-type-negation" name="filter_device_type_negation">
 								<select id="adv-search-device-type" name="filter_device_type" form="adv-search-form" class="svg-select device-type"></select>
 								<a id="adv-search-device-type-reset" class="adv-search-reset" href="">x</a>
 							</div>
+							
 							<div class="flex-container horizontal form-buttons">
 								<button id="adv-search-form-reset-button" type="button" class="svg-button cancel subtle">Reset Search</button>
 								<button type="submit" class="svg-button download submit" id="adv-search-download-csv">Download Results</button>
@@ -372,6 +390,7 @@
 
 		<div id="uit-footer" class="flex-container footer"></div>
 		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/footer.js"></script>
+		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/inventory_types.js"></script>
 		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/inventory_table.js"></script>
 		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/inventory_filters.js"></script>
 		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/inventory.js"></script>
