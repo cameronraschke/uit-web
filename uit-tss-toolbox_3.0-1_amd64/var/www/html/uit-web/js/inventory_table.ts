@@ -89,16 +89,17 @@ function createManufacturerModelCell(inventoryRow: InventoryTableRow) {
 }
 
 // Empty table state
-function renderEmptyTable(tableBody: HTMLElement, message: string) {
-  rowCountElement.textContent = '0 entries';
-  tableBody.innerHTML = '';
+function renderEmptyTable(tableBodyEl: HTMLTableSectionElement, message: string) {
+	if (!tableBodyEl) return;
+  if (inventoryTableRowCountEl) inventoryTableRowCountEl.textContent = '0 entries';
+  tableBodyEl.innerHTML = '';
   
   const inventoryRow = document.createElement('tr');
   const cell = document.createElement('td');
   cell.colSpan = 10;
   cell.textContent = message;
   inventoryRow.appendChild(cell);
-  tableBody.appendChild(inventoryRow);
+  tableBodyEl.appendChild(inventoryRow);
 }
 
 async function renderInventoryTable() {
@@ -107,11 +108,11 @@ async function renderInventoryTable() {
 	try {
 		const tableData: InventoryTableRow[] | null = await fetchFilteredInventoryData();
 		if (tableData === null) {
-			renderEmptyTable(tableBody, 'No results found.');
+			renderEmptyTable(inventoryTableBody, 'No results found.');
 			return;
 		}
 		if (!Array.isArray(tableData) || tableData.length === 0) {
-			renderEmptyTable(tableBody, 'No results found.');
+			renderEmptyTable(inventoryTableBody, 'No results found.');
 			return;
 		}
 
@@ -120,7 +121,7 @@ async function renderInventoryTable() {
 		);
 
 		// Row count
-		rowCountElement.textContent = `${sortedData.length} entries`;
+		if (inventoryTableRowCountEl) inventoryTableRowCountEl.textContent = `${sortedData.length} entries`;
 
 		// Fragment
 		const fragment = document.createDocumentFragment();
@@ -317,76 +318,80 @@ async function renderInventoryTable() {
 
 			fragment.appendChild(tr);
 		}
-		tableBody.replaceChildren(fragment);
+		if (inventoryTableBody) inventoryTableBody.replaceChildren(fragment);
 	} catch (error) {
 		console.error('Error rendering inventory table:', error);
-		renderEmptyTable(tableBody, 'Error loading inventory data. Please try again.');
+		renderEmptyTable(inventoryTableBody, 'Error loading inventory data. Please try again.');
 	}
 }
 
-inventoryTableSortBy.addEventListener('change', () => {
-	const presentRows = Array.from(tableBody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
-	const rowData = presentRows.map(row => ({
-		lastUpdated: row.dataset.lastUpdated || '',
-		tagnumber: row.dataset.tagnumber || '',
-		systemSerial: row.dataset.systemSerial || '',
-		locationFormatted: row.dataset.locationFormatted || '',
-		rowElement: row
-	}));
-	const sortedRows = rowData.sort((a, b) => {
-		if (!inventoryTableSortBy.value) return 0;
-		const sortKeys = inventoryTableSortBy.value.split('-');
-		const sortKey = sortKeys[0];
-		const sortOrder = sortKeys[1];
-		
-		if (sortKey === 'time') {
-			const aTime = Number(a.lastUpdated) || 0;
-			const bTime = Number(b.lastUpdated) || 0;
-			return sortOrder === 'asc' ? aTime - bTime : bTime - aTime;
-		}
-		if (sortKey === 'tagnumber') {
-			return sortOrder === 'asc' ? Number(a.tagnumber) - Number(b.tagnumber) : Number(b.tagnumber) - Number(a.tagnumber);
-		}
-		if (sortKey === 'serial') {
-			const aSerial = a.systemSerial || '';
-			const bSerial = b.systemSerial || '';
-			return sortOrder === 'asc' ? aSerial.localeCompare(bSerial) : bSerial.localeCompare(aSerial);
-		}
-		if (sortKey === 'location') {
-			const aLocation = a.locationFormatted || '';
-			const bLocation = b.locationFormatted || '';
-			return sortOrder === 'asc' ? aLocation.localeCompare(bLocation) : bLocation.localeCompare(aLocation);
-		}
-		return 0;
+if (inventoryTableSortBy) {
+	inventoryTableSortBy.addEventListener('change', () => {
+		const presentRows = Array.from(inventoryTableBody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
+		const rowData = presentRows.map(row => ({
+			lastUpdated: row.dataset.lastUpdated || '',
+			tagnumber: row.dataset.tagnumber || '',
+			systemSerial: row.dataset.systemSerial || '',
+			locationFormatted: row.dataset.locationFormatted || '',
+			rowElement: row
+		}));
+		const sortedRows = rowData.sort((a, b) => {
+			if (!inventoryTableSortBy.value) return 0;
+			const sortKeys = inventoryTableSortBy.value.split('-');
+			const sortKey = sortKeys[0];
+			const sortOrder = sortKeys[1];
+			
+			if (sortKey === 'time') {
+				const aTime = Number(a.lastUpdated) || 0;
+				const bTime = Number(b.lastUpdated) || 0;
+				return sortOrder === 'asc' ? aTime - bTime : bTime - aTime;
+			}
+			if (sortKey === 'tagnumber') {
+				return sortOrder === 'asc' ? Number(a.tagnumber) - Number(b.tagnumber) : Number(b.tagnumber) - Number(a.tagnumber);
+			}
+			if (sortKey === 'serial') {
+				const aSerial = a.systemSerial || '';
+				const bSerial = b.systemSerial || '';
+				return sortOrder === 'asc' ? aSerial.localeCompare(bSerial) : bSerial.localeCompare(aSerial);
+			}
+			if (sortKey === 'location') {
+				const aLocation = a.locationFormatted || '';
+				const bLocation = b.locationFormatted || '';
+				return sortOrder === 'asc' ? aLocation.localeCompare(bLocation) : bLocation.localeCompare(aLocation);
+			}
+			return 0;
+		});
+		sortedRows.forEach(row => inventoryTableBody.appendChild(row.rowElement));
 	});
-	sortedRows.forEach(row => tableBody.appendChild(row.rowElement));
-});
+}
 
-inventoryTableSearch.addEventListener('keyup', () => {
-	if (inventoryTableSearchDebounce !== null) {
-		clearTimeout(inventoryTableSearchDebounce);
-	}
-
-	inventoryTableSearchDebounce = setTimeout(() => {
-		let searchIncludesSpecialChars = /[^a-zA-Z0-9]/.test(inventoryTableSearch.value);
-
-		let lowerCaseSearchedTextInput = String(inventoryTableSearch.value.trim().toLowerCase());
-		if (lowerCaseSearchedTextInput === '') searchIncludesSpecialChars = false;
-		lowerCaseSearchedTextInput = !searchIncludesSpecialChars ? lowerCaseSearchedTextInput.replace(/[^a-zA-Z0-9]/g, "") : lowerCaseSearchedTextInput;
-		const allRows = Array.from(tableBody.querySelectorAll('tr'));
-		for (const row of allRows) {
-			if (lowerCaseSearchedTextInput === '') {
-				row.style.display = 'table-row';
-				continue;
-			}
-			let lowerCaseSearchableData = (row.dataset.tagnumber + ' ' + row.dataset.systemSerial + ' ' + row.dataset.locationFormatted + ' ' + row.dataset.note).toLowerCase();
-			lowerCaseSearchableData = !searchIncludesSpecialChars ? lowerCaseSearchableData.replace(/[^a-zA-Z0-9]/g, "") : lowerCaseSearchableData;
-			if (lowerCaseSearchableData.includes(lowerCaseSearchedTextInput)) { // lowerCaseSearchedTextInput values are already lower case
-				row.style.display = 'table-row';
-			} else {
-				row.style.display = 'none';
-			}
+if (inventoryTableSearch) {
+	inventoryTableSearch.addEventListener('keyup', () => {
+		if (inventoryTableSearchDebounce !== null) {
+			clearTimeout(inventoryTableSearchDebounce);
 		}
-		rowCountElement.textContent = `${allRows.filter(row => row.style.display === 'table-row').length} entries`;
-	}, 100);
-});
+
+		inventoryTableSearchDebounce = setTimeout(() => {
+			let searchIncludesSpecialChars = /[^a-zA-Z0-9]/.test(inventoryTableSearch.value);
+
+			let lowerCaseSearchedTextInput = String(inventoryTableSearch.value.trim().toLowerCase());
+			if (lowerCaseSearchedTextInput === '') searchIncludesSpecialChars = false;
+			lowerCaseSearchedTextInput = !searchIncludesSpecialChars ? lowerCaseSearchedTextInput.replace(/[^a-zA-Z0-9]/g, "") : lowerCaseSearchedTextInput;
+			const allRows = Array.from(inventoryTableBody.querySelectorAll('tr'));
+			for (const row of allRows) {
+				if (lowerCaseSearchedTextInput === '') {
+					row.style.display = 'table-row';
+					continue;
+				}
+				let lowerCaseSearchableData = (row.dataset.tagnumber + ' ' + row.dataset.systemSerial + ' ' + row.dataset.locationFormatted + ' ' + row.dataset.note).toLowerCase();
+				lowerCaseSearchableData = !searchIncludesSpecialChars ? lowerCaseSearchableData.replace(/[^a-zA-Z0-9]/g, "") : lowerCaseSearchableData;
+				if (lowerCaseSearchableData.includes(lowerCaseSearchedTextInput)) { // lowerCaseSearchedTextInput values are already lower case
+					row.style.display = 'table-row';
+				} else {
+					row.style.display = 'none';
+				}
+			}
+			if (inventoryTableRowCountEl) inventoryTableRowCountEl.textContent = `${allRows.filter(row => row.style.display === 'table-row').length} entries`;
+		}, 100);
+	});
+}

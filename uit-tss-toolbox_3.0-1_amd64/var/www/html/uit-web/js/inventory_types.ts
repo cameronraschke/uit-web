@@ -33,7 +33,7 @@ type Statuses = {
 type StatusCache = {
 	timestamp: number;
 	statuses: Record<string, Statuses[]>;
-}
+};
 
 type AdvSearchFilterElement = {
 	inputElement: HTMLSelectElement;
@@ -174,8 +174,8 @@ const advSearchParams: Record<string, AdvSearchFilterElement> = {
 
 
 // Table elements
-const tableBody = document.getElementById('inventory-table-body') as HTMLElement;
-const rowCountElement = document.getElementById('inventory-table-rowcount') as HTMLElement;
+const inventoryTableBody = document.getElementById('inventory-table-body') as HTMLTableSectionElement;
+const inventoryTableRowCountEl = document.getElementById('inventory-table-rowcount') as HTMLElement;
 const inventoryTableSearch = document.getElementById('inventory-table-search') as HTMLInputElement;
 const inventoryTableSortBy = document.getElementById('inventory-table-sort-by') as HTMLSelectElement;
 let inventoryTableSearchDebounce: ReturnType<typeof setTimeout> | null = null;
@@ -196,7 +196,6 @@ const bulkUpdateCancelButton = document.querySelector('#inventory-bulk-update-ca
 
 // Inventory lookup form elements
 const clientLookupForm = document.querySelector('#inventory-lookup-form') as HTMLFormElement;
-const updateFormContainer = document.getElementById('inventory-form-container') as HTMLElement;
 const clientLookupWarningMessage = document.getElementById('existing-inventory-message') as HTMLElement;
 const clientLookupTagInput = document.getElementById('inventory-tag-lookup') as HTMLInputElement;
 const clientLookupSerial = document.getElementById('inventory-serial-lookup') as HTMLInputElement;
@@ -205,7 +204,6 @@ const clientMoreDetails = document.getElementById('inventory-lookup-more-details
 const clientViewPhotos = document.getElementById('inventory-lookup-photo-album') as HTMLButtonElement;
 const clientAddPhotos = document.getElementById('inventory-lookup-add-photos') as HTMLButtonElement;
 const allTagsDatalist = document.getElementById('inventory-tag-suggestions') as HTMLDataListElement;
-const advSearchDeviceType = document.getElementById('adv-search-device-type') as HTMLSelectElement;
 const csvDownloadButton = document.getElementById('adv-search-download-csv') as HTMLButtonElement;
 const printCheckoutLink = document.getElementById('print-checkout-link') as HTMLElement;
 const printCheckoutContainer = document.getElementById('print-checkout-container') as HTMLElement;
@@ -215,25 +213,25 @@ const formAnchor = document.querySelector('#update-and-search-container') as HTM
 const updateForm = document.getElementById('inventory-update-form') as HTMLFormElement;
 const lastUpdateTime = document.getElementById('last-update-time-message') as HTMLElement;
 const locationEl = document.getElementById('location') as HTMLInputElement;
-const buildingUpdate = updateForm.querySelector("#building") as HTMLInputElement;
-const roomUpdate = updateForm.querySelector("#room") as HTMLInputElement;
-const manufacturerUpdate = updateForm.querySelector("#system_manufacturer") as HTMLInputElement;
-const modelUpdate = updateForm.querySelector("#system_model") as HTMLInputElement;
-const deviceTypeUpdate = updateForm.querySelector("#device_type") as HTMLSelectElement;
+const buildingUpdate = document.querySelector("#building") as HTMLInputElement;
+const roomUpdate = document.querySelector("#room") as HTMLInputElement;
+const manufacturerUpdate = document.querySelector("#system_manufacturer") as HTMLInputElement;
+const modelUpdate = document.querySelector("#system_model") as HTMLInputElement;
+const deviceTypeUpdate = document.querySelector("#device_type") as HTMLSelectElement;
 const departmentEl = document.getElementById('department_name') as HTMLSelectElement;
-const adDomainUpdate = updateForm.querySelector("#ad_domain") as HTMLSelectElement;
-const propertyCustodianUpdate = updateForm.querySelector("#property_custodian") as HTMLInputElement;
-const acquiredDateUpdate = updateForm.querySelector("#acquired_date") as HTMLInputElement;
-const retiredDateUpdate = updateForm.querySelector("#retired_date") as HTMLInputElement;
-const isBrokenUpdate = updateForm.querySelector("#is_broken") as HTMLSelectElement;
-const diskRemovedUpdate = updateForm.querySelector("#disk_removed") as HTMLSelectElement;
-const lastHardwareCheckUpdate = updateForm.querySelector("#last_hardware_check") as HTMLInputElement;
-const clientStatusUpdate = updateForm.querySelector("#status") as HTMLSelectElement;
-const checkoutBoolUpdate = updateForm.querySelector("#checkout_bool") as HTMLSelectElement;
-const checkoutDateUpdate = updateForm.querySelector("#checkout_date") as HTMLInputElement;
-const returnDateUpdate = updateForm.querySelector("#return_date") as HTMLInputElement;
-const noteUpdate = updateForm.querySelector("#note") as HTMLInputElement;
-const fileInputUpdate = updateForm.querySelector("#inventory-file-input") as HTMLInputElement;
+const adDomainUpdate = document.querySelector("#ad_domain") as HTMLSelectElement;
+const propertyCustodianUpdate = document.querySelector("#property_custodian") as HTMLInputElement;
+const acquiredDateUpdate = document.querySelector("#acquired_date") as HTMLInputElement;
+const retiredDateUpdate = document.querySelector("#retired_date") as HTMLInputElement;
+const isBrokenUpdate = document.querySelector("#is_broken") as HTMLSelectElement;
+const diskRemovedUpdate = document.querySelector("#disk_removed") as HTMLSelectElement;
+const lastHardwareCheckUpdate = document.querySelector("#last_hardware_check") as HTMLInputElement;
+const clientStatusUpdate = document.querySelector("#status") as HTMLSelectElement;
+const checkoutBoolUpdate = document.querySelector("#checkout_bool") as HTMLSelectElement;
+const checkoutDateUpdate = document.querySelector("#checkout_date") as HTMLInputElement;
+const returnDateUpdate = document.querySelector("#return_date") as HTMLInputElement;
+const noteUpdate = document.querySelector("#note") as HTMLInputElement;
+const fileInputUpdate = document.querySelector("#inventory-file-input") as HTMLInputElement;
 const submitUpdate = document.getElementById('inventory-update-submit-button') as HTMLButtonElement;
 const cancelUpdate = document.getElementById('inventory-update-cancel-button') as HTMLButtonElement;
 

@@ -705,6 +705,10 @@ async function fetchAllDeviceTypes(purgeCache: boolean = false): Promise<DeviceT
 }
 
 async function populateDeviceTypeSelect(selectEl: HTMLSelectElement, purgeCache: boolean = false): Promise<void> {
+	if (!selectEl) {
+		console.warn("Device type select element not found");
+		return;
+	}
 	try {
 		const deviceTypes = await fetchAllDeviceTypes(purgeCache);
 		if (!deviceTypes || !Array.isArray(deviceTypes)) {
@@ -762,7 +766,9 @@ async function initializeInventoryPage() {
 		initializeAdvSearchListeners([param]);
 		param.inputElement.dataset.initialValue = urlParams.get(paramName) || "";
 	}
-	filterModel.disabled = !filterManufacturer.value;
+	if (filterManufacturer) {
+		filterModel.disabled = !filterManufacturer.value;
+	}
 
 	try {
 		await Promise.all([
@@ -798,26 +804,30 @@ async function initializeInventoryPage() {
 	}
 }
 
-cancelUpdate.addEventListener("click", (event) => {
-	event.preventDefault();
-	resetInventoryLookupAndUpdateForm();
-	updateURLFromFilters();
-});
+if (cancelUpdate) {
+	cancelUpdate.addEventListener("click", (event) => {
+		event.preventDefault();
+		resetInventoryLookupAndUpdateForm();
+		updateURLFromFilters();
+	});
+}
 
-clientLookupTagInput.addEventListener("keyup", (event: KeyboardEvent) => {
-  const searchTerm = ((event.target as HTMLInputElement).value || '').trim().toLowerCase();
-  const allTags = Array.isArray(window.globalLookupResults) 
-    ? window.globalLookupResults.flatMap(cache => cache.entries || []).map(entry => entry.tagnumber).filter((tag): tag is number => typeof tag === "number") 
-    : [];
-  const filteredTags = searchTerm
-    ? allTags.filter(tag => tag.toString().trim().includes(searchTerm))
-    : allTags;
-  if (filteredTags.includes(Number(searchTerm))) {
-    allTagsDatalist.innerHTML = '';
-  } else {
-    renderTagOptions(allTagsDatalist, filteredTags, 20);
-  }
-});
+if (clientLookupTagInput) {
+	clientLookupTagInput.addEventListener("keyup", (event: KeyboardEvent) => {
+		const searchTerm = ((event.target as HTMLInputElement).value || '').trim().toLowerCase();
+		const allTags = Array.isArray(window.globalLookupResults) 
+			? window.globalLookupResults.flatMap(cache => cache.entries || []).map(entry => entry.tagnumber).filter((tag): tag is number => typeof tag === "number") 
+			: [];
+		const filteredTags = searchTerm
+			? allTags.filter(tag => tag.toString().trim().includes(searchTerm))
+			: allTags;
+		if (filteredTags.includes(Number(searchTerm))) {
+			allTagsDatalist.innerHTML = '';
+		} else {
+			renderTagOptions(allTagsDatalist, filteredTags, 20);
+		}
+	});
+}
 
 function parseDateTimeLocalToUTC(value: string): Date | null {
 	if (!value) return null;
@@ -825,174 +835,184 @@ function parseDateTimeLocalToUTC(value: string): Date | null {
 	return isNaN(parsed.getTime()) ? null : parsed;
 }
 
-updateForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  submitUpdate.disabled = true;
-  if (updatingInventory) return;
-  updatingInventory = true;
+if (updateForm) {
+	updateForm.addEventListener("submit", async (event) => {
+		event.preventDefault();
+		submitUpdate.disabled = true;
+		if (updatingInventory) return;
+		updatingInventory = true;
 
-	updateURLFromFilters();
+		updateURLFromFilters();
 
-  try {
-		const formObj = {} as InventoryForm;
-		if (!clientLookupTagInput && !clientLookupSerial) {
-      throw new Error("No tag or serial input fields found in DOM");
-    }
-    formObj.tagnumber = getInputNumberValue(clientLookupTagInput);
-    formObj.system_serial = getInputStringValue(clientLookupSerial);
-		formObj.location = getInputStringValue(locationEl);
-		formObj.building = getInputStringValue(buildingUpdate);
-		formObj.room = getInputStringValue(roomUpdate);
-    formObj.system_manufacturer = getInputStringValue(manufacturerUpdate);
-    formObj.system_model = getInputStringValue(modelUpdate);
-		formObj.device_type = getInputStringValue(deviceTypeUpdate);
-    formObj.department_name = getInputStringValue(departmentEl);
-    formObj.ad_domain = getInputStringValue(adDomainUpdate);
-		formObj.property_custodian = getInputStringValue(propertyCustodianUpdate);
-		formObj.acquired_date = getInputDateValue(acquiredDateUpdate, true);
-		formObj.retired_date = getInputDateValue(retiredDateUpdate, true);
-    formObj.is_broken = getInputBooleanValue(isBrokenUpdate);
-		formObj.disk_removed = getInputBooleanValue(diskRemovedUpdate);
-		formObj.last_hardware_check = lastHardwareCheckUpdate.value ? parseDateTimeLocalToUTC(lastHardwareCheckUpdate.value) : null;
-    formObj.status = getInputStringValue(clientStatusUpdate);
-		formObj.checkout_bool = formObj.status && statusesThatIndicateCheckout.includes(formObj.status) ? true : false;
-		formObj.checkout_date = getInputDateValue(checkoutDateUpdate, true);
-		formObj.return_date = getInputDateValue(returnDateUpdate, true);
-    formObj.note = getInputStringValue(noteUpdate);
-    // const jsonBase64 = jsonToBase64(JSON.stringify(formObj));
-    // const jsonPayload = new Blob([jsonBase64], { type: "application/json" });
-
-    const formData = new FormData();
-		const jsonPayload = JSON.stringify(formObj, (_key, value) => {
-			if (value instanceof Date) {
-				return value.toISOString();
+		try {
+			const formObj = {} as InventoryForm;
+			if (!clientLookupTagInput && !clientLookupSerial) {
+				throw new Error("No tag or serial input fields found in DOM");
 			}
-			return value;
-		});
-    formData.append("json", new Blob([jsonPayload], { type: "application/json" }), "inventory.json");
+			formObj.tagnumber = getInputNumberValue(clientLookupTagInput);
+			formObj.system_serial = getInputStringValue(clientLookupSerial);
+			formObj.location = getInputStringValue(locationEl);
+			formObj.building = getInputStringValue(buildingUpdate);
+			formObj.room = getInputStringValue(roomUpdate);
+			formObj.system_manufacturer = getInputStringValue(manufacturerUpdate);
+			formObj.system_model = getInputStringValue(modelUpdate);
+			formObj.device_type = getInputStringValue(deviceTypeUpdate);
+			formObj.department_name = getInputStringValue(departmentEl);
+			formObj.ad_domain = getInputStringValue(adDomainUpdate);
+			formObj.property_custodian = getInputStringValue(propertyCustodianUpdate);
+			formObj.acquired_date = getInputDateValue(acquiredDateUpdate, true);
+			formObj.retired_date = getInputDateValue(retiredDateUpdate, true);
+			formObj.is_broken = getInputBooleanValue(isBrokenUpdate);
+			formObj.disk_removed = getInputBooleanValue(diskRemovedUpdate);
+			formObj.last_hardware_check = lastHardwareCheckUpdate.value ? parseDateTimeLocalToUTC(lastHardwareCheckUpdate.value) : null;
+			formObj.status = getInputStringValue(clientStatusUpdate);
+			formObj.checkout_bool = formObj.status && statusesThatIndicateCheckout.includes(formObj.status) ? true : false;
+			formObj.checkout_date = getInputDateValue(checkoutDateUpdate, true);
+			formObj.return_date = getInputDateValue(returnDateUpdate, true);
+			formObj.note = getInputStringValue(noteUpdate);
+			// const jsonBase64 = jsonToBase64(JSON.stringify(formObj));
+			// const jsonPayload = new Blob([jsonBase64], { type: "application/json" });
 
-    if (fileInputUpdate && fileInputUpdate.files && fileInputUpdate.files.length > 0) {
-			const fileList = Array.from(fileInputUpdate.files);
-      for (const file of fileList) {
-        if (!file) continue;
-				let fileName: string = file.name || '';
-        if (file.size > 64 * 1024 * 1024) { // 64 MB limit per file
-          throw new Error(`File ${fileName} exceeds the maximum allowed size of 64 MB`);
-        }
-        if (fileName.length > 100) { // 100 characters limit for file name
-          throw new Error(`File name ${fileName} exceeds the maximum allowed length of 100 characters`);
-        }
-        if (!allowedFileNameRegex.test(fileName)) {
-          throw new Error(`File name ${fileName} contains invalid characters`);
-        }
-        if (!allowedFileExtensions.some(ext => fileName.toLowerCase().endsWith(ext))) {
-          throw new Error(`File name ${fileName} has a forbidden extension`);
-        }
-        formData.append("inventory-file-input", file, fileName);
-      }
-    }
+			const formData = new FormData();
+			const jsonPayload = JSON.stringify(formObj, (_key, value) => {
+				if (value instanceof Date) {
+					return value.toISOString();
+				}
+				return value;
+			});
+			formData.append("json", new Blob([jsonPayload], { type: "application/json" }), "inventory.json");
 
-    const response = await fetch("/api/inventory/update", {
-      method: "POST",
-      headers: {
-        "credentials": "include"
-      },
-      body: formData
-    });
+			if (fileInputUpdate && fileInputUpdate.files && fileInputUpdate.files.length > 0) {
+				const fileList = Array.from(fileInputUpdate.files);
+				for (const file of fileList) {
+					if (!file) continue;
+					let fileName: string = file.name || '';
+					if (file.size > 64 * 1024 * 1024) { // 64 MB limit per file
+						throw new Error(`File ${fileName} exceeds the maximum allowed size of 64 MB`);
+					}
+					if (fileName.length > 100) { // 100 characters limit for file name
+						throw new Error(`File name ${fileName} exceeds the maximum allowed length of 100 characters`);
+					}
+					if (!allowedFileNameRegex.test(fileName)) {
+						throw new Error(`File name ${fileName} contains invalid characters`);
+					}
+					if (!allowedFileExtensions.some(ext => fileName.toLowerCase().endsWith(ext))) {
+						throw new Error(`File name ${fileName} has a forbidden extension`);
+					}
+					formData.append("inventory-file-input", file, fileName);
+				}
+			}
 
-    if (!response.ok) {
-      throw new Error("Server returned an error: " + response.status + " " + response.statusText);
-    }
+			const response = await fetch("/api/inventory/update", {
+				method: "POST",
+				headers: {
+					"credentials": "include"
+				},
+				body: formData
+			});
 
-    const data = await response.text();
-		const returnedJson = JSON.parse(data);
-		if (!returnedJson || !returnedJson.tagnumber) {
-			throw new Error("Invalid response from server after inventory update");
+			if (!response.ok) {
+				throw new Error("Server returned an error: " + response.status + " " + response.statusText);
+			}
+
+			const data = await response.text();
+			const returnedJson = JSON.parse(data);
+			if (!returnedJson || !returnedJson.tagnumber) {
+				throw new Error("Invalid response from server after inventory update");
+			}
+			if (fileInputUpdate) fileInputUpdate.value = "";
+			clientLookupWarningMessage.style.display = "none";
+			lastUpdateTime.textContent = "";
+			await populateLocationForm(returnedJson.tagnumber, undefined);
+			await renderInventoryTable();
+		} catch (error) {
+			console.error("Error updating inventory:", error);
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			alert("Error updating inventory: " + errorMessage);
+		} finally {
+			updatingInventory = false;
+			submitUpdate.disabled = false;
+			showInventoryUpdateChanges();
 		}
-		if (fileInputUpdate) fileInputUpdate.value = "";
-		clientLookupWarningMessage.style.display = "none";
-		lastUpdateTime.textContent = "";
-    await populateLocationForm(returnedJson.tagnumber, undefined);
-    await renderInventoryTable();
-  } catch (error) {
-    console.error("Error updating inventory:", error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-		alert("Error updating inventory: " + errorMessage);
-  } finally {
-    updatingInventory = false;
-    submitUpdate.disabled = false;
-		showInventoryUpdateChanges();
-  }
-});
+	});
+}
 
-csvDownloadButton.addEventListener('click', async (event) => {
-  event.preventDefault();
-  csvDownloadButton.disabled = true;
-  csvDownloadButton.textContent = 'Preparing download...';
-  try {
-    await fetchFilteredInventoryData(true); // true means CSV download
-    await initializeInventoryPage();
-  } catch (error) {
-    console.error("Error downloading CSV:", error);
-  } finally {
-    csvDownloadButton.disabled = false;
-    csvDownloadButton.textContent = 'Download Results';
-  }
-});
+if (csvDownloadButton) {
+	csvDownloadButton.addEventListener('click', async (event) => {
+		event.preventDefault();
+		csvDownloadButton.disabled = true;
+		csvDownloadButton.textContent = 'Preparing download...';
+		try {
+			await fetchFilteredInventoryData(true); // true means CSV download
+			await initializeInventoryPage();
+		} catch (error) {
+			console.error("Error downloading CSV:", error);
+		} finally {
+			csvDownloadButton.disabled = false;
+			csvDownloadButton.textContent = 'Download Results';
+		}
+	});
+}
 
-clientMoreDetails.addEventListener("click", (event) => {
-  event.preventDefault();
-  const tag = clientLookupTagInput.value;
-  if (tag) {
-    const url = new URL(window.location.origin + '/client');
-		// const url = new URL(window.location.origin + '/client_images');
-		url.searchParams.set('tagnumber', tag);
-		window.open(url, '_blank');
-  }
-});
+if (clientMoreDetails) {
+	clientMoreDetails.addEventListener("click", (event) => {
+		event.preventDefault();
+		const tag = clientLookupTagInput.value;
+		if (tag) {
+			const url = new URL(window.location.origin + '/client');
+			// const url = new URL(window.location.origin + '/client_images');
+			url.searchParams.set('tagnumber', tag);
+			window.open(url, '_blank');
+		}
+	});
+}
 
-clientViewPhotos.addEventListener("click", (event) => {
-	event.preventDefault();
-	const tag = clientLookupTagInput.value;
-	if (tag) {
-		const url = new URL(window.location.origin + '/client_images');
-		url.searchParams.set('tagnumber', tag);
-		window.open(url, '_blank');
-	}
-});
+if (clientViewPhotos) {
+	clientViewPhotos.addEventListener("click", (event) => {
+		event.preventDefault();
+		if (!clientLookupTagInput.value) return;
+		const tag = clientLookupTagInput.value;
+		if (tag) {
+			const url = new URL(window.location.origin + '/client_images');
+			url.searchParams.set('tagnumber', tag);
+			window.open(url, '_blank');
+		}
+	});
+}
 
-clientAddPhotos.addEventListener("click", (event) => {
-	event.preventDefault();
-	fileInputUpdate.click();
-});
+if (clientAddPhotos) {
+	clientAddPhotos.addEventListener("click", (event) => {
+		event.preventDefault();
+		fileInputUpdate.click();
+	});
+}
 
-clientStatusUpdate.addEventListener("change", async () => {
-	await updateCheckoutStatus();
-});
+if (clientStatusUpdate) {
+	clientStatusUpdate.addEventListener("change", async () => {
+		await updateCheckoutStatus();
+	});
+}
 
-clientLookupForm.addEventListener("submit", async (event) => {
-	event.preventDefault();
-	await submitInventoryLookup();
-	if (locationPart.length) locationPart.forEach(part => part.style.display = "none");
-	if (hardwarePart.length) hardwarePart.forEach(part => part.style.display = "none");
-	if (softwarePart.length) softwarePart.forEach(part => part.style.display = "none");
-	if (propertyPart.length) propertyPart.forEach(part => part.style.display = "none");
-	if (notesFilesPart.length) notesFilesPart.forEach(part => part.style.display = "none");
-	for (const sec of locationFormShowSections) {
-		sec.classList.remove("selected");
-		sec.blur();
-	}
-	showLocationPart.classList.add("selected");
-	locationPart.forEach(part => part.style.display = "flex");
-	await updateCheckoutStatus();
-});
+if (clientLookupForm) {
+	clientLookupForm.addEventListener("submit", async (event) => {
+		event.preventDefault();
+		await submitInventoryLookup();
+		if (locationPart.length) locationPart.forEach(part => part.style.display = "none");
+		if (hardwarePart.length) hardwarePart.forEach(part => part.style.display = "none");
+		if (softwarePart.length) softwarePart.forEach(part => part.style.display = "none");
+		if (propertyPart.length) propertyPart.forEach(part => part.style.display = "none");
+		if (notesFilesPart.length) notesFilesPart.forEach(part => part.style.display = "none");
+		for (const sec of locationFormShowSections) {
+			sec.classList.remove("selected");
+			sec.blur();
+		}
+		if (showLocationPart) showLocationPart.classList.add("selected");
+		locationPart.forEach(part => part.style.display = "flex");
+		await updateCheckoutStatus();
+	});
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
-	// updateFormContainerDisplay();
-	// window.addEventListener("resize", () => {
-	// 	updateFormContainerDisplay();
-	// });
-	
 	try {
 		await initializeInventoryPage();
 	} catch (e) {
@@ -1011,10 +1031,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 	});
 	
 	locationPart.forEach(part => part.style.display = "flex");
-	showLocationPart.classList.add("selected");
+	if (showLocationPart) showLocationPart.classList.add("selected");
 
 	for (const showSectionButton of locationFormShowSections) {
-		showSectionButton.addEventListener("click", () => {
+		if (showSectionButton) showSectionButton.addEventListener("click", () => {
 			for (const sec of locationFormShowSections) {
 				sec.classList.remove("selected");
 				sec.blur();
@@ -1054,7 +1074,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 		}
 	}
 
-	toggleBulkUpdate.addEventListener("click", () => {
+	if (toggleBulkUpdate) toggleBulkUpdate.addEventListener("click", () => {
 		if (!clientLookupForm || !bulkUpdateForm) return;
 
 		resetInventoryLookupAndUpdateForm();
@@ -1073,111 +1093,109 @@ document.addEventListener("DOMContentLoaded", async () => {
 	});
 });
 
-locationEl.addEventListener("keyup", async () => {
-	const allLocations = await fetchAllLocations();
-	const searchResults = getSortedLocations(locationEl, allLocations);
-	const dataListElement = document.getElementById('location-suggestions') as HTMLDataListElement;
-	dataListElement.innerHTML = '';
-	searchResults.forEach(item => {
-		const option = document.createElement('option');
-		option.value = item.location;
-		if (item.location_formatted) {
-			option.label = item.location_formatted;
-		}
-		dataListElement.appendChild(option);
-	});
-});
-
-// function updateFormContainerDisplay() {
-// 	if (window.matchMedia("(max-width: 768px)").matches) {
-// 		updateFormContainer.classList.remove("grid-container", "inventory", "inventory-update-form");
-// 		updateFormContainer.classList.add("flex-container", "horizontal");
-// 	} else {
-// 		updateFormContainer.classList.remove("flex-container", "horizontal");
-// 		updateFormContainer.classList.add("grid-container", "inventory", "inventory-update-form");
-// 	}
-// }
-
-bulkUpdateForm.addEventListener("submit", async (event) => {
-	event.preventDefault();
-});
-
-bulkUpdateCancelButton.addEventListener("click", (event) => {
-	event.preventDefault();
-	bulkUpdateForm.reset();
-	clientLookupTagInput.focus();
-});
-
-bulkUpdateSubmitButton.addEventListener("click", async (event) => {
-	event.preventDefault();
-	if (updatingInventory) return;
-	updatingInventory = true;
-	bulkUpdateSubmitButton.disabled = true;
-	bulkUpdateSubmitButton.classList.add("disabled");
-	const newJson: BulkUpdateRequest = {
-		bulk_location: bulkUpdateLocationInput.value || null,
-		bulk_tagnumbers: bulkUpdateTagInput.value ? bulkUpdateTagInput.value.split('\n').map(Number).filter(tag => !isNaN(tag) && tag > 0 && tag <= 999999) : []
-	};
-
-	if (newJson.bulk_location === null || newJson.bulk_location.trim() === "") {
-		alert("Please enter a location for the bulk update.");
-		updatingInventory = false;
-		bulkUpdateSubmitButton.disabled = false;
-		bulkUpdateSubmitButton.classList.remove("disabled");
-		return;
-	}
-	if (newJson.bulk_tagnumbers.length === 0) {
-		alert("Please enter at least one tag number for the bulk update.");
-		updatingInventory = false;
-		bulkUpdateSubmitButton.disabled = false;
-		bulkUpdateSubmitButton.classList.remove("disabled");
-		return;
-	}
-
-	for (const tag of newJson.bulk_tagnumbers) {
-		if (isNaN(tag)) {
-			alert(`Invalid tag number: ${tag}. Please ensure all tag numbers are valid integers.`);
-			updatingInventory = false;
-			bulkUpdateSubmitButton.disabled = false;
-			bulkUpdateSubmitButton.classList.remove("disabled");
-			return;
-		}
-		if (tag <= 0 || tag > 999999) {
-			alert(`Tag number out of valid range (1-999999): ${tag}. Please ensure all tag numbers are within this range.`);
-			updatingInventory = false;
-			bulkUpdateSubmitButton.disabled = false;
-			bulkUpdateSubmitButton.classList.remove("disabled");
-			return;
-		}
-	}
-
-	try {
-		const response = await fetch("/api/inventory/bulk_update_location", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"credentials": "include"
-			},
-			body: JSON.stringify(newJson)
+if (locationEl) {
+	locationEl.addEventListener("keyup", async () => {
+		const allLocations = await fetchAllLocations();
+		const searchResults = getSortedLocations(locationEl, allLocations);
+		const dataListElement = document.getElementById('location-suggestions') as HTMLDataListElement;
+		dataListElement.innerHTML = '';
+		searchResults.forEach(item => {
+			const option = document.createElement('option');
+			option.value = item.location;
+			if (item.location_formatted) {
+				option.label = item.location_formatted;
+			}
+			dataListElement.appendChild(option);
 		});
-		if (!response.ok) {
-			throw new Error(`Server returned an error: ${response.status} ${response.statusText}`);
-		}
-		const result = await response.json();
-		if (result && result.updated_count !== undefined) {
-			alert(`Successfully updated location for ${result.updated_count} item(s).`);
-		} else {
-			alert("Bulk update completed, but could not determine how many items were updated.");
-		}
-		await renderInventoryTable();
-	} catch (error) {
-		console.error("Error during bulk update:", error);
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		alert("Error during bulk update: " + errorMessage);
-	} finally {
-		updatingInventory = false;
-		bulkUpdateSubmitButton.disabled = false;
-		bulkUpdateSubmitButton.classList.remove("disabled");
+	});
+}
+
+if (bulkUpdateForm) {
+	bulkUpdateForm.addEventListener("submit", async (event) => {
+		event.preventDefault();
+	});
+}
+
+if (bulkUpdateCancelButton) {
+	bulkUpdateCancelButton.addEventListener("click", (event) => {
+		event.preventDefault();
 		bulkUpdateForm.reset();
-	}
-});
+		clientLookupTagInput.focus();
+	});
+}
+
+if (bulkUpdateSubmitButton) {
+	bulkUpdateSubmitButton.addEventListener("click", async (event) => {
+		event.preventDefault();
+		if (updatingInventory) return;
+		updatingInventory = true;
+		bulkUpdateSubmitButton.disabled = true;
+		bulkUpdateSubmitButton.classList.add("disabled");
+		const newJson: BulkUpdateRequest = {
+			bulk_location: bulkUpdateLocationInput.value || null,
+			bulk_tagnumbers: bulkUpdateTagInput.value ? bulkUpdateTagInput.value.split('\n').map(Number).filter(tag => !isNaN(tag) && tag > 0 && tag <= 999999) : []
+		};
+
+		if (newJson.bulk_location === null || newJson.bulk_location.trim() === "") {
+			alert("Please enter a location for the bulk update.");
+			updatingInventory = false;
+			bulkUpdateSubmitButton.disabled = false;
+			bulkUpdateSubmitButton.classList.remove("disabled");
+			return;
+		}
+		if (newJson.bulk_tagnumbers.length === 0) {
+			alert("Please enter at least one tag number for the bulk update.");
+			updatingInventory = false;
+			bulkUpdateSubmitButton.disabled = false;
+			bulkUpdateSubmitButton.classList.remove("disabled");
+			return;
+		}
+
+		for (const tag of newJson.bulk_tagnumbers) {
+			if (isNaN(tag)) {
+				alert(`Invalid tag number: ${tag}. Please ensure all tag numbers are valid integers.`);
+				updatingInventory = false;
+				bulkUpdateSubmitButton.disabled = false;
+				bulkUpdateSubmitButton.classList.remove("disabled");
+				return;
+			}
+			if (tag <= 0 || tag > 999999) {
+				alert(`Tag number out of valid range (1-999999): ${tag}. Please ensure all tag numbers are within this range.`);
+				updatingInventory = false;
+				bulkUpdateSubmitButton.disabled = false;
+				bulkUpdateSubmitButton.classList.remove("disabled");
+				return;
+			}
+		}
+
+		try {
+			const response = await fetch("/api/inventory/bulk_update_location", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"credentials": "include"
+				},
+				body: JSON.stringify(newJson)
+			});
+			if (!response.ok) {
+				throw new Error(`Server returned an error: ${response.status} ${response.statusText}`);
+			}
+			const result = await response.json();
+			if (result && result.updated_count !== undefined) {
+				alert(`Successfully updated location for ${result.updated_count} item(s).`);
+			} else {
+				alert("Bulk update completed, but could not determine how many items were updated.");
+			}
+			await renderInventoryTable();
+		} catch (error) {
+			console.error("Error during bulk update:", error);
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			alert("Error during bulk update: " + errorMessage);
+		} finally {
+			updatingInventory = false;
+			bulkUpdateSubmitButton.disabled = false;
+			bulkUpdateSubmitButton.classList.remove("disabled");
+			bulkUpdateForm.reset();
+		}
+	});
+}
