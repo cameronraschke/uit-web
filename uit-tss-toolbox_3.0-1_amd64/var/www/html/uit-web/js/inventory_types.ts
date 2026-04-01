@@ -303,8 +303,9 @@ function updateURLFromAdvFilters(): void {
 		const param = advSearchParams[paramName];
 		if (!param.inputElement) continue;
 		if (param.inputElement.value && param.inputElement.value.trim().length > 0) {
+			const isBooleanFilter = paramName === 'filter_is_broken' || paramName === 'filter_has_images';
 			const urlValue = {
-				param_value: param.inputElement.value,
+				param_value: isBooleanFilter ? param.inputElement.value === 'true' : param.inputElement.value,
 				not: (param.negationElement && param.negationElement.checked === true) ? true : null,
 			};
 			setURLParameter(paramName, JSON.stringify(urlValue), true);

@@ -754,6 +754,9 @@ async function populateDeviceTypeSelect(selectEl: HTMLSelectElement, purgeCache:
 		}
 	} catch (error) {
 		console.error("Error populating device type select:", error);
+	} finally {
+		selectEl.classList.remove('disabled');
+		selectEl.disabled = false;
 	}
 }
 
@@ -783,7 +786,7 @@ async function initializeInventoryPage() {
 		if (param.negationElement) param.negationElement.checked = false;
 	}
 	if (filterManufacturer) {
-		filterModel.disabled = !filterManufacturer.value;
+		syncModelFilterAvailability();
 	}
 
 	try {
