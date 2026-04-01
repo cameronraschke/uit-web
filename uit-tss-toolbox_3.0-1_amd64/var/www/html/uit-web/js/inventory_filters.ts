@@ -34,15 +34,22 @@ function handleAdvSearchInputChange(filterEls: AdvSearchFilterElement[]) {
 			console.warn("Filter element is missing input or reset element: ", filterEl);
 			return;
 		}
+
+		const paramName = getAdvSearchParamName(filterEl.inputElement);
+		const rawValue = filterEl.inputElement.value.trim();
+		const isBooleanFilter = paramName === 'filter_is_broken' || paramName === 'filter_has_images';
+
 		// Testing a string here, otherwise "false" would not show the reset button
-		if (filterEl.inputElement.value !== '' && filterEl.inputElement.value.trim().length > 0) {
-			const urlValue: AdvSearchOptionString = { param_value: filterEl.inputElement.value, not: null };
-			if (filterEl.negationElement && filterEl.negationElement.checked === true) urlValue.not = true;
-			setURLParameter(getAdvSearchParamName(filterEl.inputElement), JSON.stringify(urlValue), true);
+		if (rawValue !== '') {
+			const urlValue = {
+				param_value: isBooleanFilter ? rawValue === 'true' : rawValue,
+				not: (filterEl.negationElement && filterEl.negationElement.checked === true) ? true : null,
+			};
+			setURLParameter(paramName, JSON.stringify(urlValue), true);
 			filterEl.resetElement.style.display = 'inline-block';
 			filterEl.inputElement.classList.add('changed-input');
 		} else {
-			setURLParameter(getAdvSearchParamName(filterEl.inputElement), null);
+			setURLParameter(paramName, null);
 			filterEl.resetElement.style.display = 'none';
 			filterEl.inputElement.classList.remove('changed-input');
 		}

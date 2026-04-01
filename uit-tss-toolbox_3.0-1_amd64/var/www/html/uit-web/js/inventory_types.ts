@@ -295,3 +295,21 @@ const buttonsVisibleWhenUpdating = [
 	clientViewPhotos,
 	clientAddPhotos,
 ];
+
+
+
+function updateURLFromAdvFilters(): void {
+	for (const paramName in advSearchParams) {
+		const param = advSearchParams[paramName];
+		if (!param.inputElement) continue;
+		if (param.inputElement.value && param.inputElement.value.trim().length > 0) {
+			const urlValue = {
+				param_value: param.inputElement.value,
+				not: (param.negationElement && param.negationElement.checked === true) ? true : null,
+			};
+			setURLParameter(paramName, JSON.stringify(urlValue), true);
+		} else {
+			setURLParameter(paramName, null);
+		}
+	}
+}

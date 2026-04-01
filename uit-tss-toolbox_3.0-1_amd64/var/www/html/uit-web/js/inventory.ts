@@ -85,7 +85,7 @@ async function lookupTagOrSerial(tagnumber: number | null, serial: string | null
 }
 
 async function submitInventoryLookup() {
-	updateURLFromFilters();
+	updateURLFromAdvFilters();
 	const searchParams: URLSearchParams = new URLSearchParams(window.location.search);
 	const lookupTag: number | null = clientLookupTagInput.value ? Number(clientLookupTagInput.value) : (searchParams.get('tagnumber') ? Number(searchParams.get('tagnumber')) : null);
   const lookupSerial: string | null = clientLookupSerial.value || searchParams.get('system_serial') || null;
@@ -764,7 +764,23 @@ async function initializeInventoryPage() {
 		const param = advSearchParams[paramName];
 		if (!param.inputElement) continue;
 		initializeAdvSearchListeners([param]);
-		param.inputElement.dataset.initialValue = urlParams.get(paramName) || "";
+		const rawParamValue = urlParams.get(paramName);
+		if (!rawParamValue) {
+			param.inputElement.dataset.initialValue = "";
+			if (param.negationElement) param.negationElement.checked = false;
+			continue;
+		}
+
+		const decodedParam = base64ToJson(rawParamValue);
+		if (decodedParam && typeof decodedParam === "object" && Object.prototype.hasOwnProperty.call(decodedParam, "param_value")) {
+			param.inputElement.dataset.initialValue = decodedParam.param_value !== null && decodedParam.param_value !== undefined ? String(decodedParam.param_value) : "";
+			if (param.negationElement) param.negationElement.checked = decodedParam.not === true;
+			continue;
+		}
+
+		// Fallback for legacy plain query values.
+		param.inputElement.dataset.initialValue = rawParamValue;
+		if (param.negationElement) param.negationElement.checked = false;
 	}
 	if (filterManufacturer) {
 		filterModel.disabled = !filterManufacturer.value;
@@ -808,7 +824,7 @@ if (cancelUpdate) {
 	cancelUpdate.addEventListener("click", (event) => {
 		event.preventDefault();
 		resetInventoryLookupAndUpdateForm();
-		updateURLFromFilters();
+		updateURLFromAdvFilters();
 	});
 }
 
@@ -842,7 +858,7 @@ if (updateForm) {
 		if (updatingInventory) return;
 		updatingInventory = true;
 
-		updateURLFromFilters();
+		updateURLFromAdvFilters();
 
 		try {
 			const formObj = {} as InventoryForm;

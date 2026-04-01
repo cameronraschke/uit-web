@@ -379,14 +379,6 @@ function base64ToJson(inputStr: string) {
 	}
 }
 
-function updateURLFromFilters(): void {
-	for (const paramName in advSearchParams) {
-		const param = advSearchParams[paramName];
-		if (!param.inputElement) continue;
-		setURLParameter(paramName, param.inputElement.value ? param.inputElement.value : null);
-	}
-}
-
 async function fetchData(url: string, returnText = false, fetchOptions: RequestInit = {}): Promise<any> {
   try {
     if (!url || url.trim().length === 0) {

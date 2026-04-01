@@ -103,7 +103,7 @@ function renderEmptyTable(tableBodyEl: HTMLTableSectionElement, message: string)
 }
 
 async function renderInventoryTable() {
-	updateURLFromFilters(); // necessary, fetchFilteredInventoryData relies on URL parameters
+	updateURLFromAdvFilters(); // necessary, fetchFilteredInventoryData relies on URL parameters
 	removePortalTooltip();
 	try {
 		const tableData: InventoryTableRow[] | null = await fetchFilteredInventoryData();
