@@ -40,7 +40,7 @@
 	},
 	"/api/overview/all_locations": {},
 	"/api/overview/all_statuses": {},
-	"/api/overview/all_rooms": {},
+	"/api/overview/all_buildings_and_rooms": {},
 	"/api/overview/all_device_types": {},
 	"/api/client/memory": {
 		"allowed_methods": ["OPTIONS", "POST"]

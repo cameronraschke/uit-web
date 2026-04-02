@@ -186,8 +186,6 @@ const advSearchParams: Record<string, AdvSearchFilterElement> = {
 	'filter_has_images': { inputElement: filterHasImages, negationElement: filterHasImagesNegation, resetElement: filterHasImagesReset },
 };
 
-
-
 // Table elements
 const inventoryTableBody = document.getElementById('inventory-table-body') as HTMLTableSectionElement;
 const inventoryTableRowCountEl = document.getElementById('inventory-table-rowcount') as HTMLElement;
