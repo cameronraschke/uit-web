@@ -632,6 +632,35 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		filterOptions.Location = locationFilter
 	}
 
+	if ok := req.URL.Query().Has("filter_building_room") && req.URL.Query().Get("filter_building_room") != ""; ok {
+		buildingRoomFilter := new(types.AdvSearchOptionString)
+		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_building_room"))
+		if err != nil {
+			log.Warn("Error decoding filter_building_room: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		err = json.Unmarshal(jsonValue, buildingRoomFilter)
+		if err != nil {
+			log.Warn("Error parsing filter_building_room: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		if buildingRoomFilter.ParamValue != nil {
+			*buildingRoomFilter.ParamValue = strings.ToLower(*buildingRoomFilter.ParamValue)
+			trimmed := strings.TrimSpace(*buildingRoomFilter.ParamValue)
+			if trimmed == "" {
+				log.Warn("filter_building_room parameter is empty after trimming whitespace")
+			}
+			buildingRoomArr := strings.Split(*buildingRoomFilter.ParamValue, "#")
+			*buildingRoomFilter.ParamValue = trimmed
+			filterOptions.Building = &buildingRoomArr[0]
+			if len(buildingRoomArr) > 1 {
+				filterOptions.Room = &buildingRoomArr[1]
+			}
+		}
+	}
+
 	if ok := req.URL.Query().Has("filter_system_manufacturer") && req.URL.Query().Get("filter_system_manufacturer") != ""; ok {
 		manufacturerFilter := new(types.AdvSearchOptionString)
 		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_system_manufacturer"))
@@ -1125,4 +1154,17 @@ func DownloadLiveImage(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "image/jpeg")
 	http.ServeContent(w, req, strconv.Itoa(int(*tag))+".jpeg", time.Now().UTC(), readSeeker)
 	// log.Info("Served live image '" + strconv.Itoa(int(*tag)) + "' (" + fmt.Sprintf("%.2f", float64(len(imageBytes))/1024/1024) + " MB)")
+}
+
+func FetchAllBuildingsAndRooms(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "FetchAllBuildingsAndRooms"))
+
+	result, err := database.GetAllBuildingsAndRooms(ctx)
+	if err != nil {
+		log.Warn("Error fetching buildings and rooms: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, result)
 }

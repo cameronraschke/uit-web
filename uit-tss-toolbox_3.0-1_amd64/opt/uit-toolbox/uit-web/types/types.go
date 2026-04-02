@@ -240,6 +240,9 @@ func ConvertAndVerifyTagnumber(tagStr string) (*int64, error) {
 
 type InventoryAdvSearchOptions struct {
 	Location           *AdvSearchOptionString `json:"filter_location"`
+	BuildingAndRoom    *AdvSearchOptionString `json:"filter_building_room"`
+	Building           *string                `json:"-"`
+	Room               *string                `json:"-"`
 	SystemManufacturer *AdvSearchOptionString `json:"filter_system_manufacturer"`
 	SystemModel        *AdvSearchOptionString `json:"filter_system_model"`
 	DeviceType         *AdvSearchOptionString `json:"filter_device_type"`
@@ -321,4 +324,10 @@ type JobQueueTableRowView struct {
 type Note struct {
 	NoteType *string `json:"note_type"`
 	Content  *string `json:"note"`
+}
+
+type AllBuildingsAndRooms struct {
+	BuildingName *string   `json:"building_name"`
+	RoomName     *[]string `json:"room_name"`
+	ClientCount  *int64    `json:"client_count"`
 }

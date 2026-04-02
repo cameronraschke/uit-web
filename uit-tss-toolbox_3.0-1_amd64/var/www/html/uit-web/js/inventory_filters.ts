@@ -517,6 +517,77 @@ async function populateLocationSelect(el: HTMLSelectElement, purgeCache: boolean
 		console.error('Error fetching locations:', error);
 	}
 }
+
+async function fetchAllBuildingsAndRooms(purgeCache: boolean = false): Promise<Array<AllBuildingsAndRooms> | []> {
+	const cached = sessionStorage.getItem("uit_buildings_and_rooms");
+
+	if (cached && !purgeCache) {
+		const cacheEntry: BuildingsAndRoomsCache = JSON.parse(cached);
+		if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.buildings_and_rooms)) {
+			console.log("Loaded buildings and rooms from cache");
+			return Promise.resolve(cacheEntry.buildings_and_rooms);
+		}
+	}
+
+	const data:AllBuildingsAndRooms[] = await fetch('/api/overview/all_buildings_and_rooms').then(res => res.json());
+	sessionStorage.setItem("uit_buildings_and_rooms", JSON.stringify({ timestamp: Date.now(), buildings_and_rooms: data }));
+	return data;
+}
+
+async function populateBuildingRoomSelect(el: HTMLSelectElement, purgeCache: boolean = false) {
+	if (!el) return;
+
+	const initialValue = el.value;
+	el.disabled = true;
+
+	try {
+		const buildingsAndRoomsData: Array<AllBuildingsAndRooms> = await fetchAllBuildingsAndRooms(purgeCache);
+		if (!buildingsAndRoomsData || !Array.isArray(buildingsAndRoomsData) || buildingsAndRoomsData.length === 0) {
+			throw new Error('No data returned from /api/overview/all_buildings_and_rooms');
+		}
+		buildingsAndRoomsData.sort((a, b) => {
+			const buildingA = a.building_name || '';
+			const buildingB = b.building_name || '';
+			return buildingA.localeCompare(buildingB);
+		});
+
+		const buildingMap = new Map<string, AllBuildingsAndRooms>();
+		for (const item of buildingsAndRoomsData) {
+			if (!item.building_name) continue;
+			if (!buildingMap.has(item.building_name)) {
+				buildingMap.set(item.building_name, item);
+			}
+		}
+
+		resetSelectElement(el, 'Building/Room', false, undefined);
+
+		const uniqueBuildingsData: Array<AllBuildingsAndRooms> = Array.from(buildingMap.values());
+		for (const entry of uniqueBuildingsData) {
+			const optGroup = document.createElement('optgroup');
+			optGroup.label = entry.building_name || 'N/A';
+			el.appendChild(optGroup);
+		}
+
+		for (const entry of buildingsAndRoomsData) {
+			if (entry.building_name === '' || entry.room_name === '') continue;
+			const option = document.createElement('option');
+			option.value = `${entry.building_name}#${entry.room_name}`;
+			option.textContent = `${entry.room_name} (${entry.client_count !== null ? entry.client_count : 0})`;
+			const parentOptGroup = Array.from(el.getElementsByTagName('optgroup')).find(group => group.label === (entry.building_name || 'N/A'));
+			if (parentOptGroup) {
+				parentOptGroup.appendChild(option);
+			} else {
+				el.appendChild(option);
+			}
+		}
+
+		el.value = (initialValue !== '' && buildingsAndRoomsData.some(item => `${item.building_name}#${item.room_name}` === initialValue)) ? initialValue : '';
+	} catch (error) {
+		console.error('Error fetching buildings and rooms:', error);
+	} finally {
+		el.disabled = false;
+	}
+}
 		
 
 if (inventoryFilterForm) {
@@ -543,16 +614,19 @@ if (advSearchFormReset) {
 		}
 
 		try {
-			if (!(filterDepartment && advSearchLocation && advSearchParams['filter_system_manufacturer'].inputElement && advSearchParams['filter_system_model'].inputElement && filterDomain)) {
+			if (!(filterDepartment && advSearchLocation && advSearchParams['filter_building_room'].inputElement && advSearchParams['filter_system_manufacturer'].inputElement && advSearchParams['filter_system_model'].inputElement && filterDomain && advSearchParams['filter_building_room'].inputElement)) {
 				console.warn("One or more filter elements not found, cannot reset filters properly");
 				await renderInventoryTable();
 				return;
 			}
 			await Promise.all([
-				populateDepartmentSelect(filterDepartment),
-				populateLocationSelect(advSearchLocation),
-				populateManufacturerSelect(advSearchParams['filter_system_manufacturer'].inputElement).then(() => populateModelSelect(advSearchParams['filter_system_model'].inputElement)),
-				populateDomainSelect(filterDomain),
+				populateLocationSelect(advSearchParams['filter_location'].inputElement, true),
+				populateBuildingRoomSelect(advSearchParams['filter_building_room'].inputElement, true),
+				populateDepartmentSelect(advSearchParams['filter_department_name'].inputElement, true),
+				populateManufacturerSelect(advSearchParams['filter_system_manufacturer'].inputElement, true).then(() => populateModelSelect(advSearchParams['filter_system_model'].inputElement, true)),
+				populateDomainSelect(advSearchParams['filter_domain'].inputElement, true),
+				populateStatusSelect(advSearchParams['filter_status'].inputElement, true),
+				populateDeviceTypeSelect(advSearchParams['filter_device_type'].inputElement, true),
 				renderInventoryTable(),
 			]);
 		} catch (error) {

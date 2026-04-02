@@ -969,6 +969,26 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Location.ParamValue))
 		i++
 	}
+	// Building filter
+	if filterOptions.Building != nil && strings.TrimSpace(*filterOptions.Building) != "" {
+		if filterOptions.BuildingAndRoom.Not != nil && *filterOptions.BuildingAndRoom.Not {
+			whereClause = append(whereClause, fmt.Sprintf("NOT locations.building = $%d", i))
+		} else {
+			whereClause = append(whereClause, fmt.Sprintf("locations.building = $%d", i))
+		}
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Building))
+		i++
+	}
+	// Room filter
+	if filterOptions.Room != nil && strings.TrimSpace(*filterOptions.Room) != "" {
+		if filterOptions.BuildingAndRoom.Not != nil && *filterOptions.BuildingAndRoom.Not {
+			whereClause = append(whereClause, fmt.Sprintf("NOT locations.room = $%d", i))
+		} else {
+			whereClause = append(whereClause, fmt.Sprintf("locations.room = $%d", i))
+		}
+		whereArgs = append(whereArgs, strings.TrimSpace(*filterOptions.Room))
+		i++
+	}
 	// Manufacturer filter
 	if filterOptions.SystemManufacturer != nil && strings.TrimSpace(*filterOptions.SystemManufacturer.ParamValue) != "" {
 		if filterOptions.SystemManufacturer.Not != nil && *filterOptions.SystemManufacturer.Not {
@@ -1990,4 +2010,41 @@ func (repo *SelectRepo) GetFormattedJobName(ctx context.Context, jobName string)
 		}
 	}
 	return jobNameFormatted.String, nil
+}
+
+func GetAllBuildingsAndRooms(ctx context.Context) ([]types.AllBuildingsAndRooms, error) {
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+	const sqlQuery = `select building, room, COUNT(*) from locations where time in (select max(time) from locations group by tagnumber) and building is not null and room is not null group by room, building;`
+
+	rows, err := dbConn.QueryContext(ctx, sqlQuery)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+	defer rows.Close()
+
+	var buildingAndRooms []types.AllBuildingsAndRooms
+	for rows.Next() {
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
+		}
+		var buildingAndRoom types.AllBuildingsAndRooms
+		if err := rows.Scan(
+			&buildingAndRoom.BuildingName,
+			&buildingAndRoom.RoomName,
+			&buildingAndRoom.ClientCount,
+		); err != nil {
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
+		}
+		buildingAndRooms = append(buildingAndRooms, buildingAndRoom)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
+	}
+	if len(buildingAndRooms) == 0 {
+		return nil, nil
+	}
+	return buildingAndRooms, nil
 }

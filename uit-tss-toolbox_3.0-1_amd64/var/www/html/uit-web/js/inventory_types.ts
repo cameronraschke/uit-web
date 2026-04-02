@@ -129,9 +129,23 @@ type InventoryTableRow = {
 	client_configuration_errors: string[] | null;
 };
 
+type AllBuildingsAndRooms = {
+	building_name: string | null;
+	room_name: string | null;
+	client_count: number | null;
+};
+
+type BuildingsAndRoomsCache = {
+	timestamp: number;
+	buildings_and_rooms: AllBuildingsAndRooms[];
+};
+
 const inventoryFilterForm = document.getElementById('adv-search-form') as HTMLFormElement;
 const advSearchFormReset = document.getElementById('adv-search-form-reset-button') as HTMLElement;
 const advSearchLocation = document.getElementById('adv-search-location') as HTMLSelectElement;
+const advSearchBuildingRoom = document.getElementById('adv-search-building-room') as HTMLSelectElement;
+const advSearchBuildingRoomNegation = document.getElementById('adv-search-building-room-negation') as HTMLInputElement;
+const advSearchBuildingRoomReset = document.getElementById('adv-search-building-room-reset') as HTMLElement;
 const advSearchLocationNegation = document.getElementById('adv-search-location-negation') as HTMLInputElement;
 const advSearchLocationReset = document.getElementById('adv-search-location-reset') as HTMLElement;
 const filterDepartment = document.getElementById('adv-search-department') as HTMLSelectElement;
@@ -161,6 +175,7 @@ const filterDeviceTypeReset = document.getElementById('adv-search-device-type-re
 
 const advSearchParams: Record<string, AdvSearchFilterElement> = {
 	'filter_location': { inputElement: advSearchLocation, negationElement: advSearchLocationNegation, resetElement: advSearchLocationReset },
+	'filter_building_room': { inputElement: advSearchBuildingRoom, negationElement: advSearchBuildingRoomNegation, resetElement: advSearchBuildingRoomReset },
 	'filter_system_manufacturer': { inputElement: filterManufacturer, negationElement: filterManufacturerNegation, resetElement: filterManufacturerReset },
 	'filter_system_model': { inputElement: filterModel, negationElement: filterModelNegation, resetElement: filterModelReset },
 	'filter_device_type': { inputElement: filterDeviceType, negationElement: filterDeviceTypeNegation, resetElement: filterDeviceTypeReset },
