@@ -624,7 +624,7 @@ if (advSearchFormReset) {
 				populateBuildingRoomSelect(advSearchParams['filter_building_room'].inputElement, true),
 				populateDepartmentSelect(advSearchParams['filter_department_name'].inputElement, true),
 				populateManufacturerSelect(advSearchParams['filter_system_manufacturer'].inputElement, true).then(() => populateModelSelect(advSearchParams['filter_system_model'].inputElement, true)),
-				populateDomainSelect(advSearchParams['filter_domain'].inputElement, true),
+				populateDomainSelect(advSearchParams['filter_ad_domain'].inputElement, true),
 				populateStatusSelect(advSearchParams['filter_status'].inputElement, true),
 				populateDeviceTypeSelect(advSearchParams['filter_device_type'].inputElement, true),
 				renderInventoryTable(),
