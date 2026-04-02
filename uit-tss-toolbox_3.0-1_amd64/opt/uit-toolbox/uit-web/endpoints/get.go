@@ -647,7 +647,6 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		if buildingRoomFilter.ParamValue != nil {
-			*buildingRoomFilter.ParamValue = strings.ToLower(*buildingRoomFilter.ParamValue)
 			trimmed := strings.TrimSpace(*buildingRoomFilter.ParamValue)
 			if trimmed == "" {
 				log.Warn("filter_building_room parameter is empty after trimming whitespace")
