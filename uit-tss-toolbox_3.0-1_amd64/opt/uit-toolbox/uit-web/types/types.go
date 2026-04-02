@@ -327,7 +327,7 @@ type Note struct {
 }
 
 type AllBuildingsAndRooms struct {
-	BuildingName *string   `json:"building_name"`
-	RoomName     *[]string `json:"room_name"`
-	ClientCount  *int64    `json:"client_count"`
+	BuildingName *string `json:"building_name"`
+	RoomName     *string `json:"room_name"`
+	ClientCount  *int64  `json:"client_count"`
 }
