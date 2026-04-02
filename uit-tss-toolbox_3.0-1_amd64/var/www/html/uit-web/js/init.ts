@@ -283,6 +283,9 @@ function resetSelectElement(selectElement: HTMLSelectElement, defaultText: strin
 	if (isDisabled === true) {
 		selectElement.disabled = true;
 		selectElement.classList.add('disabled');
+	} else {
+		selectElement.disabled = false;
+		selectElement.classList.remove('disabled');
 	}
 	defaultOption.selected = true;
 	// defaultOption.hidden = true;
