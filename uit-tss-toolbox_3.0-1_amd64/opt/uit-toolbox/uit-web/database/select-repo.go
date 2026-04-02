@@ -970,7 +970,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		i++
 	}
 	// Building filter
-	if filterOptions.Building != nil && strings.TrimSpace(*filterOptions.Building) != "" {
+	if filterOptions.BuildingAndRoom != nil && filterOptions.Building != nil && strings.TrimSpace(*filterOptions.Building) != "" {
 		if filterOptions.BuildingAndRoom.Not != nil && *filterOptions.BuildingAndRoom.Not {
 			whereClause = append(whereClause, fmt.Sprintf("NOT locations.building = $%d", i))
 		} else {
@@ -980,7 +980,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		i++
 	}
 	// Room filter
-	if filterOptions.Room != nil && strings.TrimSpace(*filterOptions.Room) != "" {
+	if filterOptions.BuildingAndRoom != nil && filterOptions.Room != nil && strings.TrimSpace(*filterOptions.Room) != "" {
 		if filterOptions.BuildingAndRoom.Not != nil && *filterOptions.BuildingAndRoom.Not {
 			whereClause = append(whereClause, fmt.Sprintf("NOT locations.room = $%d", i))
 		} else {

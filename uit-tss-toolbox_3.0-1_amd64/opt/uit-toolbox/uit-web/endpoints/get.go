@@ -659,6 +659,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 				filterOptions.Room = &buildingRoomArr[1]
 			}
 		}
+		filterOptions.BuildingAndRoom = buildingRoomFilter
 	}
 
 	if ok := req.URL.Query().Has("filter_system_manufacturer") && req.URL.Query().Get("filter_system_manufacturer") != ""; ok {
