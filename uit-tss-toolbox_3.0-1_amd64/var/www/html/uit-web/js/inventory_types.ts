@@ -214,8 +214,8 @@ const clientLookupTagInput = document.getElementById('inventory-tag-lookup') as 
 const clientLookupSerial = document.getElementById('inventory-serial-lookup') as HTMLInputElement;
 const clientLookupSubmitButton = document.getElementById('inventory-lookup-submit-button') as HTMLButtonElement;
 const clientMoreDetails = document.getElementById('inventory-lookup-more-details') as HTMLButtonElement;
-const clientViewPhotos = document.getElementById('inventory-lookup-photo-album') as HTMLButtonElement;
-const clientAddPhotos = document.getElementById('inventory-lookup-add-photos-button') as HTMLButtonElement;
+const clientViewPhotosButton = document.getElementById('inventory-lookup-photo-album') as HTMLButtonElement;
+const clientAddPhotosButton = document.getElementById('inventory-lookup-add-photos-button') as HTMLButtonElement;
 const allTagsDatalist = document.getElementById('inventory-tag-suggestions') as HTMLDataListElement;
 const csvDownloadButton = document.getElementById('adv-search-download-csv') as HTMLButtonElement;
 const printCheckoutLink = document.getElementById('print-checkout-link') as HTMLElement;
@@ -249,11 +249,11 @@ const submitUpdate = document.getElementById('inventory-update-submit-button') a
 const cancelUpdate = document.getElementById('inventory-update-cancel-button') as HTMLButtonElement;
 
 // Show/hide parts of form
-const showLocationPart = document.querySelector("#show-location-data") as HTMLButtonElement;
-const showHardwarePart = document.querySelector("#show-hardware-data") as HTMLButtonElement;
-const showSoftwarePart = document.querySelector("#show-software-data") as HTMLButtonElement;
-const showPropertyPart = document.querySelector("#show-property-data") as HTMLButtonElement;
-const showNotesFilesPart = document.querySelector("#show-notes-files-data") as HTMLButtonElement;
+const showLocationPartButton = document.querySelector("#show-location-data") as HTMLButtonElement;
+const showHardwarePartButton = document.querySelector("#show-hardware-data") as HTMLButtonElement;
+const showSoftwarePartButton = document.querySelector("#show-software-data") as HTMLButtonElement;
+const showPropertyPartButton = document.querySelector("#show-property-data") as HTMLButtonElement;
+const showNotesFilesPartButton = document.querySelector("#show-notes-files-data") as HTMLButtonElement;
 
 const locationPart = document.querySelectorAll("[data-location-part]") as NodeListOf<HTMLDivElement>;
 const hardwarePart = document.querySelectorAll("[data-hardware-part]") as NodeListOf<HTMLDivElement>;
@@ -261,7 +261,9 @@ const softwarePart = document.querySelectorAll("[data-software-part]") as NodeLi
 const propertyPart = document.querySelectorAll("[data-property-part]") as NodeListOf<HTMLDivElement>;
 const notesFilesPart = document.querySelectorAll("[data-note-files-part]") as NodeListOf<HTMLDivElement>;
 
-const locationFormShowSections = [showLocationPart, showHardwarePart, showSoftwarePart, showPropertyPart, showNotesFilesPart];
+const locationFormShowSectionsButtons = [showLocationPartButton, showHardwarePartButton, showSoftwarePartButton, showPropertyPartButton, showNotesFilesPartButton];
+
+const locationFormSections = [locationPart, hardwarePart, softwarePart, propertyPart, notesFilesPart];
 
 const allowedFileNameRegex = /^[a-zA-Z0-9.\-_ ()]+\.(jpg|jpeg|jfif|png|mp4)$/i; // file name + extension
 const allowedFileExtensions = [".jpg", ".jpeg", ".jfif", ".png", ".mp4"];

@@ -205,6 +205,8 @@ function resetInventoryLookupAndUpdateForm() {
 			resetSelectElement(el, "", false, undefined);
 		}
 	}
+	if (clientViewPhotosButton) clientViewPhotosButton.textContent = "View Photos";
+	if (clientAddPhotosButton) clientAddPhotosButton.textContent = "Add Photos";
 	clientLookupTagInput.placeholder = "Enter Tag Number";
 	clientLookupSerial.placeholder = "Enter System Serial";
 
@@ -291,8 +293,6 @@ function showInventoryUpdateChanges(): void {
 }
 
 async function populateLocationForm(tag?: number, serial?: string): Promise<void> {
-	clientViewPhotos.textContent = "View Photos";
-	clientViewPhotos.style.display = "none";
 	// reset/zero/clear out all fields before processing new data
 	resetInputElement(clientLookupTagInput, "Enter Tag Number", false, undefined);
 	clientLookupTagInput.value = clientLookupTagInput.dataset.initialValue || "";
@@ -451,8 +451,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				lastUpdateTime.style.display = "block";
 			}
 		
-			clientViewPhotos.style.display = "inline-block";
-			if (locationFormData.file_count !== null) clientViewPhotos.textContent = `View Photos (${locationFormData.file_count})`;
+			if (locationFormData.file_count !== null) clientViewPhotosButton.textContent = `View Photos (${locationFormData.file_count})`;
 
 			if (locationFormData.tagnumber) {
 				clientLookupTagInput.value = locationFormData.tagnumber.toString();
@@ -987,8 +986,8 @@ if (clientMoreDetails) {
 	});
 }
 
-if (clientViewPhotos) {
-	clientViewPhotos.addEventListener("click", (event) => {
+if (clientViewPhotosButton) {
+	clientViewPhotosButton.addEventListener("click", (event) => {
 		event.preventDefault();
 		if (!clientLookupTagInput.value) return;
 		const tag = clientLookupTagInput.value;
@@ -1000,8 +999,8 @@ if (clientViewPhotos) {
 	});
 }
 
-if (clientAddPhotos) {
-	clientAddPhotos.addEventListener("click", (event) => {
+if (clientAddPhotosButton) {
+	clientAddPhotosButton.addEventListener("click", (event) => {
 		event.preventDefault();
 		fileInputUpdate.click();
 	});
@@ -1010,9 +1009,15 @@ if (clientAddPhotos) {
 if (fileInputUpdate) {
 	fileInputUpdate.addEventListener("change", () => {
 		if (fileInputUpdate.files && fileInputUpdate.files.length > 0) {
-			if (clientAddPhotos) clientAddPhotos.textContent = `Add Photos (${fileInputUpdate.files.length})`;
+			if (clientAddPhotosButton) {
+				clientAddPhotosButton.textContent = `Add Photos (${fileInputUpdate.files.length})`;
+				clientAddPhotosButton.classList.add("changed-input");
+			}
 		} else {
-			if (clientAddPhotos) clientAddPhotos.textContent = "Add Photos";
+			if (clientAddPhotosButton) {
+				clientAddPhotosButton.textContent = "Add Photos";
+				clientAddPhotosButton.classList.remove("changed-input");
+			}
 		}
 	});
 }
@@ -1027,16 +1032,14 @@ if (clientLookupForm) {
 	clientLookupForm.addEventListener("submit", async (event) => {
 		event.preventDefault();
 		await submitInventoryLookup();
-		if (locationPart.length) locationPart.forEach(part => part.style.display = "none");
-		if (hardwarePart.length) hardwarePart.forEach(part => part.style.display = "none");
-		if (softwarePart.length) softwarePart.forEach(part => part.style.display = "none");
-		if (propertyPart.length) propertyPart.forEach(part => part.style.display = "none");
-		if (notesFilesPart.length) notesFilesPart.forEach(part => part.style.display = "none");
-		for (const sec of locationFormShowSections) {
+		for (const sec of locationFormSections) {
+			if (sec && sec.length > 0) sec.forEach(s => s.style.display = "none");
+		}
+		for (const sec of locationFormShowSectionsButtons) {
 			sec.classList.remove("selected");
 			sec.blur();
 		}
-		if (showLocationPart) showLocationPart.classList.add("selected");
+		if (showLocationPartButton) showLocationPartButton.classList.add("selected");
 		locationPart.forEach(part => part.style.display = "flex");
 		await updateCheckoutStatus();
 	});
@@ -1061,31 +1064,31 @@ document.addEventListener("DOMContentLoaded", async () => {
 	});
 	
 	locationPart.forEach(part => part.style.display = "flex");
-	if (showLocationPart) showLocationPart.classList.add("selected");
+	if (showLocationPartButton) showLocationPartButton.classList.add("selected");
 
-	for (const showSectionButton of locationFormShowSections) {
-		if (showSectionButton) showSectionButton.addEventListener("click", () => {
-			for (const sec of locationFormShowSections) {
-				sec.classList.remove("selected");
-				sec.blur();
+	for (const button of locationFormShowSectionsButtons) {
+		if (button) button.addEventListener("click", () => {
+			for (const btn of locationFormShowSectionsButtons) {
+				if (btn && btn !== button) {
+					btn.classList.remove("selected");
+				}
+				btn.blur();
 			}
-			showSectionButton.classList.add("selected");
+			button.classList.add("selected");
 
-			if (locationPart.length) locationPart.forEach(part => part.style.display = "none");
-			if (hardwarePart.length) hardwarePart.forEach(part => part.style.display = "none");
-			if (softwarePart.length) softwarePart.forEach(part => part.style.display = "none");
-			if (propertyPart.length) propertyPart.forEach(part => part.style.display = "none");
-			if (notesFilesPart.length) notesFilesPart.forEach(part => part.style.display = "none");
+			for (const sec of locationFormSections) {
+				if (sec && sec.length > 0) sec.forEach(s => s.style.display = "none");
+			}
 
-			if (showSectionButton === showLocationPart) {
+			if (button === showLocationPartButton) {
 				if (locationPart.length) locationPart.forEach(part => part.style.display = "flex");
-			} else if (showSectionButton === showHardwarePart) {
+			} else if (button === showHardwarePartButton) {
 				if (hardwarePart.length) hardwarePart.forEach(part => part.style.display = "flex");
-			} else if (showSectionButton === showSoftwarePart) {
+			} else if (button === showSoftwarePartButton) {
 				if (softwarePart.length) softwarePart.forEach(part => part.style.display = "flex");
-			} else if (showSectionButton === showPropertyPart) {
+			} else if (button === showPropertyPartButton) {
 				if (propertyPart.length) propertyPart.forEach(part => part.style.display = "flex");
-			} else if (showSectionButton === showNotesFilesPart) {
+			} else if (button === showNotesFilesPartButton) {
 				if (notesFilesPart.length) notesFilesPart.forEach(part => part.style.display = "flex");
 			}
 		});
