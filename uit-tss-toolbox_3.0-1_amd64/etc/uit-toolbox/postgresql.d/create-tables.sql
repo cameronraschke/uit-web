@@ -286,7 +286,7 @@ CREATE TABLE IF NOT EXISTS client_health (
 	tpm_version VARCHAR(24) DEFAULT NULL,
 	bios_version VARCHAR(24) DEFAULT NULL, --remove
 	bios_updated BOOLEAN DEFAULT NULL,
-	os_name VARCHAR(24) DEFAULT NULL,
+	os_name VARCHAR(128) DEFAULT NULL,
 	os_installed BOOLEAN DEFAULT NULL,
 	disk_type VARCHAR(4) DEFAULT NULL, --remove
 	disk_free_space_kb BIGINT DEFAULT NULL,
