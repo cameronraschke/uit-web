@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	memory_serial VARCHAR(128) DEFAULT NULL,
 	memory_capacity_kb BIGINT DEFAULT NULL,
 	memory_speed_mhz SMALLINT DEFAULT NULL,
+	updated_from_windows BOOLEAN DEFAULT FALSE NOT NULL,
 
 	CONSTRAINT historical_hardware_data_valid_tag
 		CHECK (tagnumber > 100000 AND tagnumber < 999999)
@@ -288,6 +289,7 @@ CREATE TABLE IF NOT EXISTS client_health (
 	os_name VARCHAR(24) DEFAULT NULL,
 	os_installed BOOLEAN DEFAULT NULL,
 	disk_type VARCHAR(4) DEFAULT NULL, --remove
+	disk_free_space_kb BIGINT DEFAULT NULL,
 	disk_health_pcnt NUMERIC(6,3) DEFAULT NULL, 
 	battery_health_pcnt NUMERIC(6,3) DEFAULT NULL, 
 	avg_erase_time SMALLINT DEFAULT NULL, 
@@ -297,6 +299,7 @@ CREATE TABLE IF NOT EXISTS client_health (
 	total_jobs_completed SMALLINT DEFAULT NULL, -- rename from all_jobs to total_jobs_completed
 	last_hardware_check TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
 	transaction_uuid UUID DEFAULT NULL,
+	updated_from_windows BOOLEAN DEFAULT FALSE NOT NULL,
 
 	CONSTRAINT client_health_valid_tag
 		CHECK (tagnumber > 100000 AND tagnumber < 999999)
@@ -376,6 +379,7 @@ CREATE TABLE IF NOT EXISTS hardware_data (
 	motherboard_serial VARCHAR(24) DEFAULT NULL,
 	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
 	transaction_uuid UUID DEFAULT NULL,
+	updated_from_windows BOOLEAN DEFAULT FALSE NOT NULL,
 
 	CONSTRAINT hardware_data_valid_tag
 		CHECK (tagnumber > 100000 AND tagnumber < 999999),

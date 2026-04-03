@@ -1578,3 +1578,93 @@ func (updateRepo *UpdateRepo) BulkUpdateClientLocation(ctx context.Context, tran
 	}
 	return nil
 }
+
+func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUpdateDTO, transactionUUID string) (err error) {
+	if winClientInfo == nil {
+		return fmt.Errorf("%w: %s", types.InvalidStructureError, "WindowsUpdateDTO")
+	}
+	if err := types.IsTagnumberInt64Valid(&winClientInfo.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s", types.InvalidFieldError, "Tagnumber")
+	}
+	if strings.TrimSpace(winClientInfo.SystemSerial) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "SystemSerial")
+	}
+	if strings.TrimSpace(transactionUUID) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "TransactionUUID")
+	}
+
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	const clientHealthDataSQLCode = `
+		INSERT INTO 
+			client_health
+		(
+			time,
+			last_hardware_check,
+			tagnumber,
+			system_serial,
+			tpm_version,
+			os_name,
+			disk_type,
+			disk_free_space_kb,
+			updated_from_windows,
+			transaction_uuid
+		)
+		VALUES
+		(
+			CURRENT_TIMESTAMP,
+			CURRENT_TIMESTAMP,
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8
+		) ON CONFLICT (tagnumber) DO UPDATE SET
+			time = CURRENT_TIMESTAMP,
+			last_hardware_check = CURRENT_TIMESTAMP,
+			system_serial = COALESCE(EXCLUDED.system_serial, client_health.system_serial),
+			tpm_version = COALESCE(EXCLUDED.tpm_version, client_health.tpm_version),
+			os_name = COALESCE(EXCLUDED.os_name, client_health.os_name),
+			disk_type = COALESCE(EXCLUDED.disk_type, client_health.disk_type),
+			disk_free_space_kb = COALESCE(EXCLUDED.disk_free_space_kb, client_health.disk_free_space_kb),
+			updated_from_windows = TRUE,
+			transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, client_health.transaction_uuid)
+	;`
+
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, clientHealthDataSQLCode,
+		toNullInt64(winClientInfo.Tagnumber),
+		toNullString(winClientInfo.SystemSerial),
+		winClientInfo.TPMVersion,
+		winClientInfo.OSName,
+		winClientInfo.DiskType,
+		winClientInfo.DiskFreeSpaceKB,
+		true,
+		transactionUUID,
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+
+	return nil
+}

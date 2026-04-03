@@ -1448,5 +1448,24 @@ func ReceiveWindowsClientInfo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	transactionUUID, err := uuid.NewUUID()
+	if err != nil {
+		log.Error("error generation a transaction UUID: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if transactionUUID == uuid.Nil {
+		log.Error("transaction UUID is nil")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	transactionUUIDStr := transactionUUID.String()
+	if err := database.UpdateWindowsClientInfo(req.Context(), dto, transactionUUIDStr); err != nil {
+		log.Error("Failed to update Windows client info: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
 	log.Info("Testing - received request: " + fmt.Sprintf("%v", dto))
 }

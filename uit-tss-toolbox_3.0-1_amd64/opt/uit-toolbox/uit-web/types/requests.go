@@ -12,8 +12,11 @@ type WindowsUpdateRequest struct {
 	ChassisType          *string  `json:"chassis_type"`
 	ADDomain             *string  `json:"ad_domain"`
 	ADDomainJoined       *bool    `json:"ad_domain_joined"`
+	ADDomainUser         *string  `json:"ad_domain_user"`
 	SystemManufacturer   *string  `json:"system_manufacturer"`
 	SystemModel          *string  `json:"system_model"`
+	SystemSKU            *string  `json:"system_sku"`
+	TPMVersion           *string  `json:"tpm_version"`
 	BIOSVersion          *string  `json:"bios_version"`
 	OSName               *string  `json:"os_name"`
 	OSInstalledAt        *string  `json:"os_installed_at"` // Converted later
@@ -24,11 +27,14 @@ type WindowsUpdateRequest struct {
 	CPUModel             *string  `json:"cpu_model"`
 	CPUCoreCount         *int64   `json:"cpu_core_count"`
 	CPUThreadCount       *int64   `json:"cpu_thread_count"`
+	DiskModel            *string  `json:"disk_model"`
+	DiskType             *string  `json:"disk_type"`
 	DiskSizeKB           *int64   `json:"disk_size_kb"`
+	DiskFreeSpaceKB      *int64   `json:"disk_free_space_kb"`
 	EthernetMACAddr      *string  `json:"ethernet_mac_addr"`
 	WifiMACAddr          *string  `json:"wifi_mac_addr"`
-	DiskModel            *string  `json:"disk_model"`
 	BatteryChargePercent *float64 `json:"battery_charge_percent"`
+	UpdatedFromWindows   *bool    `json:"updated_from_windows"`
 }
 
 type WindowsUpdateDTO struct {
@@ -37,8 +43,11 @@ type WindowsUpdateDTO struct {
 	ChassisType          *string    `json:"chassis_type"`
 	ADDomain             *string    `json:"ad_domain"`
 	ADDomainJoined       *bool      `json:"ad_domain_joined"`
+	ADDomainUser         *string    `json:"ad_domain_user"`
 	SystemManufacturer   *string    `json:"system_manufacturer"`
 	SystemModel          *string    `json:"system_model"`
+	SystemSKU            *string    `json:"system_sku"`
+	TPMVersion           *string    `json:"tpm_version"`
 	BIOSVersion          *string    `json:"bios_version"`
 	OSName               *string    `json:"os_name"`
 	OSInstalledAt        *time.Time `json:"os_installed_at"`
@@ -49,11 +58,14 @@ type WindowsUpdateDTO struct {
 	CPUModel             *string    `json:"cpu_model"`
 	CPUCoreCount         *int64     `json:"cpu_core_count"`
 	CPUThreadCount       *int64     `json:"cpu_thread_count"`
+	DiskModel            *string    `json:"disk_model"`
+	DiskType             *string    `json:"disk_type"`
 	DiskSizeKB           *int64     `json:"disk_size_kb"`
+	DiskFreeSpaceKB      *int64     `json:"disk_free_space_kb"`
 	EthernetMACAddr      *string    `json:"ethernet_mac_addr"`
 	WifiMACAddr          *string    `json:"wifi_mac_addr"`
-	DiskModel            *string    `json:"disk_model"`
 	BatteryChargePercent *float64   `json:"battery_charge_percent"`
+	UpdatedFromWindows   bool       `json:"updated_from_windows"`
 }
 
 type WindowsUpdateResponse struct {
@@ -83,14 +95,21 @@ func NewWindowsUpdateDTO(request WindowsUpdateRequest) (*WindowsUpdateDTO, error
 		return nil, fmt.Errorf("invalid os_installed_at format: %w", err)
 	}
 
+	if request.UpdatedFromWindows == nil {
+		request.UpdatedFromWindows = new(bool) // default to false if not provided
+	}
+
 	return &WindowsUpdateDTO{
 		Tagnumber:            *convertedTag,
 		SystemSerial:         *request.SystemSerial,
 		ChassisType:          request.ChassisType,
 		ADDomain:             request.ADDomain,
 		ADDomainJoined:       request.ADDomainJoined,
+		ADDomainUser:         request.ADDomainUser,
 		SystemManufacturer:   request.SystemManufacturer,
 		SystemModel:          request.SystemModel,
+		SystemSKU:            request.SystemSKU,
+		TPMVersion:           request.TPMVersion,
 		BIOSVersion:          request.BIOSVersion,
 		OSName:               request.OSName,
 		OSInstalledAt:        &convertedTime,
@@ -101,10 +120,13 @@ func NewWindowsUpdateDTO(request WindowsUpdateRequest) (*WindowsUpdateDTO, error
 		CPUModel:             request.CPUModel,
 		CPUCoreCount:         request.CPUCoreCount,
 		CPUThreadCount:       request.CPUThreadCount,
+		DiskModel:            request.DiskModel,
+		DiskType:             request.DiskType,
 		DiskSizeKB:           request.DiskSizeKB,
+		DiskFreeSpaceKB:      request.DiskFreeSpaceKB,
 		EthernetMACAddr:      request.EthernetMACAddr,
 		WifiMACAddr:          request.WifiMACAddr,
-		DiskModel:            request.DiskModel,
 		BatteryChargePercent: request.BatteryChargePercent,
+		UpdatedFromWindows:   *request.UpdatedFromWindows,
 	}, nil
 }
