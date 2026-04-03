@@ -1069,6 +1069,10 @@ async function uploadJSONFile(jsonFile: File): Promise<any> {
 
 
 if (jsonFileUpload && jsonFileUploadButton) {
+	jsonFileUploadButton.addEventListener("click", (event) => {
+		event.preventDefault();
+		jsonFileUpload.click();
+	});
 	jsonFileUpload.addEventListener("change", () => {
 		if (jsonFileUpload.files && jsonFileUpload.files.length > 0) {
 			const jsonFile = jsonFileUpload.files[0];
