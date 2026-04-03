@@ -20,7 +20,7 @@ type InventoryUpdateRequest struct {
 	SystemModel        *string    `json:"system_model"`
 	DeviceType         *string    `json:"device_type"`
 	Department         *string    `json:"department_name"`
-	ADDomain             *string    `json:"ad_domain"`
+	ADDomain           *string    `json:"ad_domain"`
 	PropertyCustodian  *string    `json:"property_custodian"`
 	AcquiredDate       *time.Time `json:"acquired_date"`
 	RetiredDate        *time.Time `json:"retired_date"`
@@ -45,7 +45,7 @@ type InventoryUpdateDTO struct {
 	SystemModel        *string
 	DeviceType         *string
 	Department         string
-	ADDomain             string
+	ADDomain           string
 	PropertyCustodian  *string
 	AcquiredDate       *time.Time
 	RetiredDate        *time.Time
@@ -68,7 +68,7 @@ type InventoryLocationWriteModel struct {
 	Building          *string
 	Room              *string
 	Department        string
-	ADDomain            string
+	ADDomain          string
 	PropertyCustodian *string
 	AcquiredDate      *time.Time
 	RetiredDate       *time.Time
@@ -284,7 +284,7 @@ func CreateInventoryUpdateDTO(updateRequest *InventoryUpdateRequest, htmlFormCon
 		SystemModel:        copyTrimmedStringPtr(updateRequest.SystemModel),
 		DeviceType:         copyTrimmedStringPtr(updateRequest.DeviceType),
 		Department:         strings.TrimSpace(*updateRequest.Department),
-		ADDomain:             strings.TrimSpace(*updateRequest.ADDomain),
+		ADDomain:           strings.TrimSpace(*updateRequest.ADDomain),
 		PropertyCustodian:  copyTrimmedStringPtr(updateRequest.PropertyCustodian),
 		AcquiredDate:       timePtrToUTC(updateRequest.AcquiredDate),
 		RetiredDate:        timePtrToUTC(updateRequest.RetiredDate),
@@ -313,7 +313,7 @@ func MapInventoryUpdateDomainToLocationWriteModel(transactionUUID uuid.UUID, dom
 		Building:          copyStringPtr(domain.Building),
 		Room:              copyStringPtr(domain.Room),
 		Department:        domain.Department,
-		ADDomain:            domain.ADDomain,
+		ADDomain:          domain.ADDomain,
 		PropertyCustodian: copyStringPtr(domain.PropertyCustodian),
 		AcquiredDate:      copyTimePtr(domain.AcquiredDate),
 		RetiredDate:       copyTimePtr(domain.RetiredDate),

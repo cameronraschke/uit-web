@@ -88,6 +88,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/live_image", httpsFullAPIChain.ThenFunc(endpoints.DownloadLiveImage))
 
 	// API POST endpoints
+	httpsRouter.Handle("POST /api/windows-client-info", httpsFullAPIChain.ThenFunc(endpoints.ReceiveWindowsClientInfo))
 	httpsRouter.Handle("POST /api/overview/note", httpsFullAPIChain.ThenFunc(endpoints.InsertNewNote))
 	httpsRouter.Handle("POST /api/inventory/update", httpsFullAPIChain.ThenFunc(endpoints.InsertInventoryUpdate))
 	httpsRouter.Handle("POST /api/files/toggle_pin", httpsFullAPIChain.ThenFunc(endpoints.TogglePinImage))

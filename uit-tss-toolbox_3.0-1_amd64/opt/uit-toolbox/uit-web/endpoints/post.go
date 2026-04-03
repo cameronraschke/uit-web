@@ -1401,5 +1401,24 @@ func BulkUpdateInventoryLocation(w http.ResponseWriter, req *http.Request) {
 		Status:       "success",
 		UpdatedCount: len(bulkUpdateReq.Tagnumbers),
 	})
+}
 
+func ReceiveWindowsClientInfo(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "ReceiveWindowsClientInfo"))
+
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Error reading request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	strBody := string(body)
+	if !utf8.ValidString(strBody) {
+		log.Warn("Invalid UTF-8 in request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	log.Info("Testing - received request" + fmt.Sprintf("%s", strBody))
 }

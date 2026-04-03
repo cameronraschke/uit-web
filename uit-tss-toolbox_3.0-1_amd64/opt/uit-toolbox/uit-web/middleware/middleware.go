@@ -808,6 +808,24 @@ func AllowedFilesMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func TokenAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		log := GetLoggerFromContext(req.Context()).With(slog.String("func", "TokenAuthMiddleware"))
+		if strings.TrimSpace(req.Header.Get("UIT_Token")) == "" {
+			log.Warn("Missing UIT-Token header for token authentication")
+			WriteJsonError(w, http.StatusUnauthorized)
+			return
+		}
+		if !types.IsASCIIStringPrintable(req.Header.Get("UIT_Token")) {
+			log.Warn("UIT-Token header contains non-printable or non-ASCII characters")
+			WriteJsonError(w, http.StatusUnauthorized)
+			return
+		}
+
+		next.ServeHTTP(w, req)
+	})
+}
+
 func CookieAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
