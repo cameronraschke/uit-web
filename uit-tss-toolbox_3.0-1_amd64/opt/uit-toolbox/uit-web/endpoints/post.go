@@ -1406,19 +1406,45 @@ func BulkUpdateInventoryLocation(w http.ResponseWriter, req *http.Request) {
 func ReceiveWindowsClientInfo(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "ReceiveWindowsClientInfo"))
 
-	body, err := io.ReadAll(req.Body)
+	if err := req.ParseMultipartForm(32 << 20); err != nil {
+		log.Warn("Error parsing multipart form: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	jsonFile, _, err := req.FormFile("json_file")
 	if err != nil {
-		log.Warn("Error reading request body: " + err.Error())
+		log.Warn("Error retrieving JSON data provided in form: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	defer jsonFile.Close()
+
+	bodyBytes, err := io.ReadAll(jsonFile)
+	if err != nil {
+		log.Warn("Error reading JSON file: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if len(bodyBytes) == 0 {
+		log.Warn("JSON file is empty")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	strBody := string(body)
-	if !utf8.ValidString(strBody) {
-		log.Warn("Invalid UTF-8 in request body")
+	var requestData types.WindowsUpdateRequest
+	if err := json.Unmarshal(bodyBytes, &requestData); err != nil {
+		log.Warn("Error unmarshaling JSON file: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	log.Info("Testing - received request" + fmt.Sprintf("%s", strBody))
+	dto, err := types.NewWindowsUpdateDTO(requestData)
+	if err != nil {
+		log.Warn("Error creating Windows update DTO: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	log.Info("Testing - received request: " + fmt.Sprintf("%v", dto))
 }

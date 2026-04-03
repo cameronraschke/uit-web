@@ -1022,6 +1022,66 @@ if (fileInputUpdate) {
 	});
 }
 
+async function uploadJSONFile(jsonFile: File): Promise<any> {
+	const fileName = jsonFile.name || '';
+	if (fileName.length > 100) {
+		console.error(`File name ${fileName} exceeds the maximum allowed length of 100 characters`);
+		alert(`File name ${fileName} exceeds the maximum allowed length of 100 characters`);
+		return;
+	}
+	if (!allowedFileNameRegex.test(fileName)) {
+		console.error(`File name ${fileName} contains invalid characters`);
+		alert(`File name ${fileName} contains invalid characters`);
+		return;
+	}
+	if (!fileName.toLowerCase().endsWith('.json')) {
+		console.error(`File name ${fileName} does not have a .json extension`);
+		alert(`File name ${fileName} does not have a .json extension`);
+		return;
+	}
+	const multipartFormData = new FormData();
+	multipartFormData.append("json_file", jsonFile, fileName);
+	try {
+		const data = await fetch(`/api/windows-client-info`, {
+			method: "POST",
+			body: multipartFormData
+		});
+		if (!data.ok) throw new Error("Server returned an error: " + data.status + " " + data.statusText);
+		const jsonData = await data.json();
+		if (jsonData && jsonData.tagnumber) {
+			populateLocationForm(jsonData.tagnumber, undefined);
+			clientLookupTagInput.value = jsonData.tagnumber.toString();
+			clientLookupSerial.value = jsonData.system_serial || '';
+			clientLookupWarningMessage.style.display = "block";
+			clientLookupWarningMessage.textContent = "Client information populated from JSON file. Please review and submit to update inventory.";
+			updateURLFromAdvFilters();
+		} else {
+			throw new Error("Invalid JSON data returned from server");
+		}
+	} catch (error) {
+		console.error("Error processing JSON file:", error);
+		alert("Error processing JSON file: " + (error instanceof Error ? error.message : String(error)));
+		jsonFileUpload.value = "";
+		jsonFileUploadButton.textContent = "Upload JSON";
+		jsonFileUploadButton.classList.remove("changed-input");
+	}
+}
+
+
+if (jsonFileUpload && jsonFileUploadButton) {
+	jsonFileUpload.addEventListener("change", () => {
+		if (jsonFileUpload.files && jsonFileUpload.files.length > 0) {
+			const jsonFile = jsonFileUpload.files[0];
+			uploadJSONFile(jsonFile);
+			jsonFileUploadButton.textContent = `JSON File: ${jsonFile.name}`;
+			jsonFileUploadButton.classList.add("changed-input");
+		} else {
+			jsonFileUploadButton.textContent = "Upload JSON";
+			jsonFileUploadButton.classList.remove("changed-input");
+		}
+	});
+}
+
 if (clientStatusUpdate) {
 	clientStatusUpdate.addEventListener("change", async () => {
 		await updateCheckoutStatus();

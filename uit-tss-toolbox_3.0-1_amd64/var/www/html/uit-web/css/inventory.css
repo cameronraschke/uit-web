@@ -6,6 +6,10 @@
 	display: none;
 }
 
+#json-client-info-upload {
+	display: none;
+}
+
 #inventory-update-form {
 	display: none;
 }
