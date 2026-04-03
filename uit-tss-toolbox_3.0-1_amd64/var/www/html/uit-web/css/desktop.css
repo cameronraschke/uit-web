@@ -442,23 +442,30 @@ td > div.flex-container {
 	border-radius: var(--border-radius);
 }
 
-.flex-container.vertical.separated {
-	border-bottom: var(--border-width) solid var(--default-border-color);
-	margin-top: 1rem;
-	margin-bottom: 3rem;
-	padding-bottom: 1rem;
-}
-
 .flex-container.horizontal {
   flex-direction: row;
 	width: 100%;
+	gap: var(--select-element-margin);
 }
 
-.flex-container.horizontal.separated {
-	border-bottom: var(--border-width) solid var(--default-border-color);
-	margin-top: 1rem;
-	margin-bottom: 3rem;
-	padding-bottom: 1rem;
+.flex-container.horizontal.left-aligned {
+	justify-content: flex-start;
+	gap: var(--select-element-margin);
+}
+
+.flex-container.horizontal.right-aligned {
+	justify-content: flex-end;
+	gap: var(--select-element-margin);
+}
+
+.flex-container.horizontal.centered {
+	justify-content: center;
+	gap: var(--select-element-margin);
+}
+
+.flex-container.horizontal.spaced {
+	justify-content: space-between;
+	gap: var(--select-element-margin);
 }
 
 .flex-container.horizontal label {

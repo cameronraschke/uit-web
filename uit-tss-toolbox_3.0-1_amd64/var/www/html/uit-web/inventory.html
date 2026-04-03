@@ -50,8 +50,6 @@
 						/>
 						<div class="flex-container horizontal">
 							<button type="button" id="inventory-lookup-more-details" class="svg-button info">More Details</button>
-							<button type="button" id="inventory-lookup-photo-album" class="svg-button photo-album">View Photos</button>
-							<button type="button" id="inventory-lookup-add-photos" class="svg-button add-photo">Add Photos</button>
 							<button type="submit" id="inventory-lookup-submit-button" class="svg-button filter-search">Search for Client</button>
 						</div>
 					</div>
@@ -75,7 +73,7 @@
 							<label for="bulk_tagnumbers">Tags (Separate by New Lines):</label>
 							<textarea id="bulk_tagnumbers" name="bulk_tagnumbers" placeholder="Enter tags..." maxlength="1024" rows="20" cols="10"></textarea>
 						</div>
-						<div class="flex-container horizontal form-buttons">
+						<div class="flex-container horizontal right-aligned">
 							<button id="inventory-bulk-update-cancel" name="inventory-bulk-update-cancel"
 								type="button"
 								class="svg-button cancel">
@@ -95,7 +93,7 @@
 						<div class="message"><p id="existing-inventory-message" class="warning-message"></p></div>
 						<div class="message"><p id="last-update-time-message" class="warning-message"></p></div>
 						<input type="hidden" id="csrf-token" value="" />
-						<input type="file" id="inventory-file-input" name="inventory-file-input" 
+						<input type="file" id="inventory-update-file-input" name="inventory-update-file-input" 
 							accept="image/jpeg,image/jpg,image/png,video/mp4" 
 							multiple />
 						<div class="tabs-container inventory-update-form">
@@ -106,7 +104,7 @@
 							<button type="button" id="show-notes-files-data">Notes/Media</button>
 						</div>
 						<div id="inventory-form-container" class="flex-container horizontal">
-							<div class="flex-container vertical separated" data-location-part>
+							<div class="flex-container vertical" data-location-part>
 								<div class="flex-container vertical">
 									<label class="required-field" for="location">Location: </label>
 									<input type="text" id="location" name="location"
@@ -122,7 +120,7 @@
 									<select id="department_name" name="department_name"></select>
 								</div>
 							</div>
-							<div class="flex-container vertical separated" data-location-part>
+							<div class="flex-container vertical" data-location-part>
 								<div class="flex-container vertical">
 									<label for="building">Building: </label>
 									<input type="text" id="building" name="building"
@@ -143,7 +141,7 @@
 								</div>
 							</div>
 
-							<div class="flex-container vertical separated" data-hardware-part>
+							<div class="flex-container vertical" data-hardware-part>
 								<div class="flex-container vertical">
 									<label for="manufacturer">Manufacturer: </label>
 									<input type="text" id="system_manufacturer" name="system_manufacturer"
@@ -168,7 +166,7 @@
 								</div>
 							</div>
 
-							<div class="flex-container vertical separated" data-hardware-part>
+							<div class="flex-container vertical" data-hardware-part>
 								<div class="flex-container vertical">
 									<label for="is_broken">Is it Functional?</label>
 									<select id="is_broken" name="is_broken">
@@ -188,13 +186,13 @@
 								</div>
 							</div>
 
-							<div class="flex-container vertical separated" data-software-part>
+							<div class="flex-container vertical" data-software-part>
 								<div class="flex-container vertical">
 									<label for="ad_domain" class="required-field">AD Domain: </label>
 									<select id="ad_domain" name="ad_domain"></select>
 								</div>
 							</div>
-							<div class="flex-container vertical separated" data-software-part>
+							<div class="flex-container vertical" data-software-part>
 								<div class="flex-container vertical">
 									<label for="os_updated">OS Updated: </label>
 									<select id="os_updated" name="os_updated" disabled>
@@ -203,7 +201,7 @@
 								</div>
 							</div>
 
-							<div class="flex-container vertical separated" data-property-part>
+							<div class="flex-container vertical" data-property-part>
 								<div class="flex-container vertical">
 									<label for="property_custodian">Property Custodian</label>
 									<input type="text" id="property_custodian" name="property_custodian"
@@ -223,7 +221,7 @@
 								</div>
 							</div>
 
-							<div class="flex-container vertical separated" data-property-part>
+							<div class="flex-container vertical" data-property-part>
 								<div class="flex-container vertical">
 									<label for="customer_name">Customer Name: </label>
 									<input id="customer_name" name="customer_name" type="text" disabled placeholder="Placeholder">
@@ -238,7 +236,11 @@
 								</div>
 							</div>
 
-							<div class="flex-container vertical separated" data-note-files-part>
+							<div class="flex-container vertical" data-note-files-part>
+								<div class="flex-container horizontal centered">
+									<button type="button" id="inventory-lookup-photo-album" class="svg-button photo-album">View Photos</button>
+									<button type="button" id="inventory-lookup-add-photos-button" class="svg-button add-photo">Add Photos</button>
+								</div>
 								<div class="flex-container vertical">
 									<label for="status" class="required-field">Overall Status: </label>
 									<select id="status" name="status">
@@ -257,7 +259,7 @@
 						
 
 						<div class="flex-container horizontal"><div class="message"><p id="inventory-error" class="error-message"></p></div></div>
-						<div class="flex-container horizontal form-buttons">
+						<div class="flex-container horizontal right-aligned">
 							<button id="inventory-update-cancel-button" name="inventory-update-cancel-button"
 								type="button"
 								class="svg-button cancel">
@@ -336,7 +338,7 @@
 								<a id="adv-search-device-type-reset" class="adv-search-reset" href="">x</a>
 							</div>
 							
-							<div class="flex-container horizontal form-buttons">
+							<div class="flex-container horizontal right-aligned">
 								<button id="adv-search-form-reset-button" type="button" class="svg-button cancel subtle">Reset Search</button>
 								<button type="submit" class="svg-button download submit" id="adv-search-download-csv">Download Results</button>
 							</div>

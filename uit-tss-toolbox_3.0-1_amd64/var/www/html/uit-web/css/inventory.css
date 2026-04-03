@@ -6,11 +6,11 @@
   display: none;
 }
 
-#inventory-lookup-add-photos {
+#inventory-lookup-add-photos-button {
 	display: none;
 }
 
-#inventory-file-input {
+#inventory-update-file-input {
 	display: none;
 }
 
@@ -26,7 +26,17 @@
 	display: none;
 }
 
+#inventory-form-container {
+	background-color: white;
+	border: var(--border-width) solid var(--default-border-color);
+	border-bottom-left-radius: var(--border-radius);
+	border-bottom-right-radius: var(--border-radius);
+	padding: var(--container-padding);
+	margin-bottom: var(--container-padding);
+}
+
 .tabs-container.inventory-update-form {
+	width: 100%;
 	grid-template-columns: auto auto auto auto auto;
 }
 

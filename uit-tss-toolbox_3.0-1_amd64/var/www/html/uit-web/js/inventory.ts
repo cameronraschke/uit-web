@@ -919,7 +919,7 @@ if (updateForm) {
 					if (!allowedFileExtensions.some(ext => fileName.toLowerCase().endsWith(ext))) {
 						throw new Error(`File name ${fileName} has a forbidden extension`);
 					}
-					formData.append("inventory-file-input", file, fileName);
+					formData.append("inventory-update-file-input", file, fileName);
 				}
 			}
 
@@ -1004,6 +1004,16 @@ if (clientAddPhotos) {
 	clientAddPhotos.addEventListener("click", (event) => {
 		event.preventDefault();
 		fileInputUpdate.click();
+	});
+}
+
+if (fileInputUpdate) {
+	fileInputUpdate.addEventListener("change", () => {
+		if (fileInputUpdate.files && fileInputUpdate.files.length > 0) {
+			if (clientAddPhotos) clientAddPhotos.textContent = `Add Photos (${fileInputUpdate.files.length})`;
+		} else {
+			if (clientAddPhotos) clientAddPhotos.textContent = "Add Photos";
+		}
 	});
 }
 

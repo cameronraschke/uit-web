@@ -215,7 +215,7 @@ const clientLookupSerial = document.getElementById('inventory-serial-lookup') as
 const clientLookupSubmitButton = document.getElementById('inventory-lookup-submit-button') as HTMLButtonElement;
 const clientMoreDetails = document.getElementById('inventory-lookup-more-details') as HTMLButtonElement;
 const clientViewPhotos = document.getElementById('inventory-lookup-photo-album') as HTMLButtonElement;
-const clientAddPhotos = document.getElementById('inventory-lookup-add-photos') as HTMLButtonElement;
+const clientAddPhotos = document.getElementById('inventory-lookup-add-photos-button') as HTMLButtonElement;
 const allTagsDatalist = document.getElementById('inventory-tag-suggestions') as HTMLDataListElement;
 const csvDownloadButton = document.getElementById('adv-search-download-csv') as HTMLButtonElement;
 const printCheckoutLink = document.getElementById('print-checkout-link') as HTMLElement;
@@ -244,7 +244,7 @@ const checkoutBoolUpdate = document.querySelector("#checkout_bool") as HTMLSelec
 const checkoutDateUpdate = document.querySelector("#checkout_date") as HTMLInputElement;
 const returnDateUpdate = document.querySelector("#return_date") as HTMLInputElement;
 const noteUpdate = document.querySelector("#note") as HTMLInputElement;
-const fileInputUpdate = document.querySelector("#inventory-file-input") as HTMLInputElement;
+const fileInputUpdate = document.querySelector("#inventory-update-file-input") as HTMLInputElement;
 const submitUpdate = document.getElementById('inventory-update-submit-button') as HTMLButtonElement;
 const cancelUpdate = document.getElementById('inventory-update-cancel-button') as HTMLButtonElement;
 
@@ -305,8 +305,6 @@ const requiredInventoryUpdateFields = [
 
 const buttonsVisibleWhenUpdating = [
 	clientMoreDetails,
-	clientViewPhotos,
-	clientAddPhotos,
 ];
 
 

@@ -718,7 +718,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	if req.MultipartForm == nil || req.MultipartForm.File == nil {
 		log.Info("File upload part of inventory update is nil, continuing")
 	}
-	files := req.MultipartForm.File["inventory-file-input"]
+	files := req.MultipartForm.File["inventory-update-file-input"]
 
 	// Generate transaction UUID to share between multiple DB tables
 	transactionUUID, err := uuid.NewUUID()
