@@ -1342,7 +1342,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		ORDER BY locations.tagnumber, locations.time DESC NULLS LAST),
 	latest_historical_hardware_data AS (
 		SELECT DISTINCT ON (historical_hardware_data.tagnumber) historical_hardware_data.time, historical_hardware_data.tagnumber, 
-			historical_hardware_data.disk_type, historical_hardware_data.disk_size AS "disk_capacity",
+			historical_hardware_data.disk_type, historical_hardware_data.disk_size_kb AS "disk_capacity",
 			historical_hardware_data.bios_version, historical_hardware_data.disk_model,
 			historical_hardware_data.battery_design_capacity, historical_hardware_data.battery_current_max_capacity
 		FROM historical_hardware_data
@@ -1452,7 +1452,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		'0' AS "disk_usage",
 		job_queue.disk_temp,
 		static_disk_stats.disk_type,
-		latest_historical_hardware_data.disk_capacity AS "disk_size",
+		latest_historical_hardware_data.disk_capacity AS "disk_size_kb",
 		'80' AS "max_disk_temp",
 		(CASE
 			WHEN job_queue.disk_temp > 80 THEN TRUE

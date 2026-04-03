@@ -25,7 +25,7 @@ type ClientHardwareView struct {
 	WiFiMAC                   *string  `json:"wifi_mac"`
 	DiskModel                 *string  `json:"disk_model"`
 	DiskType                  *string  `json:"disk_type"`
-	DiskSize                  *int64   `json:"disk_size"`
+	DiskSize                  *int64   `json:"disk_size_kb"`
 	DiskSerial                *string  `json:"disk_serial"`
 	DiskWritesKB              *int64   `json:"disk_writes_kb"`
 	DiskReadsKB               *int64   `json:"disk_reads_kb"`
@@ -80,19 +80,4 @@ type NetworkData struct {
 	Tagnumber    int64  `json:"tagnumber"`
 	NetworkUsage *int64 `json:"network_usage"`
 	LinkSpeed    *int64 `json:"link_speed"`
-}
-
-type DiskData struct {
-	Tagnumber           int64    `json:"tagnumber"`
-	DiskSerial          *string  `json:"disk_serial"`
-	DiskModel           *string  `json:"disk_model"`
-	DiskType            *string  `json:"disk_type"`
-	DiskSizeGB          *float64 `json:"disk_size_gb"`
-	DiskTotalWritesMB   *float64 `json:"disk_total_writes_mb"`
-	DiskTotalReadsMB    *float64 `json:"disk_total_reads_mb"`
-	DiskPowerOnHours    *int64   `json:"disk_power_on_hours"`
-	DiskErrors          *int64   `json:"disk_errors"`
-	DiskPowerCycleCount *int64   `json:"disk_power_cycle_count"`
-	DiskTempC           *float64 `json:"disk_temp_c"`
-	DiskFirmwareVersion *string  `json:"disk_firmware_version"`
 }

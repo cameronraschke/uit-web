@@ -43,7 +43,7 @@ type JobQueueTableRowView = {
 	disk_usage: number | null;
 	disk_temp: number | null;
 	disk_type: string | null;
-	disk_size: number | null;
+	disk_size_kb: number | null;
 	max_disk_temp: number | null;
 	disk_temp_warning: boolean | null;
 	network_link_status: string | null;

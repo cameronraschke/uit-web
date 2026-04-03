@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	wifi_mac VARCHAR(17) DEFAULT NULL,
 	disk_model VARCHAR(36) DEFAULT NULL,
 	disk_type VARCHAR(4) DEFAULT NULL,
-	disk_size BIGINT DEFAULT NULL,
+	disk_size_kb BIGINT DEFAULT NULL,
 	disk_serial VARCHAR(32) DEFAULT NULL,
 	disk_writes_kb BIGINT DEFAULT NULL,
 	disk_reads_kb BIGINT DEFAULT NULL,

@@ -307,7 +307,7 @@ type JobQueueTableRowView struct {
 	DiskUsage              *float64       `json:"disk_usage"`
 	DiskTemp               *float64       `json:"disk_temp"`
 	DiskType               *string        `json:"disk_type"`
-	DiskSize               *float64       `json:"disk_size"`
+	DiskSize               *float64       `json:"disk_size_kb"`
 	MaxDiskTemp            *float64       `json:"max_disk_temp"`
 	DiskTempWarning        *bool          `json:"disk_temp_warning"`
 	NetworkLinkStatus      *string        `json:"network_link_status"`
