@@ -13,14 +13,6 @@ type ClientSoftwareView struct {
 	BIOSDate        *string    `json:"bios_date"`
 }
 
-type BiosData struct {
-	Tagnumber   int64  `json:"tagnumber"`
-	BiosVersion string `json:"bios_version"`
-	BiosUpdated *bool  `json:"bios_updated"`
-	BiosDate    string `json:"bios_date"`
-	TpmVersion  string `json:"tpm_version"`
-}
-
 type OsData struct {
 	Tagnumber       int64         `json:"tagnumber"`
 	OsInstalled     *bool         `json:"os_installed"`

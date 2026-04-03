@@ -28,7 +28,6 @@ type Update interface {
 	UpdateClientLastHardwareCheck(ctx context.Context, tagnumber int64, lastCheck time.Time) (err error)
 	UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error)
 	UpdateClientCPUMHz(ctx context.Context, cpuData *types.CPUData) (err error)
-	UpdateClientHealth(ctx context.Context, clientHealth *types.ClientHealthDTO) (err error)
 	UpdateJobQueuedAt(ctx context.Context, jobQueue *types.JobQueueTableRowView) (err error)
 	UpdateClientLastHeard(ctx context.Context, tag *int64, lastHeard *time.Time) (err error)
 	UpdateClientBatteryChargePcnt(ctx context.Context, tag *int64, percent *float64) (err error)
@@ -1240,153 +1239,6 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateClientHealth(ctx context.Context, clientHealth *types.ClientHealthDTO) (err error) {
-	if clientHealth == nil || clientHealth.Tagnumber == 0 || strings.TrimSpace(clientHealth.TransactionUUID) == "" {
-		return fmt.Errorf("hardwareData is invalid")
-	}
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
-	}
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("error beginning DB transaction: %w", err)
-	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		} else {
-			err = tx.Commit()
-		}
-	}()
-
-	const sqlCode = `
-	WITH 
-	total_job_count AS (
-		SELECT COUNT(*) AS "job_count" FROM jobstats WHERE (erase_completed = TRUE OR clone_completed = TRUE) AND tagnumber = $2
-	),
-	avg_erase_times AS (
-		SELECT AVG(erase_time) AS "erase_time" FROM jobstats WHERE tagnumber = $2
-	),
-	avg_clone_times AS (
-		SELECT AVG(clone_time) AS "clone_time" FROM jobstats WHERE tagnumber = $2
-	),
-	most_recent_job AS (
-		SELECT tagnumber, erase_completed, clone_completed, clone_image FROM jobstats WHERE time IN (SELECT MAX(time) FROM jobstats WHERE (erase_completed = TRUE OR clone_completed = TRUE) AND tagnumber = $2)
-	),
-	most_recent_erase_job AS (
-		SELECT tagnumber, time FROM jobstats WHERE erase_completed = TRUE AND tagnumber = $2 ORDER BY time DESC NULLS LAST LIMIT 1
-	),
-	most_recent_clone_job AS (
-		SELECT tagnumber, time FROM jobstats WHERE clone_completed = TRUE AND tagnumber = $2 ORDER BY time DESC NULLS LAST LIMIT 1
-	)
-	INSERT INTO client_health (
-		time,
-		tagnumber,
-		transaction_uuid,
-		system_serial,
-		tpm_version,
-		bios_updated,
-		os_installed,
-		os_name,
-		disk_health_pcnt,
-		battery_health_pcnt,
-		avg_erase_time,
-		avg_clone_time,
-		last_erase_job_time,
-		last_clone_job_time,
-		total_jobs_completed,
-		last_hardware_check
-	)
-	SELECT
-		$1 AS "time",
-		$2 AS "tagnumber",
-		$3 AS "transaction_uuid",
-		$4 AS "system_serial",
-		$5 AS "tpm_version",
-		CASE 
-			WHEN $6 = static_bios_stats.bios_version THEN TRUE
-			ELSE FALSE
-		END AS "bios_updated",
-		CASE 
-			WHEN $7 = TRUE THEN TRUE
-			WHEN $7 = FALSE THEN FALSE
-			WHEN $7 IS NULL AND most_recent_job.clone_completed = TRUE THEN TRUE
-			ELSE FALSE
-		END AS "os_installed",
-		static_image_names.image_name_readable AS "os_name",
-		(100 - ((historical_hardware_data.disk_power_on_hours::decimal / static_disk_stats.disk_mtbf::decimal) + (historical_hardware_data.disk_writes_kb::decimal / 100000000 / static_disk_stats.disk_tbw::decimal)) / 2) AS "disk_health_pcnt",
-		ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt",
-		avg_erase_times.erase_time AS "avg_erase_time",
-		avg_clone_times.clone_time AS "avg_clone_time",
-		COALESCE($8, most_recent_erase_job.time) AS "last_erase_job_time",
-		COALESCE($9, most_recent_clone_job.time) AS "last_clone_job_time",
-		total_job_count.job_count AS "total_jobs_completed",
-		$10 AS "last_hardware_check"
-	FROM 
-		hardware_data
-	LEFT JOIN 
-		static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
-	LEFT JOIN 
-		historical_hardware_data ON hardware_data.tagnumber = historical_hardware_data.tagnumber AND historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data WHERE tagnumber = $2)
-	LEFT JOIN 
-		static_disk_stats ON historical_hardware_data.disk_model = static_disk_stats.disk_model
-	LEFT JOIN 
-		most_recent_job ON hardware_data.tagnumber = most_recent_job.tagnumber
-	LEFT JOIN
-		static_image_names ON most_recent_job.clone_image = static_image_names.image_name
-	CROSS JOIN
-		avg_erase_times
-	CROSS JOIN
-		avg_clone_times
-	CROSS JOIN
-		most_recent_erase_job
-	CROSS JOIN
-		most_recent_clone_job
-	CROSS JOIN
-		total_job_count
-	WHERE hardware_data.tagnumber = $2
-	ON CONFLICT (tagnumber)
-	 DO UPDATE SET
-		time = COALESCE(EXCLUDED.time, client_health.time),
-		transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, client_health.transaction_uuid),
-		system_serial = COALESCE(EXCLUDED.system_serial, client_health.system_serial),
-		tpm_version = COALESCE(EXCLUDED.tpm_version, client_health.tpm_version),
-		bios_updated = COALESCE(EXCLUDED.bios_updated, client_health.bios_updated),
-		os_installed = COALESCE(EXCLUDED.os_installed, client_health.os_installed),
-		os_name = COALESCE(EXCLUDED.os_name, client_health.os_name),
-		disk_health_pcnt = COALESCE(EXCLUDED.disk_health_pcnt, client_health.disk_health_pcnt),
-		battery_health_pcnt = COALESCE(EXCLUDED.battery_health_pcnt, client_health.battery_health_pcnt),
-		avg_erase_time = COALESCE(EXCLUDED.avg_erase_time, client_health.avg_erase_time),
-		avg_clone_time = COALESCE(EXCLUDED.avg_clone_time, client_health.avg_clone_time),
-		last_erase_job_time = COALESCE(EXCLUDED.last_erase_job_time, client_health.last_erase_job_time),
-		last_clone_job_time = COALESCE(EXCLUDED.last_clone_job_time, client_health.last_clone_job_time),
-		total_jobs_completed = COALESCE(EXCLUDED.total_jobs_completed, client_health.total_jobs_completed),
-		last_hardware_check = COALESCE(EXCLUDED.last_hardware_check, client_health.last_hardware_check)
-		;
-	`
-	var clientHealthResult sql.Result
-	clientHealthResult, err = tx.ExecContext(ctx, sqlCode,
-		ptrToNullTime(clientHealth.Time),
-		clientHealth.Tagnumber,
-		clientHealth.TransactionUUID,
-		ptrToNullString(clientHealth.SystemSerial),
-		ptrToNullString(clientHealth.TPMVersion),
-		ptrToNullBool(clientHealth.BIOSUpdated),
-		ptrToNullBool(clientHealth.OSInstalled),
-		ptrToNullTime(clientHealth.LastEraseJobTime),
-		ptrToNullTime(clientHealth.LastCloneJobTime),
-		ptrToNullTime(clientHealth.LastHardwareCheck),
-	)
-	if err != nil {
-		return err
-	}
-	if err := VerifyRowsAffected(clientHealthResult, 1); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (updateRepo *UpdateRepo) UpdateJobQueuedAt(ctx context.Context, jobQueue *types.JobQueueTableRowView) (err error) {
 	if jobQueue == nil {
 		return fmt.Errorf("required info is nil")
@@ -1619,7 +1471,6 @@ func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUp
 			system_serial,
 			tpm_version,
 			os_name,
-			disk_type,
 			disk_free_space_kb,
 			updated_from_windows,
 			transaction_uuid
@@ -1642,7 +1493,6 @@ func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUp
 			system_serial = COALESCE(EXCLUDED.system_serial, client_health.system_serial),
 			tpm_version = COALESCE(EXCLUDED.tpm_version, client_health.tpm_version),
 			os_name = COALESCE(EXCLUDED.os_name, client_health.os_name),
-			disk_type = COALESCE(EXCLUDED.disk_type, client_health.disk_type),
 			disk_free_space_kb = COALESCE(EXCLUDED.disk_free_space_kb, client_health.disk_free_space_kb),
 			updated_from_windows = TRUE,
 			transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, client_health.transaction_uuid)
@@ -1654,7 +1504,6 @@ func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUp
 		toNullString(winClientInfo.SystemSerial),
 		winClientInfo.TPMVersion,
 		winClientInfo.OSName,
-		winClientInfo.DiskType,
 		winClientInfo.DiskFreeSpaceKB,
 		true,
 		transactionUUID,

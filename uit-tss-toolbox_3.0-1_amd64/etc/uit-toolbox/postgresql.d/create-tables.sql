@@ -284,11 +284,8 @@ CREATE TABLE IF NOT EXISTS client_health (
 	tagnumber INTEGER UNIQUE NOT NULL,
 	system_serial VARCHAR(128) DEFAULT NULL,
 	tpm_version VARCHAR(24) DEFAULT NULL,
-	bios_version VARCHAR(24) DEFAULT NULL, --remove
-	bios_updated BOOLEAN DEFAULT NULL,
 	os_name VARCHAR(128) DEFAULT NULL,
 	os_installed BOOLEAN DEFAULT NULL,
-	disk_type VARCHAR(4) DEFAULT NULL, --remove
 	disk_free_space_kb BIGINT DEFAULT NULL,
 	disk_health_pcnt NUMERIC(6,3) DEFAULT NULL, 
 	battery_health_pcnt NUMERIC(6,3) DEFAULT NULL, 

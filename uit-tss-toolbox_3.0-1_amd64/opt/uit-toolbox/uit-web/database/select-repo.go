@@ -22,7 +22,6 @@ type Select interface {
 	GetManufacturersAndModels(ctx context.Context) ([]types.AllManufacturersAndModelsRow, error)
 	CheckTwoFactorCode(ctx context.Context, twoFactorCode *string) (string, error)
 	CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error)
-	GetBiosData(ctx context.Context, tag *int64) (*types.BiosData, error)
 	GetOsData(ctx context.Context, tag *int64) (*types.OsData, error)
 	GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error)
 	GetAvailableJobs(ctx context.Context, tag *int64) (*types.AvailableJobs, error)
@@ -417,36 +416,6 @@ func ClientLookupBySerial(ctx context.Context, serial *string) (*types.ClientLoo
 		return nil, fmt.Errorf("query error: %w", err)
 	}
 	return &clientLookup, nil
-}
-
-func (repo *SelectRepo) GetBiosData(ctx context.Context, tag *int64) (*types.BiosData, error) {
-	if tag == nil {
-		return nil, fmt.Errorf("tagnumber is nil")
-	}
-
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	const sqlQuery = `SELECT client_health.tagnumber, client_health.bios_version, client_health.bios_updated, 
-	client_health.tpm_version 
-	FROM client_health WHERE client_health.tagnumber = $1;`
-
-	var biosData types.BiosData
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
-	if err := row.Scan(
-		&biosData.Tagnumber,
-		&biosData.BiosVersion,
-		&biosData.BiosUpdated,
-		&biosData.BiosDate,
-		&biosData.TpmVersion,
-	); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("error during row scan: %w", err)
-	}
-	return &biosData, nil
 }
 
 func (repo *SelectRepo) GetOsData(ctx context.Context, tag *int64) (*types.OsData, error) {
