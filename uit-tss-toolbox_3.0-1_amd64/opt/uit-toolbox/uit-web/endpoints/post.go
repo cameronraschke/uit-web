@@ -1426,6 +1426,8 @@ func ReceiveWindowsClientInfo(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
+	bodyBytes = bytes.TrimSpace(bodyBytes)
+	bodyBytes = bytes.TrimPrefix(bodyBytes, []byte{0xEF, 0xBB, 0xBF}) // Trim UTF-8 BOM if present
 	if len(bodyBytes) == 0 {
 		log.Warn("JSON file is empty")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
