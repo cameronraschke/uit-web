@@ -1467,5 +1467,9 @@ func ReceiveWindowsClientInfo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Info("Testing - received request: " + fmt.Sprintf("%v", dto))
+	middleware.WriteJson(w, http.StatusOK, struct {
+		Status string `json:"status"`
+	}{
+		Status: "success",
+	})
 }
