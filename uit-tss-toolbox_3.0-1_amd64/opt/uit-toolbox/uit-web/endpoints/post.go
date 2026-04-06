@@ -310,13 +310,19 @@ func SetClientHealth(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	updateRepo, err := database.NewUpdateRepo()
+	transactionUUID, err := uuid.NewUUID()
 	if err != nil {
-		log.Error("No database connection available")
+		log.Error("Failed to generate transaction UUID: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	if err := updateRepo.UpdateClientHealth(req.Context(), partialDTO); err != nil {
+	if transactionUUID == uuid.Nil || transactionUUID.String() == "" {
+		log.Error("Generated transaction UUID is nil")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	if err := database.UpdateClientHealthUpdate(req.Context(), transactionUUID, partialDTO); err != nil {
 		log.Error("database error: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
@@ -573,18 +579,18 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-
-	lr := io.LimitReader(req.Body, int64(htmlFormConstraints.GeneralNote.NoteTypeMaxChars*4))
+	maxNoteJSONBytes := int64((htmlFormConstraints.GeneralNote.NoteTypeMaxChars+htmlFormConstraints.GeneralNote.NoteContentMaxChars)*4 + 512)
+	req.Body = http.MaxBytesReader(w, req.Body, maxNoteJSONBytes)
+	defer req.Body.Close()
 
 	// Parse and validate note data
 	var newNote types.Note
-	err = json.NewDecoder(lr).Decode(&newNote)
+	err = json.NewDecoder(req.Body).Decode(&newNote)
 	if err != nil {
 		log.Warn("Cannot decode note JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	defer req.Body.Close()
 
 	if newNote.NoteType == nil || newNote.Content == nil {
 		log.Warn("Note type or content is nil, not inserting new note")
@@ -1001,7 +1007,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	clientHealthData := types.MapInventoryUpdateDomainToClientHealthWriteModel(transactionUUID, inventoryDomain)
+	clientHealthData := types.MapInventoryUpdateDomainToClientHealthDTO(transactionUUID, inventoryDomain)
 	if err := database.UpdateClientHealthUpdate(ctx, transactionUUID, clientHealthData); err != nil {
 		log.Error("Failed to update inventory health info: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)

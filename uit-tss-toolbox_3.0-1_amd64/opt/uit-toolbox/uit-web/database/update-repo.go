@@ -89,7 +89,7 @@ func InsertNewNote(ctx context.Context, timestamp *time.Time, noteType *string, 
 	return err
 }
 
-func UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.InventoryClientHealthWriteModel) (err error) {
+func UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.ClientHealthDTO) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
 		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
 	}

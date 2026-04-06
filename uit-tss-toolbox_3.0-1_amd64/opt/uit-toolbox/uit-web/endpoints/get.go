@@ -92,31 +92,31 @@ func GetGlobalLookup(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, globalLookup)
 }
 
-func GetBiosData(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
-	if err != nil || tagnumber == nil {
-		log.Warn("Invalid tagnumber provided in GetBiosData: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
+// func GetBiosData(w http.ResponseWriter, req *http.Request) {
+// 	ctx := req.Context()
+// 	log := middleware.GetLoggerFromContext(ctx)
+// 	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
+// 	if err != nil || tagnumber == nil {
+// 		log.Warn("Invalid tagnumber provided in GetBiosData: " + err.Error())
+// 		middleware.WriteJsonError(w, http.StatusBadRequest)
+// 		return
+// 	}
 
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository in GetBiosData: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+// 	db, err := database.NewSelectRepo()
+// 	if err != nil {
+// 		log.Warn("Error creating select repository in GetBiosData: " + err.Error())
+// 		middleware.WriteJsonError(w, http.StatusInternalServerError)
+// 		return
+// 	}
 
-	biosData, err := db.GetBiosData(ctx, tagnumber)
-	if err != nil {
-		log.Warn("Query error in GetBiosData: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	middleware.WriteJson(w, http.StatusOK, biosData)
-}
+// 	biosData, err := db.GetBiosData(ctx, tagnumber)
+// 	if err != nil {
+// 		log.Warn("Query error in GetBiosData: " + err.Error())
+// 		middleware.WriteJsonError(w, http.StatusInternalServerError)
+// 		return
+// 	}
+// 	middleware.WriteJson(w, http.StatusOK, biosData)
+// }
 
 func GetOSData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()

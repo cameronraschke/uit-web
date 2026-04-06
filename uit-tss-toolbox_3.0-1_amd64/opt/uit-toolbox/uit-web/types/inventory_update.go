@@ -337,12 +337,12 @@ func MapInventoryUpdateDomainToHardwareWriteModel(transactionUUID uuid.UUID, dom
 	}
 }
 
-func MapInventoryUpdateDomainToClientHealthWriteModel(transactionUUID uuid.UUID, domain *InventoryUpdateDTO) *InventoryClientHealthWriteModel {
+func MapInventoryUpdateDomainToClientHealthDTO(transactionUUID uuid.UUID, domain *InventoryUpdateDTO) *ClientHealthDTO {
 	if domain == nil {
 		return nil
 	}
-	return &InventoryClientHealthWriteModel{
-		TransactionUUID:   transactionUUID,
+	return &ClientHealthDTO{
+		TransactionUUID:   transactionUUID.String(),
 		Tagnumber:         domain.Tagnumber,
 		LastHardwareCheck: copyTimePtr(domain.LastHardwareCheck),
 	}

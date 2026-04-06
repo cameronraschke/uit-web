@@ -281,6 +281,7 @@ ON CONFLICT (system_model) DO UPDATE SET
 
 CREATE TABLE IF NOT EXISTS client_health (
 	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
+	client_uuid UUID UNIQUE DEFAULT NULL,
 	tagnumber INTEGER UNIQUE NOT NULL,
 	system_serial VARCHAR(128) DEFAULT NULL,
 	tpm_version VARCHAR(24) DEFAULT NULL,
@@ -298,6 +299,11 @@ CREATE TABLE IF NOT EXISTS client_health (
 	transaction_uuid UUID DEFAULT NULL,
 	updated_from_windows BOOLEAN DEFAULT FALSE NOT NULL,
 
+	CONSTRAINT client_health_client_uuid_fkey
+		FOREIGN KEY (client_uuid)
+			REFERENCES ids(uuid)
+		ON UPDATE CASCADE
+		ON DELETE SET NULL,
 	CONSTRAINT client_health_valid_tag
 		CHECK (tagnumber > 100000 AND tagnumber < 999999)
 );
@@ -651,3 +657,24 @@ ON CONFLICT (status_name) DO UPDATE SET
 	sort_order = EXCLUDED.sort_order, 
 	status_type = EXCLUDED.status_type
 ;
+
+CREATE TABLE IF NOT EXISTS static_building_info (
+	building_number VARCHAR(8) PRIMARY KEY,
+	building_name VARCHAR(64) NOT NULL,
+	building_name_formatted VARCHAR(64) NOT NULL,
+	building_sort_order SMALLINT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS ids (
+	uuid UUID PRIMARY KEY DEFAULT uuidv7(),
+	tagnumber INTEGER NOT NULL,
+	system_serial VARCHAR(128) NOT NULL,
+	time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+
+	CONSTRAINT ids_valid_tag
+		CHECK (tagnumber > 100000 AND tagnumber < 999999),
+	CONSTRAINT ids_system_serial_unique
+		UNIQUE (system_serial),
+	CONSTRAINT ids_tagnumber_unique
+		UNIQUE (tagnumber)
+);
