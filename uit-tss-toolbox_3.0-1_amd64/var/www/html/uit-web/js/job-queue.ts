@@ -886,6 +886,8 @@ async function initializeJobQueuePage() {
 	}
 
 	// Initial fetch and render of job queue table
+	const jobTable = await fetchJobQueueData();
+	await renderJobQueueTable(jobTable);
 	await startQueueInterval();
 }
 
