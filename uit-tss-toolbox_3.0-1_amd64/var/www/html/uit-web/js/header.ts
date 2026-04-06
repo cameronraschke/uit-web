@@ -34,6 +34,9 @@ function initHeader() {
 	const globalLookupForm = document.querySelector("#global-client-lookup-form") as HTMLFormElement;
 	const tagLookup = document.querySelector("#global-client-lookup") as HTMLInputElement;
 	const globalSearchDatalist = document.querySelector("#global-client-lookup-datalist") as HTMLDataListElement;
+	const keyupDebounceMs = 75;
+	let keyupDebounceTimer: number | undefined;
+	let cachedTagNumbers: number[] = [];
 
 	if (!globalLookupForm) {
 		console.warn("Global lookup form not found, skipping tag search initialization");
@@ -48,14 +51,42 @@ function initHeader() {
 		return;
 	}
 
-	tagLookup.addEventListener('keyup', () => {
+	const rebuildTagCache = (entriesSource?: any[]) => {
+		const source = Array.isArray(entriesSource) ? entriesSource : window.globalLookupResults;
+		cachedTagNumbers = Array.isArray(source)
+			? source
+				.flatMap((entry: any) => entry.entries || [])
+				.map((entry: any) => entry.tagnumber)
+				.filter((tag: any): tag is number => typeof tag === "number")
+			: [];
+	};
+
+	const renderLookupOptions = () => {
+		if (!cachedTagNumbers.length) {
+			rebuildTagCache();
+		}
 		const inputVal = tagLookup.value.trim();
 		if (inputVal.length === 0) {
-			renderTagOptions(globalSearchDatalist, window.globalLookupResults.flatMap(entry => entry.entries || []).map(entry => entry.tagnumber).filter((tag): tag is number => typeof tag === "number"), 0);
+			renderTagOptions(globalSearchDatalist, cachedTagNumbers, 0);
 			return;
 		}
-		const globalSearchValues = window.globalLookupResults.flatMap(entry => entry.entries || []).map(entry => entry.tagnumber).filter((tag): tag is number => typeof tag === "number").filter(tag => tag.toString().includes(inputVal));
+		const globalSearchValues = cachedTagNumbers.filter(tag => tag.toString().includes(inputVal));
 		renderTagOptions(globalSearchDatalist, globalSearchValues, 10);
+	};
+
+	rebuildTagCache();
+	tagLookup.addEventListener('keyup', () => {
+		if (keyupDebounceTimer !== undefined) {
+			clearTimeout(keyupDebounceTimer);
+		}
+		keyupDebounceTimer = window.setTimeout(renderLookupOptions, keyupDebounceMs);
+	});
+
+	document.addEventListener("tags:loaded", (event: Event) => {
+		const customEvent = event as CustomEvent<{ entries: any[] }>;
+		const rawEntries = (customEvent && customEvent.detail && Array.isArray(customEvent.detail.entries)) ? customEvent.detail.entries : window.globalLookupResults;
+		rebuildTagCache(rawEntries);
+		renderLookupOptions();
 	});
 
 	globalLookupForm.addEventListener('submit', (event) => {

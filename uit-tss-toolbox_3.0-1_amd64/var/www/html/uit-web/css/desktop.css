@@ -565,6 +565,10 @@ td > div.flex-container {
 	text-decoration: underline;
 }
 
+#global-client-lookup-button {
+	margin: auto;
+}
+
 @media (max-width: 1080px) {
 	#global-client-lookup-form {
 		display: none;

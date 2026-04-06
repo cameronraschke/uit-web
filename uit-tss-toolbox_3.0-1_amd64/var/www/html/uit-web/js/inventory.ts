@@ -831,20 +831,45 @@ if (cancelUpdate) {
 	});
 }
 
+const lookupTagSearchDebounceMs = 75;
+let lookupTagSearchDebounceTimer: number | undefined;
+let allLookupTagsCache: number[] = [];
+
+function rebuildLookupTagCache(rawEntries?: any[]): number[] {
+	const source = Array.isArray(rawEntries) ? rawEntries : window.globalLookupResults;
+	allLookupTagsCache = Array.isArray(source)
+		? source
+			.flatMap((cache: any) => cache.entries || [])
+			.map((entry: any) => entry.tagnumber)
+			.filter((tag: any): tag is number => typeof tag === "number")
+		: [];
+	return allLookupTagsCache;
+}
+
+function renderCachedLookupTagOptions(searchTerm: string): void {
+	const allTags = allLookupTagsCache.length > 0 ? allLookupTagsCache : rebuildLookupTagCache();
+	const normalizedSearchTerm = (searchTerm || "").trim().toLowerCase();
+	const filteredTags = normalizedSearchTerm
+		? allTags.filter(tag => tag.toString().includes(normalizedSearchTerm))
+		: allTags;
+
+	if (filteredTags.includes(Number(normalizedSearchTerm))) {
+		allTagsDatalist.innerHTML = '';
+		return;
+	}
+
+	renderTagOptions(allTagsDatalist, filteredTags, 20);
+}
+
 if (clientLookupTagInput) {
 	clientLookupTagInput.addEventListener("keyup", (event: KeyboardEvent) => {
-		const searchTerm = ((event.target as HTMLInputElement).value || '').trim().toLowerCase();
-		const allTags = Array.isArray(window.globalLookupResults) 
-			? window.globalLookupResults.flatMap(cache => cache.entries || []).map(entry => entry.tagnumber).filter((tag): tag is number => typeof tag === "number") 
-			: [];
-		const filteredTags = searchTerm
-			? allTags.filter(tag => tag.toString().trim().includes(searchTerm))
-			: allTags;
-		if (filteredTags.includes(Number(searchTerm))) {
-			allTagsDatalist.innerHTML = '';
-		} else {
-			renderTagOptions(allTagsDatalist, filteredTags, 20);
+		const searchTerm = (event.target as HTMLInputElement).value || '';
+		if (lookupTagSearchDebounceTimer !== undefined) {
+			clearTimeout(lookupTagSearchDebounceTimer);
 		}
+		lookupTagSearchDebounceTimer = window.setTimeout(() => {
+			renderCachedLookupTagOptions(searchTerm);
+		}, lookupTagSearchDebounceMs);
 	});
 }
 
@@ -1117,14 +1142,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 		console.error("Error during inventory page initialization:", errorMessage);
 	}
 	if (Array.isArray(window.globalLookupResults) && window.globalLookupResults.length > 0) {
-		const tags = window.globalLookupResults.flatMap(cache => (cache.entries || []).map(e => e.tagnumber)).filter((tag): tag is number => typeof tag === "number");
+		const tags = rebuildLookupTagCache();
 		renderTagOptions(allTagsDatalist, tags, 20);
 	}
 
 	document.addEventListener('tags:loaded', (event: Event) => {
 		const customEvent = event as CustomEvent<{ entries: any[] }>;
 		const rawEntries = (customEvent && customEvent.detail && Array.isArray(customEvent.detail.entries)) ? customEvent.detail.entries : window.globalLookupResults;
-		const tags = rawEntries.flatMap((cache: any) => (cache.entries || []).map((e: any) => e.tagnumber)).filter((tag: any): tag is number => typeof tag === "number");
+		const tags = rebuildLookupTagCache(rawEntries);
 		renderTagOptions(allTagsDatalist, tags || [], 20);
 	});
 	

@@ -17,8 +17,11 @@
 				<span>Reports</span>
 			</a>
 			<form id="global-client-lookup-form" class="menuitem search">
-				<input type="text" id="global-client-lookup" class="text-search" placeholder="Search Tag/Serial No." list="global-client-lookup-datalist"/>
-				<datalist id="global-client-lookup-datalist"></datalist>
+				<div class="flex-container horizontal">
+					<input type="text" id="global-client-lookup" class="text-search" placeholder="Search Tag/Serial No." list="global-client-lookup-datalist"/>
+					<datalist id="global-client-lookup-datalist"></datalist>
+					<button id="global-client-lookup-button" type="submit">Search</button>
+				</div>
 			</form>
 			<a id="menu-logout-button" href="/logout" class="menuitem logout">
 				<span>Logout</span>

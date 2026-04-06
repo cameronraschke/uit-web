@@ -74,17 +74,25 @@ function renderTagOptions(datalistEL: HTMLDataListElement, tags: number[], limit
     console.warn("No tag datalist found");
     return;
   }
-  
-  datalistEL.innerHTML = '';
-  let maxTags = limit || 20;
-	if (tags.length < maxTags) {
-		maxTags = tags.length;
+
+	const safeTags = Array.isArray(tags) ? tags : [];
+	const maxTags = limit > 0 ? Math.min(limit, safeTags.length) : safeTags.length;
+	const visibleTags = safeTags.slice(0, maxTags);
+
+	// Skip if input is the same as rendered value
+	const renderKey = visibleTags.join(",");
+	if (datalistEL.dataset.renderKey === renderKey) {
+		return;
 	}
-  (tags || []).slice(0, maxTags).forEach(tag => {
-    const option = document.createElement('option');
-    option.value = tag.toString();
-    datalistEL.appendChild(option);
-  });
+	datalistEL.dataset.renderKey = renderKey;
+
+	if (visibleTags.length === 0) {
+		datalistEL.replaceChildren();
+		return;
+	}
+
+	const html = visibleTags.map(tag => `<option value="${tag}"></option>`).join("");
+	datalistEL.innerHTML = html;
 }
 
 // Boolean broken status
