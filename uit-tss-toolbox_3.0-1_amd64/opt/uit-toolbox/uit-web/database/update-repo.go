@@ -1067,9 +1067,6 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 	if healthCheck == nil {
 		return fmt.Errorf("healthCheck data is required")
 	}
-	if healthCheck.LastHardwareCheck.IsZero() {
-		return fmt.Errorf("last hardware check time is required")
-	}
 	if ctx.Err() != nil {
 		return fmt.Errorf("context error: %w", ctx.Err())
 	}
@@ -1101,13 +1098,15 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 			) 
 		VALUES (
 			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
-			COALESCE($1, tagnumber), 
-			COALESCE($2, system_serial),
-			COALESCE($3, tpm_version),
-			COALESCE($4, last_hardware_check)
+			$1,
+			$2,
+			$3,
+			$4
 		)
 		ON CONFLICT (tagnumber) DO UPDATE SET 
 			client_uuid = EXCLUDED.client_uuid, 
+			system_serial = COALESCE(EXCLUDED.system_serial, client_health.system_serial),
+			tpm_version = COALESCE(EXCLUDED.tpm_version, client_health.tpm_version),
 			last_hardware_check = EXCLUDED.last_hardware_check
 		;`
 	var sqlResult sql.Result

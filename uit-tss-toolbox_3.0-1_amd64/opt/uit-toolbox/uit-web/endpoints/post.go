@@ -1192,11 +1192,11 @@ func UpdateClientHealthCheck(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if hardwareCheckData.LastHardwareCheck == nil || hardwareCheckData.LastHardwareCheck.IsZero() {
-		log.Warn("Last hardware check time is missing or zero")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
+	// if hardwareCheckData.LastHardwareCheck == nil || hardwareCheckData.LastHardwareCheck.IsZero() {
+	// 	log.Warn("Last hardware check time is missing or zero")
+	// 	middleware.WriteJsonError(w, http.StatusBadRequest)
+	// 	return
+	// }
 	if hardwareCheckData.LastHardwareCheck != nil {
 		ptrTime := hardwareCheckData.LastHardwareCheck.UTC()
 		hardwareCheckData.LastHardwareCheck = &ptrTime
