@@ -369,6 +369,7 @@ func ClientLookupByTag(ctx context.Context, tag *int64) (*types.ClientLookup, er
 	)
 	if err := row.Scan(
 		&clientLookup.Tagnumber,
+		&clientLookup.SystemSerial,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -411,6 +412,7 @@ func ClientLookupBySerial(ctx context.Context, serial *string) (*types.ClientLoo
 	var clientLookup types.ClientLookup
 	if err := row.Scan(
 		&clientLookup.Tagnumber,
+		&clientLookup.SystemSerial,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
