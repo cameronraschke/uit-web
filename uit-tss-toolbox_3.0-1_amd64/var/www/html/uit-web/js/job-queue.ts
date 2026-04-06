@@ -195,6 +195,9 @@ if (updateOnlineJobQueueForm && updateOnlineJobQueueSelect && updateOnlineJobQue
 document.addEventListener('visibilitychange', async () => {
 	if (jobQueueInterval) clearInterval(jobQueueInterval);
 	if (document.visibilityState === 'visible') {
+		// Fetch again
+		const jobTable = await fetchJobQueueData();
+		await renderJobQueueTable(jobTable);
 		await startQueueInterval();
 	}
 });
@@ -842,10 +845,6 @@ async function updateClientJob(tagnumber: number, job_name: string) {
 async function startQueueInterval() {
 	// Clear interval
 	if (jobQueueInterval) clearInterval(jobQueueInterval);
-
-	// Fetch again
-	const jobTable = await fetchJobQueueData();
-	await renderJobQueueTable(jobTable);
 
 	// Restart interval
 	jobQueueInterval = setInterval(async () => {
