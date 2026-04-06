@@ -1112,7 +1112,8 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 			$5
 		)
 		ON CONFLICT (tagnumber) DO UPDATE SET 
-			client_uuid = EXCLUDED.client_uuid, 
+			transaction_uuid = EXCLUDED.transaction_uuid,
+			client_uuid = COALESCE(EXCLUDED.client_uuid, client_health.client_uuid), 
 			system_serial = COALESCE(EXCLUDED.system_serial, client_health.system_serial),
 			tpm_version = COALESCE(EXCLUDED.tpm_version, client_health.tpm_version),
 			last_hardware_check = EXCLUDED.last_hardware_check
