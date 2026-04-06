@@ -92,7 +92,10 @@ func CreatePartialClientHealthUpdateRequestDTO(request *ClientHealthUpdateReques
 	dto := new(ClientHealthDTO)
 	utcTime := time.Now().UTC()
 	dto.Time = &utcTime
-	dto.Tagnumber = request.Tagnumber
+	if request.Tagnumber < 100000 || request.Tagnumber > 999999 {
+		return nil, fmt.Errorf("invalid tagnumber: %d", request.Tagnumber)
+	}
+
 	dto.TransactionUUID = request.TransactionUUID
 	if request.SystemSerial != nil && strings.TrimSpace(*request.SystemSerial) != "" {
 		dto.SystemSerial = request.SystemSerial

@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS jobstats (
 CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	transaction_uuid VARCHAR(64) UNIQUE NOT NULL,
 	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
+	client_uuid UUID DEFAULT NULL,
 	tagnumber INTEGER NOT NULL PRIMARY KEY,
 	system_serial VARCHAR(128) DEFAULT NULL,
 	ethernet_mac VARCHAR(17) DEFAULT NULL,
@@ -100,12 +101,18 @@ CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	updated_from_windows BOOLEAN DEFAULT FALSE NOT NULL,
 
 	CONSTRAINT historical_hardware_data_valid_tag
-		CHECK (tagnumber > 100000 AND tagnumber < 999999)
+		CHECK (tagnumber > 100000 AND tagnumber < 999999),
+	CONSTRAINT historical_hardware_data_client_uuid_fkey
+		FOREIGN KEY (client_uuid)
+			REFERENCES ids(uuid)
+		ON UPDATE CASCADE
+		ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS locations (
 	id SERIAL PRIMARY KEY,
 	time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	client_uuid UUID DEFAULT NULL,
 	tagnumber INTEGER NOT NULL,
 	system_serial VARCHAR(128) DEFAULT NULL,
 	location VARCHAR(128) DEFAULT NULL,
@@ -126,6 +133,11 @@ CREATE TABLE IF NOT EXISTS locations (
 	CONSTRAINT locations_valid_tag
 		CHECK (tagnumber > 100000 AND tagnumber < 999999),
 
+	CONSTRAINT locations_client_uuid_fkey
+		FOREIGN KEY (client_uuid)
+			REFERENCES ids(uuid)
+		ON UPDATE CASCADE
+		ON DELETE SET NULL,
 	CONSTRAINT locations_department_name_fkey
 		FOREIGN KEY (department_name)
 			REFERENCES static_department_info(department_name)
@@ -309,6 +321,7 @@ CREATE TABLE IF NOT EXISTS client_health (
 );
 
 CREATE TABLE IF NOT EXISTS job_queue (
+	client_uuid UUID UNIQUE DEFAULT NULL,
 	tagnumber INTEGER UNIQUE NOT NULL,
 	job_queued BOOLEAN DEFAULT FALSE,
 	job_name VARCHAR(64) DEFAULT NULL,
@@ -344,7 +357,12 @@ CREATE TABLE IF NOT EXISTS job_queue (
 		FOREIGN KEY (job_name) 
 			REFERENCES static_job_names(job_name) 
 		ON UPDATE CASCADE 
-		ON DELETE RESTRICT
+		ON DELETE RESTRICT,
+	CONSTRAINT job_queue_client_uuid_fkey
+		FOREIGN KEY (client_uuid)
+			REFERENCES ids(uuid)
+		ON UPDATE CASCADE
+		ON DELETE SET NULL
 );
 
 DROP table IF EXISTS logins;
@@ -363,6 +381,7 @@ CREATE TABLE IF NOT EXISTS logins (
 
 
 CREATE TABLE IF NOT EXISTS hardware_data (
+	client_uuid UUID UNIQUE DEFAULT NULL,
 	tagnumber INTEGER UNIQUE NOT NULL,
 	system_serial VARCHAR(128) DEFAULT NULL,
 	system_uuid VARCHAR(64) DEFAULT NULL,
@@ -387,6 +406,11 @@ CREATE TABLE IF NOT EXISTS hardware_data (
 	CONSTRAINT hardware_data_valid_tag
 		CHECK (tagnumber > 100000 AND tagnumber < 999999),
 
+	CONSTRAINT hardware_data_client_uuid_fkey
+		FOREIGN KEY (client_uuid)
+			REFERENCES ids(uuid)
+		ON UPDATE CASCADE
+		ON DELETE SET NULL,
 	CONSTRAINT hardware_data_device_type_fkey
 		FOREIGN KEY (device_type)
 			REFERENCES static_device_types(device_type)
@@ -422,6 +446,7 @@ CREATE TABLE IF NOT EXISTS static_info_tags (
 CREATE TABLE IF NOT EXISTS client_images (
 	uuid VARCHAR(128) PRIMARY KEY,
 	time TIMESTAMP(3) WITH TIME ZONE NOT NULL,
+	client_uuid UUID DEFAULT NULL,
 	tagnumber INTEGER NOT NULL, 
 	filename VARCHAR(128) DEFAULT NULL,
 	filepath TEXT DEFAULT NULL,
@@ -439,7 +464,13 @@ CREATE TABLE IF NOT EXISTS client_images (
 	UNIQUE (tagnumber, sha256_hash, hidden),
 
 	CONSTRAINT client_images_valid_tag
-		CHECK (tagnumber > 100000 AND tagnumber < 999999)
+		CHECK (tagnumber > 100000 AND tagnumber < 999999),
+
+	CONSTRAINT client_images_client_uuid_fkey
+		FOREIGN KEY (client_uuid)
+			REFERENCES ids(uuid)
+		ON UPDATE CASCADE
+		ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS static_organizations (
@@ -562,6 +593,7 @@ INSERT INTO static_note_info (note_type, note_type_readable, sort_order) VALUES
 
 CREATE TABLE IF NOT EXISTS checkout_log (
 	id SERIAL PRIMARY KEY,
+	client_uuid UUID DEFAULT NULL,
 	log_entry_time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	transaction_uuid UUID DEFAULT NULL,
 	tagnumber INTEGER NOT NULL,
@@ -572,6 +604,11 @@ CREATE TABLE IF NOT EXISTS checkout_log (
 	checkout_group VARCHAR(48) DEFAULT NULL,
 	note VARCHAR(512) DEFAULT NULL,
 
+	CONSTRAINT checkout_log_client_uuid_fkey
+		FOREIGN KEY (client_uuid)
+			REFERENCES ids(uuid)
+		ON UPDATE CASCADE
+		ON DELETE SET NULL,
 	CONSTRAINT checkout_log_valid_tag
 		CHECK (tagnumber > 100000 AND tagnumber < 999999)
 );

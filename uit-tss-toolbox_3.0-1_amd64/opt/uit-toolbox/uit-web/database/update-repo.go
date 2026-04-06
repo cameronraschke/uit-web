@@ -94,7 +94,7 @@ func UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, cl
 		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
 	}
 	if clientHealthData == nil {
-		return fmt.Errorf("%w: %s", types.InvalidFieldError, "InventoryClientHealthWriteModel")
+		return fmt.Errorf("%w: %s", types.InvalidFieldError, "ClientHealthDTO")
 	}
 	if err := types.IsTagnumberInt64Valid(&clientHealthData.Tagnumber); err != nil {
 		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
@@ -123,20 +123,22 @@ func UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, cl
 		INSERT INTO client_health
 			(
 				time, 
+				client_uuid,
 				tagnumber, 
 				last_hardware_check, 
 				transaction_uuid
 			) 
-		VALUES
-			(
-				CURRENT_TIMESTAMP, 
-				$1, 
-				$2, 
-				$3
-			)
-			ON CONFLICT (tagnumber)
+		VALUES (
+			CURRENT_TIMESTAMP, 
+			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+			$1, 
+			$2, 
+			$3
+		)
+		ON CONFLICT (tagnumber)
 			DO UPDATE SET
 				time = CURRENT_TIMESTAMP,
+				client_uuid = EXCLUDED.client_uuid,
 				last_hardware_check = EXCLUDED.last_hardware_check,
 				transaction_uuid = EXCLUDED.transaction_uuid
 	;`
@@ -195,6 +197,7 @@ func InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID,
 		INSERT INTO checkout_log
 			(
 				log_entry_time, 
+				client_uuid,
 				transaction_uuid, 
 				tagnumber, 
 				checkout_date, 
@@ -204,6 +207,7 @@ func InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID,
 		VALUES 
 			(
 				CURRENT_TIMESTAMP, 
+				(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
 				$1, 
 				$2, 
 				$3, 
@@ -262,6 +266,7 @@ func UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID,
 		INSERT INTO hardware_data
 			(
 				time, 
+				client_uuid,
 				transaction_uuid, 
 				tagnumber, 
 				system_manufacturer, 
@@ -271,6 +276,7 @@ func UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID,
 		VALUES
 			(
 				CURRENT_TIMESTAMP, 
+				(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
 				$1, 
 				$2, 
 				$3, 
@@ -280,6 +286,7 @@ func UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID,
 		ON CONFLICT (tagnumber)
 		DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
+			client_uuid = EXCLUDED.client_uuid,
 			transaction_uuid = EXCLUDED.transaction_uuid,
 			tagnumber = EXCLUDED.tagnumber,
 			system_manufacturer = EXCLUDED.system_manufacturer,
@@ -331,9 +338,11 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 	}()
 
 	// Update locations table
-	const locationsSql = `INSERT INTO locations 
-		(time, 
+	const locationsSql = `
+	INSERT INTO locations (
+		time, 
 		transaction_uuid,
+		client_uuid,
 		tagnumber, 
 		system_serial, 
 		location, 
@@ -347,9 +356,28 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 		is_broken, 
 		disk_removed, 
 		client_status,
-		note) 
-		VALUES 
-	(CURRENT_TIMESTAMP, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`
+		note
+	) 
+	VALUES (
+		CURRENT_TIMESTAMP,
+	 	$1, 
+		(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1), 
+		$2, 
+		$3, 
+		$4, 
+		$5, 
+		$6, 
+		$7, 
+		$8, 
+		$9, 
+		$10, 
+		$11, 
+		$12, 
+		$13, 
+		$14, 
+		$15
+	)
+	;`
 
 	var locationsResult sql.Result
 	locationsResult, err = tx.ExecContext(ctx, locationsSql,
@@ -422,6 +450,7 @@ func UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest
 			(
 				uuid, 
 				time, 
+				client_uuid,
 				tagnumber, 
 				filename, 
 				filepath, 
@@ -440,6 +469,7 @@ func UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest
 			(
 				$1, 
 				$2, 
+				(SELECT uuid FROM ids WHERE tagnumber = $3 ORDER BY time DESC LIMIT 1),
 				$3, 
 				$4, 
 				$5, 
@@ -697,7 +727,7 @@ func SetClientJob(ctx context.Context, tag int64, clientJob string) (err error) 
 			job_name = $1, 
 			job_active = FALSE 
 		WHERE 
-			tagnumber = $2
+			client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1)
 	;`
 	sqlResult, err := tx.ExecContext(ctx, sqlCode,
 		clientJob,
@@ -740,8 +770,26 @@ func (updateRepo *UpdateRepo) UpdateClientMemoryInfo(ctx context.Context, memInf
 		}
 	}()
 
-	const sqlCode = `INSERT INTO job_queue (tagnumber, memory_capacity_kb, memory_usage_kb) VALUES ($1, $2, $3)
-		ON CONFLICT (tagnumber) DO UPDATE SET memory_capacity_kb = EXCLUDED.memory_capacity_kb, memory_usage_kb = EXCLUDED.memory_usage_kb;`
+	const sqlCode = `
+		INSERT INTO 
+			job_queue (
+				client_uuid, 
+				tagnumber, 
+				memory_capacity_kb, 
+				memory_usage_kb
+			) 
+		VALUES 
+			(
+				(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+				$1, 
+				$2, 
+				$3
+			)
+		ON CONFLICT (tagnumber) DO UPDATE SET 
+			client_uuid = EXCLUDED.client_uuid,
+			memory_capacity_kb = EXCLUDED.memory_capacity_kb, 
+			memory_usage_kb = EXCLUDED.memory_usage_kb
+	;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		toNullInt64(memInfo.Tagnumber),
@@ -782,8 +830,22 @@ func (updateRepo *UpdateRepo) UpdateClientCPUUsage(ctx context.Context, cpuData 
 		}
 	}()
 
-	const sqlCode = `INSERT INTO job_queue (tagnumber, cpu_usage) VALUES ($1, $2)
-		ON CONFLICT (tagnumber) DO UPDATE SET cpu_usage = EXCLUDED.cpu_usage;`
+	const sqlCode = `
+		INSERT INTO 
+			job_queue (
+				client_uuid,
+				tagnumber, 
+				cpu_usage
+			) 
+		VALUES (
+			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+			$1, 
+			$2
+		)
+		ON CONFLICT (tagnumber) DO UPDATE SET 
+			client_uuid = EXCLUDED.client_uuid,
+			cpu_usage = EXCLUDED.cpu_usage
+	;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		toNullInt64(cpuData.Tagnumber),
@@ -821,8 +883,22 @@ func (updateRepo *UpdateRepo) UpdateClientCPUMHz(ctx context.Context, cpuData *t
 		}
 	}()
 
-	const sqlCode = `INSERT INTO job_queue (tagnumber, cpu_mhz) VALUES ($1, $2)
-		ON CONFLICT (tagnumber) DO UPDATE SET cpu_mhz = EXCLUDED.cpu_mhz;`
+	const sqlCode = `
+		INSERT INTO 
+			job_queue (
+				client_uuid, 
+				tagnumber, 
+				cpu_mhz
+			) 
+		VALUES (
+			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+			$1, 
+			$2
+		)
+		ON CONFLICT (tagnumber) DO UPDATE SET 
+			client_uuid = EXCLUDED.client_uuid,
+			cpu_mhz = EXCLUDED.cpu_mhz
+	;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		toNullInt64(cpuData.Tagnumber),
@@ -859,8 +935,16 @@ func (updateRepo *UpdateRepo) UpdateClientNetworkUsage(ctx context.Context, netw
 			err = tx.Commit()
 		}
 	}()
-	const sqlCode = `INSERT INTO job_queue (tagnumber, network_usage, link_speed) VALUES ($1, $2, $3)
-		ON CONFLICT (tagnumber) DO UPDATE SET network_usage = EXCLUDED.network_usage, link_speed = EXCLUDED.link_speed;`
+	const sqlCode = `INSERT INTO job_queue (client_uuid, tagnumber, network_usage, link_speed) VALUES (
+			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+			$1, 
+			$2,
+			$3
+		)
+		ON CONFLICT (tagnumber) DO UPDATE SET 
+			client_uuid = EXCLUDED.client_uuid,
+			network_usage = EXCLUDED.network_usage,
+			link_speed = EXCLUDED.link_speed;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		toNullInt64(networkData.Tagnumber),
@@ -902,8 +986,14 @@ func (updateRepo *UpdateRepo) UpdateClientCPUTemperature(ctx context.Context, cp
 
 	degreesC := float64(*cpuTempData.MillidegreesC) / 1000
 
-	const sqlCode = `INSERT INTO job_queue (tagnumber, cpu_temp) VALUES ($1, $2)
-		ON CONFLICT (tagnumber) DO UPDATE SET cpu_temp = EXCLUDED.cpu_temp;`
+	const sqlCode = `INSERT INTO job_queue (client_uuid, tagnumber, cpu_temp) VALUES (
+			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+			$1, 
+			$2
+		)
+		ON CONFLICT (tagnumber) DO UPDATE SET 
+			client_uuid = EXCLUDED.client_uuid,
+			cpu_temp = EXCLUDED.cpu_temp;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		toNullInt64(cpuTempData.Tagnumber),
@@ -941,8 +1031,24 @@ func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData
 		}
 	}()
 
-	const sqlCode = `INSERT INTO job_queue (tagnumber, client_app_uptime, system_uptime) VALUES ($1, $2, $3)
-		ON CONFLICT (tagnumber) DO UPDATE SET client_app_uptime = EXCLUDED.client_app_uptime, system_uptime = EXCLUDED.system_uptime;`
+	const sqlCode = `
+		INSERT INTO 
+			job_queue (
+				client_uuid,
+				tagnumber, 
+				client_app_uptime, 
+				system_uptime
+			) VALUES (
+				(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+				$1, 
+			 	$2, 
+			 	$3
+			)
+		ON CONFLICT (tagnumber) DO UPDATE SET 
+		client_uuid = EXCLUDED.client_uuid,
+		client_app_uptime = EXCLUDED.client_app_uptime, 
+		system_uptime = EXCLUDED.system_uptime	
+	;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		toNullInt64(uptimeData.Tagnumber),
@@ -979,8 +1085,22 @@ func (updateRepo *UpdateRepo) UpdateClientLastHardwareCheck(ctx context.Context,
 			err = tx.Commit()
 		}
 	}()
-	const sqlCode = `INSERT INTO client_health (tagnumber, last_hardware_check) VALUES ($1, $2)
-		ON CONFLICT (tagnumber) DO UPDATE SET last_hardware_check = EXCLUDED.last_hardware_check;`
+	const sqlCode = `
+		INSERT INTO 
+			client_health (
+				client_uuid,
+				tagnumber, 
+				last_hardware_check
+			) 
+		VALUES (
+			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+			$1, 
+			$2
+		)
+		ON CONFLICT (tagnumber) DO UPDATE SET 
+			client_uuid = EXCLUDED.client_uuid, 
+			last_hardware_check = EXCLUDED.last_hardware_check
+		;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		ptrToNullInt64(&tagnumber),
@@ -1018,6 +1138,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		(
 			transaction_uuid,
 			time,
+			client_uuid,
 			tagnumber,
 			system_serial,
 			system_uuid,
@@ -1038,6 +1159,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		) VALUES (
 			$1,
 			CURRENT_TIMESTAMP,
+			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
 			$2,
 			$3,
 			$4,
@@ -1059,6 +1181,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		 DO UPDATE SET
 		 	transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, hardware_data.transaction_uuid),
 			time = CURRENT_TIMESTAMP,
+			client_uuid = COALESCE(EXCLUDED.client_uuid, hardware_data.client_uuid),
 			system_serial = COALESCE(EXCLUDED.system_serial, hardware_data.system_serial),
 			system_uuid = COALESCE(EXCLUDED.system_uuid, hardware_data.system_uuid),
 			system_manufacturer = COALESCE(EXCLUDED.system_manufacturer, hardware_data.system_manufacturer),
@@ -1109,6 +1232,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		(
 			transaction_uuid,
 			time,
+			client_uuid,
 			tagnumber, 
 			system_serial, 
 			ethernet_mac, 
@@ -1139,6 +1263,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		) VALUES (
 			$1,
 			CURRENT_TIMESTAMP,
+			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
 			$2,
 			$3,
 			$4,
@@ -1169,6 +1294,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		) ON CONFLICT (transaction_uuid) 
 		DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
+			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_hardware_data.client_uuid),
 			tagnumber =  COALESCE(EXCLUDED.tagnumber, historical_hardware_data.tagnumber),
 			system_serial = COALESCE(EXCLUDED.system_serial, historical_hardware_data.system_serial),
 			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, historical_hardware_data.ethernet_mac),
@@ -1196,8 +1322,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			memory_serial = COALESCE(EXCLUDED.memory_serial, historical_hardware_data.memory_serial),
 			memory_capacity_kb = COALESCE(EXCLUDED.memory_capacity_kb, historical_hardware_data.memory_capacity_kb),
 			memory_speed_mhz = COALESCE(EXCLUDED.memory_speed_mhz, historical_hardware_data.memory_speed_mhz)
-			;
-		`
+	;`
 
 	var hardwareHistoryResult sql.Result
 	hardwareHistoryResult, err = tx.ExecContext(ctx, historicalHardwareDataTable,
@@ -1268,7 +1393,7 @@ func (updateRepo *UpdateRepo) UpdateJobQueuedAt(ctx context.Context, jobQueue *t
 		SET
 			job_queued_at = $2
 		WHERE
-			tagnumber = $1
+			client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1)
 	;`
 
 	var res sql.Result
@@ -1308,7 +1433,12 @@ func (updateRepo *UpdateRepo) UpdateClientLastHeard(ctx context.Context, tag *in
 		}
 	}()
 
-	const sqlCode = `UPDATE job_queue SET last_heard = COALESCE($2, CURRENT_TIMESTAMP) WHERE tagnumber = $1;`
+	const sqlCode = `
+		UPDATE 
+			job_queue 
+		SET 
+			last_heard = COALESCE($2, CURRENT_TIMESTAMP) 
+		WHERE client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1);`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		ptrToNullInt64(tag),
@@ -1341,7 +1471,14 @@ func (updateRepo *UpdateRepo) UpdateClientBatteryChargePcnt(ctx context.Context,
 			err = tx.Commit()
 		}
 	}()
-	const sqlCode = `UPDATE job_queue SET battery_charge_pcnt = $2 WHERE tagnumber = $1;`
+	const sqlCode = `
+		UPDATE
+			job_queue
+		SET
+			battery_charge_pcnt = $2
+		WHERE
+			client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1)
+	;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		ptrToNullInt64(tag),
@@ -1377,43 +1514,52 @@ func (updateRepo *UpdateRepo) BulkUpdateClientLocation(ctx context.Context, tran
 			err = tx.Commit()
 		}
 	}()
-	const sqlCode = `INSERT INTO locations (time, 
-	tagnumber,
-	system_serial,
-	location,
-	is_broken,
-	disk_removed,
-	department_name,
-	ad_domain,
-	note,
-	client_status,
-	building,
-	room,
-	property_custodian,
-	acquired_date,
-	retired_date,
-	transaction_uuid,
-	bulk_update
-	) SELECT CURRENT_TIMESTAMP, 
-	$1,
-	locations.system_serial,
-	$2,
-	locations.is_broken,
-	locations.disk_removed,
-	locations.department_name,
-	locations.ad_domain,
-	locations.note,
-	locations.client_status,
-	locations.building,
-	locations.room,
-	locations.property_custodian,
-	locations.acquired_date,
-	locations.retired_date,
-	$3,
-	TRUE
-	FROM locations
-	WHERE locations.tagnumber = $1
-	ORDER BY time DESC NULLS LAST
+	const sqlCode = `
+	INSERT INTO locations (
+		time, 
+		client_uuid,
+		tagnumber,
+		system_serial,
+		location,
+		is_broken,
+		disk_removed,
+		department_name,
+		ad_domain,
+		note,
+		client_status,
+		building,
+		room,
+		property_custodian,
+		acquired_date,
+		retired_date,
+		transaction_uuid,
+		bulk_update
+	)
+	SELECT 
+		CURRENT_TIMESTAMP, 
+		(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+		$1,
+		locations.system_serial,
+		$2,
+		locations.is_broken,
+		locations.disk_removed,
+		locations.department_name,
+		locations.ad_domain,
+		locations.note,
+		locations.client_status,
+		locations.building,
+		locations.room,
+		locations.property_custodian,
+		locations.acquired_date,
+		locations.retired_date,
+		$3,
+		TRUE
+	FROM 
+		locations
+	WHERE 
+		locations.tagnumber = (SELECT tagnumber FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1)
+	ORDER BY 
+		time DESC NULLS LAST
 	LIMIT 1
 	;`
 	var sqlResult sql.Result
@@ -1466,6 +1612,7 @@ func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUp
 			client_health
 		(
 			time,
+			client_uuid,
 			last_hardware_check,
 			tagnumber,
 			system_serial,
@@ -1478,6 +1625,7 @@ func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUp
 		VALUES
 		(
 			CURRENT_TIMESTAMP,
+			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
 			CURRENT_TIMESTAMP,
 			$1,
 			$2,
@@ -1489,6 +1637,7 @@ func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUp
 			$8
 		) ON CONFLICT (tagnumber) DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
+			client_uuid = COALESCE(EXCLUDED.client_uuid, client_health.client_uuid),
 			last_hardware_check = CURRENT_TIMESTAMP,
 			system_serial = COALESCE(EXCLUDED.system_serial, client_health.system_serial),
 			tpm_version = COALESCE(EXCLUDED.tpm_version, client_health.tpm_version),

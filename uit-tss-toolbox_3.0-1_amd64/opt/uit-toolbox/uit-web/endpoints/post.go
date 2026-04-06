@@ -624,14 +624,14 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "InsertInventoryUpdate"))
 	endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
 	if err != nil {
-		log.Warn("Cannot get endpoint config in InsertInventoryUpdate: " + err.Error())
+		log.Warn("Cannot get endpoint config: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	// Parse inventory data
 	appState, err := config.GetAppState()
 	if err != nil {
-		log.Warn("Cannot get app state in InsertInventoryUpdate: " + err.Error())
+		log.Warn("Cannot get app state: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -703,7 +703,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 
 	var inventoryUpdateReq types.InventoryUpdateRequest
 	if err := json.Unmarshal(jsonBytes, &inventoryUpdateReq); err != nil {
-		log.Warn("Cannot decode JSON (InsertInventoryUpdate): " + err.Error())
+		log.Warn("Cannot decode JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -729,12 +729,12 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	// Generate transaction UUID to share between multiple DB tables
 	transactionUUID, err := uuid.NewUUID()
 	if err != nil {
-		log.Error("error generation a transaction UUID (InsertInventoryUpdate)")
+		log.Error("error generation a transaction UUID")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	if transactionUUID == uuid.Nil {
-		log.Error("transaction UUID in InsertInventoryUpdate is nil")
+		log.Error("transaction UUID is nil")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -934,24 +934,24 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			totalImageFileCount++
 		} else if fileUploadConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[ext] == mimeType { // Video file processing
 			if totalVideoFileCount >= fileUploadConstraints.VideoConstraints.MaxFileCount {
-				log.Warn("Number of uploaded video files exceeds maximum allowed (InsertInventoryUpdate): " + strconv.Itoa(totalVideoFileCount))
+				log.Warn("Number of uploaded video files exceeds maximum allowed: " + strconv.Itoa(totalVideoFileCount))
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
 			if manifest.FileSize > fileUploadConstraints.VideoConstraints.MaxFileSize {
-				log.Warn("Uploaded video file too large (InsertInventoryUpdate) (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
+				log.Warn("Uploaded video file too large (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
 			if manifest.FileSize < fileUploadConstraints.VideoConstraints.MinFileSize {
-				log.Warn("Uploaded video file too small (InsertInventoryUpdate): " + fileHeader.Filename + " (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
+				log.Warn("Uploaded video file too small: " + fileHeader.Filename + " (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
 				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 				return
 			}
 			totalVideoFileCount++
 			totalVideoUploadSize += manifest.FileSize
 		} else {
-			log.Warn("Unsupported MIME type for '" + fileHeader.Filename + "' (InsertInventoryUpdate): MIME Type: " + mimeType)
+			log.Warn("Unsupported MIME type for '" + fileHeader.Filename + "': MIME Type: " + mimeType)
 			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)
 			// totalInvalidFileCount++
 			// totalInvalidUploadSize += fileSize

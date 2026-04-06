@@ -86,12 +86,6 @@ type InventoryHardwareWriteModel struct {
 	DeviceType         *string
 }
 
-type InventoryClientHealthWriteModel struct {
-	TransactionUUID   uuid.UUID
-	Tagnumber         int64
-	LastHardwareCheck *time.Time
-}
-
 type InventoryCheckoutWriteModel struct {
 	TransactionUUID uuid.UUID
 	Tagnumber       int64
