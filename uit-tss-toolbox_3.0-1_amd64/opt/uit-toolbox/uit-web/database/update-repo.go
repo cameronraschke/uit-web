@@ -1137,9 +1137,6 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 			$1,
 			$2
 		)
-		ON CONFLICT (tagnumber, time) DO UPDATE SET 
-			client_uuid = EXCLUDED.client_uuid, 
-			bios_version = EXCLUDED.bios_version
 	;`
 
 	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckHistorySQL,
