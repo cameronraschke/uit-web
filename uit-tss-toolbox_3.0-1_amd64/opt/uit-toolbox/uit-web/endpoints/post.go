@@ -1170,20 +1170,20 @@ func SetClientJob(w http.ResponseWriter, req *http.Request) {
 	}{Message: "Client job set successfully"})
 }
 
-func SetClientLastHardwareCheck(w http.ResponseWriter, req *http.Request) {
+func UpdateClientHealthCheck(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "SetClientLastHardwareCheck"))
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "UpdateClientHealthCheck"))
 
 	clientBody, err := io.ReadAll(req.Body)
 	if err != nil {
-		log.Warn("Cannot read request body for SetClientLastHardwareCheck: " + err.Error())
+		log.Warn("Cannot read request body: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	var hardwareCheckData types.ClientHardwareCheck
+	var hardwareCheckData types.ClientHealthCheck
 	if err := json.Unmarshal(clientBody, &hardwareCheckData); err != nil {
-		log.Warn("Cannot decode SetClientLastHardwareCheck JSON: " + err.Error())
+		log.Warn("Cannot decode JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -1197,13 +1197,12 @@ func SetClientLastHardwareCheck(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	updateRepo, err := database.NewUpdateRepo()
-	if err != nil {
-		log.Error("No database connection available for SetClientLastHardwareCheck")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
+	if hardwareCheckData.LastHardwareCheck != nil {
+		ptrTime := hardwareCheckData.LastHardwareCheck.UTC()
+		hardwareCheckData.LastHardwareCheck = &ptrTime
 	}
-	if err = updateRepo.UpdateClientLastHardwareCheck(ctx, hardwareCheckData.Tagnumber, (*hardwareCheckData.LastHardwareCheck).UTC()); err != nil {
+
+	if err = database.UpsertClientHealthCheck(ctx, &hardwareCheckData); err != nil {
 		log.Error("Failed to update client last hardware check: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return

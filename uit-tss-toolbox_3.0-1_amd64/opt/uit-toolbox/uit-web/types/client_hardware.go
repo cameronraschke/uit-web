@@ -48,8 +48,11 @@ type ClientHardwareView struct {
 	MemorySpeedMHz            *int64   `json:"memory_speed_mhz"`
 }
 
-type ClientHardwareCheck struct {
+type ClientHealthCheck struct {
 	Tagnumber         int64      `json:"tagnumber"`
+	SystemSerial      *string    `json:"health_system_serial"`
+	BIOSVersion       *string    `json:"health_bios_version"`
+	TPMVersion        *string    `json:"health_tpm_version"`
 	LastHardwareCheck *time.Time `json:"last_hardware_check"`
 }
 

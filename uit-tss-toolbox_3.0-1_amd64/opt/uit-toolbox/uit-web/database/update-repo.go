@@ -25,7 +25,6 @@ type Update interface {
 	UpdateClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUData) (err error)
 	UpdateClientNetworkUsage(ctx context.Context, networkData *types.NetworkData) (err error)
 	UpdateClientUptime(ctx context.Context, uptimeData *types.ClientUptime) (err error)
-	UpdateClientLastHardwareCheck(ctx context.Context, tagnumber int64, lastCheck time.Time) (err error)
 	UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error)
 	UpdateClientCPUMHz(ctx context.Context, cpuData *types.CPUData) (err error)
 	UpdateJobQueuedAt(ctx context.Context, jobQueue *types.JobQueueTableRowView) (err error)
@@ -1064,17 +1063,23 @@ func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateClientLastHardwareCheck(ctx context.Context, tagnumber int64, lastCheck time.Time) (err error) {
-	if tagnumber == 0 {
-		return fmt.Errorf("tagnumber is required")
+func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealthCheck) (err error) {
+	if healthCheck == nil {
+		return fmt.Errorf("healthCheck data is required")
 	}
-	if lastCheck.IsZero() {
+	if healthCheck.LastHardwareCheck.IsZero() {
 		return fmt.Errorf("last hardware check time is required")
 	}
 	if ctx.Err() != nil {
 		return fmt.Errorf("context error: %w", ctx.Err())
 	}
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("error beginning DB transaction: %w", err)
 	}
@@ -1085,26 +1090,32 @@ func (updateRepo *UpdateRepo) UpdateClientLastHardwareCheck(ctx context.Context,
 			err = tx.Commit()
 		}
 	}()
-	const sqlCode = `
+	const clientHealthCheckSQL = `
 		INSERT INTO 
 			client_health (
 				client_uuid,
 				tagnumber, 
+				system_serial,
+				tpm_version,
 				last_hardware_check
 			) 
 		VALUES (
 			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
-			$1, 
-			$2
+			COALESCE($1, tagnumber), 
+			COALESCE($2, system_serial),
+			COALESCE($3, tpm_version),
+			COALESCE($4, last_hardware_check)
 		)
 		ON CONFLICT (tagnumber) DO UPDATE SET 
 			client_uuid = EXCLUDED.client_uuid, 
 			last_hardware_check = EXCLUDED.last_hardware_check
 		;`
 	var sqlResult sql.Result
-	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		ptrToNullInt64(&tagnumber),
-		ptrToNullTime(&lastCheck),
+	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckSQL,
+		ptrToNullInt64(&healthCheck.Tagnumber),
+		ptrToNullString(healthCheck.SystemSerial),
+		ptrToNullString(healthCheck.TPMVersion),
+		ptrToNullTime(healthCheck.LastHardwareCheck),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -1112,6 +1123,37 @@ func (updateRepo *UpdateRepo) UpdateClientLastHardwareCheck(ctx context.Context,
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return err
 	}
+
+	const clientHealthCheckHistorySQL = `
+		INSERT INTO 
+			historical_client_health (
+				time, 
+				client_uuid, 
+				tagnumber, 
+				bios_version
+			) 
+		VALUES (
+			CURRENT_TIMESTAMP,
+			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+			$1,
+			$2
+		)
+		ON CONFLICT (tagnumber, time) DO UPDATE SET 
+			client_uuid = EXCLUDED.client_uuid, 
+			bios_version = EXCLUDED.bios_version
+	;`
+
+	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckHistorySQL,
+		ptrToNullInt64(&healthCheck.Tagnumber),
+		ptrToNullString(healthCheck.BIOSVersion),
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return err
+	}
+
 	return nil
 }
 
