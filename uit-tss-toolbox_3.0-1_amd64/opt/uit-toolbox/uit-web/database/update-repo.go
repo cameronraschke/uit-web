@@ -1125,7 +1125,7 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 
 	const clientHealthCheckHistorySQL = `
 		INSERT INTO 
-			historical_client_health (
+			historical_hardware_data (
 				time, 
 				client_uuid, 
 				tagnumber, 
