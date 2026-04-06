@@ -209,7 +209,7 @@ func InitConfig() (*AppConfiguration, error) {
 	}
 
 	generalNoteConstraints := &types.GeneralNoteConstraints{
-		MaxFormBytes:        8192 * 8,
+		MaxFormBytes:        8192 * 4, // Unicode overhead
 		NoteTypeMinChars:    1,
 		NoteTypeMaxChars:    256,
 		NoteContentMinChars: 0,
