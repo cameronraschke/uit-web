@@ -49,6 +49,7 @@ type ClientHardwareView struct {
 }
 
 type ClientHealthCheck struct {
+	TransactionUUID   string     `json:"transaction_uuid"`
 	Tagnumber         int64      `json:"tagnumber"`
 	SystemSerial      *string    `json:"health_system_serial"`
 	BIOSVersion       *string    `json:"bios_version"`

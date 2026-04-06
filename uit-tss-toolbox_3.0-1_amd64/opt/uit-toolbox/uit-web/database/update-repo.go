@@ -1063,9 +1063,15 @@ func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData
 	return nil
 }
 
-func UpsertClientHealthCheck(ctx context.Context, transactionUUID string, healthCheck *types.ClientHealthCheck) (err error) {
+func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealthCheck) (err error) {
 	if healthCheck == nil {
 		return fmt.Errorf("healthCheck data is required")
+	}
+	if healthCheck.Tagnumber == 0 {
+		return fmt.Errorf("tagnumber is required in healthCheck data")
+	}
+	if healthCheck.TransactionUUID == "" {
+		return fmt.Errorf("transaction UUID is required in healthCheck data")
 	}
 	if ctx.Err() != nil {
 		return fmt.Errorf("context error: %w", ctx.Err())
@@ -1113,7 +1119,7 @@ func UpsertClientHealthCheck(ctx context.Context, transactionUUID string, health
 		;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckSQL,
-		ptrToNullString(&transactionUUID),
+		ptrToNullString(&healthCheck.TransactionUUID),
 		ptrToNullInt64(&healthCheck.Tagnumber),
 		ptrToNullString(healthCheck.SystemSerial),
 		ptrToNullString(healthCheck.TPMVersion),
@@ -1141,11 +1147,15 @@ func UpsertClientHealthCheck(ctx context.Context, transactionUUID string, health
 			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
 			$2,
 			$3
-		)
+		) ON CONFLICT (transaction_uuid) DO UPDATE SET
+		 	time = CURRENT_TIMESTAMP,
+			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_hardware_data.client_uuid), 
+			tagnumber = EXCLUDED.tagnumber, 
+			bios_version = COALESCE(EXCLUDED.bios_version, historical_hardware_data.bios_version)
 	;`
 
 	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckHistorySQL,
-		ptrToNullString(&transactionUUID),
+		ptrToNullString(&healthCheck.TransactionUUID),
 		ptrToNullInt64(&healthCheck.Tagnumber),
 		ptrToNullString(healthCheck.BIOSVersion),
 	)
