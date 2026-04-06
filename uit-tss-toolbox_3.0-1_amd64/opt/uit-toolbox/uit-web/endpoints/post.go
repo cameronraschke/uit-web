@@ -1202,7 +1202,14 @@ func UpdateClientHealthCheck(w http.ResponseWriter, req *http.Request) {
 		hardwareCheckData.LastHardwareCheck = &ptrTime
 	}
 
-	if err = database.UpsertClientHealthCheck(ctx, &hardwareCheckData); err != nil {
+	transactionUUID, err := uuid.NewUUID()
+	if err != nil {
+		log.Error("Error generating a transaction UUID: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	if err = database.UpsertClientHealthCheck(ctx, transactionUUID.String(), &hardwareCheckData); err != nil {
 		log.Error("Failed to update client last hardware check: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return

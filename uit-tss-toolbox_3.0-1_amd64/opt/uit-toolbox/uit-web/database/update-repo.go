@@ -1063,7 +1063,7 @@ func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData
 	return nil
 }
 
-func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealthCheck) (err error) {
+func UpsertClientHealthCheck(ctx context.Context, transactionUUID string, healthCheck *types.ClientHealthCheck) (err error) {
 	if healthCheck == nil {
 		return fmt.Errorf("healthCheck data is required")
 	}
@@ -1090,6 +1090,7 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 	const clientHealthCheckSQL = `
 		INSERT INTO 
 			client_health (
+				transaction_uuid,
 				client_uuid,
 				tagnumber, 
 				system_serial,
@@ -1097,11 +1098,12 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 				last_hardware_check
 			) 
 		VALUES (
-			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
 			$1,
+			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
 			$2,
 			$3,
-			$4
+			$4,
+			$5
 		)
 		ON CONFLICT (tagnumber) DO UPDATE SET 
 			client_uuid = EXCLUDED.client_uuid, 
@@ -1111,6 +1113,7 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 		;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckSQL,
+		ptrToNullString(&transactionUUID),
 		ptrToNullInt64(&healthCheck.Tagnumber),
 		ptrToNullString(healthCheck.SystemSerial),
 		ptrToNullString(healthCheck.TPMVersion),
@@ -1126,20 +1129,23 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 	const clientHealthCheckHistorySQL = `
 		INSERT INTO 
 			historical_hardware_data (
+				transaction_uuid,
 				time, 
 				client_uuid, 
 				tagnumber, 
 				bios_version
 			) 
 		VALUES (
-			CURRENT_TIMESTAMP,
-			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
 			$1,
-			$2
+			CURRENT_TIMESTAMP,
+			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
+			$2,
+			$3
 		)
 	;`
 
 	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckHistorySQL,
+		ptrToNullString(&transactionUUID),
 		ptrToNullInt64(&healthCheck.Tagnumber),
 		ptrToNullString(healthCheck.BIOSVersion),
 	)
