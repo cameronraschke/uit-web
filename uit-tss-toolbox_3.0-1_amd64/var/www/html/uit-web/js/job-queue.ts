@@ -192,10 +192,10 @@ if (updateOnlineJobQueueForm && updateOnlineJobQueueSelect && updateOnlineJobQue
 	});
 }
 
-document.addEventListener('visibilitychange', () => {
+document.addEventListener('visibilitychange', async () => {
 	if (jobQueueInterval) clearInterval(jobQueueInterval);
 	if (document.visibilityState === 'visible') {
-		startQueueInterval();
+		await startQueueInterval();
 	}
 });
 
@@ -550,8 +550,8 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 			}
 		});
 
-		jobSelect.addEventListener('blur', () => {
-			startQueueInterval();
+		jobSelect.addEventListener('blur', async () => {
+			await startQueueInterval();
 		});
 			
 		
@@ -839,8 +839,15 @@ async function updateClientJob(tagnumber: number, job_name: string) {
 	}
 }
 
-function startQueueInterval() {
+async function startQueueInterval() {
+	// Clear interval
 	if (jobQueueInterval) clearInterval(jobQueueInterval);
+
+	// Fetch again
+	const jobTable = await fetchJobQueueData();
+	await renderJobQueueTable(jobTable);
+
+	// Restart interval
 	jobQueueInterval = setInterval(async () => {
 		const jobTable = await fetchJobQueueData();
 		if (!jobQueueInterval) return;
@@ -864,8 +871,8 @@ async function initializeJobQueuePage() {
 				jobQueueInterval = undefined;
 			}
 		});
-		updateOnlineJobQueueSelect.addEventListener('blur', () => {
-			startQueueInterval();
+		updateOnlineJobQueueSelect.addEventListener('blur', async () => {
+			await startQueueInterval();
 		});
 
 		for (const job of allJobs) {
@@ -879,10 +886,8 @@ async function initializeJobQueuePage() {
 		}
 	}
 
-	// Initial fetch and set interval for realtime updates
-	const jobTable = await fetchJobQueueData();
-	await renderJobQueueTable(jobTable);
-	startQueueInterval();
+	// Initial fetch and render of job queue table
+	await startQueueInterval();
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

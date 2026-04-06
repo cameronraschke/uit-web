@@ -258,7 +258,7 @@ async function getLocationFormData(tag?: number, serial?: string): Promise<Inven
 }
 
 function showInventoryUpdateChanges(): void {
-	const inputs = updateForm.querySelectorAll("input, select, textarea");
+	const inputs = updateForm.querySelectorAll("input, select, textarea") as NodeListOf<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>;
 
 	inputs.forEach((el: HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement) => {
 		el.dataset.initialValue = el.value;
@@ -1121,8 +1121,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 		renderTagOptions(allTagsDatalist, tags, 20);
 	}
 
-	document.addEventListener('tags:loaded', (event: CustomEvent<{ entries: any[] }>) => {
-		const rawEntries = (event && event.detail && Array.isArray(event.detail.entries)) ? event.detail.entries : window.globalLookupResults;
+	document.addEventListener('tags:loaded', (event: Event) => {
+		const customEvent = event as CustomEvent<{ entries: any[] }>;
+		const rawEntries = (customEvent && customEvent.detail && Array.isArray(customEvent.detail.entries)) ? customEvent.detail.entries : window.globalLookupResults;
 		const tags = rawEntries.flatMap((cache: any) => (cache.entries || []).map((e: any) => e.tagnumber)).filter((tag: any): tag is number => typeof tag === "number");
 		renderTagOptions(allTagsDatalist, tags || [], 20);
 	});
