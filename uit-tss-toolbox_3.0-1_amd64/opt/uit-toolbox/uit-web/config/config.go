@@ -209,11 +209,11 @@ func InitConfig() (*AppConfiguration, error) {
 	}
 
 	generalNoteConstraints := &types.GeneralNoteConstraints{
-		MaxFormBytes:        8192,
+		MaxFormBytes:        8192 * 8,
 		NoteTypeMinChars:    1,
 		NoteTypeMaxChars:    256,
 		NoteContentMinChars: 0,
-		NoteContentMaxChars: 4096,
+		NoteContentMaxChars: 8192,
 	}
 
 	inventoryFormConstraints := &types.InventoryUpdateFormConstraints{
