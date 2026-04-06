@@ -336,6 +336,35 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 		}
 	}()
 
+	// Insert/update ids table
+	const idsSql = `
+		INSERT INTO 
+			ids (
+				uuid, 
+				time, 
+				tagnumber, 
+				system_serial
+			)
+		VALUES (
+			uuidv7(), 
+			CURRENT_TIMESTAMP, 
+			$1, 
+			$2 
+		)
+		ON CONFLICT (tagnumber) DO NOTHING
+	;`
+
+	idsResult, err := tx.ExecContext(ctx, idsSql,
+		inventoryUpdate.Tagnumber,
+		inventoryUpdate.SystemSerial,
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(idsResult, 1); err != nil {
+		return err
+	}
+
 	// Update locations table
 	const locationsSql = `
 	INSERT INTO locations (

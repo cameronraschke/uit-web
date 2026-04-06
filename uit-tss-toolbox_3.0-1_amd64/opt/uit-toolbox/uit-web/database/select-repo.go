@@ -64,13 +64,17 @@ func GetGlobalSearchData(ctx context.Context) ([]types.GlobalLookupRow, error) {
 	}
 	const sqlQuery = `
 		SELECT 
-			DISTINCT ON (tagnumber) tagnumber, 
-			system_serial, 
-			time 
+			ids.tagnumber,
+			ids.system_serial,
+			MAX(locations.time) AS "last_inventory_entry"
 		FROM 
-			locations 
-		GROUP BY tagnumber, system_serial, time 
-		ORDER BY tagnumber, system_serial, time DESC NULLS LAST
+			ids
+		LEFT JOIN locations ON ids.tagnumber = locations.tagnumber
+		GROUP BY ids.tagnumber, ids.system_serial
+		ORDER BY 
+			"last_inventory_entry" DESC NULLS LAST, 
+			ids.tagnumber ASC NULLS LAST, 
+			ids.system_serial DESC NULLS LAST
 	;`
 
 	rows, err := dbConn.QueryContext(ctx, sqlQuery)
@@ -351,7 +355,7 @@ func ClientLookupByTag(ctx context.Context, tag *int64) (*types.ClientLookup, er
 			tagnumber, 
 			system_serial 
 		FROM 
-			locations 
+			ids 
 		WHERE 
 			tagnumber = $1 
 		ORDER BY 
@@ -365,7 +369,6 @@ func ClientLookupByTag(ctx context.Context, tag *int64) (*types.ClientLookup, er
 	)
 	if err := row.Scan(
 		&clientLookup.Tagnumber,
-		&clientLookup.SystemSerial,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -394,7 +397,7 @@ func ClientLookupBySerial(ctx context.Context, serial *string) (*types.ClientLoo
 			tagnumber, 
 			system_serial 
 		FROM 
-			locations 
+			ids 
 		WHERE 
 			system_serial = $1 
 		ORDER BY 
@@ -408,7 +411,6 @@ func ClientLookupBySerial(ctx context.Context, serial *string) (*types.ClientLoo
 	var clientLookup types.ClientLookup
 	if err := row.Scan(
 		&clientLookup.Tagnumber,
-		&clientLookup.SystemSerial,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
