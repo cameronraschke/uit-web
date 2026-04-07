@@ -67,7 +67,12 @@ async function fetchManifestData(clientTag: number) : Promise<ImageManifest[]> {
 		});
 		return manifestArr;
 	} catch (err) {
-		console.error(`Error fetching image manifest for tag ${clientTag}: ${err.message}`);
+		if (err instanceof Error) {
+			container.innerHTML = '';
+			const errorParagraph = document.createElement('p');
+			errorParagraph.textContent = `Error fetching images: ${err.message}`;
+			container.appendChild(errorParagraph);
+		}
 		return [];
 	}
 }
@@ -233,7 +238,9 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 				renderFiles(updatedManifest, clientTag as number);
 			});
 		} catch (unpinError) {
-			alert(`Error unpinning image: ${unpinError.message}`);
+			if (unpinError instanceof Error) {
+				alert(`Error unpinning image: ${unpinError.message}`);
+			}
 		} finally {
 			el.disabled = false;
 			await initClientImages();
@@ -279,7 +286,9 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 			}
 			if (entry) entry.remove();
 		} catch (deleteError) {
-			alert(`Error deleting image: ${deleteError.message}`);
+			if (deleteError instanceof Error) {
+				alert(`Error deleting image: ${deleteError.message}`);
+			}
 		} finally {
 			deleteEl.disabled = false;
 			await initClientImages();
@@ -320,8 +329,10 @@ async function initClientImages() {
 	} catch (err) {
 		container.innerHTML = '';
 		const errorParagraph = document.createElement('p');
-		errorParagraph.textContent = `Error fetching images: ${err.message}`;
-		container.appendChild(errorParagraph);
-		console.warn(`Error fetching images for tag ${clientTag}: ${err.message}`);
+		if (err instanceof Error) {
+			errorParagraph.textContent = `Error fetching images: ${err.message}`;
+			container.appendChild(errorParagraph);
+			console.warn(`Error fetching images for tag ${clientTag}: ${err.message}`);
+		}
 	}
 }
