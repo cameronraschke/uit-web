@@ -56,23 +56,24 @@ function getSortedLocations(inputElement: HTMLInputElement, data: Array<AllLocat
 }
 
 async function lookupTagOrSerial(tagnumber: number | null, serial: string | null): Promise<ClientLookupResult | null> {
-  const query = new URLSearchParams();
-  if (tagnumber) {
-    query.append("tagnumber", tagnumber.toString());
-  } else if (serial) {
-    query.append("system_serial", serial);
-  } else {
+   if (tagnumber === null && (serial === null || serial.trim() === "")) {
     console.log("No tag or serial provided");
     return null;
   }
   try {
+		const query = new URLSearchParams();
+		if (tagnumber !== null && validateTagInput(tagnumber)) {
+			query.append("tagnumber", tagnumber.toString());
+		} else if (serial !== null) {
+			query.append("system_serial", serial);
+		}
     const data = await fetchData(`/api/client/lookup?${query.toString()}`);
     if (!data) {
       console.log("No data returned from /api/client/lookup");
 			return null;
     }
 		const jsonResponse: ClientLookupResult = data as ClientLookupResult;
-		if (!jsonResponse || (jsonResponse.tagnumber === null && !jsonResponse.system_serial)) {
+		if (!jsonResponse || (jsonResponse.tagnumber === null && jsonResponse.system_serial === null)) {
 			console.log("No data found for provided tag or serial");
 			return null;
 		}
@@ -93,24 +94,12 @@ async function submitInventoryLookup() {
 	clientLookupTagInput.dataset.initialValue = clientLookupTagInput.value;
 	clientLookupSerial.dataset.initialValue = clientLookupSerial.value;
 
-  if (!lookupTag && !lookupSerial) {
+  if (!validateTagInput(lookupTag) && !validateSerialInput(lookupSerial)) {
     clientLookupWarningMessage.style.display = "block";
-    clientLookupWarningMessage.textContent = "Please provide a tag number or serial number to look up.";
-    return;
-  }
-  if (lookupTag && isNaN(Number(lookupTag))) {
-    clientLookupWarningMessage.style.display = "block";
-    clientLookupWarningMessage.textContent = "Tag number must be numeric.";
-    return;
-  }
-  if (lookupSerial && (lookupSerial.length < 1 || lookupSerial.length > 128)) {
-    clientLookupWarningMessage.style.display = "block";
-    clientLookupWarningMessage.textContent = "Serial number must be between 1 and 128 characters long.";
-    return;
-  }
-  if (lookupTag && lookupTag.toString().length != 6) {
-    clientLookupWarningMessage.style.display = "block";
-    clientLookupWarningMessage.textContent = "Tag number must be exactly 6 digits long.";
+    clientLookupWarningMessage.textContent = "Please provide a valid tag number or serial number to look up.";
+		setURLParameter('tagnumber', null);
+		setURLParameter('system_serial', null);
+		setURLParameter('update', null);
     return;
   }
 
@@ -122,15 +111,19 @@ async function submitInventoryLookup() {
 	try {
 		const lookupResult: ClientLookupResult | null = await lookupTagOrSerial(lookupTag, lookupSerial);
 
-		if (lookupResult) {
+		if (lookupResult !== null && (lookupResult.tagnumber !== null || (lookupResult.system_serial && lookupResult.system_serial.trim() !== ""))) {
 			if (lookupResult.tagnumber && !isNaN(Number(lookupResult.tagnumber))) {
-				searchParams.set("tagnumber", lookupResult.tagnumber ? lookupResult.tagnumber.toString() : '');
+				if (validateTagInput(lookupResult.tagnumber)) {
+					setURLParameter("tagnumber", lookupResult.tagnumber.toString());
+				};
 				clientLookupTagInput.value = Number(lookupResult.tagnumber).toString();
 				clientLookupTagInput.dataset.initialValue = lookupResult.tagnumber ? lookupResult.tagnumber.toString() : "";
 				clientLookupTagInput.readOnly = true;
 			}
 			if (lookupResult.system_serial && lookupResult.system_serial && lookupResult.system_serial.trim().length > 0) {
-				searchParams.set("system_serial", lookupResult.system_serial ? lookupResult.system_serial.trim() : '');
+				if (validateSerialInput(lookupResult.system_serial)) {
+					setURLParameter("system_serial", lookupResult.system_serial.trim());
+				}
 				clientLookupSerial.value = lookupResult.system_serial.trim();
 				clientLookupSerial.dataset.initialValue = lookupResult.system_serial ? lookupResult.system_serial : "";
 				clientLookupSerial.readOnly = true;
@@ -148,7 +141,7 @@ async function submitInventoryLookup() {
 				btn.style.cursor = "pointer";
 			}
 
-			if (lookupResult.tagnumber || lookupResult.system_serial) {
+			if (validateTagInput(lookupResult.tagnumber) && validateSerialInput(lookupResult.system_serial)) {
 				await populateLocationForm(lookupResult.tagnumber ? lookupResult.tagnumber : undefined, lookupResult.system_serial ? lookupResult.system_serial : undefined);
 			}
 		} else {
@@ -165,15 +158,14 @@ async function submitInventoryLookup() {
 			searchParams.set("system_serial", serialNum);
 			await populateLocationForm(tagNum ? tagNum : undefined, serialNum ? serialNum : undefined);
 		}
+		// Set 'update' parameter in URL
+		searchParams.set('update', 'true');
+		history.replaceState(null, '', window.location.pathname + '?' + searchParams.toString());
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		console.error("Error during inventory lookup: " + errorMessage);
 		clientLookupWarningMessage.style.display = "block";
 		clientLookupWarningMessage.textContent = "Error looking up inventory entry. Check console.";
-	} finally {
-		// Set 'update' parameter in URL
-		searchParams.set('update', 'true');
-		history.replaceState(null, '', window.location.pathname + '?' + searchParams.toString());
 	}
 }
 
@@ -238,9 +230,13 @@ function resetInventorySearchQuery() {
 }
 
 async function getLocationFormData(tag?: number, serial?: string): Promise<InventoryForm | null> {
+	const url = new URL('/api/client/location_form_data', window.location.origin);
 	const tagNum = tag ? tag : clientLookupTagInput.value ? Number(clientLookupTagInput.value) : null;
 	const serialNum = serial ? serial : clientLookupSerial.value ? String(clientLookupSerial.value) : null;
-	const url = new URL('/api/client/location_form_data', window.location.origin);
+	if (tagNum === null && (serialNum === null || serialNum.trim() === "")) {
+		console.log("No tag or serial provided for location form data");
+		return null;
+	}
 	url.searchParams.set('tagnumber', tagNum !== null ? tagNum.toString() : '');
 	url.searchParams.set('system_serial', serialNum !== null ? serialNum : '');
 

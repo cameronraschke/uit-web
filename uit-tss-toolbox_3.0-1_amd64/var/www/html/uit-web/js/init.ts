@@ -325,14 +325,26 @@ function resetInputElement(inputElement: HTMLInputElement, placeholderText: stri
 	}
 }
 
-function validateTagInput(tagInput: number): boolean {
+function validateTagInput(tagInput: number | null): boolean {
+	if (tagInput === null || isNaN(tagInput)) {
+		return false;
+	}
 	let validRange = false;
 	let validRegex = false;
 	const regexPattern = /^[0-9]{6}$/;
 
-	if (tagInput > 1 && tagInput < 999999) validRange = true;
+	if (tagInput > 100000 && tagInput < 999999) validRange = true;
 	if (regexPattern.test(tagInput.toString())) validRegex = true;
 	return validRange && validRegex;
+}
+
+function validateSerialInput(serialInput: string | null): boolean {
+	if (serialInput === null || serialInput.trim() === "") {
+		return false;
+	}
+	const serial = serialInput.trim();
+	const regexPattern = /^[a-zA-Z0-9_\-]{1,128}$/;
+	return regexPattern.test(serial)
 }
 
 function jsonToBase64(jsonString: string) {

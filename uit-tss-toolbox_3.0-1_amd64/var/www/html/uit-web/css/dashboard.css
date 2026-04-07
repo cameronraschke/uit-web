@@ -1,7 +1,9 @@
 #note-text {
+	resize: none;
+	overflow: auto;
 	height: 45dvh;
 	background-color: white;
-	min-width: 45%;
+	width: 30rem;
 	font-size: 1.1rem;
 	padding: 0.5rem;
 	border: 1px solid #ccc;
