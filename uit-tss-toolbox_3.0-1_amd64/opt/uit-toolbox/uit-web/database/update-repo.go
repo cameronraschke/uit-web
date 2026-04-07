@@ -1748,5 +1748,29 @@ func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUp
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 
+	// const historicalHardwareDataSQLCode = `
+	// 	INSERT INTO
+	// 		historical_hardware_data (
+	// 			tagnumber,
+	// 			system_serial,
+	// 			ethernet_mac,
+	// 			wifi_mac,
+	// 			bios_version,
+	// 			disk_model,
+	// 			disk_type,
+	// 			disk_size_kb,
+	// 			memory_capacity_kb,
+	// 			memory_speed_mhz,
+	// 			battery_manufacturer,
+	// 			battery_serial,
+	// 			battery_current_max_capacity,
+	// 			battery_design_capacity,
+	// 			battery_charge_cycles,
+	// 			updated_from_windows
+	// 		)
+	// 	VALUES (
+
+	// 	)
+	// `;
 	return nil
 }

@@ -7,65 +7,75 @@ import (
 )
 
 type WindowsUpdateRequest struct {
-	Tagnumber            *string  `json:"tagnumber"` // Converted later
-	SystemSerial         *string  `json:"system_serial"`
-	ChassisType          *string  `json:"chassis_type"`
-	ADDomain             *string  `json:"ad_domain"`
-	ADDomainJoined       *bool    `json:"ad_domain_joined"`
-	ADDomainUser         *string  `json:"ad_domain_user"`
-	SystemManufacturer   *string  `json:"system_manufacturer"`
-	SystemModel          *string  `json:"system_model"`
-	SystemSKU            *string  `json:"system_sku"`
-	TPMVersion           *string  `json:"tpm_version"`
-	BIOSVersion          *string  `json:"bios_version"`
-	OSName               *string  `json:"os_name"`
-	OSInstalledAt        *string  `json:"os_installed_at"` // Converted later
-	OSVersion            *string  `json:"os_version"`
-	UBR                  *string  `json:"ubr"`
-	MemoryCapacityKB     *int64   `json:"memory_capacity_kb"`
-	MemorySpeedMHz       *int64   `json:"memory_speed_mhz"`
-	CPUModel             *string  `json:"cpu_model"`
-	CPUCoreCount         *int64   `json:"cpu_core_count"`
-	CPUThreadCount       *int64   `json:"cpu_thread_count"`
-	DiskModel            *string  `json:"disk_model"`
-	DiskType             *string  `json:"disk_type"`
-	DiskSizeKB           *int64   `json:"disk_size_kb"`
-	DiskFreeSpaceKB      *int64   `json:"disk_free_space_kb"`
-	EthernetMACAddr      *string  `json:"ethernet_mac_addr"`
-	WifiMACAddr          *string  `json:"wifi_mac_addr"`
-	BatteryChargePercent *float64 `json:"battery_charge_percent"`
-	UpdatedFromWindows   *bool    `json:"updated_from_windows"`
+	Tagnumber                 *string  `json:"tagnumber"` // Converted later
+	SystemSerial              *string  `json:"system_serial"`
+	ChassisType               *string  `json:"chassis_type"`
+	ADDomain                  *string  `json:"ad_domain"`
+	ADDomainJoined            *bool    `json:"ad_domain_joined"`
+	ADDomainUser              *string  `json:"ad_domain_user"`
+	SystemManufacturer        *string  `json:"system_manufacturer"`
+	SystemModel               *string  `json:"system_model"`
+	SystemSKU                 *string  `json:"system_sku"`
+	TPMVersion                *string  `json:"tpm_version"`
+	BIOSVersion               *string  `json:"bios_version"`
+	OSName                    *string  `json:"os_name"`
+	OSInstalledAt             *string  `json:"os_installed_at"` // Converted later
+	OSVersion                 *string  `json:"os_version"`
+	UBR                       *string  `json:"ubr"`
+	MemoryCapacityKB          *int64   `json:"memory_capacity_kb"`
+	MemorySpeedMHz            *int64   `json:"memory_speed_mhz"`
+	CPUModel                  *string  `json:"cpu_model"`
+	CPUCoreCount              *int64   `json:"cpu_core_count"`
+	CPUThreadCount            *int64   `json:"cpu_thread_count"`
+	DiskModel                 *string  `json:"disk_model"`
+	DiskType                  *string  `json:"disk_type"`
+	DiskSizeKB                *int64   `json:"disk_size_kb"`
+	DiskFreeSpaceKB           *int64   `json:"disk_free_space_kb"`
+	EthernetMACAddr           *string  `json:"ethernet_mac_addr"`
+	WifiMACAddr               *string  `json:"wifi_mac_addr"`
+	BatteryManufacturer       *string  `json:"battery_manufacturer"`
+	BatterySerial             *string  `json:"battery_serial"`
+	BatteryCurrentMaxCapacity *int64   `json:"battery_current_max_capacity"`
+	BatteryDesignCapacity     *int64   `json:"battery_design_capacity"`
+	BatteryHealthPcnt         *float64 `json:"battery_health_pct"`
+	BatteryChargeCycleCount   *int64   `json:"battery_charge_cycle_count"`
+	UpdatedFromWindows        *bool    `json:"updated_from_windows"`
 }
 
 type WindowsUpdateDTO struct {
-	Tagnumber            int64      `json:"tagnumber"`
-	SystemSerial         string     `json:"system_serial"`
-	ChassisType          *string    `json:"chassis_type"`
-	ADDomain             *string    `json:"ad_domain"`
-	ADDomainJoined       *bool      `json:"ad_domain_joined"`
-	ADDomainUser         *string    `json:"ad_domain_user"`
-	SystemManufacturer   *string    `json:"system_manufacturer"`
-	SystemModel          *string    `json:"system_model"`
-	SystemSKU            *string    `json:"system_sku"`
-	TPMVersion           *string    `json:"tpm_version"`
-	BIOSVersion          *string    `json:"bios_version"`
-	OSName               *string    `json:"os_name"`
-	OSInstalledAt        *time.Time `json:"os_installed_at"`
-	OSVersion            *string    `json:"os_version"`
-	UBR                  *string    `json:"ubr"`
-	MemoryCapacityKB     *int64     `json:"memory_capacity_kb"`
-	MemorySpeedMHz       *int64     `json:"memory_speed_mhz"`
-	CPUModel             *string    `json:"cpu_model"`
-	CPUCoreCount         *int64     `json:"cpu_core_count"`
-	CPUThreadCount       *int64     `json:"cpu_thread_count"`
-	DiskModel            *string    `json:"disk_model"`
-	DiskType             *string    `json:"disk_type"`
-	DiskSizeKB           *int64     `json:"disk_size_kb"`
-	DiskFreeSpaceKB      *int64     `json:"disk_free_space_kb"`
-	EthernetMACAddr      *string    `json:"ethernet_mac_addr"`
-	WifiMACAddr          *string    `json:"wifi_mac_addr"`
-	BatteryChargePercent *float64   `json:"battery_charge_percent"`
-	UpdatedFromWindows   bool       `json:"updated_from_windows"`
+	Tagnumber                 int64      `json:"tagnumber"`
+	SystemSerial              string     `json:"system_serial"`
+	ChassisType               *string    `json:"chassis_type"`
+	ADDomain                  *string    `json:"ad_domain"`
+	ADDomainJoined            *bool      `json:"ad_domain_joined"`
+	ADDomainUser              *string    `json:"ad_domain_user"`
+	SystemManufacturer        *string    `json:"system_manufacturer"`
+	SystemModel               *string    `json:"system_model"`
+	SystemSKU                 *string    `json:"system_sku"`
+	TPMVersion                *string    `json:"tpm_version"`
+	BIOSVersion               *string    `json:"bios_version"`
+	OSName                    *string    `json:"os_name"`
+	OSInstalledAt             *time.Time `json:"os_installed_at"`
+	OSVersion                 *string    `json:"os_version"`
+	UBR                       *string    `json:"ubr"`
+	MemoryCapacityKB          *int64     `json:"memory_capacity_kb"`
+	MemorySpeedMHz            *int64     `json:"memory_speed_mhz"`
+	CPUModel                  *string    `json:"cpu_model"`
+	CPUCoreCount              *int64     `json:"cpu_core_count"`
+	CPUThreadCount            *int64     `json:"cpu_thread_count"`
+	DiskModel                 *string    `json:"disk_model"`
+	DiskType                  *string    `json:"disk_type"`
+	DiskSizeKB                *int64     `json:"disk_size_kb"`
+	DiskFreeSpaceKB           *int64     `json:"disk_free_space_kb"`
+	EthernetMACAddr           *string    `json:"ethernet_mac_addr"`
+	WifiMACAddr               *string    `json:"wifi_mac_addr"`
+	BatteryManufacturer       *string    `json:"battery_manufacturer"`
+	BatterySerial             *string    `json:"battery_serial"`
+	BatteryCurrentMaxCapacity *int64     `json:"battery_current_max_capacity"`
+	BatteryDesignCapacity     *int64     `json:"battery_design_capacity"`
+	BatteryHealthPcnt         *float64   `json:"battery_health_pct"`
+	BatteryChargeCycleCount   *int64     `json:"battery_charge_cycle_count"`
+	UpdatedFromWindows        bool       `json:"updated_from_windows"`
 }
 
 type WindowsUpdateResponse struct {
@@ -126,7 +136,12 @@ func NewWindowsUpdateDTO(request WindowsUpdateRequest) (*WindowsUpdateDTO, error
 		DiskFreeSpaceKB:      request.DiskFreeSpaceKB,
 		EthernetMACAddr:      request.EthernetMACAddr,
 		WifiMACAddr:          request.WifiMACAddr,
-		BatteryChargePercent: request.BatteryChargePercent,
+		BatteryManufacturer:  request.BatteryManufacturer,
+		BatterySerial:        request.BatterySerial,
+		BatteryCurrentMaxCapacity: request.BatteryCurrentMaxCapacity,
+		BatteryDesignCapacity:     request.BatteryDesignCapacity,
+		BatteryHealthPcnt:         request.BatteryHealthPcnt,
+		BatteryChargeCycleCount:   request.BatteryChargeCycleCount,
 		UpdatedFromWindows:   *request.UpdatedFromWindows,
 	}, nil
 }
