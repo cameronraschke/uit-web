@@ -95,87 +95,101 @@ function renderTagOptions(datalistEL: HTMLDataListElement, tags: number[], limit
 	datalistEL.innerHTML = html;
 }
 
-// Boolean broken status
-function createBooleanCell(elID: string | undefined, datasetKey: string | undefined, inputBool: boolean | null, trueText: string | undefined, falseText: string | undefined, customError: string | undefined) : HTMLTableCellElement {
-  const cell = document.createElement('td');
-
-	if (elID) cell.id = elID;
-  
-  if (typeof inputBool === 'boolean') {
-		if (datasetKey) cell.dataset[`${datasetKey}`] = inputBool !== undefined ? String(inputBool) : '';
-    cell.textContent = inputBool ? trueText || 'true' : falseText || 'false';
-	} else {
-		cell.style.fontStyle = 'italic';
-    cell.textContent = customError !== undefined ? customError : 'N/A';
-  }
-  return cell;
-}
-
-function getInputStringValue(inputEl: HTMLInputElement | HTMLSelectElement): string | null {
+function getElementStringValue(inputEl: HTMLInputElement | HTMLSelectElement): string | null {
 	if (!inputEl) {
-		throw new Error("Input element not found in DOM");
+		console.warn("Input element not found in DOM");
+		return null;
 	}
-	const value = inputEl.value ? inputEl.value.trim() : null;
-	if (inputEl.required && (!value || value.length === 0)) {
-		throw new Error(`${inputEl.id} field cannot be empty`);
+	const value = inputEl.value !== undefined && inputEl.value !== null && inputEl.value.trim() !== '' ? inputEl.value.trim() : null;
+	if (inputEl.required && value === null) {
+		console.warn(`${inputEl.id} field is required`);
+		return null;
 	}
 	return value;
 }
 
-function getInputNumberValue(inputEl: HTMLInputElement | HTMLSelectElement): number | null {
+function getElementNumberValue(inputEl: HTMLInputElement | HTMLSelectElement): number | null {
 	if (!inputEl) {
-		throw new Error("Input element not found in DOM");
+		console.warn("Input element not found in DOM");
+		return null;
 	}
-	const value = inputEl.value ? inputEl.value.trim() : null;
-	if (inputEl.required && (!value || value.length === 0)) {
-		throw new Error(`${inputEl.id} field cannot be empty`);
+	const value = inputEl.value !== undefined && inputEl.value !== null && inputEl.value.trim() !== '' ? inputEl.value.trim() : null;
+	if (inputEl.required && value === null) {
+		console.warn(`${inputEl.id} field is required`);
+		return null;
 	}
 	const numValue = Number(value);
 	if (isNaN(numValue)) {
-		throw new Error(`${inputEl.id} field must be a valid number`);
+		console.warn(`${inputEl.id} field is not a valid number`);
+		return null;
 	}
 	return numValue;
 }
 
-function getInputBooleanValue(inputEl: HTMLInputElement | HTMLSelectElement): boolean | null {
+function getElementBooleanValue(inputEl: HTMLInputElement | HTMLSelectElement): boolean | null {
 	if (!inputEl) {
-		throw new Error("Input element not found in DOM");
+		console.warn("Input element not found in DOM");
+		return null;
 	}
-	const value = inputEl.value ? inputEl.value.trim() : null;
-	if (value === "true") return true;
-	else if (value === "false") return false;
+	const value = inputEl.value !== undefined && inputEl.value !== null && inputEl.value.trim() !== '' ? inputEl.value.trim() : null;
+	if (value === 'true' || Boolean(value) === true) return true;
+	else if (value === 'false' || Boolean(value) === false) return false;
 	else if (!inputEl.required) return null;
-	else throw new Error(`${inputEl.id} field must be true or false`);
+	else {
+		console.warn(`${inputEl.id} field is required and must be true or false`);
+		return null;
+	}
 }
 
-function getInputDateValue(inputEl: HTMLInputElement | HTMLSelectElement, isNull: boolean = false): Date | null {
+function getElementDateValue(inputEl: HTMLInputElement | HTMLSelectElement, isNull: boolean = false): Date | null {
 	if (!inputEl) {
-		throw new Error("Input element not found in DOM");
+		console.warn("Input element not found in DOM");
+		return null;
 	}
-	const value = inputEl.value ? inputEl.value.trim() : null;
-	if (inputEl.required && (!value || value.length === 0)) {
-		throw new Error(`${inputEl.id} field cannot be empty`);
+	const value = inputEl.value !== undefined && inputEl.value !== null && inputEl.value.trim() !== '' ? inputEl.value.trim() : null;
+	if (inputEl.required && value === null) {
+		console.warn(`${inputEl.id} field is required`);
+		return null;
+	}
+
+	if (isNull && value === null) {
+		return null;
 	}
 
 	const dateObj = new Date(value + "T00:00:00");
-	if (isNaN(dateObj.getTime()) && !(isNull && (!value || value.length === 0))) {
-		throw new Error(`${inputEl.id} field must be a valid date`);
-	}
-
-	if (isNull && (!value || value.length === 0)) {
+	if (isNaN(dateObj.getTime()) && !(isNull && value === null)) {
+		console.warn(`${inputEl.id} field is not a valid date type`);
 		return null;
 	}
+
 	return dateObj;
 }
-function getInputTimeValue(inputEl: HTMLInputElement | HTMLSelectElement): Date | null {
-	if (!inputEl) throw new Error("Input element not found in DOM");
 
-	const value = inputEl.value ? inputEl.value.trim() : null;
-	if (inputEl.required && (!value || value.length === 0)) throw new Error(`${inputEl.id} field cannot be empty`);
-	if (!value || value.length === 0) return null;
+function getElementTimeValue(inputEl: HTMLInputElement | HTMLSelectElement, isNull: boolean = false): Date | null {
+	if (!inputEl) {
+		console.warn("Input element not found in DOM");
+		return null;
+	}
+
+	const value = inputEl.value !== undefined && inputEl.value !== null && inputEl.value.trim() !== '' ? inputEl.value.trim() : null;
+	if (inputEl.required && value === null) {
+		console.warn(`${inputEl.id} field is required`);
+		return null;
+	}
+
+	if (isNull && value === null) {
+		return null;
+	}
+
+	if (value === null) {
+		return null;
+	}
 
 	const timeObj = new Date(value);
-	if (isNaN(timeObj.getTime())) throw new Error(`${inputEl.id} field must be a valid datetime`);
+	if (isNaN(timeObj.getTime())) {
+		console.warn(`${inputEl.id} field is not a valid datetime type`);
+		return null;
+	}
 	return timeObj;
 }
 
@@ -198,6 +212,10 @@ async function checkAuthStatus(): Promise<boolean> {
 				return false;
 			}
 			const expiresAt = new Date(response.expires_at);
+			if (isNaN(expiresAt.getTime())) {
+				console.warn("Invalid expires_at date in auth response");
+				return false;
+			}
 			const secondsUntilExpiry = (expiresAt.getTime() - Date.now()) / 1000;
 			if (secondsUntilExpiry < 10) {
 				console.warn(`Auth token expiring in ${secondsUntilExpiry.toFixed(1)} seconds, reauthenticating...`);
@@ -213,6 +231,7 @@ async function checkAuthStatus(): Promise<boolean> {
 			}
 			return true;
 		} else {
+			console.warn("Invalid auth response");
 			return false;
 		}
 	} catch (error) {
@@ -228,7 +247,7 @@ authCheckTimeout = setInterval(async () => {
 	if (document.visibilityState !== "visible") return;
 
 	const isAuthenticated = await checkAuthStatus();
-	if (!isAuthenticated) {
+	if (isAuthenticated === false) {
 		window.location.href = "/logout";
 	}
 }, checkAuthTimeout);
@@ -241,10 +260,10 @@ document.addEventListener("visibilitychange", async () => {
 	clearInterval(authCheckTimeout);
 
 	if (document.visibilityState === "visible") {
-		
+
 		// Immediately check auth status
 		const isAuthenticated = await checkAuthStatus();
-		if (!isAuthenticated) {
+		if (isAuthenticated === false) {
 			window.location.href = "/logout";
 			return;
 		}
@@ -255,12 +274,12 @@ document.addEventListener("visibilitychange", async () => {
 			return;
 		}
 
-		// Delayed check
+		// Delayed check after initial check on visibility change
 		authCheckTimeout = setInterval(async () => {
 			if (document.visibilityState !== "visible") return;
 
 			const isStillAuthenticated = await checkAuthStatus();
-			if (!isStillAuthenticated) {
+			if (isStillAuthenticated === false) {
 				window.location.href = "/logout";
 			}
 		}, checkAuthTimeout);
@@ -344,7 +363,7 @@ function validateSerialInput(serialInput: string | null): boolean {
 	}
 	const serial = serialInput.trim();
 	const regexPattern = /^[a-zA-Z0-9_\-]{1,128}$/;
-	return regexPattern.test(serial)
+	return regexPattern.test(serial);
 }
 
 function jsonToBase64(jsonString: string) {
@@ -403,24 +422,23 @@ function base64ToJson(inputStr: string) {
 }
 
 async function fetchData(url: string, returnText = false, fetchOptions: RequestInit = {}): Promise<any> {
+	if (!url || url.trim().length === 0) {
+		throw new Error("No URL specified for fetchData");
+	}
+
+	const headers = new Headers();
+	headers.append('Content-Type', 'application/x-www-form-urlencoded');
+
   try {
-    if (!url || url.trim().length === 0) {
-      throw new Error("No URL specified for fetchData");
-    }
-
-		const headers = new Headers();
-		headers.append('Content-Type', 'application/x-www-form-urlencoded');
-
 		// Try to add bearer token, but do not fail the request if not found.
-		try {
-			const bearerToken = await getKeyFromIndexDB("bearerToken");
-			if (bearerToken) {
-				headers.append('Authorization', 'Bearer ' + bearerToken);
-			}
-		} catch (tokenErr) {
-			console.warn("Bearer token not available; proceeding with cookies only", tokenErr);
-		}
-    
+		// try {
+		// 	const bearerToken = await getKeyFromIndexDB("bearerToken");
+		// 	if (bearerToken) {
+		// 		headers.append('Authorization', 'Bearer ' + bearerToken);
+		// 	}
+		// } catch (tokenErr) {
+		// 	console.warn("Bearer token not available; proceeding with cookies only", tokenErr);
+		// }
 
     const response = await fetch(url, {
       method: 'GET',
@@ -452,11 +470,13 @@ async function fetchData(url: string, returnText = false, fetchOptions: RequestI
       const jsonData = await JSON.parse(textData);
       if (!jsonData || Object.keys(jsonData).length === 0 || (jsonData && typeof jsonData === 'object' && Object.prototype.hasOwnProperty.call(jsonData, '__proto__'))) {
         console.warn("Response JSON is empty: " + url);
+				return null;
       }
       return jsonData;
     }
   } catch (error) {
-    throw error;
+		console.error("Error fetching data: " + error);
+    return null;
   }
 }
 
@@ -476,49 +496,50 @@ function openTokenDB(): Promise<IDBDatabase> {
 }
 
 async function getKeyFromIndexDB(key: string) {
-    if (!key || key.length === 0 || typeof key !== "string" || key.trim() === "") {
-      throw new Error("Key is invalid: " + key);
-    }
+	if (key === undefined || key === null || key.trim() === "" || key.trim().length === 0 || typeof key !== "string") {
+		throw new Error("Key is invalid: " + key);
+	}
 
-    try {
-        const dbConn: IDBDatabase = await new Promise((resolve, reject) => {
-            const tokenDBConnection = indexedDB.open("uitTokens", 1);
-            tokenDBConnection.onsuccess = (event) => resolve((event.target as IDBOpenDBRequest).result as IDBDatabase);
-            tokenDBConnection.onerror = (event) => reject("Error opening IndexedDB: " + (event.target as IDBOpenDBRequest).error);
-        });
+	try {
+		const dbConn: IDBDatabase = await new Promise((resolve, reject) => {
+			const tokenDBConnection = indexedDB.open("uitTokens", 1);
+			tokenDBConnection.onsuccess = (event) => resolve((event.target as IDBOpenDBRequest).result as IDBDatabase);
+			tokenDBConnection.onerror = (event) => reject("Error opening IndexedDB: " + (event.target as IDBOpenDBRequest).error);
+		});
 
-        const tokenTransaction = dbConn.transaction(["uitTokens"], "readonly");
-        const tokenObjectStore = tokenTransaction.objectStore("uitTokens");
+		const tokenTransaction = dbConn.transaction(["uitTokens"], "readonly");
+		const tokenObjectStore = tokenTransaction.objectStore("uitTokens");
 
-        const tokenObj: any = await new Promise((resolve, reject) => {
-            const tokenRequest = tokenObjectStore.get(key);
-            tokenRequest.onsuccess = event => resolve((event.target as IDBRequest).result);
-            tokenRequest.onerror = event => reject("Error querying token from IndexedDB: " + (event.target as IDBRequest).error as string);
-        });
+		const tokenObj: any = await new Promise((resolve, reject) => {
+			const tokenRequest = tokenObjectStore.get(key);
+			tokenRequest.onsuccess = event => resolve((event.target as IDBRequest).result);
+			tokenRequest.onerror = event => reject("Error querying token from IndexedDB: " + (event.target as IDBRequest).error as string);
+		});
 
-        if (!tokenObj || !tokenObj.value || typeof tokenObj.value !== "string" || tokenObj.value.trim() === "") {
-            throw new Error("No token found for key: " + key);
-        }
-        return tokenObj.value;
-    } catch (error) {
-        throw new Error("Error accessing IndexedDB: " + error);
-    }
+		if (tokenObj === undefined || tokenObj === null || tokenObj.value === undefined || tokenObj.value === null || tokenObj.value.trim() === "" || typeof tokenObj.value !== "string") {
+			throw new Error("No token found for key: " + key);
+		}
+		return tokenObj.value;
+	} catch (error) {
+		console.error("Error accessing IndexedDB: " + error);
+		return null;
+	}
 }
 
 async function generateSHA256Hash(input: string) {
-    if (!input || input.length === 0 || input.trim() === "") {
-      throw new Error("Hash input is invalid: " + input);
-    }
+	if (input === undefined || input === null || typeof input !== "string" || input.trim() === "") {
+		throw new Error("Text input is invalid: " + input);
+	}
 
-    const encoder = new TextEncoder();
-    const encodedInput = encoder.encode(input);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", encodedInput);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashStr = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-    if (!hashStr || hashStr.length === 0 || hashStr.trim() === "") {
-      throw new Error("Hash generation failed: " + input);
-    }
-    return hashStr;
+	const encoder = new TextEncoder();
+	const encodedInput = encoder.encode(input);
+	const hashBuffer = await crypto.subtle.digest("SHA-256", encodedInput);
+	const hashArray = Array.from(new Uint8Array(hashBuffer));
+	const hashStr = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+	if (!hashStr || hashStr.length === 0 || hashStr.trim() === "") {
+		throw new Error("Hash generation failed: " + input);
+	}
+	return hashStr;
 }
 
 async function getGlobalLookupData(purgeCache = false): Promise<GlobalLookupResultCache | null> {
@@ -583,7 +604,7 @@ async function getGlobalLookupData(purgeCache = false): Promise<GlobalLookupResu
 }
 
 function setURLParameter(urlParameter: string | null, value: string | null, isJson = false): void {
-	if (isJson && value !== null && value.trim() !== "") {
+	if (isJson === true && value !== null && value.trim() !== "") {
 		const base64Value = jsonToBase64(value);
 		if (base64Value) {
 			value = base64Value;
@@ -592,11 +613,19 @@ function setURLParameter(urlParameter: string | null, value: string | null, isJs
 			return;
 		}
 	}
+	if (urlParameter === undefined || urlParameter === null || urlParameter.trim() === "") {
+		console.warn("Invalid URL parameter: " + urlParameter);
+		return;
+	}
+
 	const newURL = new URL(window.location.href);
-	if (urlParameter && value !== null && value.trim() !== "") {
+	if (value !== undefined && value !== null && value.trim() !== "") {
 		newURL.searchParams.set(urlParameter, value);
-	} else if (urlParameter && (value === null || value.trim() === "")) {
+	} else if (value === null || value.trim() === "") {
 		newURL.searchParams.delete(urlParameter);
+	} else {
+		console.warn("Invalid value for URL parameter: " + urlParameter);
+		return;
 	}
 
 	if (newURL.searchParams.toString() && newURL.searchParams.toString().length > 0) {
@@ -607,12 +636,10 @@ function setURLParameter(urlParameter: string | null, value: string | null, isJs
 }
 
 async function waitForNextPaint(frames = 1) {
-  while (frames-- > 0) {
-    await new Promise(requestAnimationFrame);
-  }
+	while (frames-- > 0) {
+		await new Promise(requestAnimationFrame);
+	}
 }
-
-
 
 document.addEventListener("DOMContentLoaded", async () => {
 	if (!navigator.onLine) {

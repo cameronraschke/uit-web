@@ -889,27 +889,27 @@ if (updateForm) {
 			if (!clientLookupTagInput && !clientLookupSerial) {
 				throw new Error("No tag or serial input fields found in DOM");
 			}
-			formObj.tagnumber = getInputNumberValue(clientLookupTagInput);
-			formObj.system_serial = getInputStringValue(clientLookupSerial);
-			formObj.location = getInputStringValue(locationEl);
-			formObj.building = getInputStringValue(buildingUpdate);
-			formObj.room = getInputStringValue(roomUpdate);
-			formObj.system_manufacturer = getInputStringValue(manufacturerUpdate);
-			formObj.system_model = getInputStringValue(modelUpdate);
-			formObj.device_type = getInputStringValue(deviceTypeUpdate);
-			formObj.department_name = getInputStringValue(departmentEl);
-			formObj.ad_domain = getInputStringValue(adDomainUpdate);
-			formObj.property_custodian = getInputStringValue(propertyCustodianUpdate);
-			formObj.acquired_date = getInputDateValue(acquiredDateUpdate, true);
-			formObj.retired_date = getInputDateValue(retiredDateUpdate, true);
-			formObj.is_broken = getInputBooleanValue(isBrokenUpdate);
-			formObj.disk_removed = getInputBooleanValue(diskRemovedUpdate);
+			formObj.tagnumber = getElementNumberValue(clientLookupTagInput);
+			formObj.system_serial = getElementStringValue(clientLookupSerial);
+			formObj.location = getElementStringValue(locationEl);
+			formObj.building = getElementStringValue(buildingUpdate);
+			formObj.room = getElementStringValue(roomUpdate);
+			formObj.system_manufacturer = getElementStringValue(manufacturerUpdate);
+			formObj.system_model = getElementStringValue(modelUpdate);
+			formObj.device_type = getElementStringValue(deviceTypeUpdate);
+			formObj.department_name = getElementStringValue(departmentEl);
+			formObj.ad_domain = getElementStringValue(adDomainUpdate);
+			formObj.property_custodian = getElementStringValue(propertyCustodianUpdate);
+			formObj.acquired_date = getElementDateValue(acquiredDateUpdate, true);
+			formObj.retired_date = getElementDateValue(retiredDateUpdate, true);
+			formObj.is_broken = getElementBooleanValue(isBrokenUpdate);
+			formObj.disk_removed = getElementBooleanValue(diskRemovedUpdate);
 			formObj.last_hardware_check = lastHardwareCheckUpdate.value ? parseDateTimeLocalToUTC(lastHardwareCheckUpdate.value) : null;
-			formObj.status = getInputStringValue(clientStatusUpdate);
+			formObj.status = getElementStringValue(clientStatusUpdate);
 			formObj.checkout_bool = formObj.status && statusesThatIndicateCheckout.includes(formObj.status) ? true : false;
-			formObj.checkout_date = getInputDateValue(checkoutDateUpdate, true);
-			formObj.return_date = getInputDateValue(returnDateUpdate, true);
-			formObj.note = getInputStringValue(noteUpdate);
+			formObj.checkout_date = getElementDateValue(checkoutDateUpdate, true);
+			formObj.return_date = getElementDateValue(returnDateUpdate, true);
+			formObj.note = getElementStringValue(noteUpdate);
 			// const jsonBase64 = jsonToBase64(JSON.stringify(formObj));
 			// const jsonPayload = new Blob([jsonBase64], { type: "application/json" });
 
