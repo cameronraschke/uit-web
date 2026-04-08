@@ -1748,29 +1748,81 @@ func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUp
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 
-	// const historicalHardwareDataSQLCode = `
-	// 	INSERT INTO
-	// 		historical_hardware_data (
-	// 			tagnumber,
-	// 			system_serial,
-	// 			ethernet_mac,
-	// 			wifi_mac,
-	// 			bios_version,
-	// 			disk_model,
-	// 			disk_type,
-	// 			disk_size_kb,
-	// 			memory_capacity_kb,
-	// 			memory_speed_mhz,
-	// 			battery_manufacturer,
-	// 			battery_serial,
-	// 			battery_current_max_capacity,
-	// 			battery_design_capacity,
-	// 			battery_charge_cycles,
-	// 			updated_from_windows
-	// 		)
-	// 	VALUES (
+	const historicalHardwareDataSQLCode = `
+		INSERT INTO
+			historical_hardware_data (
+				time,
+				client_uuid,
+				tagnumber,
+				system_serial,
+				ethernet_mac,
+				wifi_mac,
+				bios_version,
+				disk_model,
+				disk_type,
+				disk_size_kb,
+				memory_capacity_kb,
+				memory_speed_mhz,
+				battery_manufacturer,
+				battery_serial,
+				battery_current_max_capacity,
+				battery_design_capacity,
+				battery_charge_cycles,
+				battery_health,
+				updated_from_windows,
+				transaction_uuid
+			)
+		VALUES (
+			CURRENT_TIMESTAMP,
+			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10,
+			$11,
+			$12,
+			$13,
+			$14,
+			$15,
+			$16,
+			TRUE,
+			$17
+		)
+	;`
 
-	// 	)
-	// `;
+	historicalHWData, err := tx.ExecContext(ctx, historicalHardwareDataSQLCode,
+		toNullInt64(winClientInfo.Tagnumber),
+		toNullString(winClientInfo.SystemSerial),
+		ptrToNullString(winClientInfo.EthernetMACAddr),
+		ptrToNullString(winClientInfo.WifiMACAddr),
+		ptrToNullString(winClientInfo.BIOSVersion),
+		ptrToNullString(winClientInfo.DiskModel),
+		ptrToNullString(winClientInfo.DiskType),
+		ptrToNullInt64(winClientInfo.DiskSizeKB),
+		ptrToNullInt64(winClientInfo.MemoryCapacityKB),
+		ptrToNullInt64(winClientInfo.MemorySpeedMHz),
+		ptrToNullString(winClientInfo.BatteryManufacturer),
+		ptrToNullString(winClientInfo.BatterySerial),
+		ptrToNullInt64(winClientInfo.BatteryCurrentMaxCapacity),
+		ptrToNullInt64(winClientInfo.BatteryDesignCapacity),
+		ptrToNullInt64(winClientInfo.BatteryChargeCycleCount),
+		ptrToNullFloat64(winClientInfo.BatteryHealthPcnt),
+		transactionUUID,
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(historicalHWData, 1); err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+
+	
+
 	return nil
 }

@@ -715,3 +715,40 @@ CREATE TABLE IF NOT EXISTS ids (
 	CONSTRAINT ids_tagnumber_unique
 		UNIQUE (tagnumber)
 );
+
+CREATE TABLE IF NOT EXISTS static_os_info (
+	os_name VARCHAR(128) PRIMARY KEY,
+	os_vendor VARCHAR(64) DEFAULT NULL,
+	os_platform VARCHAR(64) DEFAULT NULL,
+	os_architecture VARCHAR(16) DEFAULT NULL,
+	os_version VARCHAR(64) DEFAULT NULL,
+	windows_display_version VARCHAR(4) DEFAULT NULL,
+	windows_build_number VARCHAR(16) DEFAULT NULL,
+	windows_ubr VARCHAR(16) DEFAULT NULL
+	windows_ubr INTEGER DEFAULT NULL,
+);
+
+CREATE TABLE IF NOT EXISTS os_info (
+	transaction_uuid UUID PRIMARY KEY,
+	client_uuid UUID NOT NULL,
+	time DATETIME(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	os_install_date TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	os_vendor VARCHAR(64) DEFAULT NULL,
+	os_platform VARCHAR(64) DEFAULT NULL,
+	os_architecture VARCHAR(16) DEFAULT NULL,
+	os_name VARCHAR(128) NOT NULL,
+	os_version VARCHAR(64) DEFAULT NULL,
+	windows_display_version VARCHAR(4) DEFAULT NULL,
+	windows_build_number VARCHAR(16) DEFAULT NULL,
+	windows_ubr VARCHAR(16) DEFAULT NULL,
+	windows_bitlocker_enabled BOOLEAN DEFAULT NULL,
+	ad_domain VARCHAR(64) DEFAULT NULL,
+	ad_domain_user VARCHAR(128) DEFAULT NULL,
+
+	CONSTRAINT os_info_client_uuid_fkey
+		FOREIGN KEY (client_uuid)
+			REFERENCES ids(uuid)
+		ON UPDATE CASCADE
+		ON DELETE SET NULL
+	
+)
