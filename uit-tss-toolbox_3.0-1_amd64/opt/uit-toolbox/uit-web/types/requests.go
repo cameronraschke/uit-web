@@ -23,7 +23,7 @@ type WindowsUpdateRequest struct {
 	OSName                    *string  `json:"os_name"`
 	OSVersion                 *string  `json:"os_version"`
 	WindowsDisplayVersion     *string  `json:"windows_display_version"`
-	WindowsBuildNumber        *string  `json:"windows_build_number"`
+	WindowsBuildNumber        *int64   `json:"windows_build_number"`
 	WindowsUBR                *int64   `json:"windows_ubr"`
 	WindowsBitlockerEnabled   *bool    `json:"windows_bitlocker_enabled"`
 	ADDomain                  *string  `json:"ad_domain"`
@@ -65,7 +65,7 @@ type WindowsUpdateDTO struct {
 	OSName                    *string
 	OSVersion                 *string
 	WindowsDisplayVersion     *string
-	WindowsBuildNumber        *string
+	WindowsBuildNumber        *int64
 	WindowsUBR                *int64
 	WindowsBitlockerEnabled   *bool
 	ADDomain                  *string

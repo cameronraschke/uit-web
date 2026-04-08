@@ -723,7 +723,7 @@ CREATE TABLE IF NOT EXISTS static_os_info (
 	os_architecture VARCHAR(16) DEFAULT NULL,
 	os_version VARCHAR(64) DEFAULT NULL,
 	windows_display_version VARCHAR(4) DEFAULT NULL,
-	windows_build_number VARCHAR(16) DEFAULT NULL,
+	windows_build_number INTEGER DEFAULT NULL,
 	windows_ubr INTEGER DEFAULT NULL
 );
 
@@ -738,7 +738,7 @@ CREATE TABLE IF NOT EXISTS os_info (
 	os_name VARCHAR(128) NOT NULL,
 	os_version VARCHAR(64) DEFAULT NULL,
 	windows_display_version VARCHAR(4) DEFAULT NULL,
-	windows_build_number VARCHAR(16) DEFAULT NULL,
+	windows_build_number INTEGER DEFAULT NULL,
 	windows_ubr INTEGER DEFAULT NULL,
 	windows_bitlocker_enabled BOOLEAN DEFAULT NULL,
 	ad_domain VARCHAR(64) DEFAULT NULL,
