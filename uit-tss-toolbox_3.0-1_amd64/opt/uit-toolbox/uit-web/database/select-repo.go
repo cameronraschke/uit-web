@@ -22,7 +22,6 @@ type Select interface {
 	GetManufacturersAndModels(ctx context.Context) ([]types.AllManufacturersAndModelsRow, error)
 	CheckTwoFactorCode(ctx context.Context, twoFactorCode *string) (string, error)
 	CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error)
-	GetOsData(ctx context.Context, tag *int64) (*types.OsData, error)
 	GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error)
 	GetAvailableJobs(ctx context.Context, tag *int64) (*types.AvailableJobs, error)
 	GetJobQueueOverview(ctx context.Context) (*types.JobQueueOverview, error)
@@ -66,13 +65,13 @@ func GetGlobalSearchData(ctx context.Context) ([]types.GlobalLookupRow, error) {
 		SELECT 
 			ids.tagnumber,
 			ids.system_serial,
-			MAX(locations.time) AS "last_inventory_entry"
+			locations.time AS "last_inventory_entry"
 		FROM 
 			ids
-		LEFT JOIN locations ON ids.tagnumber = locations.tagnumber
-		GROUP BY ids.tagnumber, ids.system_serial
+		INNER JOIN locations ON ids.uuid = locations.client_uuid
+		GROUP BY ids.tagnumber, ids.system_serial, locations.time
 		ORDER BY 
-			"last_inventory_entry" DESC NULLS LAST, 
+			locations.time DESC NULLS LAST, 
 			ids.tagnumber ASC NULLS LAST, 
 			ids.system_serial DESC NULLS LAST
 	;`
@@ -115,13 +114,6 @@ func GetAllDepartments(ctx context.Context) ([]types.AllDepartmentsRow, error) {
 	}
 
 	const sqlQuery = `
-		WITH department_counts AS (
-			SELECT department_name, COUNT(*) AS "department_count"
-			FROM locations
-			WHERE department_name IS NOT NULL
-			AND time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-			GROUP BY department_name
-		)
 		SELECT 
 			static_department_info.department_name, 
 			static_department_info.department_name_formatted, 
@@ -129,11 +121,20 @@ func GetAllDepartments(ctx context.Context) ([]types.AllDepartmentsRow, error) {
 			COALESCE(static_organizations.organization_name, '') AS organization_name,
 			COALESCE(static_organizations.organization_name_formatted, '') AS organization_name_formatted,
 			COALESCE(static_organizations.organization_sort_order, 101) AS organization_sort_order,
-			department_counts.department_count AS client_count
-		FROM department_counts
-			JOIN static_department_info ON department_counts.department_name = static_department_info.department_name
-		LEFT JOIN static_organizations ON 
-			static_organizations.organization_name = static_department_info.organization_name
+			COUNT(*) AS client_count
+		FROM 
+			locations
+		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
+		LEFT JOIN static_organizations ON static_organizations.organization_name = static_department_info.organization_name
+		WHERE
+			locations.department_name IS NOT NULL
+		GROUP BY
+			static_department_info.department_name,
+			static_department_info.department_name_formatted,
+			static_department_info.department_sort_order,
+			static_organizations.organization_name,
+			static_organizations.organization_name_formatted,
+			static_organizations.organization_sort_order
 		ORDER BY 
 			static_organizations.organization_sort_order, 
 			static_department_info.department_sort_order
@@ -181,21 +182,18 @@ func GetAllDomains(ctx context.Context) ([]types.AllDomainsRow, error) {
 	}
 
 	const sqlQuery = `
-		WITH domain_counts AS (
-			SELECT ad_domain, COUNT(*) AS "domain_count"
-			FROM locations
-			WHERE ad_domain IS NOT NULL
-			AND time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-			GROUP BY ad_domain
-		)
 		SELECT 
 			domain_name, 
 			domain_name_formatted,
 			domain_sort_order,
-			domain_counts.domain_count AS "client_count"
-		FROM static_ad_domains 
-		LEFT JOIN domain_counts ON 
-			static_ad_domains.domain_name = domain_counts.ad_domain
+			COUNT(*) AS "client_count"
+		FROM locations
+		LEFT JOIN static_ad_domains ON 
+			locations.ad_domain = static_ad_domains.domain_name
+		GROUP BY
+			static_ad_domains.domain_name,
+			static_ad_domains.domain_name_formatted,
+			static_ad_domains.domain_sort_order
 		ORDER BY 
 			domain_sort_order NULLS LAST
 	;`
@@ -422,41 +420,6 @@ func ClientLookupBySerial(ctx context.Context, serial *string) (*types.ClientLoo
 	return &clientLookup, nil
 }
 
-func (repo *SelectRepo) GetOsData(ctx context.Context, tag *int64) (*types.OsData, error) {
-	if tag == nil {
-		return nil, fmt.Errorf("tagnumber is nil")
-	}
-
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	const sqlQuery = `SELECT locations.tagnumber, client_health.os_installed, client_health.os_name,
-	client_health.last_imaged_time, client_health.tpm_version, jobstats.boot_time
-	FROM locations
-	LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
-	LEFT JOIN jobstats ON locations.tagnumber = jobstats.tagnumber AND jobstats.time IN (SELECT MAX(time) FROM jobstats GROUP BY tagnumber)
-	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-	AND locations.tagnumber = $1;`
-
-	var osData types.OsData
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
-	if err := row.Scan(
-		&osData.Tagnumber,
-		&osData.OsInstalled,
-		&osData.OsName,
-		&osData.OsInstalledTime,
-		&osData.TPMversion,
-		&osData.BootTime,
-	); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("error during row scan: %w", err)
-	}
-	return &osData, nil
-}
-
 func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error) {
 	if tag == nil {
 		return nil, fmt.Errorf("tagnumber is nil")
@@ -603,18 +566,14 @@ func (repo *SelectRepo) GetDashboardInventorySummary(ctx context.Context) ([]typ
 		return nil, fmt.Errorf("context error: %w", ctx.Err())
 	}
 
-	const sqlQuery = `WITH latest_locations AS (
-		SELECT DISTINCT ON (locations.tagnumber) locations.tagnumber, locations.department_name
-		FROM locations
-		ORDER BY locations.tagnumber, locations.time DESC NULLS LAST
-	),
+	const sqlQuery = `WITH 
 	latest_checkouts AS (
-		SELECT DISTINCT ON (checkout_log.tagnumber) checkout_log.tagnumber, checkout_log.checkout_date, checkout_log.return_date
+		SELECT DISTINCT ON (checkout_log.client_uuid) checkout_log.client_uuid, checkout_log.checkout_date, checkout_log.return_date
 		FROM checkout_log
-		ORDER BY checkout_log.tagnumber, checkout_log.log_entry_time DESC NULLS LAST
+		ORDER BY checkout_log.client_uuid, checkout_log.log_entry_time DESC NULLS LAST
 	),
 	systems AS (
-		SELECT hardware_data.tagnumber, hardware_data.system_model
+		SELECT hardware_data.client_uuid, hardware_data.system_model
 		FROM hardware_data
 		WHERE hardware_data.system_model IS NOT NULL
 	),
@@ -622,10 +581,10 @@ func (repo *SelectRepo) GetDashboardInventorySummary(ctx context.Context) ([]typ
 		SELECT systems.system_model,
 			(latest_checkouts.checkout_date IS NOT NULL AND latest_checkouts.return_date IS NULL)
 				OR (latest_checkouts.return_date IS NOT NULL AND latest_checkouts.return_date > CURRENT_TIMESTAMP) AS is_checked_out,
-			(latest_locations.department_name IS NOT NULL AND latest_locations.department_name NOT IN ('property', 'pre-property')) AS loc_ok
+			(locations.department_name IS NOT NULL AND locations.department_name NOT IN ('property', 'pre-property')) AS loc_ok
 		FROM systems
-		LEFT JOIN latest_checkouts ON latest_checkouts.tagnumber = systems.tagnumber
-		LEFT JOIN latest_locations ON latest_locations.tagnumber = systems.tagnumber
+		LEFT JOIN latest_checkouts ON latest_checkouts.client_uuid = systems.client_uuid
+		LEFT JOIN locations ON locations.client_uuid = systems.client_uuid
 	)
 	SELECT system_model,
 		COUNT(*) AS system_model_count,
@@ -732,7 +691,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 	LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 	LEFT JOIN client_images ON locations.client_uuid = client_images.client_uuid
 	LEFT JOIN default_system_model ON locations.client_uuid = default_system_model.client_uuid
-	WHERE (locations.client_uuid = (SELECT uuid FROM ids WHERE (tagnumber = $1 OR system_serial = $2) ORDER BY time DESC LIMIT 1))
+	WHERE locations.client_uuid = (SELECT uuid FROM ids WHERE (tagnumber = $1 OR system_serial = $2) ORDER BY time DESC LIMIT 1)
 	GROUP BY 
 		locations.time,
 		locations.tagnumber,
@@ -933,7 +892,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 	i := 1
 
 	// Make sure WHERE clause is never empty
-	whereClause = append(whereClause, "locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)")
+	whereClause = append(whereClause, "locations.client_uuid IS NOT NULL")
 
 	// Location filter
 	if filterOptions.Location != nil && strings.TrimSpace(*filterOptions.Location.ParamValue) != "" {
@@ -1049,14 +1008,14 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 
 	sqlQuery := fmt.Sprintf(`
 		WITH files AS (
-			SELECT tagnumber, COUNT(*) AS file_count from client_images WHERE hidden = FALSE GROUP BY tagnumber
+			SELECT client_uuid, COUNT(*) AS file_count from client_images WHERE hidden = FALSE GROUP BY client_uuid
 		),
 		latest_historical_hardware_data AS (
-			SELECT DISTINCT ON (historical_hardware_data.tagnumber) 
-				historical_hardware_data.tagnumber, 
+			SELECT DISTINCT ON (historical_hardware_data.client_uuid) 
+				historical_hardware_data.client_uuid, 
 				historical_hardware_data.bios_version
 			FROM historical_hardware_data
-			ORDER BY historical_hardware_data.tagnumber, historical_hardware_data.time DESC NULLS LAST
+			ORDER BY historical_hardware_data.client_uuid, historical_hardware_data.time DESC NULLS LAST
 		)
 		SELECT
 			locations.tagnumber, 
@@ -1089,14 +1048,14 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			locations.time AS last_updated, 
 			files.file_count
 		FROM locations
-			LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber
-			LEFT JOIN client_health ON locations.tagnumber = client_health.tagnumber
+			LEFT JOIN hardware_data ON locations.client_uuid = hardware_data.client_uuid
+			LEFT JOIN client_health ON locations.client_uuid = client_health.client_uuid
 			LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 			LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
 			LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
 			LEFT JOIN static_device_types ON hardware_data.device_type = static_device_types.device_type
-			LEFT JOIN files ON locations.tagnumber = files.tagnumber
-			LEFT JOIN latest_historical_hardware_data ON locations.tagnumber = latest_historical_hardware_data.tagnumber
+			LEFT JOIN files ON locations.client_uuid = files.client_uuid
+			LEFT JOIN latest_historical_hardware_data ON locations.client_uuid = latest_historical_hardware_data.client_uuid
 			LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
 		WHERE %s
 		GROUP BY 
@@ -1307,15 +1266,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			GROUP BY historical_hardware_data.tagnumber, historical_hardware_data.battery_current_max_capacity, historical_hardware_data.battery_design_capacity
 			ORDER BY historical_hardware_data.tagnumber DESC NULLS LAST
 	),
-	latest_locations AS (
-		SELECT DISTINCT ON (locations.tagnumber) locations.time, locations.tagnumber, locations.system_serial, locations.location,
-			locationFormatting(locations.location) AS location_formatted, static_department_info.department_name_formatted, locations.ad_domain,
-			 static_client_statuses.status_formatted, locations.is_broken,
-			locations.disk_removed
-		FROM locations
-		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
-		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
-		ORDER BY locations.tagnumber, locations.time DESC NULLS LAST),
 	latest_historical_hardware_data AS (
 		SELECT DISTINCT ON (historical_hardware_data.tagnumber) historical_hardware_data.time, historical_hardware_data.tagnumber, 
 			historical_hardware_data.disk_type, historical_hardware_data.disk_size_kb AS "disk_capacity",
@@ -1347,7 +1297,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	),
 	job_queue_position AS (
 		SELECT 
-			tagnumber, 
+			client_uuid, 
 			ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) AS "position",
 			job_name
 		FROM 
@@ -1356,17 +1306,17 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			job_queued = TRUE OR job_name IS NOT NULL
 	)
 	SELECT
-		latest_locations.tagnumber,
-		latest_locations.system_serial,
+		locations.client_uuid,
+		locations.system_serial,
 		hardware_data.system_manufacturer,
 		hardware_data.system_model,
-		latest_locations.location_formatted AS "location",
-		latest_locations.department_name_formatted,
-		latest_locations.status_formatted AS "client_status",
-		latest_locations.is_broken,
-		latest_locations.disk_removed,
+		locationFormatting(locations.location) AS "location",
+		static_department_info.department_name AS "department_name_formatted",
+		static_client_statuses.status_formatted AS "client_status",
+		locations.is_broken,
+		locations.disk_removed,
 		FALSE AS "temp_warning",
-		(CASE WHEN latest_locations.status_formatted = 'checked_out' THEN TRUE ELSE FALSE END) AS checkout_bool,
+		(CASE WHEN static_client_statuses.status_name = 'checked_out' THEN TRUE ELSE FALSE END) AS "checkout_bool",
 		TRUE AS "kernel_updated",
 		job_queue.last_heard,
 		job_queue.system_uptime,
@@ -1406,7 +1356,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			ELSE FALSE
 		END) AS "os_updated",
 		(CASE 
-			WHEN latest_locations.ad_domain IS NOT NULL AND NOT latest_locations.ad_domain = 'none' THEN TRUE
+			WHEN locations.ad_domain IS NOT NULL AND NOT locations.ad_domain = 'none' THEN TRUE
 			ELSE FALSE
 		END) AS "domain_joined",
 		static_ad_domains.domain_name,
@@ -1446,7 +1396,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	FROM locations
 	LEFT JOIN job_queue ON locations.tagnumber = job_queue.tagnumber
 	LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber
-	LEFT JOIN latest_locations ON locations.tagnumber = latest_locations.tagnumber
 	LEFT JOIN latest_historical_hardware_data ON locations.tagnumber = latest_historical_hardware_data.tagnumber
 	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
 	LEFT JOIN current_battery_health ON locations.tagnumber = current_battery_health.tagnumber
@@ -1455,10 +1404,11 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN static_job_names ON job_queue.job_name = static_job_names.job_name
 	LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
 	LEFT JOIN static_disk_stats ON latest_historical_hardware_data.disk_model = static_disk_stats.disk_model
-	LEFT JOIN static_ad_domains ON latest_locations.ad_domain = static_ad_domains.domain_name
-	LEFT JOIN job_queue_position ON latest_locations.tagnumber = job_queue_position.tagnumber
+	LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
+	LEFT JOIN job_queue_position ON locations.client_uuid = job_queue_position.client_uuid
 	LEFT JOIN newest_image ON hardware_data.system_model = newest_image.system_model
-	WHERE locations.time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
+	LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
+	LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 	ORDER BY
 		job_queue.last_heard DESC NULLS LAST
 	LIMIT 50
@@ -1671,18 +1621,17 @@ func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]types.AllJobsRow, err
 }
 
 func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocationsRow, error) {
-	const sqlQuery = `WITH latest_locations AS (
-		SELECT DISTINCT ON (tagnumber) location, time, COUNT(location) OVER (PARTITION BY location) AS location_count
-		FROM locations
-		WHERE location IS NOT NULL 
-			AND location != ''
-			AND time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-		ORDER BY tagnumber, time DESC NULLS LAST
-	)
-	SELECT location, MAX(time) as time, MAX(location_count) as location_count
-	FROM latest_locations
-	GROUP BY location
-	ORDER BY location ASC;`
+	const sqlQuery = `
+		SELECT 
+			location, 
+			COUNT(*) as location_count
+		FROM 
+			locations
+		GROUP BY 
+			location
+		ORDER BY 
+			location ASC NULLS LAST
+	;`
 
 	var allLocations []types.AllLocationsRow
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
@@ -1721,29 +1670,23 @@ func GetAllStatuses(ctx context.Context) (map[string][]types.AllClientStatuses, 
 	}
 
 	const sqlQuery = `
-		WITH latest_statuses AS (
-			SELECT 
-				COUNT(*) AS status_count,
-				client_status
-			FROM 
-				locations
-			WHERE 
-				client_status IS NOT NULL
-				AND time IN (SELECT MAX(time) FROM locations GROUP BY tagnumber)
-			GROUP BY client_status
-		)
 		SELECT 
 			static_client_statuses.status_name, 
 			static_client_statuses.status_formatted, 
 			static_client_statuses.sort_order, 
 			static_client_statuses.status_type,
-			latest_statuses.status_count
+			COUNT(locations.client_status) AS "status_count"
 		FROM 
 			static_client_statuses 
-		LEFT JOIN latest_statuses ON 
-			static_client_statuses.status_name = latest_statuses.client_status
-		WHERE 
-			static_client_statuses.status_name IS NOT NULL
+		LEFT JOIN locations ON 
+			locations.client_status = static_client_statuses.status_name
+		GROUP BY 
+			static_client_statuses.status_name, 
+			static_client_statuses.status_formatted,
+			static_client_statuses.sort_order,
+			static_client_statuses.status_type
+		ORDER BY 
+			static_client_statuses.sort_order ASC NULLS LAST
 	;`
 
 	rows, err := dbConn.QueryContext(ctx, sqlQuery)
@@ -1831,9 +1774,7 @@ func (repo *SelectRepo) GetClientHardwareOverview(ctx context.Context, tag int64
 	if tag == 0 {
 		return nil, fmt.Errorf("tagnumer cannot be nil")
 	}
-	const sqlQuery = `WITH latest_hardware_data AS (
-		SELECT ram_speed FROM historical_hardware_data WHERE tagnumber = $1 ORDER BY time DESC NULLS LAST LIMIT 1
-	)
+	const sqlQuery = `
 	SELECT 
 		locations.tagnumber, 
 		locations.system_serial, 
@@ -1849,16 +1790,17 @@ func (repo *SelectRepo) GetClientHardwareOverview(ctx context.Context, tag int64
 		hardware_data.motherboard_manufacturer,
 		hardware_data.motherboard_serial,
 		hardware_data.device_type,
-		latest_hardware_data.memory_speed_mhz
+		historical_hardware_data.memory_speed_mhz
 	FROM 
 		locations
-	LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber,
-	CROSS JOIN latest_hardware_data
+	LEFT JOIN hardware_data ON locations.client_uuid = hardware_data.client_uuid
+	LEFT JOIN historical_hardware_data ON locations.client_uuid = historical_hardware_data.client_uuid
 	WHERE 
-		locations.tagnumber = $1
+		locations.client_uuid = (SELECT client_uuid FROM locations WHERE tagnumber = $1 ORDER BY time DESC NULLS LAST LIMIT 1)
+		AND historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY tagnumber)
 	ORDER BY 
 		locations.time DESC NULLS LAST LIMIT 1
-	`
+	;`
 
 	var clientHardwareData types.ClientHardwareView
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
@@ -1993,7 +1935,23 @@ func GetAllBuildingsAndRooms(ctx context.Context) ([]types.AllBuildingsAndRooms,
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
-	const sqlQuery = `select building, room, COUNT(*) from locations where time in (select max(time) from locations group by tagnumber) and building is not null and room is not null group by room, building;`
+	const sqlQuery = `
+		SELECT 
+			building, 
+			room, 
+			COUNT(*) 
+		FROM 
+			locations 
+		WHERE 
+			building IS NOT NULL
+			AND room IS NOT NULL 
+		GROUP BY 
+			room, 
+			building
+		ORDER BY
+			building ASC NULLS LAST,
+			room ASC NULLS LAST
+		;`
 
 	rows, err := dbConn.QueryContext(ctx, sqlQuery)
 	if err != nil {

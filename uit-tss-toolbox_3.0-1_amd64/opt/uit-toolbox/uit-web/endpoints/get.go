@@ -118,33 +118,6 @@ func GetGlobalLookup(w http.ResponseWriter, req *http.Request) {
 // 	middleware.WriteJson(w, http.StatusOK, biosData)
 // }
 
-func GetOSData(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	urlQueries := req.URL.Query()
-	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
-	if err != nil {
-		log.Warn("Invalid tagnumber provided in GetOSData: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository in GetOSData: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	osData, err := db.GetOsData(ctx, tagnumber)
-	if err != nil {
-		log.Warn("Query error in GetOSData: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	middleware.WriteJson(w, http.StatusOK, osData)
-}
-
 func GetClientQueuedJobs(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)

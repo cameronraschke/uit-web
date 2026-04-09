@@ -287,7 +287,6 @@ func UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID,
 			time = CURRENT_TIMESTAMP,
 			client_uuid = EXCLUDED.client_uuid,
 			transaction_uuid = EXCLUDED.transaction_uuid,
-			tagnumber = EXCLUDED.tagnumber,
 			system_manufacturer = EXCLUDED.system_manufacturer,
 			system_model = EXCLUDED.system_model,
 			device_type = EXCLUDED.device_type
@@ -366,6 +365,72 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 	}
 
 	// Update locations table
+	const locationsLogSql = `
+	INSERT INTO locations_log (
+		time, 
+		transaction_uuid,
+		client_uuid,
+		tagnumber, 
+		system_serial, 
+		location, 
+		building, 
+		room, 
+		department_name, 
+		ad_domain, 
+		property_custodian,  
+		acquired_date,
+		retired_date,
+		is_broken, 
+		disk_removed, 
+		client_status,
+		note
+	) 
+	VALUES (
+		CURRENT_TIMESTAMP,
+	 	$1, 
+		(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1), 
+		$2, 
+		$3, 
+		$4, 
+		$5, 
+		$6, 
+		$7, 
+		$8, 
+		$9, 
+		$10, 
+		$11, 
+		$12, 
+		$13, 
+		$14, 
+		$15
+	)
+	;`
+
+	var locationsLogResult sql.Result
+	locationsLogResult, err = tx.ExecContext(ctx, locationsLogSql,
+		transactionUUID,
+		inventoryUpdate.Tagnumber,
+		inventoryUpdate.SystemSerial,
+		inventoryUpdate.Location,
+		ptrToNullString(inventoryUpdate.Building),
+		ptrToNullString(inventoryUpdate.Room),
+		inventoryUpdate.Department,
+		inventoryUpdate.ADDomain,
+		ptrToNullString(inventoryUpdate.PropertyCustodian),
+		ptrToNullTime(inventoryUpdate.AcquiredDate),
+		ptrToNullTime(inventoryUpdate.RetiredDate),
+		ptrToNullBool(inventoryUpdate.IsBroken),
+		ptrToNullBool(inventoryUpdate.DiskRemoved),
+		inventoryUpdate.ClientStatus,
+		ptrToNullString(inventoryUpdate.Note),
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(locationsLogResult, 1); err != nil {
+		return err
+	}
+
 	const locationsSql = `
 	INSERT INTO locations (
 		time, 
@@ -404,7 +469,23 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 		$13, 
 		$14, 
 		$15
-	)
+	) ON CONFLICT (client_uuid) DO UPDATE SET
+		time = CURRENT_TIMESTAMP,
+		transaction_uuid = EXCLUDED.transaction_uuid,
+		tagnumber = EXCLUDED.tagnumber,
+		system_serial = EXCLUDED.system_serial,
+		location = EXCLUDED.location,
+		building = EXCLUDED.building,
+		room = EXCLUDED.room,
+		department_name = EXCLUDED.department_name,
+		ad_domain = EXCLUDED.ad_domain,
+		property_custodian = EXCLUDED.property_custodian,
+		acquired_date = EXCLUDED.acquired_date,
+		retired_date = EXCLUDED.retired_date,
+		is_broken = EXCLUDED.is_broken,
+		disk_removed = EXCLUDED.disk_removed,
+		client_status = EXCLUDED.client_status,
+		note = EXCLUDED.note
 	;`
 
 	var locationsResult sql.Result
@@ -572,7 +653,7 @@ func HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) 
 		SET 
 			hidden = TRUE 
 		WHERE 
-			tagnumber = $1 
+			client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1)
 			AND uuid = $2
 	;`
 
@@ -619,7 +700,7 @@ func DeleteClientImageByUUID(ctx context.Context, tag *int64, imageUUID *string)
 		DELETE FROM 
 			client_images 
 		WHERE 
-			tagnumber = $1 
+			client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1)
 			AND uuid = $2
 	;`
 	sqlResult, err := tx.ExecContext(ctx, sqlQuery,
@@ -663,7 +744,7 @@ func TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err er
 		}
 	}()
 
-	const sqlQuery = `UPDATE client_images SET pinned = NOT COALESCE(pinned, FALSE) WHERE uuid = $1 AND tagnumber = $2;`
+	const sqlQuery = `UPDATE client_images SET pinned = NOT COALESCE(pinned, FALSE) WHERE uuid = $1 AND client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1);`
 	sqlResult, err := tx.ExecContext(ctx, sqlQuery,
 		ptrToNullString(uuid),
 		ptrToNullInt64(tagnumber),
@@ -1598,7 +1679,68 @@ func (updateRepo *UpdateRepo) BulkUpdateClientLocation(ctx context.Context, tran
 			err = tx.Commit()
 		}
 	}()
-	const sqlCode = `
+	const locationsLogSql = `
+	INSERT INTO locations_log (
+		time, 
+		client_uuid,
+		tagnumber,
+		system_serial,
+		location,
+		is_broken,
+		disk_removed,
+		department_name,
+		ad_domain,
+		note,
+		client_status,
+		building,
+		room,
+		property_custodian,
+		acquired_date,
+		retired_date,
+		transaction_uuid,
+		bulk_update
+	)
+	SELECT 
+		CURRENT_TIMESTAMP, 
+		(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+		$1,
+		locations.system_serial,
+		$2,
+		locations.is_broken,
+		locations.disk_removed,
+		locations.department_name,
+		locations.ad_domain,
+		locations.note,
+		locations.client_status,
+		locations.building,
+		locations.room,
+		locations.property_custodian,
+		locations.acquired_date,
+		locations.retired_date,
+		$3,
+		TRUE
+	FROM 
+		locations
+	WHERE 
+		locations.client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1)
+	ORDER BY 
+		time DESC NULLS LAST
+	LIMIT 1
+	;`
+	var locationsLogSqlResult sql.Result
+	locationsLogSqlResult, err = tx.ExecContext(ctx, locationsLogSql,
+		ptrToNullInt64(tag),
+		ptrToNullString(location),
+		ptrToNullString(transactionUUID),
+	)
+	if err != nil {
+		return fmt.Errorf("error while bulk updating a client's ('%d') location: %w", *tag, err)
+	}
+	if err := VerifyRowsAffected(locationsLogSqlResult, 1); err != nil {
+		return fmt.Errorf("error while checking rows affected on a locations bulk update: %w", err)
+	}
+
+	const locationsSQL = `
 	INSERT INTO locations (
 		time, 
 		client_uuid,
@@ -1641,13 +1783,13 @@ func (updateRepo *UpdateRepo) BulkUpdateClientLocation(ctx context.Context, tran
 	FROM 
 		locations
 	WHERE 
-		locations.tagnumber = (SELECT tagnumber FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1)
+		locations.client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1)
 	ORDER BY 
 		time DESC NULLS LAST
 	LIMIT 1
 	;`
-	var sqlResult sql.Result
-	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+	var locationsSQLResult sql.Result
+	locationsSQLResult, err = tx.ExecContext(ctx, locationsSQL,
 		ptrToNullInt64(tag),
 		ptrToNullString(location),
 		ptrToNullString(transactionUUID),
@@ -1655,7 +1797,7 @@ func (updateRepo *UpdateRepo) BulkUpdateClientLocation(ctx context.Context, tran
 	if err != nil {
 		return fmt.Errorf("error while bulk updating a client's ('%d') location: %w", *tag, err)
 	}
-	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+	if err := VerifyRowsAffected(locationsSQLResult, 1); err != nil {
 		return fmt.Errorf("error while checking rows affected on a locations bulk update: %w", err)
 	}
 	return nil
@@ -1821,8 +1963,6 @@ func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUp
 	if err := VerifyRowsAffected(historicalHWData, 1); err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
-
-	
 
 	return nil
 }

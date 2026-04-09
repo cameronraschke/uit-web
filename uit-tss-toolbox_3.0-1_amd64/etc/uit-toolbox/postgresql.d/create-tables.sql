@@ -110,9 +110,8 @@ CREATE TABLE IF NOT EXISTS historical_hardware_data (
 );
 
 CREATE TABLE IF NOT EXISTS locations (
-	id SERIAL PRIMARY KEY,
+	client_uuid UUID PRIMARY KEY,
 	time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	client_uuid UUID DEFAULT NULL,
 	tagnumber INTEGER NOT NULL,
 	system_serial VARCHAR(128) DEFAULT NULL,
 	location VARCHAR(128) DEFAULT NULL,
@@ -154,6 +153,99 @@ CREATE TABLE IF NOT EXISTS locations (
 		ON UPDATE CASCADE 
 		ON DELETE RESTRICT
 );
+
+CREATE TABLE IF NOT EXISTS locations_log (
+	id SERIAL PRIMARY KEY,
+	time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	client_uuid UUID DEFAULT NULL,
+	tagnumber INTEGER NOT NULL,
+	system_serial VARCHAR(128) DEFAULT NULL,
+	location VARCHAR(128) DEFAULT NULL,
+	is_broken BOOLEAN DEFAULT NULL,
+	disk_removed BOOLEAN DEFAULT NULL,
+	department_name VARCHAR(64) DEFAULT NULL,
+	ad_domain VARCHAR(64) DEFAULT NULL,
+	note VARCHAR(512) DEFAULT NULL,
+	client_status VARCHAR(24) DEFAULT NULL,
+	building VARCHAR(64) DEFAULT NULL,
+	room VARCHAR(64) DEFAULT NULL,
+	property_custodian VARCHAR(64) DEFAULT NULL,
+	acquired_date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+	retired_date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+	transaction_uuid UUID DEFAULT NULL,
+	bulk_update BOOLEAN DEFAULT FALSE,
+	
+	CONSTRAINT locations_log_valid_tag
+		CHECK (tagnumber > 100000 AND tagnumber < 999999),
+
+	CONSTRAINT locations_log_client_uuid_fkey
+		FOREIGN KEY (client_uuid)
+			REFERENCES ids(uuid)
+		ON UPDATE CASCADE
+		ON DELETE SET NULL,
+	CONSTRAINT locations_log_department_name_fkey
+		FOREIGN KEY (department_name)
+			REFERENCES static_department_info(department_name)
+		ON UPDATE CASCADE 
+		ON DELETE RESTRICT,
+	CONSTRAINT locations_log_ad_domain_fkey
+		FOREIGN KEY (ad_domain)
+			REFERENCES static_ad_domains(domain_name)
+		ON UPDATE CASCADE 
+		ON DELETE RESTRICT,
+	CONSTRAINT locations_log_client_status_fkey
+		FOREIGN KEY (client_status)
+			REFERENCES static_client_statuses(status_name)
+		ON UPDATE CASCADE 
+		ON DELETE RESTRICT
+);
+
+-- INSERT INTO locations (
+-- 	time,
+-- 	client_uuid,
+-- 	tagnumber,
+-- 	system_serial,
+-- 	location,
+-- 	is_broken,
+-- 	disk_removed,
+-- 	department_name,
+-- 	ad_domain,
+-- 	note,
+-- 	client_status,
+-- 	building,
+-- 	room,
+-- 	property_custodian,
+-- 	acquired_date,
+-- 	retired_date,
+-- 	transaction_uuid,
+-- 	bulk_update
+--  )
+--  SELECT 
+-- 	locations_log.time,
+-- 	ids.uuid,
+-- 	locations_log.tagnumber,
+-- 	locations_log.system_serial,
+-- 	locations_log.location,
+-- 	locations_log.is_broken,
+-- 	locations_log.disk_removed,
+-- 	locations_log.department_name,
+-- 	locations_log.ad_domain,
+-- 	locations_log.note,
+-- 	locations_log.client_status,
+-- 	locations_log.building,
+-- 	locations_log.room,
+-- 	locations_log.property_custodian,
+-- 	locations_log.acquired_date,
+-- 	locations_log.retired_date,
+-- 	locations_log.transaction_uuid,
+-- 	locations_log.bulk_update
+-- FROM locations_log
+-- INNER JOIN ids ON ids.tagnumber = locations_log.tagnumber
+-- WHERE locations_log.time IN (SELECT MAX(time) FROM locations_log GROUP BY tagnumber)
+-- ORDER BY locations_log.time DESC
+-- ;
+
+-- update locations_log set client_uuid = ids.uuid from ids where ids.tagnumber = locations_log.tagnumber;
 
 
 DROP TABLE IF EXISTS static_disk_stats;

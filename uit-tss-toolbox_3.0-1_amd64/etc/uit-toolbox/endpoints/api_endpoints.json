@@ -3,7 +3,6 @@
 	"/api/server_time": {},
 	"/api/client/lookup": {},
 	"/api/overview/global_lookup": {},
-	"/api/client/os": {},
 	"/api/overview/job_queue": {},
 	"/api/client/job_queue/queued_job": {},
 	"/api/client/job_queue/job_available": {},
