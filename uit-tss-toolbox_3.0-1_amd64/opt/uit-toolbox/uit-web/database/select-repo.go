@@ -123,11 +123,9 @@ func GetAllDepartments(ctx context.Context) ([]types.AllDepartmentsRow, error) {
 			COALESCE(static_organizations.organization_sort_order, 101) AS organization_sort_order,
 			COUNT(*) AS client_count
 		FROM 
-			locations
-		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
-		LEFT JOIN static_organizations ON static_organizations.organization_name = static_department_info.organization_name
-		WHERE
-			locations.department_name IS NOT NULL
+			static_department_info
+		LEFT JOIN locations ON static_department_info.department_name = locations.department_name
+		LEFT JOIN static_organizations ON static_department_info.organization_name = static_organizations.organization_name
 		GROUP BY
 			static_department_info.department_name,
 			static_department_info.department_name_formatted,
@@ -187,9 +185,8 @@ func GetAllDomains(ctx context.Context) ([]types.AllDomainsRow, error) {
 			domain_name_formatted,
 			domain_sort_order,
 			COUNT(*) AS "client_count"
-		FROM locations
-		LEFT JOIN static_ad_domains ON 
-			locations.ad_domain = static_ad_domains.domain_name
+		FROM static_ad_domains
+		LEFT JOIN locations ON static_ad_domains.domain_name = locations.ad_domain
 		GROUP BY
 			static_ad_domains.domain_name,
 			static_ad_domains.domain_name_formatted,
@@ -1680,7 +1677,7 @@ func GetAllStatuses(ctx context.Context) (map[string][]types.AllClientStatuses, 
 		FROM 
 			static_client_statuses 
 		LEFT JOIN locations ON 
-			locations.client_status = static_client_statuses.status_name
+			static_client_statuses.status_name = locations.client_status
 		GROUP BY 
 			static_client_statuses.status_name, 
 			static_client_statuses.status_formatted,
@@ -1944,7 +1941,7 @@ func GetAllBuildingsAndRooms(ctx context.Context) ([]types.AllBuildingsAndRooms,
 		FROM 
 			locations 
 		WHERE 
-			building IS NOT NULL
+			building IS NOT NULL 
 			AND room IS NOT NULL 
 		GROUP BY 
 			room, 
@@ -1952,7 +1949,7 @@ func GetAllBuildingsAndRooms(ctx context.Context) ([]types.AllBuildingsAndRooms,
 		ORDER BY
 			building ASC NULLS LAST,
 			room ASC NULLS LAST
-		;`
+	;`
 
 	rows, err := dbConn.QueryContext(ctx, sqlQuery)
 	if err != nil {
