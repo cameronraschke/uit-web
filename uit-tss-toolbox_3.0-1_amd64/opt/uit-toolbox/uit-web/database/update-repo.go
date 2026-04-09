@@ -1784,6 +1784,24 @@ func (updateRepo *UpdateRepo) BulkUpdateClientLocation(ctx context.Context, tran
 	ORDER BY 
 		time DESC NULLS LAST
 	LIMIT 1
+	ON CONFLICT (client_uuid) DO UPDATE SET
+	 time = EXCLUDED.time,
+	 client_uuid = EXCLUDED.client_uuid,
+	 tagnumber = EXCLUDED.tagnumber,
+	 system_serial = COALESCE(EXCLUDED.system_serial, locations.system_serial),
+	 location = EXCLUDED.location,
+	 is_broken = COALESCE(EXCLUDED.is_broken, locations.is_broken),
+	 disk_removed = COALESCE(EXCLUDED.disk_removed, locations.disk_removed),
+	 department_name = COALESCE(EXCLUDED.department_name, locations.department_name),
+	 ad_domain = COALESCE(EXCLUDED.ad_domain, locations.ad_domain),
+	 note = COALESCE(EXCLUDED.note, locations.note),
+	 building = COALESCE(EXCLUDED.building, locations.building),
+	 room = COALESCE(EXCLUDED.room, locations.room),
+	 property_custodian = COALESCE(EXCLUDED.property_custodian, locations.property_custodian),
+	 acquired_date = COALESCE(EXCLUDED.acquired_date, locations.acquired_date),
+	 retired_date = COALESCE(EXCLUDED.retired_date, locations.retired_date),
+	 transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, locations.transaction_uuid),
+	 bulk_update = TRUE
 	;`
 	var locationsSQLResult sql.Result
 	locationsSQLResult, err = tx.ExecContext(ctx, locationsSQL,
