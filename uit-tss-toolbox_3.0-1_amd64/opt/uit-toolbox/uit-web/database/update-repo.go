@@ -353,15 +353,12 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 		ON CONFLICT (tagnumber) DO NOTHING
 	;`
 
-	idsResult, err := tx.ExecContext(ctx, idsSql,
+	_, err = tx.ExecContext(ctx, idsSql,
 		inventoryUpdate.Tagnumber,
 		inventoryUpdate.SystemSerial,
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
-	}
-	if err := VerifyRowsAffected(idsResult, 1); err != nil {
-		return err
 	}
 
 	// Update locations table

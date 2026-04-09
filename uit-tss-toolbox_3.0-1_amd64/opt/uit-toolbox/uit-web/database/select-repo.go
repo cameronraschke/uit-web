@@ -1306,7 +1306,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			job_queued = TRUE OR job_name IS NOT NULL
 	)
 	SELECT
-		locations.client_uuid,
+		locations.tagnumber,
 		locations.system_serial,
 		hardware_data.system_manufacturer,
 		hardware_data.system_model,
@@ -1624,13 +1624,14 @@ func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocatio
 	const sqlQuery = `
 		SELECT 
 			location, 
-			COUNT(*) as location_count
+			MAX(time) AS "timestamp",
+			COUNT(*) as "location_count"
 		FROM 
 			locations
 		GROUP BY 
 			location
 		ORDER BY 
-			location ASC NULLS LAST
+			location ASC, timestamp DESC
 	;`
 
 	var allLocations []types.AllLocationsRow
