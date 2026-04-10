@@ -1152,8 +1152,8 @@ func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData
 			)
 		ON CONFLICT (tagnumber) DO UPDATE SET 
 		client_uuid = EXCLUDED.client_uuid,
-		client_app_uptime = EXCLUDED.client_app_uptime, 
-		system_uptime = EXCLUDED.system_uptime	
+		client_app_uptime = COALESCE(EXCLUDED.client_app_uptime, job_queue.client_app_uptime), 
+		system_uptime = COALESCE(EXCLUDED.system_uptime, job_queue.system_uptime)	
 	;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,

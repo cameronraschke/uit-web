@@ -446,7 +446,7 @@ func SetClientUptime(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if uptimeData.Tagnumber == 0 || uptimeData.ClientAppUptime == 0 || uptimeData.SystemUptime == 0 {
+	if uptimeData.Tagnumber == 0 {
 		log.Warn("Missing tag number, client app uptime, or system uptime")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
