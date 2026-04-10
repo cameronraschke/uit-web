@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime/debug"
