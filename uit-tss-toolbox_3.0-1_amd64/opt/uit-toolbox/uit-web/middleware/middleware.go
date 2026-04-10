@@ -20,6 +20,17 @@ import (
 	"uit-toolbox/types"
 )
 
+var weakCiphers = map[uint16]bool{
+	tls.TLS_RSA_WITH_RC4_128_SHA:                true,
+	tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA:           true,
+	tls.TLS_RSA_WITH_AES_128_CBC_SHA256:         true,
+	tls.TLS_ECDHE_ECDSA_WITH_RC4_128_SHA:        true,
+	tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA:          true,
+	tls.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA:     true,
+	tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256: true,
+	tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256:   true,
+}
+
 func StoreLoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		requestIpStr, _, _ := net.SplitHostPort(req.RemoteAddr)
@@ -178,25 +189,13 @@ func TLSMiddleware(next http.Handler) http.Handler {
 		}
 
 		if req.TLS.Version < tls.VersionTLS13 {
-			log = log.With(slog.String("tls_version", tls.VersionName(req.TLS.Version)))
-			log.Warn("TLS version is too old")
+			log.Warn("TLS version is too old: " + tls.VersionName(req.TLS.Version))
 			WriteJsonError(w, http.StatusUpgradeRequired)
 			return
 		}
 
-		weakCiphers := map[uint16]bool{
-			tls.TLS_RSA_WITH_RC4_128_SHA:                true,
-			tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA:           true,
-			tls.TLS_RSA_WITH_AES_128_CBC_SHA256:         true,
-			tls.TLS_ECDHE_ECDSA_WITH_RC4_128_SHA:        true,
-			tls.TLS_ECDHE_RSA_WITH_RC4_128_SHA:          true,
-			tls.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA:     true,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256: true,
-			tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256:   true,
-		}
 		if weakCiphers[req.TLS.CipherSuite] {
-			log = log.With(slog.String("tls_cipher_suite", tls.CipherSuiteName(req.TLS.CipherSuite)))
-			log.Warn("Request uses weak cipher suite")
+			log.Warn("Request uses weak cipher suite: " + tls.CipherSuiteName(req.TLS.CipherSuite))
 			WriteJsonError(w, http.StatusUpgradeRequired)
 			return
 		}

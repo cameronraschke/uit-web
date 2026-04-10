@@ -148,7 +148,7 @@ func StartWebServer(ctx context.Context) error {
 			tls.TLS_CHACHA20_POLY1305_SHA256,
 		},
 		PreferServerCipherSuites: true,
-		SessionTicketsDisabled:   true,
+		SessionTicketsDisabled:   false,
 	}
 
 	httpsServer := http.Server{
