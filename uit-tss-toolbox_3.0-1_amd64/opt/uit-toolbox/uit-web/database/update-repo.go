@@ -1158,8 +1158,8 @@ func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		toNullInt64(uptimeData.Tagnumber),
-		toNullDuration(uptimeData.ClientAppUptime),
-		toNullDuration(uptimeData.SystemUptime),
+		ptrToNullInt64(uptimeData.ClientAppUptime),
+		ptrToNullInt64(uptimeData.SystemUptime),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)

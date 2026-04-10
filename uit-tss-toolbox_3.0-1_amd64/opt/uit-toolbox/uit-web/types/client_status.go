@@ -15,8 +15,8 @@ type ClientStatusView struct {
 
 type ClientUptime struct {
 	Tagnumber       int64 `json:"tagnumber"`
-	ClientAppUptime int64 `json:"client_app_uptime"`
-	SystemUptime    int64 `json:"system_uptime"`
+	ClientAppUptime *int64 `json:"client_app_uptime"`
+	SystemUptime    *int64 `json:"system_uptime"`
 }
 
 type AllClientStatuses struct {
