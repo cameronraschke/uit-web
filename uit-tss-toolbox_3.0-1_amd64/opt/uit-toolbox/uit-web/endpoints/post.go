@@ -531,11 +531,8 @@ func UpdateClientBatteryChargePcnt(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	var batteryData struct {
-		Tagnumber int64    `json:"tagnumber"`
-		Percent   *float64 `json:"battery_charge_pcnt"`
-	}
-	if err := json.Unmarshal(requestBody, &batteryData); err != nil {
+	batteryData := new(types.BatteryData)
+	if err := json.Unmarshal(requestBody, batteryData); err != nil {
 		log.Warn("Cannot unmarshal JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return

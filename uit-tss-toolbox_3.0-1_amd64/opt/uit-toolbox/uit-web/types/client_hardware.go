@@ -85,3 +85,8 @@ type NetworkData struct {
 	NetworkUsage *int64 `json:"network_usage"`
 	LinkSpeed    *int64 `json:"link_speed"`
 }
+
+type BatteryData struct {
+	Tagnumber int64    `json:"tagnumber"`
+	Percent   *float64 `json:"battery_charge_pcnt"`
+}
