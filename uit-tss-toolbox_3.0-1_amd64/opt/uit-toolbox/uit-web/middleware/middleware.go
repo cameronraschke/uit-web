@@ -522,7 +522,7 @@ func CheckHeadersMiddleware(next http.Handler) http.Handler {
 				WriteJsonError(w, http.StatusBadRequest)
 				return
 			}
-			if contentType != "application/octet-stream" && contentType != "application/x-www-form-urlencoded" && contentType != "application/json" && !strings.HasPrefix(contentType, "multipart/form-data") {
+			if contentType != "application/octet-stream" && contentType != "application/x-www-form-urlencoded" && contentType != "application/json" && contentType != "application/json; charset=utf-8" && !strings.HasPrefix(contentType, "multipart/form-data") {
 				log.Warn("Invalid Content-Type header: " + contentType)
 				WriteJsonError(w, http.StatusUnsupportedMediaType)
 				return
