@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
@@ -45,6 +46,12 @@ func main() {
 		os.Exit(1)
 	}
 	log = log.With(slog.String("func", "main"))
+
+	go func() {
+		if err := http.ListenAndServe("localhost:6060", nil); err != nil {
+			log.Error("pprof server error: " + err.Error())
+		}
+	}()
 
 	// Get DB credentials
 	dbConnectionInfo, err := config.GetDatabaseCredentials()
