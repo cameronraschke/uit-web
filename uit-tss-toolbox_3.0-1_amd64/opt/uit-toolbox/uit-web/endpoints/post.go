@@ -457,11 +457,22 @@ func SetClientUptime(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	if err := updateRepo.UpdateClientUptime(ctx, &uptimeData); err != nil {
-		log.Error("Failed to update client uptime: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
+	if uptimeData.ClientAppUptime != nil {
+		if err := updateRepo.UpdateClientAppUptime(ctx, uptimeData.Tagnumber, *uptimeData.ClientAppUptime); err != nil {
+			log.Error("Failed to update client uptime: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 	}
+
+	if uptimeData.SystemUptime != nil {
+		if err := updateRepo.UpdateClientSystemUptime(ctx, uptimeData.Tagnumber, *uptimeData.SystemUptime); err != nil {
+			log.Error("Failed to update client system uptime: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+	}
+
 	middleware.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
 }
 

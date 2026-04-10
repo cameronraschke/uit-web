@@ -24,7 +24,8 @@ type Update interface {
 	UpdateClientCPUUsage(ctx context.Context, cpuData *types.CPUData) (err error)
 	UpdateClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUData) (err error)
 	UpdateClientNetworkUsage(ctx context.Context, networkData *types.NetworkData) (err error)
-	UpdateClientUptime(ctx context.Context, uptimeData *types.ClientUptime) (err error)
+	UpdateClientAppUptime(ctx context.Context, tag int64, appUptime int64) (err error)
+	UpdateClientSystemUptime(ctx context.Context, tag int64, systemUptime int64) (err error)
 	UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error)
 	UpdateClientCPUMHz(ctx context.Context, cpuData *types.CPUData) (err error)
 	UpdateJobQueuedAt(ctx context.Context, jobQueue *types.JobQueueTableRowView) (err error)
@@ -1114,15 +1115,12 @@ func (updateRepo *UpdateRepo) UpdateClientCPUTemperature(ctx context.Context, cp
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData *types.ClientUptime) (err error) {
-	if uptimeData == nil {
-		return fmt.Errorf("uptime data is required")
-	}
-	if uptimeData.Tagnumber == 0 {
+func (updateRepo *UpdateRepo) UpdateClientSystemUptime(ctx context.Context, tag int64, systemUptime int64) (err error) {
+	if tag == 0 {
 		return fmt.Errorf("tagnumber is required")
 	}
-	if uptimeData.ClientAppUptime == nil && uptimeData.SystemUptime == nil {
-		return fmt.Errorf("neither client app uptime nor system uptime is provided")
+	if systemUptime <= 0 {
+		return fmt.Errorf("system uptime cannot be negative or zero")
 	}
 	if ctx.Err() != nil {
 		return fmt.Errorf("context error: %w", ctx.Err())
@@ -1145,24 +1143,72 @@ func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData
 			job_queue (
 				client_uuid,
 				tagnumber, 
-				client_app_uptime, 
 				system_uptime
 			) VALUES (
 				(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
 				$1, 
-			 	$2, 
-			 	$3
+			 	$2
 			)
 		ON CONFLICT (tagnumber) DO UPDATE SET 
 		client_uuid = EXCLUDED.client_uuid,
-		client_app_uptime = COALESCE(EXCLUDED.client_app_uptime, job_queue.client_app_uptime), 
-		system_uptime = COALESCE(EXCLUDED.system_uptime, job_queue.system_uptime)	
+		system_uptime = COALESCE(EXCLUDED.system_uptime, job_queue.system_uptime)
 	;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		toNullInt64(uptimeData.Tagnumber),
-		ptrToNullInt64(uptimeData.ClientAppUptime),
-		ptrToNullInt64(uptimeData.SystemUptime),
+		toNullInt64(tag),
+		toNullInt64(systemUptime),
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (updateRepo *UpdateRepo) UpdateClientAppUptime(ctx context.Context, tag int64, appUptime int64) (err error) {
+	if tag == 0 {
+		return fmt.Errorf("tagnumber is required")
+	}
+	if appUptime <= 0 {
+		return fmt.Errorf("app uptime cannot be negative or zero")
+	}
+	if ctx.Err() != nil {
+		return fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning DB transaction: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	const sqlCode = `
+		INSERT INTO 
+			job_queue (
+				client_uuid,
+				tagnumber, 
+				client_app_uptime
+			) VALUES (
+				(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+				$1, 
+			 	$2
+			)
+		ON CONFLICT (tagnumber) DO UPDATE SET 
+		client_uuid = EXCLUDED.client_uuid,
+		client_app_uptime = COALESCE(EXCLUDED.client_app_uptime, job_queue.client_app_uptime)
+	;`
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+		toNullInt64(tag),
+		toNullInt64(appUptime),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
