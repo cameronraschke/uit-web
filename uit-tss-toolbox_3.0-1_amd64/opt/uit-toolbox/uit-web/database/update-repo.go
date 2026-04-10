@@ -1121,6 +1121,9 @@ func (updateRepo *UpdateRepo) UpdateClientUptime(ctx context.Context, uptimeData
 	if uptimeData.Tagnumber == 0 {
 		return fmt.Errorf("tagnumber is required")
 	}
+	if uptimeData.ClientAppUptime == nil && uptimeData.SystemUptime == nil {
+		return fmt.Errorf("neither client app uptime nor system uptime is provided")
+	}
 	if ctx.Err() != nil {
 		return fmt.Errorf("context error: %w", ctx.Err())
 	}
