@@ -120,11 +120,11 @@ rm /srv/uit-toolbox/client/pkg/uit-client
 	sudo /usr/local/go/bin/go build -buildvcs=false -o /srv/uit-toolbox/client/pkg/uit-client .
 )
 
-rm /srv/uit-toolbox/client/pkg/uit-client-cli
-rm /srv/uit-toolbox/client/pkg/uit-client-cli-send
-(cd /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/opt/uit-toolbox/uit-client-cli/
-	sudo /usr/local/go/bin/go build -buildvcs=false -o /srv/uit-toolbox/client/pkg/uit-client-cli .
-	sudo /usr/local/go/bin/go build -buildvcs=false -o /srv/uit-toolbox/client/pkg/uit-client-cli-send ./cmd/uit-client-cli-send
+rm /srv/uit-toolbox/client/pkg/uit-client-cli-service
+rm /srv/uit-toolbox/client/pkg/uit-cli
+(cd /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/opt/uit-toolbox/uit-client-cli-service/
+	sudo /usr/local/go/bin/go build -buildvcs=false -o /srv/uit-toolbox/client/pkg/uit-client-cli-service .
+	sudo /usr/local/go/bin/go build -buildvcs=false -o /srv/uit-toolbox/client/pkg/uit-cli ./cmd/uit-cli
 )
 
 if [[ ! -f /srv/uit-toolbox/client/pkg/go-latest.linux-amd64.tar.gz ]]; then
