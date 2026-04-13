@@ -115,9 +115,9 @@ done
 )
 
 # Create Golang binaries
-rm /srv/uit-toolbox/client/pkg/uit-client
+rm /srv/uit-toolbox/client/pkg/uit-client-cli-service
 (cd /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/opt/uit-toolbox/uit-client/
-	sudo /usr/local/go/bin/go build -buildvcs=false -o /srv/uit-toolbox/client/pkg/uit-client .
+	sudo /usr/local/go/bin/go build -buildvcs=false -o /srv/uit-toolbox/client/pkg/uit-client-cli-service .
 )
 
 rm /srv/uit-toolbox/client/pkg/uit-client-cli-service
