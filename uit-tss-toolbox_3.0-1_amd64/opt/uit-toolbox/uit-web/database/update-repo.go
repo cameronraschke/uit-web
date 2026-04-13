@@ -20,13 +20,10 @@ import (
 )
 
 type Update interface {
-	UpdateClientCPUUsage(ctx context.Context, cpuData *types.CPUData) (err error)
-	UpdateClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUData) (err error)
 	UpdateClientNetworkUsage(ctx context.Context, networkData *types.NetworkData) (err error)
 	UpdateClientAppUptime(ctx context.Context, tag int64, appUptime int64) (err error)
 	UpdateClientSystemUptime(ctx context.Context, tag int64, systemUptime int64) (err error)
 	UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error)
-	UpdateClientCPUMHz(ctx context.Context, cpuData *types.CPUData) (err error)
 	UpdateJobQueuedAt(ctx context.Context, jobQueue *types.JobQueueTableRowView) (err error)
 	UpdateClientLastHeard(ctx context.Context, tag *int64, lastHeard *time.Time) (err error)
 	UpdateClientBatteryChargePcnt(ctx context.Context, tag *int64, percent *float64) (err error)
@@ -968,22 +965,31 @@ func UpsertClientMemoryCapacityKB(ctx context.Context, memInfo types.MemoryDataD
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateClientCPUUsage(ctx context.Context, cpuData *types.CPUData) (err error) {
+func UpsertClientCPUUsage(ctx context.Context, cpuData *types.CPUDataDTO) (err error) {
 	if cpuData == nil {
 		return fmt.Errorf("CPU data is required")
 	}
 
-	if cpuData.Tagnumber == 0 || cpuData.UsagePercent == nil {
-		return fmt.Errorf("both tagnumber and usage percent are required")
+	if cpuData.Tagnumber == 0 {
+		return fmt.Errorf("%w: %s", types.InvalidFieldError, "tagnumber is missing")
+	}
+
+	if cpuData.UsagePercent < 0 || cpuData.UsagePercent > 110 {
+		return fmt.Errorf("%w: %s must be between 0 and 100", types.InvalidFieldError, "CPU usage percent")
 	}
 
 	if ctx.Err() != nil {
 		return fmt.Errorf("context error: %w", ctx.Err())
 	}
 
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("error beginning DB transaction: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 	defer func() {
 		if err != nil {
@@ -1012,7 +1018,7 @@ func (updateRepo *UpdateRepo) UpdateClientCPUUsage(ctx context.Context, cpuData 
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		toNullInt64(cpuData.Tagnumber),
-		ptrToNullFloat64(cpuData.UsagePercent),
+		toNullFloat64(cpuData.UsagePercent),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -1023,20 +1029,29 @@ func (updateRepo *UpdateRepo) UpdateClientCPUUsage(ctx context.Context, cpuData 
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateClientCPUMHz(ctx context.Context, cpuData *types.CPUData) (err error) {
+func UpsertClientCPUMHz(ctx context.Context, cpuData *types.CPUDataDTO) (err error) {
 	if cpuData == nil {
 		return fmt.Errorf("CPU data is required")
 	}
-	if cpuData.Tagnumber == 0 || cpuData.MHz == nil {
-		return fmt.Errorf("both tagnumber and CPU MHz are required")
+	if cpuData.Tagnumber == 0 {
+		return fmt.Errorf("%w: %s", types.InvalidFieldError, "tagnumber is missing")
 	}
-	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
+	if cpuData.MHz <= 0 {
+		return fmt.Errorf("%w: %s must be greater than 0", types.InvalidFieldError, "CPU MHz")
 	}
 
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("error beginning DB transaction: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 	defer func() {
 		if err != nil {
@@ -1065,7 +1080,7 @@ func (updateRepo *UpdateRepo) UpdateClientCPUMHz(ctx context.Context, cpuData *t
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		toNullInt64(cpuData.Tagnumber),
-		ptrToNullFloat64(cpuData.MHz),
+		toNullFloat64(cpuData.MHz),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -1123,21 +1138,29 @@ func (updateRepo *UpdateRepo) UpdateClientNetworkUsage(ctx context.Context, netw
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUData) (err error) {
+func UpsertClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUDataDTO) (err error) {
 	if cpuTempData == nil {
 		return fmt.Errorf("CPU data is required")
 	}
-	if cpuTempData.Tagnumber == 0 || cpuTempData.MillidegreesC == nil {
+	if cpuTempData.Tagnumber == 0 {
 		return fmt.Errorf("both tagnumber and temperature are required")
+	}
+	if cpuTempData.MillidegreesC <= 0 {
+		return fmt.Errorf("%w: %s must be greater than 0", types.InvalidFieldError, "CPU temperature")
 	}
 
 	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
+		return ctx.Err()
 	}
 
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("error beginning DB transaction: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 	defer func() {
 		if err != nil {
@@ -1147,7 +1170,7 @@ func (updateRepo *UpdateRepo) UpdateClientCPUTemperature(ctx context.Context, cp
 		}
 	}()
 
-	degreesC := float64(*cpuTempData.MillidegreesC) / 1000
+	degreesC := float64(cpuTempData.MillidegreesC / 1000)
 
 	const sqlCode = `INSERT INTO job_queue (client_uuid, tagnumber, cpu_temp) VALUES (
 			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),

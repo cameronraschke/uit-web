@@ -229,9 +229,7 @@ func SetClientMemoryCapacityKB(w http.ResponseWriter, req *http.Request) {
 }
 
 func SetClientCPUUsage(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	log = log.With(slog.String("func", "SetClientCPUUsage"))
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "SetClientCPUUsage"))
 	requestBody, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Warn("Cannot read request body: " + err.Error())
@@ -243,33 +241,27 @@ func SetClientCPUUsage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !types.IsPrintableUnicode(requestBody) {
-		log.Warn("Invalid UTF-8 in request body")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	var cpuData types.CPUData
-	if err := json.Unmarshal(requestBody, &cpuData); err != nil {
+
+	var cpuDataRequest types.CPUDataRequest
+	if err := json.Unmarshal(requestBody, &cpuDataRequest); err != nil {
 		log.Warn("Cannot unmarshal JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if cpuData.Tagnumber == 0 || cpuData.UsagePercent == nil {
-		log.Warn("Missing tag number or usage percent")
+
+	cpuDTO, err := cpuDataRequest.ToDTO()
+	if err != nil {
+		log.Warn("Invalid CPU data request: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	updateRepo, err := database.NewUpdateRepo()
-	if err != nil {
-		log.Error("No database connection available for updating client CPU usage")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	if err := updateRepo.UpdateClientCPUUsage(ctx, &cpuData); err != nil {
+
+	if err := database.UpsertClientCPUUsage(req.Context(), cpuDTO); err != nil {
 		log.Error("Failed to update client CPU usage: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
+
 	middleware.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
@@ -287,29 +279,22 @@ func SetClientCPUMHz(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !types.IsPrintableUnicode(requestBody) {
-		log.Warn("Invalid UTF-8 in request body")
+
+	var cpuUpdateRequest types.CPUDataRequest
+	if err := json.Unmarshal(requestBody, &cpuUpdateRequest); err != nil {
+		log.Warn(types.JSONUnmarshalError.Error() + ": " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	var cpuData types.CPUData
-	if err := json.Unmarshal(requestBody, &cpuData); err != nil {
-		log.Warn("Cannot unmarshal JSON: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if cpuData.Tagnumber == 0 || cpuData.MHz == nil {
-		log.Warn("Missing tag number or MHz")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	updateRepo, err := database.NewUpdateRepo()
+
+	cpuData, err := cpuUpdateRequest.ToDTO()
 	if err != nil {
-		log.Error("No database connection available for updating client CPU MHz")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		log.Warn("Invalid CPU data request: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if err := updateRepo.UpdateClientCPUMHz(ctx, &cpuData); err != nil {
+
+	if err := database.UpsertClientCPUMHz(ctx, cpuData); err != nil {
 		log.Error("Failed to update client CPU MHz: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
@@ -369,9 +354,7 @@ func SetClientHealth(w http.ResponseWriter, req *http.Request) {
 }
 
 func SetClientCPUTemperature(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	log = log.With(slog.String("func", "SetClientCPUTemperature"))
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "SetClientCPUTemperature"))
 	requestBody, err := io.ReadAll(req.Body)
 	if err != nil {
 		log.Warn("Cannot read request body: " + err.Error())
@@ -383,29 +366,22 @@ func SetClientCPUTemperature(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !types.IsPrintableUnicode(requestBody) {
-		log.Warn("Invalid UTF-8 in request body")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	var cpuData types.CPUData
-	if err := json.Unmarshal(requestBody, &cpuData); err != nil {
+
+	var cpuDataRequest types.CPUDataRequest
+	if err := json.Unmarshal(requestBody, &cpuDataRequest); err != nil {
 		log.Warn("Cannot unmarshal JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if cpuData.Tagnumber == 0 || cpuData.MillidegreesC == nil {
-		log.Warn("Missing tag number or temperature")
+
+	cpuData, err := cpuDataRequest.ToDTO()
+	if err != nil {
+		log.Warn("Invalid CPU data request: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	updateRepo, err := database.NewUpdateRepo()
-	if err != nil {
-		log.Error("No database connection available for updating client CPU temperature")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	if err := updateRepo.UpdateClientCPUTemperature(ctx, &cpuData); err != nil {
+
+	if err := database.UpsertClientCPUTemperature(req.Context(), cpuData); err != nil {
 		log.Error("Failed to update client CPU temperature: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return

@@ -77,11 +77,11 @@ type MemoryDataRequest struct {
 }
 
 type MemoryDataDTO struct {
-	Tagnumber       int64  `json:"tagnumber"`
-	TotalUsageKB    int64  `json:"memory_usage_kb"`
-	TotalCapacityKB int64  `json:"memory_capacity_kb"`
-	Type            string `json:"type"`
-	SpeedMHz        int64  `json:"speed_mhz"`
+	Tagnumber       int64
+	TotalUsageKB    int64
+	TotalCapacityKB int64
+	Type            string
+	SpeedMHz        int64
 }
 
 func (m *MemoryDataRequest) ToDTO() (*MemoryDataDTO, error) {
@@ -116,11 +116,54 @@ func (m *MemoryDataRequest) ToDTO() (*MemoryDataDTO, error) {
 	}, nil
 }
 
-type CPUData struct {
-	Tagnumber     int64    `json:"tagnumber"`
-	UsagePercent  *float64 `json:"cpu_usage"`
-	MHz           *float64 `json:"cpu_mhz"`
+type CPUDataRequest struct {
+	Tagnumber     *int64   `json:"tagnumber"`
+	UsagePercent  *float64 `json:"cpu_current_usage"`
+	MHz           *float64 `json:"cpu_current_mhz"`
 	MillidegreesC *float64 `json:"cpu_millidegrees_c"`
+}
+
+type CPUDataDTO struct {
+	Tagnumber     int64
+	UsagePercent  float64
+	MHz           float64
+	MillidegreesC float64
+}
+
+func (c *CPUDataRequest) ToDTO() (*CPUDataDTO, error) {
+	if c == nil {
+		return nil, fmt.Errorf("CPU data request is nil")
+	}
+	if c.Tagnumber == nil || *c.Tagnumber == 0 {
+		return nil, fmt.Errorf("tag number is required")
+	}
+	var usagePercent float64
+	if c.UsagePercent != nil {
+		if *c.UsagePercent < 0 || *c.UsagePercent > 100 {
+			return nil, fmt.Errorf("%w: CPU usage percent must be between 0 and 100", InvalidFieldError)
+		}
+		usagePercent = *c.UsagePercent
+	}
+	var mhz float64
+	if c.MHz != nil {
+		if *c.MHz <= 0 {
+			return nil, fmt.Errorf("%w: CPU MHz must be greater than 0", InvalidFieldError)
+		}
+		mhz = *c.MHz
+	}
+	var millidegreesC float64
+	if c.MillidegreesC != nil {
+		if *c.MillidegreesC <= 0 {
+			return nil, fmt.Errorf("%w: CPU temperature must be greater than 0", InvalidFieldError)
+		}
+		millidegreesC = *c.MillidegreesC
+	}
+	return &CPUDataDTO{
+		Tagnumber:     *c.Tagnumber,
+		UsagePercent:  usagePercent,
+		MHz:           mhz,
+		MillidegreesC: millidegreesC,
+	}, nil
 }
 
 type NetworkData struct {
