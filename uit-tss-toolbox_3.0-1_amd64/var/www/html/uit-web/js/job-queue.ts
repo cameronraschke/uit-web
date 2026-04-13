@@ -34,7 +34,7 @@ type JobQueueTableRowView = {
 	ad_domain_formatted: string | null;
 	bios_updated: boolean | null;
 	bios_version: string | null;
-	cpu_current_usage: number; // Not null because cpu usage can be 0
+	cpu_current_usage: number | null;
 	cpu_mhz: number | null;
 	cpu_temp: number | null;
 	cpu_temp_warning: boolean | null;
