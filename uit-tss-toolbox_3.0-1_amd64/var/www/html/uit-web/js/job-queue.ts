@@ -34,7 +34,7 @@ type JobQueueTableRowView = {
 	ad_domain_formatted: string | null;
 	bios_updated: boolean | null;
 	bios_version: string | null;
-	cpu_usage: number | null;
+	cpu_current_usage: number; // Not null because cpu usage can be 0
 	cpu_mhz: number | null;
 	cpu_temp: number | null;
 	cpu_temp_warning: boolean | null;
@@ -703,8 +703,8 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		cpuUsage.appendChild(document.createTextNode('CPU: '));
 		cpuUsage.appendChild(document.createElement('wbr'));
 		// CPU Usage
-		if (entry.cpu_usage !== null) {
-			cpuUsage.appendChild(document.createTextNode(`${entry.cpu_usage.toFixed(2)}` + '%'))
+		if (entry.cpu_current_usage !== null && entry.cpu_current_usage >= 0) {
+			cpuUsage.appendChild(document.createTextNode(`${entry.cpu_current_usage.toFixed(2)}` + '%'))
 		} else {
 			cpuUsage.appendChild(document.createTextNode('N/A'));
 		}

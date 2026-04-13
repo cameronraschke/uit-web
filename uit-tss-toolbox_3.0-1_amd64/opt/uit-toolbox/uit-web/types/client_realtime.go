@@ -7,7 +7,7 @@ const MaxLiveImageBytes = 512 << 20
 type ClientRealtimeView struct {
 	TotalMemoryUsageKB    *int64         `json:"memory_usage_kb"`
 	TotalMemoryCapacityKB *int64         `json:"memory_capacity_kb"`
-	TotalCPUUsagePercent  *float64       `json:"cpu_usage"`
+	TotalCPUUsagePercent  *float64       `json:"cpu_current_usage"`
 	CPUSpeedMHz           *int64         `json:"cpu_speed_mhz"`
 	CPUMillidegreesC      *float64       `json:"cpu_millidegrees_c"`
 	NetworkUsage          *int64         `json:"network_usage"`

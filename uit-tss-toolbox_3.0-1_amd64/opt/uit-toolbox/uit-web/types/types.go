@@ -298,7 +298,7 @@ type JobQueueTableRowView struct {
 	DomainNameFormatted    *string        `json:"ad_domain_formatted"`
 	BIOSUpdated            *bool          `json:"bios_updated"`
 	BIOSVersion            *string        `json:"bios_version"`
-	CPUUsage               *float64       `json:"cpu_usage"`
+	CPUUsage               *float64       `json:"cpu_current_usage"`
 	CPUMHz                 *float64       `json:"cpu_mhz"`
 	CPUTemp                *float64       `json:"cpu_temp"`
 	CPUTempWarning         *bool          `json:"cpu_temp_warning"`
