@@ -136,10 +136,8 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, responseJson)
 }
 
-func SetClientMemoryInfo(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	log = log.With(slog.String("func", "SetClientMemoryInfo"))
+func SetClientMemoryUsageKB(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "SetClientMemoryUsageKB"))
 
 	requestBody, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -152,38 +150,78 @@ func SetClientMemoryInfo(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !types.IsPrintableUnicode(requestBody) {
-		log.Warn("Invalid UTF-8 in request body")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
 
-	var memoryData types.MemoryDataRequest
-	if err := json.Unmarshal(requestBody, &memoryData); err != nil {
-		log.Warn("Cannot unmarshal JSON: " + err.Error())
+	var memInfoRequest types.MemoryDataRequest
+	if err := json.Unmarshal(requestBody, &memInfoRequest); err != nil {
+		log.Warn(types.JSONUnmarshalError.Error() + ": " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if memoryData.Tagnumber == 0 {
-		log.Warn("Missing tag number")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if memoryData.TotalUsageKB == nil || memoryData.TotalCapacityKB == nil {
-		log.Warn("Both memory usage and capacity are required")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-
-	updateRepo, err := database.NewUpdateRepo()
+	memoryData, err := memInfoRequest.ToDTO()
 	if err != nil {
-		log.Error("No database connection available for updating client memory info")
+		log.Warn("Invalid memory data request: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if memoryData == nil {
+		log.Warn("Memory data request is nil after mapping to DTO")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if memoryData.TotalUsageKB <= 0 {
+		log.Warn("Invalid memory usage value")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	if err := database.UpsertClientMemoryUsageKB(req.Context(), *memoryData); err != nil {
+		log.Error("Failed to update client memory usage: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
+	middleware.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
+}
 
-	if err := updateRepo.UpdateClientMemoryInfo(ctx, &memoryData); err != nil {
-		log.Error("Failed to update client memory info: " + err.Error())
+func SetClientMemoryCapacityKB(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "SetClientMemoryCapacityKB"))
+
+	requestBody, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Cannot read request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if len(requestBody) == 0 {
+		log.Warn("Empty request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	var memInfoRequest types.MemoryDataRequest
+	if err := json.Unmarshal(requestBody, &memInfoRequest); err != nil {
+		log.Warn(types.JSONUnmarshalError.Error() + ": " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	memoryData, err := memInfoRequest.ToDTO()
+	if err != nil {
+		log.Warn("Invalid memory data request: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if memoryData == nil {
+		log.Warn("Memory data request is nil after mapping to DTO")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if memoryData.TotalCapacityKB <= 0 {
+		log.Warn("Invalid memory capacity value")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	if err := database.UpsertClientMemoryCapacityKB(req.Context(), *memoryData); err != nil {
+		log.Error("Failed to update client memory capacity: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}

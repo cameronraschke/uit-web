@@ -37,7 +37,10 @@
 	"/api/overview/all_statuses": {},
 	"/api/overview/all_buildings_and_rooms": {},
 	"/api/overview/all_device_types": {},
-	"/api/client/memory": {
+	"/api/client/memory/usage": {
+		"allowed_methods": ["OPTIONS", "POST"]
+	},
+	"/api/client/memory/capacity": {
 		"allowed_methods": ["OPTIONS", "POST"]
 	},
 	"/api/client/cpu/temp": {

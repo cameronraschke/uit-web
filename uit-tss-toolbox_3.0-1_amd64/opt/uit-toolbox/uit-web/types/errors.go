@@ -12,6 +12,10 @@ var (
 	InvalidFieldError      = errors.New("invalid field value")
 	InvalidStructureError  = errors.New("invalid structure")
 
+	// JSON parsing errors
+	JSONParseError     = errors.New("error parsing JSON")
+	JSONUnmarshalError = errors.New("error unmarshaling JSON")
+
 	// Database errors
 	DatabaseConnNilError      = errors.New("database connection is nil/uninitialized")
 	DatabaseConnError         = errors.New("cannot get DB connection from app state")

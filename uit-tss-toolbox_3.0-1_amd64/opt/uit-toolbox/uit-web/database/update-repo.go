@@ -20,7 +20,6 @@ import (
 )
 
 type Update interface {
-	UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryDataRequest) (err error)
 	UpdateClientCPUUsage(ctx context.Context, cpuData *types.CPUData) (err error)
 	UpdateClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUData) (err error)
 	UpdateClientNetworkUsage(ctx context.Context, networkData *types.NetworkData) (err error)
@@ -849,25 +848,26 @@ func SetClientJob(ctx context.Context, tag int64, clientJob string) (err error) 
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateClientMemoryInfo(ctx context.Context, memInfo *types.MemoryDataRequest) (err error) {
-	if memInfo == nil {
-		return fmt.Errorf("memory data is required")
-	}
-
+func UpsertClientMemoryUsageKB(ctx context.Context, memInfo types.MemoryDataDTO) (err error) {
 	if memInfo.Tagnumber == 0 {
-		return fmt.Errorf("tagnumber is required in memory data")
+		return fmt.Errorf("%w: %w", types.InvalidFieldError, fmt.Errorf("tagnumber is required in memory data"))
 	}
-	if memInfo.TotalUsageKB == nil || memInfo.TotalCapacityKB == nil {
-		return fmt.Errorf("both total usage and total capacity are required")
+	if memInfo.TotalUsageKB <= 0 {
+		return fmt.Errorf("%w: %w", types.InvalidFieldError, fmt.Errorf("total memory usage must be greater than 0"))
 	}
 
 	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
+		return ctx.Err()
 	}
 
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
-		return fmt.Errorf("error beginning DB transaction: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 	defer func() {
 		if err != nil {
@@ -881,27 +881,83 @@ func (updateRepo *UpdateRepo) UpdateClientMemoryInfo(ctx context.Context, memInf
 		INSERT INTO 
 			job_queue (
 				client_uuid, 
-				tagnumber, 
-				memory_capacity_kb, 
+				tagnumber,
 				memory_usage_kb
 			) 
 		VALUES 
 			(
 				(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
 				$1, 
-				$2, 
-				$3
+				$2
 			)
 		ON CONFLICT (tagnumber) DO UPDATE SET 
 			client_uuid = EXCLUDED.client_uuid,
-			memory_capacity_kb = EXCLUDED.memory_capacity_kb, 
 			memory_usage_kb = EXCLUDED.memory_usage_kb
 	;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		toNullInt64(memInfo.Tagnumber),
-		toNullInt64(*memInfo.TotalCapacityKB),
-		toNullInt64(*memInfo.TotalUsageKB),
+		toNullInt64(memInfo.TotalUsageKB),
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return err
+	}
+	return nil
+}
+
+func UpsertClientMemoryCapacityKB(ctx context.Context, memInfo types.MemoryDataDTO) (err error) {
+	if memInfo.Tagnumber == 0 {
+		return fmt.Errorf("%w: %w", types.InvalidFieldError, fmt.Errorf("tagnumber is required in memory data"))
+	}
+	if memInfo.TotalCapacityKB <= 0 {
+		return fmt.Errorf("%w: %w", types.InvalidFieldError, fmt.Errorf("memory capacity must be greater than 0"))
+	}
+
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	const sqlCode = `
+		INSERT INTO 
+			job_queue (
+				client_uuid, 
+				tagnumber,
+				memory_capacity_kb
+			) 
+		VALUES 
+			(
+				(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+				$1, 
+				$2
+			)
+		ON CONFLICT (tagnumber) DO UPDATE SET 
+			client_uuid = EXCLUDED.client_uuid,
+			memory_capacity_kb = EXCLUDED.memory_capacity_kb
+	;`
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+		toNullInt64(memInfo.Tagnumber),
+		toNullInt64(memInfo.TotalCapacityKB),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)

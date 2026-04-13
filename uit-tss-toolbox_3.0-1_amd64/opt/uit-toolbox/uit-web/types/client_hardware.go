@@ -1,6 +1,9 @@
 package types
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type ClientHardwareView struct {
 	TransactionUUID           string   `json:"transaction_uuid"`
@@ -66,11 +69,51 @@ type DeviceType struct {
 }
 
 type MemoryDataRequest struct {
+	Tagnumber       *int64  `json:"tagnumber"`
+	TotalUsageKB    *int64  `json:"memory_usage_kb"`
+	TotalCapacityKB *int64  `json:"memory_capacity_kb"`
+	Type            *string `json:"type"`
+	SpeedMHz        *int64  `json:"speed_mhz"`
+}
+
+type MemoryDataDTO struct {
 	Tagnumber       int64  `json:"tagnumber"`
-	TotalUsageKB    *int64 `json:"memory_usage_kb"`
-	TotalCapacityKB *int64 `json:"memory_capacity_kb"`
+	TotalUsageKB    int64  `json:"memory_usage_kb"`
+	TotalCapacityKB int64  `json:"memory_capacity_kb"`
 	Type            string `json:"type"`
 	SpeedMHz        int64  `json:"speed_mhz"`
+}
+
+func (m *MemoryDataRequest) ToDTO() (*MemoryDataDTO, error) {
+	if m == nil {
+		return nil, fmt.Errorf("memory data request is nil")
+	}
+	if m.Tagnumber == nil || *m.Tagnumber == 0 {
+		return nil, fmt.Errorf("tag number is required")
+	}
+	var usageKB int64
+	if m.TotalUsageKB != nil {
+		usageKB = *m.TotalUsageKB
+	}
+	var capacityKB int64
+	if m.TotalCapacityKB != nil {
+		capacityKB = *m.TotalCapacityKB
+	}
+	var memType string
+	if m.Type != nil {
+		memType = *m.Type
+	}
+	var speedMHz int64
+	if m.SpeedMHz != nil {
+		speedMHz = *m.SpeedMHz
+	}
+	return &MemoryDataDTO{
+		Tagnumber:       *m.Tagnumber,
+		TotalUsageKB:    usageKB,
+		TotalCapacityKB: capacityKB,
+		Type:            memType,
+		SpeedMHz:        speedMHz,
+	}, nil
 }
 
 type CPUData struct {
