@@ -139,7 +139,7 @@ func (c *CPUDataRequest) ToDTO() (*CPUDataDTO, error) {
 	}
 	var usagePercent float64
 	if c.UsagePercent != nil {
-		if *c.UsagePercent < 0 || *c.UsagePercent > 100 {
+		if *c.UsagePercent < 0 || *c.UsagePercent > 110 {
 			return nil, fmt.Errorf("%w: CPU usage percent must be between 0 and 100", InvalidFieldError)
 		}
 		usagePercent = *c.UsagePercent

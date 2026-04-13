@@ -1417,7 +1417,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	}
 	defer rows.Close()
 
-	jobQueueRows := make([]types.JobQueueTableRowView, 0, approxClientCount) // 560 is the approximate # of clients
+	jobQueueRows := make([]types.JobQueueTableRowView, 0, approxClientCount)
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())

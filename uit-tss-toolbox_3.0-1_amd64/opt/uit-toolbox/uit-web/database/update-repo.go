@@ -1018,7 +1018,7 @@ func UpsertClientCPUUsage(ctx context.Context, cpuData *types.CPUDataDTO) (err e
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
 		toNullInt64(cpuData.Tagnumber),
-		toNullFloat64(cpuData.UsagePercent),
+		cpuData.UsagePercent,
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
