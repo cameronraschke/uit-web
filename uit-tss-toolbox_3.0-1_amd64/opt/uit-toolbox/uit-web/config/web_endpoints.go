@@ -88,6 +88,8 @@ func InitWebEndpoints(as *AppState) error {
 			}
 			if len(merged.AllowedMethods) == 0 {
 				merged.AllowedMethods = []string{"OPTIONS", "GET"}
+			} else {
+				merged.AllowedMethods = append(merged.AllowedMethods, "OPTIONS")
 			}
 			if merged.TLSRequired == nil {
 				merged.TLSRequired = new(bool)

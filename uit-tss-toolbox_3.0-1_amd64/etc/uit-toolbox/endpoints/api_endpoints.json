@@ -8,18 +8,18 @@
 	"/api/client/job_queue/job_available": {},
 	"/api/client/location_form_data": {},
 	"/api/overview/note": {
-		"allowed_methods": ["OPTIONS", "GET", "POST"]
+		"allowed_methods": ["GET", "POST"]
 	},
 	"/api/client/files/manifest": {},
 	"/api/client/files": {
-		"allowed_methods": ["OPTIONS", "GET", "DELETE"]
+		"allowed_methods": ["GET", "DELETE"]
 	},
 	"/api/overview/inventory_table": {},
 	"/api/inventory/update": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/files/toggle_pin": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/overview/all_models": {},
 	"/api/overview/all_domains": {},
@@ -27,62 +27,62 @@
 	"/api/reports/client/battery_health": {},
 	"/api/overview/job_queue/all_jobs": {},
 	"/api/job_queue/all_clients/update_job": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/client/job_queue/update_job": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/overview/all_locations": {},
 	"/api/overview/all_statuses": {},
 	"/api/overview/all_buildings_and_rooms": {},
 	"/api/overview/all_device_types": {},
 	"/api/client/memory/usage": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/client/memory/capacity": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/client/cpu/temp": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/client/cpu/usage": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/client/cpu/mhz": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/client/network/usage": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/client/uptime": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/client/last_heard": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/client/hardware": {
-		"allowed_methods": ["OPTIONS", "GET", "POST"]
+		"allowed_methods": ["GET", "POST"]
 	},
 	"/api/client/hardware/battery": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/client/job_queue_position": {},
 	"/api/client/job_name": {},
 	"/api/client/job_name_formatted": {},
 	"/api/client/job_queued_at": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/client/live_image": {
-		"allowed_methods": ["OPTIONS", "GET", "POST"],
+		"allowed_methods": ["GET", "POST"],
 		"content_type": "image/jpeg"
 	},
 	"/api/inventory/bulk_update_location": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/windows-client-info": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	},
 	"/api/client/health": {
-		"allowed_methods": ["OPTIONS", "POST"]
+		"allowed_methods": ["POST"]
 	}
 }

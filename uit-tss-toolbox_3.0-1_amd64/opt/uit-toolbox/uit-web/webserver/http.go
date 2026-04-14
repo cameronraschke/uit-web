@@ -45,7 +45,7 @@ func StartFileServer(ctx context.Context, serverHost string) error {
 	httpServer := &http.Server{
 		Addr:           serverHost + ":8080",
 		Handler:        httpMux,
-		ReadTimeout:    10 * time.Second,
+		ReadTimeout:    1 * time.Minute,
 		WriteTimeout:   1 * time.Minute,
 		IdleTimeout:    2 * time.Minute,
 		MaxHeaderBytes: 1 << 20,
@@ -64,7 +64,7 @@ func StartFileServer(ctx context.Context, serverHost string) error {
 	select {
 	case <-ctx.Done():
 		log.Info("HTTP file server shutting down...")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 		defer cancel()
 		if err := httpServer.Shutdown(shutdownCtx); err != nil {
 			return fmt.Errorf("error shutting down HTTP file server: %w", err)
