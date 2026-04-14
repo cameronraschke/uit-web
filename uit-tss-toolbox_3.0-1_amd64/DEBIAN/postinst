@@ -115,15 +115,15 @@ done
 )
 
 # Create Golang binaries
-rm /srv/uit-toolbox/client/pkg/uit-client-cli-service
+# Client daemon
+rm /srv/uit-toolbox/client/pkg/uit-clientd
 (cd /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/opt/uit-toolbox/uit-client/
-	sudo /usr/local/go/bin/go build -buildvcs=false -o /srv/uit-toolbox/client/pkg/uit-client-cli-service .
+	sudo /usr/local/go/bin/go build -buildvcs=false -o /srv/uit-toolbox/client/pkg/uit-clientd .
 )
 
-rm /srv/uit-toolbox/client/pkg/uit-client-cli-service
+# CLI tool
 rm /srv/uit-toolbox/client/pkg/uit-cli
-(cd /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/opt/uit-toolbox/uit-client-cli-service/
-	sudo /usr/local/go/bin/go build -buildvcs=false -o /srv/uit-toolbox/client/pkg/uit-client-cli-service .
+(cd /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/opt/uit-toolbox/uit-clientd/
 	sudo /usr/local/go/bin/go build -buildvcs=false -o /srv/uit-toolbox/client/pkg/uit-cli ./cmd/uit-cli
 )
 

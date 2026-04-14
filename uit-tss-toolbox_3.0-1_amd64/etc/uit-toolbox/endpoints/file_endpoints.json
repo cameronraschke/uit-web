@@ -53,16 +53,8 @@
 		"endpoint_type": "static_file",
 		"content_type": "text/plain; charset=utf-8"
 	},
-	"/client/pkg/uit-client": {
-		"file_path": "/srv/uit-toolbox/client/pkg/uit-client",
-		"tls_required": true,
-		"auth_required": true,
-		"http_version": "HTTP/1.1",
-		"endpoint_type": "static_file",
-		"content_type": "application/application/octet-stream"
-	},
-	"/client/pkg/uit-client-cli-service": {
-		"file_path": "/srv/uit-toolbox/client/pkg/uit-client-cli-service",
+	"/client/pkg/uit-clientd": {
+		"file_path": "/srv/uit-toolbox/client/pkg/uit-clientd",
 		"tls_required": true,
 		"auth_required": true,
 		"http_version": "HTTP/1.1",
