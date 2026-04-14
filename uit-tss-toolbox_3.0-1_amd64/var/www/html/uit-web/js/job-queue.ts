@@ -419,10 +419,10 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 			liveViewScreenshotContainer.classList.add('image-container');
 			liveViewScreenshotContainer.classList.remove('offline');
 			const liveViewImage = document.createElement('img');
-			liveViewImage.src = `/api/live_image?tagnumber=${entry.tagnumber}`;
+			liveViewImage.src = `/api/client/live_image?tagnumber=${entry.tagnumber}`;
 			liveViewImage.loading = "lazy";
 			const liveViewAnchor = document.createElement('a');
-			liveViewAnchor.href = `/api/live_image?tagnumber=${entry.tagnumber}`;
+			liveViewAnchor.href = `/api/client/live_image?tagnumber=${entry.tagnumber}`;
 			liveViewAnchor.target = "_blank";
 			liveViewAnchor.appendChild(liveViewImage);
 			liveViewScreenshotContainer.appendChild(liveViewAnchor);

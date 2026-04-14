@@ -81,13 +81,13 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/client/job_queue/job_available", httpsFullAPIChain.ThenFunc(endpoints.IsClientJobAvailable))
 	httpsRouter.Handle("GET /api/client/files/manifest", httpsFullAPIChain.ThenFunc(endpoints.GetClientImagesManifest))
 	httpsRouter.Handle("GET /api/client/files", httpsFullAPIChain.ThenFunc(endpoints.GetImage))
-	httpsRouter.Handle("GET /api/live_image", httpsFullAPIChain.ThenFunc(endpoints.DownloadLiveImage))
+	httpsRouter.Handle("GET /api/client/live_image", httpsFullAPIChain.ThenFunc(endpoints.DownloadLiveImage))
 	httpsRouter.Handle("GET /api/client/hardware", httpsFullAPIChain.ThenFunc(endpoints.FetchClientHardwareData))
 
 	// Job queue
-	httpsRouter.Handle("GET /api/client/job_queue_position", httpsFullAPIChain.ThenFunc(endpoints.FetchClientJobQueuePosition))
 	httpsRouter.Handle("GET /api/client/job_name", httpsFullAPIChain.ThenFunc(endpoints.FetchClientJobName))
 	httpsRouter.Handle("GET /api/client/job_name_formatted", httpsFullAPIChain.ThenFunc(endpoints.FetchFormattedJobName))
+	httpsRouter.Handle("GET /api/client/job_queue_position", httpsFullAPIChain.ThenFunc(endpoints.FetchClientJobQueuePosition))
 
 	// Web and auth
 	httpsRouter.Handle("GET /api/check_auth", httpsFullAPIChain.ThenFunc(endpoints.RejectRequest))
@@ -95,13 +95,16 @@ func StartWebServer(ctx context.Context) error {
 	// Misc
 	httpsRouter.Handle("GET /api/server_time", httpsFullAPIChain.ThenFunc(endpoints.GetServerTime))
 
-	// API POST endpoints
-	httpsRouter.Handle("POST /api/windows-client-info", httpsFullAPIChain.ThenFunc(endpoints.ReceiveWindowsClientInfo))
+	// API POST endpoints //
+	// Overviews
 	httpsRouter.Handle("POST /api/overview/note", httpsFullAPIChain.ThenFunc(endpoints.InsertNewNote))
-	httpsRouter.Handle("POST /api/inventory/update", httpsFullAPIChain.ThenFunc(endpoints.InsertInventoryUpdate))
-	httpsRouter.Handle("POST /api/files/toggle_pin", httpsFullAPIChain.ThenFunc(endpoints.TogglePinImage))
 	httpsRouter.Handle("POST /api/job_queue/all_clients/update_job", httpsFullAPIChain.ThenFunc(endpoints.SetAllJobs))
-	httpsRouter.Handle("POST /api/client/job_queue/update_job", httpsFullAPIChain.ThenFunc(endpoints.SetClientJob))
+
+	// Client hardware
+	httpsRouter.Handle("POST /api/client/hardware", httpsFullAPIChain.ThenFunc(endpoints.SetClientHardwareData))
+	httpsRouter.Handle("POST /api/client/hardware/battery", httpsFullAPIChain.ThenFunc(endpoints.UpdateClientBatteryChargePcnt))
+	httpsRouter.Handle("POST /api/client/health", httpsFullAPIChain.ThenFunc(endpoints.UpdateClientHealthCheck))
+	httpsRouter.Handle("POST /api/windows-client-info", httpsFullAPIChain.ThenFunc(endpoints.ReceiveWindowsClientInfo))
 	httpsRouter.Handle("POST /api/client/memory/usage", httpsFullAPIChain.ThenFunc(endpoints.SetClientMemoryUsageKB))
 	httpsRouter.Handle("POST /api/client/memory/capacity", httpsFullAPIChain.ThenFunc(endpoints.SetClientMemoryCapacityKB))
 	httpsRouter.Handle("POST /api/client/cpu/usage", httpsFullAPIChain.ThenFunc(endpoints.SetClientCPUUsage))
@@ -109,30 +112,31 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("POST /api/client/cpu/temp", httpsFullAPIChain.ThenFunc(endpoints.SetClientCPUTemperature))
 	httpsRouter.Handle("POST /api/client/network/usage", httpsFullAPIChain.ThenFunc(endpoints.SetClientNetworkUsage))
 	httpsRouter.Handle("POST /api/client/uptime", httpsFullAPIChain.ThenFunc(endpoints.SetClientUptime))
-	httpsRouter.Handle("POST /api/client/hardware", httpsFullAPIChain.ThenFunc(endpoints.SetClientHardwareData))
-	httpsRouter.Handle("POST /api/client/job_queued_at", httpsFullAPIChain.ThenFunc(endpoints.SetJobQueuedAt))
-	httpsRouter.Handle("POST /api/live_image", httpsFullAPIChain.ThenFunc(endpoints.UploadLiveImage))
-	httpsRouter.Handle("POST /api/client/last_heard", httpsFullAPIChain.ThenFunc(endpoints.SetClientLastHeard))
-	httpsRouter.Handle("POST /api/client/hardware/battery", httpsFullAPIChain.ThenFunc(endpoints.UpdateClientBatteryChargePcnt))
-	httpsRouter.Handle("POST /api/inventory/bulk_update_location", httpsFullAPIChain.ThenFunc(endpoints.BulkUpdateInventoryLocation))
-	httpsRouter.Handle("POST /api/client/health", httpsFullAPIChain.ThenFunc(endpoints.UpdateClientHealthCheck))
 
-	// API DELETE endpoints
+	// Job queue
+	httpsRouter.Handle("POST /api/client/job_queue/update_job", httpsFullAPIChain.ThenFunc(endpoints.SetClientJob))
+	httpsRouter.Handle("POST /api/client/job_queued_at", httpsFullAPIChain.ThenFunc(endpoints.SetJobQueuedAt))
+	httpsRouter.Handle("POST /api/client/last_heard", httpsFullAPIChain.ThenFunc(endpoints.SetClientLastHeard))
+
+	// Inventory updates
+	httpsRouter.Handle("POST /api/inventory/update", httpsFullAPIChain.ThenFunc(endpoints.InsertInventoryUpdate))
+	httpsRouter.Handle("POST /api/inventory/bulk_update_location", httpsFullAPIChain.ThenFunc(endpoints.BulkUpdateInventoryLocation))
+
+	// Files
+	httpsRouter.Handle("POST /api/files/toggle_pin", httpsFullAPIChain.ThenFunc(endpoints.TogglePinImage))
+	httpsRouter.Handle("POST /api/client/live_image", httpsFullAPIChain.ThenFunc(endpoints.UploadLiveImage))
+
+	// API DELETE endpoints //
 	httpsRouter.Handle("DELETE /api/client/files", httpsFullAPIChain.ThenFunc(endpoints.DeleteImage))
 
-	// Static client files
-	httpsRouter.Handle("GET /static/client/configs/uit-client", httpsFullAPIChain.ThenFunc(endpoints.GetClientConfig))
-	httpsRouter.Handle("GET /client/pkg/uit-client", httpsFullAPIChain.ThenFunc(endpoints.WebServerHandler))
-
-	// Login page and assets, no auth required
+	// Static files //
+	// Login/logout page and assets, no auth required
 	httpsRouter.Handle("GET /login", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("POST /login", httpsFullLoginChain.ThenFunc(endpoints.WebAuthEndpoint))
 	httpsRouter.Handle("GET /js/login.js", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("GET /js/init.js", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("GET /css/desktop.css", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("GET /favicon.png", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
-
-	// Logout
 	httpsRouter.Handle("GET /logout", httpsFullLogoutChain.ThenFunc(endpoints.RejectRequest))
 
 	// Static HTML, CSS, and JS files
@@ -143,6 +147,10 @@ func StartWebServer(ctx context.Context) error {
 	// Images and icons
 	httpsRouter.Handle("GET /icons/search/search.svg", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
 	httpsRouter.Handle("GET /icons/navigation/home.svg", httpsFullLoginChain.ThenFunc(endpoints.WebServerHandler))
+
+	// For clients plugged into server
+	httpsRouter.Handle("GET /static/client/configs/uit-client", httpsFullAPIChain.ThenFunc(endpoints.GetClientConfig))
+	httpsRouter.Handle("GET /client/pkg/uit-client", httpsFullAPIChain.ThenFunc(endpoints.WebServerHandler))
 
 	log.Info("Starting HTTPS web server...")
 

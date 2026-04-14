@@ -72,7 +72,7 @@
 	"/api/client/job_queued_at": {
 		"allowed_methods": ["OPTIONS", "POST"]
 	},
-	"/api/live_image": {
+	"/api/client/live_image": {
 		"allowed_methods": ["OPTIONS", "GET", "POST"],
 		"content_type": "image/jpeg"
 	},
