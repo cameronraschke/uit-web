@@ -154,6 +154,14 @@ func StartWebServer(ctx context.Context) error {
 
 	log.Info("Starting HTTPS web server...")
 
+	apiTimeout, err := config.GetRequestTimeout("api")
+	if err != nil {
+		return fmt.Errorf("cannot get API request timeout for HTTPS server: %w", err)
+	}
+	if apiTimeout <= 0 {
+		return fmt.Errorf("invalid API request timeout configured for HTTPS server: %s", apiTimeout)
+	}
+
 	tlsConfig := &tls.Config{
 		// MinVersion: tls.VersionTLS12, //0x0303
 		MinVersion: tls.VersionTLS13, //0x0304
@@ -174,8 +182,9 @@ func StartWebServer(ctx context.Context) error {
 		Addr:           ":31411",
 		Handler:        httpsRouter,
 		TLSConfig:      tlsConfig,
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       apiTimeout,
+		WriteTimeout:      apiTimeout,
 		IdleTimeout:    120 * time.Second,
 		MaxHeaderBytes: 1 << 20, // 1MB header size max
 		BaseContext: func(_ net.Listener) context.Context {

@@ -691,6 +691,11 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		}
+		if os.IsTimeout(err) {
+			log.Warn("Request timed out while reading multipart form: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusRequestTimeout)
+			return
+		}
 		if maxBytesErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
 			log.Warn("Request body too large: " + maxBytesErr.Error())
 			middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
@@ -1434,6 +1439,11 @@ func ReceiveWindowsClientInfo(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "ReceiveWindowsClientInfo"))
 
 	if err := req.ParseMultipartForm(32 << 20); err != nil {
+		if os.IsTimeout(err) {
+			log.Warn("Request timed out while reading multipart form: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusRequestTimeout)
+			return
+		}
 		log.Warn("Error parsing multipart form: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
