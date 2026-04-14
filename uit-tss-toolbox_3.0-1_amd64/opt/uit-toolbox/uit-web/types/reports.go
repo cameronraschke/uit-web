@@ -15,10 +15,10 @@ type DashboardInventorySummary struct {
 	AvailableForCheckout *int64  `json:"available_for_checkout"`
 }
 
-type GlobalLookupRow struct {
+type ClientLookupRow struct {
 	Tagnumber          *int64     `json:"tagnumber"`
 	SystemSerial       *string    `json:"system_serial"`
-	LastInventoryEntry *time.Time `json:"last_inventory_entry"`
+	LastInventoryEntry *time.Time `json:"last_inventory_entry,omitempty"`
 }
 
 type AllManufacturersAndModelsRow struct {

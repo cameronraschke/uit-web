@@ -35,11 +35,6 @@ type ActiveJobs struct {
 	QueuePosition int64  `json:"job_queue_position"`
 }
 
-type AvailableJobs struct {
-	Tagnumber    int64 `json:"tagnumber"`
-	JobAvailable *bool `json:"job_available"`
-}
-
 type ClientBatteryHealth struct {
 	Time                time.Time `json:"time"`
 	Tagnumber           int64     `json:"tagnumber"`

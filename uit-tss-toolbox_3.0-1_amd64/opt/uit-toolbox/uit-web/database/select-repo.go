@@ -23,10 +23,8 @@ type Select interface {
 	CheckTwoFactorCode(ctx context.Context, twoFactorCode *string) (string, error)
 	CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error)
 	GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error)
-	GetAvailableJobs(ctx context.Context, tag *int64) (*types.AvailableJobs, error)
 	GetJobQueueOverview(ctx context.Context) (*types.JobQueueOverview, error)
 	GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteRow, error)
-	GetDashboardInventorySummary(ctx context.Context) ([]types.DashboardInventorySummary, error)
 	GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryFormPrefill, error)
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
 	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifestView, error)
@@ -56,7 +54,7 @@ func NewSelectRepo() (Select, error) {
 
 var _ Select = (*SelectRepo)(nil)
 
-func GetGlobalSearchData(ctx context.Context) ([]types.GlobalLookupRow, error) {
+func SelectAllIDs(ctx context.Context) ([]types.ClientLookupRow, error) {
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
@@ -82,12 +80,12 @@ func GetGlobalSearchData(ctx context.Context) ([]types.GlobalLookupRow, error) {
 	}
 	defer rows.Close()
 
-	var globalLookupRow []types.GlobalLookupRow
+	var globalLookupRow []types.ClientLookupRow
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
-		var tag types.GlobalLookupRow
+		var tag types.ClientLookupRow
 		if err := rows.Scan(
 			&tag.Tagnumber,
 			&tag.SystemSerial,
@@ -105,6 +103,63 @@ func GetGlobalSearchData(ctx context.Context) ([]types.GlobalLookupRow, error) {
 	}
 
 	return globalLookupRow, nil
+}
+
+func ClientIDLookup(ctx context.Context, tag *int64, serial *string) (*types.ClientLookupRow, error) {
+	var tagErr error
+	var serialErr error
+	whereClause := "WHERE ids.uuid IS NOT NULL "
+	if tag == nil || *tag <= 0 {
+		tagErr = fmt.Errorf("tagnumber is nil or invalid")
+	} else {
+		whereClause += "AND ids.tagnumber = $1 "
+	}
+
+	if serial == nil || strings.TrimSpace(*serial) == "" {
+		serialErr = fmt.Errorf("system serial is nil or empty")
+	} else {
+		whereClause += "AND ids.system_serial = $2 "
+	}
+
+	if tagErr != nil && serialErr != nil {
+		return nil, fmt.Errorf("%s", "both tagnumber and system serial are invalid/empty")
+	}
+	if ctx.Err() != nil {
+		return nil, fmt.Errorf("context error: %w", ctx.Err())
+	}
+
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	sqlQuery := fmt.Sprintf(`
+		SELECT 
+			tagnumber, 
+			system_serial 
+		FROM 
+			ids 
+		%s
+		ORDER BY 
+			time DESC NULLS LAST 
+		LIMIT 1
+	;`, whereClause)
+
+	var clientLookup types.ClientLookupRow
+	row := dbConn.QueryRowContext(ctx, sqlQuery,
+		ptrToNullInt64(tag),
+		ptrToNullString(serial),
+	)
+	if err := row.Scan(
+		&clientLookup.Tagnumber,
+		&clientLookup.SystemSerial,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+	return &clientLookup, nil
 }
 
 func GetAllDepartments(ctx context.Context) ([]types.AllDepartmentsRow, error) {
@@ -332,91 +387,6 @@ func (repo *SelectRepo) CheckAuthCredentials(ctx context.Context, username *stri
 	return true, &dbBcryptHash.String, nil
 }
 
-func ClientLookupByTag(ctx context.Context, tag *int64) (*types.ClientLookup, error) {
-	if tag == nil || *tag <= 0 {
-		return nil, fmt.Errorf("tagnumber is nil or invalid")
-	}
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	dbConn, err := config.GetDatabaseConn()
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
-	}
-
-	const sqlQuery = `
-		SELECT 
-			tagnumber, 
-			system_serial 
-		FROM 
-			ids 
-		WHERE 
-			tagnumber = $1 
-		ORDER BY 
-			time DESC NULLS LAST 
-		LIMIT 1
-	;`
-
-	var clientLookup types.ClientLookup
-	row := dbConn.QueryRowContext(ctx, sqlQuery,
-		ptrToNullInt64(tag),
-	)
-	if err := row.Scan(
-		&clientLookup.Tagnumber,
-		&clientLookup.SystemSerial,
-	); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("query error: %w", err)
-	}
-	return &clientLookup, nil
-}
-
-func ClientLookupBySerial(ctx context.Context, serial *string) (*types.ClientLookup, error) {
-	if serial == nil || strings.TrimSpace(*serial) == "" {
-		return nil, fmt.Errorf("serial is nil or empty")
-	}
-
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	dbConn, err := config.GetDatabaseConn()
-	if err != nil {
-		return nil, fmt.Errorf("error establishing database connection: %w", err)
-	}
-
-	const sqlQuery = `
-		SELECT 
-			tagnumber, 
-			system_serial 
-		FROM 
-			ids 
-		WHERE 
-			system_serial = $1 
-		ORDER BY 
-			time DESC NULLS LAST 
-		LIMIT 1
-	;`
-
-	row := dbConn.QueryRowContext(ctx, sqlQuery,
-		ptrToNullString(serial),
-	)
-	var clientLookup types.ClientLookup
-	if err := row.Scan(
-		&clientLookup.Tagnumber,
-		&clientLookup.SystemSerial,
-	); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("query error: %w", err)
-	}
-	return &clientLookup, nil
-}
-
 func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error) {
 	if tag == nil {
 		return nil, fmt.Errorf("tagnumber is nil")
@@ -468,18 +438,22 @@ func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.A
 	return &activeJobs, nil
 }
 
-func (repo *SelectRepo) GetAvailableJobs(ctx context.Context, tag *int64) (*types.AvailableJobs, error) {
-	if tag == nil {
-		return nil, fmt.Errorf("tagnumber is nil")
+func SelectIsClientJobAvailable(ctx context.Context, tag *int64) (*bool, error) {
+	if tag == nil || *tag <= 0 {
+		return nil, fmt.Errorf("tagnumber is nil or invalid")
 	}
 
 	if ctx.Err() != nil {
 		return nil, fmt.Errorf("context error: %w", ctx.Err())
 	}
 
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
 	const sqlQuery = `
 	SELECT 
-		job_queue.tagnumber,
 		(CASE 
 			WHEN (job_queue.job_queued = FALSE AND job_queue.job_name IS NULL) THEN TRUE
 			ELSE FALSE
@@ -489,18 +463,15 @@ func (repo *SelectRepo) GetAvailableJobs(ctx context.Context, tag *int64) (*type
 	WHERE 
 		job_queue.client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1)`
 
-	var availableJobs types.AvailableJobs
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
-	if err := row.Scan(
-		&availableJobs.Tagnumber,
-		&availableJobs.JobAvailable,
-	); err != nil {
+	var jobAvailable bool
+	row := dbConn.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
+	if err := row.Scan(&jobAvailable); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("error during row scan: %w", err)
 	}
-	return &availableJobs, nil
+	return &jobAvailable, nil
 }
 
 func (repo *SelectRepo) GetJobQueueOverview(ctx context.Context) (*types.JobQueueOverview, error) {
@@ -556,71 +527,6 @@ func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*types.
 		return nil, fmt.Errorf("error during row scan: %w", err)
 	}
 	return &generalNoteRow, nil
-}
-
-func (repo *SelectRepo) GetDashboardInventorySummary(ctx context.Context) ([]types.DashboardInventorySummary, error) {
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	const sqlQuery = `WITH 
-	latest_checkouts AS (
-		SELECT DISTINCT ON (checkout_log.client_uuid) checkout_log.client_uuid, checkout_log.checkout_date, checkout_log.return_date
-		FROM checkout_log
-		ORDER BY checkout_log.client_uuid, checkout_log.log_entry_time DESC NULLS LAST
-	),
-	systems AS (
-		SELECT hardware_data.client_uuid, hardware_data.system_model
-		FROM hardware_data
-		WHERE hardware_data.system_model IS NOT NULL
-	),
-	joined AS (
-		SELECT systems.system_model,
-			(latest_checkouts.checkout_date IS NOT NULL AND latest_checkouts.return_date IS NULL)
-				OR (latest_checkouts.return_date IS NOT NULL AND latest_checkouts.return_date > CURRENT_TIMESTAMP) AS is_checked_out,
-			(locations.department_name IS NOT NULL AND locations.department_name NOT IN ('property', 'pre-property')) AS loc_ok
-		FROM systems
-		LEFT JOIN latest_checkouts ON latest_checkouts.client_uuid = systems.client_uuid
-		LEFT JOIN locations ON locations.client_uuid = systems.client_uuid
-	)
-	SELECT system_model,
-		COUNT(*) AS system_model_count,
-		COUNT(*) FILTER (WHERE is_checked_out) AS total_checked_out,
-		COUNT(*) FILTER (WHERE NOT is_checked_out AND loc_ok) AS available_for_checkout
-	FROM joined
-	GROUP BY system_model
-	ORDER BY system_model_count DESC;`
-
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
-	if err != nil {
-		return nil, fmt.Errorf("query error: %w", err)
-	}
-	defer rows.Close()
-
-	var dashboardInventorySummary []types.DashboardInventorySummary
-	for rows.Next() {
-		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error: %w", ctx.Err())
-		}
-		var summary types.DashboardInventorySummary
-		if err := rows.Scan(
-			&summary.SystemModel,
-			&summary.SystemModelCount,
-			&summary.TotalCheckedOut,
-			&summary.AvailableForCheckout,
-		); err != nil {
-			return nil, fmt.Errorf("error during row scan: %w", err)
-		}
-		dashboardInventorySummary = append(dashboardInventorySummary, summary)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
-	}
-	if len(dashboardInventorySummary) == 0 {
-		return nil, nil
-	}
-
-	return dashboardInventorySummary, nil
 }
 
 func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryFormPrefill, error) {

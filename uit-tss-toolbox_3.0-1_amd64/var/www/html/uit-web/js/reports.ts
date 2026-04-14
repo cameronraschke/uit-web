@@ -13,7 +13,7 @@ async function populateBatteryStandardDeviationReport() {
 	if (!batteryHealthTbody) { return; }
 
 	try {
-		const data = await fetchData(`/api/reports/battery`, false);
+		const data = await fetchData(`/api/reports/client/battery_health`, false);
 		if (!data) { return; }
 		data.sort((a: ClientReportRow, b: ClientReportRow) => {
 			return (b.battery_health_deviation || 0) - (a.battery_health_deviation || 0);

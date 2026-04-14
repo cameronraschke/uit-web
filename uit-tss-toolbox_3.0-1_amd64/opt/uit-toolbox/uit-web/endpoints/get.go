@@ -52,8 +52,8 @@ func GetServerTime(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, ServerTime{Time: curTime})
 }
 
-func GetClientLookup(w http.ResponseWriter, req *http.Request) {
-	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "GetClientLookup"))
+func GetClientIDs(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "GetClientIDs"))
 
 	// Need either tag or serial, tag is preferred if both are provided
 	var tagnumber, tagErr = types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
@@ -65,13 +65,9 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var clientLookup *types.ClientLookup
+	var clientLookup = new(types.ClientLookupRow)
 	var clientLookupErr error
-	if tagErr == nil {
-		clientLookup, clientLookupErr = database.ClientLookupByTag(req.Context(), tagnumber)
-	} else if systemSerial != nil && strings.TrimSpace(*systemSerial) != "" {
-		clientLookup, clientLookupErr = database.ClientLookupBySerial(req.Context(), systemSerial)
-	}
+	clientLookup, clientLookupErr = database.ClientIDLookup(req.Context(), tagnumber, systemSerial)
 	if clientLookupErr != nil {
 		log.Warn("error during client lookup: " + clientLookupErr.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -80,16 +76,16 @@ func GetClientLookup(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, clientLookup)
 }
 
-func GetGlobalLookup(w http.ResponseWriter, req *http.Request) {
-	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "GetGlobalLookup"))
+func GetAllClientIDs(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "GetAllClientIDs"))
 
-	globalLookup, err := database.GetGlobalSearchData(req.Context())
+	clientIDs, err := database.SelectAllIDs(req.Context())
 	if err != nil {
-		log.Warn("DB error: " + err.Error())
+		log.Warn("error during client IDs lookup: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	middleware.WriteJson(w, http.StatusOK, globalLookup)
+	middleware.WriteJson(w, http.StatusOK, clientIDs)
 }
 
 // func GetBiosData(w http.ResponseWriter, req *http.Request) {
@@ -145,27 +141,18 @@ func GetClientQueuedJobs(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, activeJobs)
 }
 
-func GetClientAvailableJobs(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	urlQueries := req.URL.Query()
-	tagnumber, err := types.ConvertAndVerifyTagnumber(urlQueries.Get("tagnumber"))
+func IsClientJobAvailable(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "IsClientJobAvailable"))
+	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
 	if err != nil {
-		log.Warn("Invalid tagnumber provided in GetClientAvailableJobs: " + err.Error())
+		log.Warn("Invalid tagnumber provided in IsClientJobAvailable: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	db, err := database.NewSelectRepo()
+	availableJobs, err := database.SelectIsClientJobAvailable(req.Context(), tagnumber)
 	if err != nil {
-		log.Warn("Error creating select repository in GetClientAvailableJobs: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	availableJobs, err := db.GetAvailableJobs(ctx, tagnumber)
-	if err != nil {
-		log.Warn("Query error in GetClientAvailableJobs: " + err.Error())
+		log.Warn("Query error in IsClientJobAvailable: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -289,7 +276,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 
 		// URL to send to client
 		imageManifest.FilePath = nil // Hide actual file path from client
-		urlStr, err := url.JoinPath("/api/files/images/", fmt.Sprintf("%d", *imageManifest.Tagnumber), fileUUID)
+		urlStr, err := url.JoinPath("/api/client/files", fmt.Sprintf("%d", *imageManifest.Tagnumber), fileUUID)
 		if err != nil {
 			log.Warn("Error joining URL paths in GetClientImagesManifest: " + err.Error())
 			continue
@@ -454,7 +441,7 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// local filepath example: inventory-images/{tag}/{date --iso}-{uuid}.{file extension}
-	// incoming request url: /api/files/images/{tag}/{uuid}.{file extension}
+	// incoming request url: /api/client/files/{tag}/{uuid}.{file extension}
 	uuidInURLQuery := middleware.GetStrQuery(req.URL.Query(), "uuid")
 	if uuidInURLQuery == nil || strings.TrimSpace(*uuidInURLQuery) == "" {
 		log.Warn("No image UUID provided in request to GetImage")
@@ -559,26 +546,6 @@ func GetJobQueueOverview(w http.ResponseWriter, req *http.Request) {
 	}
 
 	middleware.WriteJson(w, http.StatusOK, jobQueueOverview)
-}
-
-func GetDashboardInventorySummary(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetDashboardInventorySummary"))
-
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository (GetDashboardInventorySummary): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	inventorySummary, err := db.GetDashboardInventorySummary(ctx)
-	if err != nil {
-		log.Warn("Query error (GetDashboardInventorySummary): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	middleware.WriteJson(w, http.StatusOK, inventorySummary)
 }
 
 func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {

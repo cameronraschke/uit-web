@@ -8,11 +8,6 @@ type AuthStatusResponse struct {
 	TTL       time.Duration `json:"ttl"`
 }
 
-type ClientLookup struct {
-	Tagnumber    *int64  `json:"tagnumber"`
-	SystemSerial *string `json:"system_serial"`
-}
-
 type GeneralNoteRow struct {
 	Time     *time.Time `json:"time"`
 	NoteType *string    `json:"note_type"`

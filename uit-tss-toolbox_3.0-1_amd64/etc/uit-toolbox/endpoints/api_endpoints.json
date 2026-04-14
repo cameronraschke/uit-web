@@ -10,9 +10,8 @@
 	"/api/overview/note": {
 		"allowed_methods": ["OPTIONS", "GET", "POST"]
 	},
-	"/api/reports/inventory": {},
-	"/api/files/images/manifest": {},
-	"/api/files/images": {
+	"/api/client/files/manifest": {},
+	"/api/client/files": {
 		"allowed_methods": ["OPTIONS", "GET", "DELETE"]
 	},
 	"/api/overview/inventory_table": {},
@@ -25,7 +24,7 @@
 	"/api/overview/all_models": {},
 	"/api/overview/all_domains": {},
 	"/api/overview/all_departments": {},
-	"/api/reports/battery": {},
+	"/api/reports/client/battery_health": {},
 	"/api/overview/job_queue/all_jobs": {},
 	"/api/job_queue/all_clients/update_job": {
 		"allowed_methods": ["OPTIONS", "POST"]
