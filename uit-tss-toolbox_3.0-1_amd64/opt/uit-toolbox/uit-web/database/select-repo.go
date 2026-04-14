@@ -109,16 +109,20 @@ func ClientIDLookup(ctx context.Context, tag *int64, serial *string) (*types.Cli
 	var tagErr error
 	var serialErr error
 	whereClause := "WHERE ids.uuid IS NOT NULL "
+	whereArgs := make([]any, 0, 2)
 	if tag == nil || *tag <= 0 {
 		tagErr = fmt.Errorf("tagnumber is nil or invalid")
 	} else {
-		whereClause += "AND ids.tagnumber = $1 "
+		whereArgs = append(whereArgs, *tag)
+		whereClause += fmt.Sprintf("AND ids.tagnumber = $%d ", len(whereArgs))
 	}
 
 	if serial == nil || strings.TrimSpace(*serial) == "" {
 		serialErr = fmt.Errorf("system serial is nil or empty")
 	} else {
-		whereClause += "AND ids.system_serial = $2 "
+		trimmedSerial := strings.TrimSpace(*serial)
+		whereArgs = append(whereArgs, trimmedSerial)
+		whereClause += fmt.Sprintf("AND ids.system_serial = $%d ", len(whereArgs))
 	}
 
 	if tagErr != nil && serialErr != nil {
@@ -146,10 +150,7 @@ func ClientIDLookup(ctx context.Context, tag *int64, serial *string) (*types.Cli
 	;`, whereClause)
 
 	var clientLookup types.ClientLookupRow
-	row := dbConn.QueryRowContext(ctx, sqlQuery,
-		ptrToNullInt64(tag),
-		ptrToNullString(serial),
-	)
+	row := dbConn.QueryRowContext(ctx, sqlQuery, whereArgs...)
 	if err := row.Scan(
 		&clientLookup.Tagnumber,
 		&clientLookup.SystemSerial,
