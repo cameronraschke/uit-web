@@ -117,7 +117,7 @@ done
 # Create Golang binaries
 # Client daemon
 rm /srv/uit-toolbox/client/pkg/uit-clientd
-(cd /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/opt/uit-toolbox/uit-client/
+(cd /srv/uit-toolbox/client/src/uit-client/uit-client_2.0-1_amd64/opt/uit-toolbox/uit-clientd/
 	sudo /usr/local/go/bin/go build -buildvcs=false -o /srv/uit-toolbox/client/pkg/uit-clientd .
 )
 
