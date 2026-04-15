@@ -1505,8 +1505,10 @@ func ReceiveWindowsClientInfo(w http.ResponseWriter, req *http.Request) {
 	}
 
 	middleware.WriteJson(w, http.StatusOK, struct {
-		Status string `json:"status"`
+		Status int64  `json:"tagnumber"`
+		Serial string `json:"system_serial"`
 	}{
-		Status: "success",
+		Status: *requestData.Tagnumber,
+		Serial: *requestData.SystemSerial,
 	})
 }
