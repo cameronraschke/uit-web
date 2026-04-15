@@ -7,7 +7,7 @@ import (
 )
 
 type WindowsUpdateRequest struct {
-	Tagnumber                 *string  `json:"tagnumber"` // Converted later
+	Tagnumber                 *int64   `json:"tagnumber"` // Converted later
 	SystemSerial              *string  `json:"system_serial"`
 	SystemManufacturer        *string  `json:"system_manufacturer"`
 	SystemModel               *string  `json:"system_model"`
@@ -98,12 +98,11 @@ type WindowsUpdateResponse struct {
 }
 
 func NewWindowsUpdateDTO(request WindowsUpdateRequest) (*WindowsUpdateDTO, error) {
-	if request.Tagnumber == nil || strings.TrimSpace(*request.Tagnumber) == "" {
+	if request.Tagnumber == nil {
 		return nil, fmt.Errorf("tagnumber is required")
 	}
 
-	convertedTag, err := ConvertAndVerifyTagnumber(*request.Tagnumber)
-	if err != nil {
+	if err := IsTagnumberInt64Valid(request.Tagnumber); err != nil {
 		return nil, fmt.Errorf("invalid tagnumber: %w", err)
 	}
 
@@ -132,7 +131,7 @@ func NewWindowsUpdateDTO(request WindowsUpdateRequest) (*WindowsUpdateDTO, error
 	}
 
 	return &WindowsUpdateDTO{
-		Tagnumber:                 *convertedTag,
+		Tagnumber:                 *request.Tagnumber,
 		SystemSerial:              *request.SystemSerial,
 		SystemManufacturer:        request.SystemManufacturer,
 		SystemModel:               request.SystemModel,
