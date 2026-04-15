@@ -835,6 +835,7 @@ CREATE TABLE IF NOT EXISTS os_info (
 	windows_bitlocker_enabled BOOLEAN DEFAULT NULL,
 	ad_domain VARCHAR(64) DEFAULT NULL,
 	ad_domain_user VARCHAR(128) DEFAULT NULL,
+	ad_distinguished_name VARCHAR(512) DEFAULT NULL,
 
 	CONSTRAINT os_info_client_uuid_fkey
 		FOREIGN KEY (client_uuid)

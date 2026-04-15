@@ -28,6 +28,7 @@ type WindowsUpdateRequest struct {
 	WindowsBitlockerEnabled   *bool    `json:"windows_bitlocker_enabled"`
 	ADDomain                  *string  `json:"ad_domain"`
 	ADDomainUser              *string  `json:"ad_domain_user"`
+	ADDistinguishedName       *string  `json:"ad_distinguished_name"`
 	MemoryCapacityKB          *int64   `json:"memory_capacity_kb"`
 	MemorySpeedMHz            *int64   `json:"memory_speed_mhz"`
 	CPUModel                  *string  `json:"cpu_model"`
@@ -70,6 +71,7 @@ type WindowsUpdateDTO struct {
 	WindowsBitlockerEnabled   *bool
 	ADDomain                  *string
 	ADDomainUser              *string
+	ADDistinguishedName       *string
 	MemoryCapacityKB          *int64
 	MemorySpeedMHz            *int64
 	CPUModel                  *string
@@ -151,6 +153,7 @@ func NewWindowsUpdateDTO(request WindowsUpdateRequest) (*WindowsUpdateDTO, error
 		WindowsBitlockerEnabled:   request.WindowsBitlockerEnabled,
 		ADDomain:                  request.ADDomain,
 		ADDomainUser:              request.ADDomainUser,
+		ADDistinguishedName:       request.ADDistinguishedName,
 		MemoryCapacityKB:          request.MemoryCapacityKB,
 		MemorySpeedMHz:            request.MemorySpeedMHz,
 		CPUModel:                  request.CPUModel,

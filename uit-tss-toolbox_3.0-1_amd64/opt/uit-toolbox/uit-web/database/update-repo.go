@@ -2109,3 +2109,118 @@ func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUp
 
 	return nil
 }
+
+func UpsertOSInfo(ctx context.Context, osInfo *types.WindowsUpdateDTO, transactionUUID string) (err error) {
+	if osInfo == nil {
+		return fmt.Errorf("%w: %s", types.InvalidStructureError, "WindowsUpdateDTO")
+	}
+
+	if err := types.IsTagnumberInt64Valid(&osInfo.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s", types.InvalidFieldError, "Tagnumber")
+	}
+	if strings.TrimSpace(osInfo.SystemSerial) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "SystemSerial")
+	}
+	if strings.TrimSpace(transactionUUID) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "TransactionUUID")
+	}
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+	defer func() {
+		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				err = fmt.Errorf("%w: %w", err, rollbackErr)
+			}
+		} else {
+			if commitErr := tx.Commit(); commitErr != nil {
+				err = fmt.Errorf("%w: %w", types.DatabaseUpdateError, commitErr)
+			}
+		}
+	}()
+	const osInfoSQLCode = `
+		INSERT INTO os_info (
+			transaction_uuid,
+			client_uuid,
+			time,
+			os_install_date,
+			os_vendor,
+			os_platform,
+			os_architecture,
+			os_name,
+			os_version,
+			windows_display_version,
+			windows_build_number,
+			windows_ubr,
+			windows_bitlocker_enabled,
+			ad_domain,
+			ad_domain_user,
+			ad_distinguished_name
+		)
+		VALUES (
+			$1,
+			(SELECT uuid FROM ids WHERE tagnumber = $2 AND system_serial = $3),
+			CURRENT_TIMESTAMP,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10,
+			$11,
+			$12,
+			$13,
+			$14,
+			$15
+		) ON CONFLICT (client_uuid) DO UPDATE SET
+			transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, os_info.transaction_uuid),
+			client_uuid = COALESCE(EXCLUDED.client_uuid, os_info.client_uuid),
+			time = CURRENT_TIMESTAMP,
+			os_install_date = COALESCE(EXCLUDED.os_install_date, os_info.os_install_date),
+			os_vendor = COALESCE(EXCLUDED.os_vendor, os_info.os_vendor),
+			os_platform = COALESCE(EXCLUDED.os_platform, os_info.os_platform),
+			os_architecture = COALESCE(EXCLUDED.os_architecture, os_info.os_architecture),
+			os_name = COALESCE(EXCLUDED.os_name, os_info.os_name),
+			os_version = COALESCE(EXCLUDED.os_version, os_info.os_version),
+			windows_display_version = COALESCE(EXCLUDED.windows_display_version, os_info.windows_display_version),
+			windows_build_number = COALESCE(EXCLUDED.windows_build_number, os_info.windows_build_number),
+			windows_ubr = COALESCE(EXCLUDED.windows_ubr, os_info.windows_ubr),
+			windows_bitlocker_enabled = COALESCE(EXCLUDED.windows_bitlocker_enabled, os_info.windows_bitlocker_enabled),
+			ad_domain = COALESCE(EXCLUDED.ad_domain, os_info.ad_domain),
+			ad_domain_user = COALESCE(EXCLUDED.ad_domain_user, os_info.ad_domain_user),
+			ad_distinguished_name = COALESCE(EXCLUDED.ad_distinguished_name, os_info.ad_distinguished_name)
+			;`
+
+	var sqlResult sql.Result
+	sqlResult, err = tx.ExecContext(ctx, osInfoSQLCode,
+		ptrToNullString(&transactionUUID),
+		toNullInt64(osInfo.Tagnumber),
+		toNullString(osInfo.SystemSerial),
+		ptrToNullTime(osInfo.OSInstalledAt),
+		ptrToNullString(osInfo.OSVendor),
+		ptrToNullString(osInfo.OSPlatform),
+		ptrToNullString(osInfo.OSArchitecture),
+		ptrToNullString(osInfo.OSName),
+		ptrToNullString(osInfo.OSVersion),
+		ptrToNullString(osInfo.WindowsDisplayVersion),
+		ptrToNullInt64(osInfo.WindowsBuildNumber),
+		ptrToNullInt64(osInfo.WindowsUBR),
+		ptrToNullBool(osInfo.WindowsBitlockerEnabled),
+		ptrToNullString(osInfo.ADDomain),
+		ptrToNullString(osInfo.ADDomainUser),
+		ptrToNullString(osInfo.ADDistinguishedName),
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	return nil
+}
