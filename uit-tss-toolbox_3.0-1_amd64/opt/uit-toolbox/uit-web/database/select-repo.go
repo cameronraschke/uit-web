@@ -1215,7 +1215,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		hardware_data.system_manufacturer,
 		hardware_data.system_model,
 		locationFormatting(locations.location) AS "location",
-		static_department_info.department_name AS "department_name_formatted",
+		static_department_info.department_name_formatted,
 		static_client_statuses.status_formatted AS "client_status",
 		locations.is_broken,
 		locations.disk_removed,
