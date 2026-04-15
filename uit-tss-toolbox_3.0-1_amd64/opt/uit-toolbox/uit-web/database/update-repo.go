@@ -2177,7 +2177,8 @@ func UpsertOSInfo(ctx context.Context, osInfo *types.WindowsUpdateDTO, transacti
 			$12,
 			$13,
 			$14,
-			$15
+			$15,
+			$16
 		) ON CONFLICT (client_uuid) DO UPDATE SET
 			transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, os_info.transaction_uuid),
 			client_uuid = COALESCE(EXCLUDED.client_uuid, os_info.client_uuid),
