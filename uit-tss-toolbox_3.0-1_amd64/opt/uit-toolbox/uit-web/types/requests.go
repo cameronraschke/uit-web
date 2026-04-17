@@ -26,9 +26,12 @@ type WindowsUpdateRequest struct {
 	WindowsBuildNumber        *int64   `json:"windows_build_number"`
 	WindowsUBR                *int64   `json:"windows_ubr"`
 	WindowsBitlockerEnabled   *bool    `json:"windows_bitlocker_enabled"`
+	ComputerName              *string  `json:"computer_name"`
+	ADAdminUsers              *string  `json:"ad_admin_users"`
 	ADDomain                  *string  `json:"ad_domain"`
-	ADDomainUser              *string  `json:"ad_domain_user"`
+	ADComputerName            *string  `json:"ad_computer_name"`
 	ADDistinguishedName       *string  `json:"ad_distinguished_name"`
+	IsIntuneJoined            *bool    `json:"is_intune_joined"`
 	MemoryCapacityKB          *int64   `json:"memory_capacity_kb"`
 	MemorySpeedMHz            *int64   `json:"memory_speed_mhz"`
 	CPUModel                  *string  `json:"cpu_model"`
@@ -69,9 +72,12 @@ type WindowsUpdateDTO struct {
 	WindowsBuildNumber        *int64
 	WindowsUBR                *int64
 	WindowsBitlockerEnabled   *bool
+	ComputerName              *string
+	ADAdminUsers              *string
 	ADDomain                  *string
-	ADDomainUser              *string
+	ADComputerName            *string
 	ADDistinguishedName       *string
+	IsIntuneJoined            *bool
 	MemoryCapacityKB          *int64
 	MemorySpeedMHz            *int64
 	CPUModel                  *string
@@ -150,9 +156,12 @@ func NewWindowsUpdateDTO(request WindowsUpdateRequest) (*WindowsUpdateDTO, error
 		WindowsBuildNumber:        request.WindowsBuildNumber,
 		WindowsUBR:                request.WindowsUBR,
 		WindowsBitlockerEnabled:   request.WindowsBitlockerEnabled,
+		ComputerName:              request.ComputerName,
+		ADAdminUsers:              request.ADAdminUsers,
 		ADDomain:                  request.ADDomain,
-		ADDomainUser:              request.ADDomainUser,
+		ADComputerName:            request.ADComputerName,
 		ADDistinguishedName:       request.ADDistinguishedName,
+		IsIntuneJoined:            request.IsIntuneJoined,
 		MemoryCapacityKB:          request.MemoryCapacityKB,
 		MemorySpeedMHz:            request.MemorySpeedMHz,
 		CPUModel:                  request.CPUModel,

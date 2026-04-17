@@ -2145,8 +2145,8 @@ func UpsertOSInfo(ctx context.Context, osInfo *types.WindowsUpdateDTO, transacti
 	}()
 	const osInfoSQLCode = `
 		INSERT INTO os_info (
-			transaction_uuid,
 			client_uuid,
+			transaction_uuid,
 			time,
 			os_install_date,
 			os_vendor,
@@ -2158,13 +2158,16 @@ func UpsertOSInfo(ctx context.Context, osInfo *types.WindowsUpdateDTO, transacti
 			windows_build_number,
 			windows_ubr,
 			windows_bitlocker_enabled,
+			ad_admin_users,
+			computer_name,
 			ad_domain,
-			ad_domain_user,
-			ad_distinguished_name
+			ad_computer_name,
+			ad_distinguished_name,
+			is_intune_joined
 		)
 		VALUES (
-			$1,
 			(SELECT uuid FROM ids WHERE tagnumber = $2 AND system_serial = $3),
+			$1,
 			CURRENT_TIMESTAMP,
 			$4,
 			$5,
@@ -2178,24 +2181,29 @@ func UpsertOSInfo(ctx context.Context, osInfo *types.WindowsUpdateDTO, transacti
 			$13,
 			$14,
 			$15,
-			$16
+			$16,
+			$17,
+			$18,
+			$19
 		) ON CONFLICT (client_uuid) DO UPDATE SET
-			transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, os_info.transaction_uuid),
-			client_uuid = COALESCE(EXCLUDED.client_uuid, os_info.client_uuid),
+			client_uuid = EXCLUDED.client_uuid,
+			transaction_uuid = EXCLUDED.transaction_uuid,
 			time = CURRENT_TIMESTAMP,
-			os_install_date = COALESCE(EXCLUDED.os_install_date, os_info.os_install_date),
-			os_vendor = COALESCE(EXCLUDED.os_vendor, os_info.os_vendor),
-			os_platform = COALESCE(EXCLUDED.os_platform, os_info.os_platform),
-			os_architecture = COALESCE(EXCLUDED.os_architecture, os_info.os_architecture),
-			os_name = COALESCE(EXCLUDED.os_name, os_info.os_name),
-			os_version = COALESCE(EXCLUDED.os_version, os_info.os_version),
-			windows_display_version = COALESCE(EXCLUDED.windows_display_version, os_info.windows_display_version),
-			windows_build_number = COALESCE(EXCLUDED.windows_build_number, os_info.windows_build_number),
-			windows_ubr = COALESCE(EXCLUDED.windows_ubr, os_info.windows_ubr),
-			windows_bitlocker_enabled = COALESCE(EXCLUDED.windows_bitlocker_enabled, os_info.windows_bitlocker_enabled),
-			ad_domain = COALESCE(EXCLUDED.ad_domain, os_info.ad_domain),
-			ad_domain_user = COALESCE(EXCLUDED.ad_domain_user, os_info.ad_domain_user),
-			ad_distinguished_name = COALESCE(EXCLUDED.ad_distinguished_name, os_info.ad_distinguished_name)
+			os_install_date = EXCLUDED.os_install_date,
+			os_vendor = EXCLUDED.os_vendor,
+			os_platform = EXCLUDED.os_platform,
+			os_architecture = EXCLUDED.os_architecture,
+			os_name = EXCLUDED.os_name,
+			os_version = EXCLUDED.os_version,
+			windows_display_version = EXCLUDED.windows_display_version,
+			windows_build_number = EXCLUDED.windows_build_number,
+			windows_ubr = EXCLUDED.windows_ubr,
+			windows_bitlocker_enabled = EXCLUDED.windows_bitlocker_enabled,
+			ad_admin_users = EXCLUDED.ad_admin_users,
+			ad_domain = EXCLUDED.ad_domain,
+			ad_computer_name = EXCLUDED.ad_computer_name,
+			ad_distinguished_name = EXCLUDED.ad_distinguished_name,
+			is_intune_joined = EXCLUDED.is_intune_joined
 			;`
 
 	var sqlResult sql.Result
@@ -2213,10 +2221,13 @@ func UpsertOSInfo(ctx context.Context, osInfo *types.WindowsUpdateDTO, transacti
 		ptrToNullInt64(osInfo.WindowsBuildNumber),
 		ptrToNullInt64(osInfo.WindowsUBR),
 		ptrToNullBool(osInfo.WindowsBitlockerEnabled),
+		ptrToNullString(osInfo.ADAdminUsers),
 		ptrToNullString(osInfo.ADDomain),
-		ptrToNullString(osInfo.ADDomainUser),
+		ptrToNullString(osInfo.ADComputerName),
 		ptrToNullString(osInfo.ADDistinguishedName),
+		ptrToNullBool(osInfo.IsIntuneJoined),
 	)
+
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
