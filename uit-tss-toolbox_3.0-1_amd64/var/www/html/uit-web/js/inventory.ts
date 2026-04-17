@@ -903,7 +903,7 @@ if (updateForm) {
 			formObj.acquired_date = getElementDateValue(acquiredDateUpdate, true);
 			formObj.retired_date = getElementDateValue(retiredDateUpdate, true);
 			formObj.is_broken = !getElementBooleanValue(isBrokenUpdate); // invert because select options are "Is it Functional?" but backend field is "is_broken"
-			formObj.disk_removed = getElementBooleanValue(diskRemovedUpdate);
+			formObj.disk_removed = !getElementBooleanValue(diskRemovedUpdate); // invert because select options are "Is the Disk Present?" but backend field is "disk_removed"
 			formObj.last_hardware_check = lastHardwareCheckUpdate.value ? parseDateTimeLocalToUTC(lastHardwareCheckUpdate.value) : null;
 			formObj.status = getElementStringValue(clientStatusUpdate);
 			formObj.checkout_bool = formObj.status && statusesThatIndicateCheckout.includes(formObj.status) ? true : false;
