@@ -902,7 +902,7 @@ if (updateForm) {
 			formObj.property_custodian = getElementStringValue(propertyCustodianUpdate);
 			formObj.acquired_date = getElementDateValue(acquiredDateUpdate, true);
 			formObj.retired_date = getElementDateValue(retiredDateUpdate, true);
-			formObj.is_broken = getElementBooleanValue(isBrokenUpdate);
+			formObj.is_broken = !getElementBooleanValue(isBrokenUpdate); // invert because select options are "Is it Functional?" but backend field is "is_broken"
 			formObj.disk_removed = getElementBooleanValue(diskRemovedUpdate);
 			formObj.last_hardware_check = lastHardwareCheckUpdate.value ? parseDateTimeLocalToUTC(lastHardwareCheckUpdate.value) : null;
 			formObj.status = getElementStringValue(clientStatusUpdate);
