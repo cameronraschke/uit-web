@@ -947,7 +947,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			(CASE WHEN client_health.os_installed THEN TRUE ELSE FALSE END) AS "os_installed",
 			os_info.os_name, 
 			(CASE WHEN os_info.windows_build_number IS NOT NULL AND os_info.windows_ubr IS NOT NULL THEN CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) ELSE NULL END) AS "os_version",
-			latest_os_versions.latest_os_version AS "latest_os_version",
+			latest_os_versions.latest_os_version,
 			client_health.last_hardware_check,
 			(CASE 
 				WHEN latest_historical_hardware_data.bios_version = static_bios_stats.bios_version THEN TRUE
@@ -1101,8 +1101,8 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		}
 		// If disk is removed but OS is still marked as installed (need to update OS info in DB)
 		if (results[i].DiskRemoved != nil && *results[i].DiskRemoved) && (results[i].OsInstalled == nil || (results[i].OsInstalled != nil && *results[i].OsInstalled)) {
-			osOutdated := types.OSOutdated.String()
-			results[i].ClientErrors = append(results[i].ClientErrors, osOutdated)
+			osInvalidData := types.OSInvalidData.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, osInvalidData)
 		}
 		// If OS is installed
 		if results[i].OsInstalled != nil && *results[i].OsInstalled {
@@ -1121,8 +1121,8 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 				currentVersion := strings.TrimSpace(*results[i].OsVersion)
 				latestVersion := strings.TrimSpace(*results[i].LatestOsVersion)
 				if currentVersion != "" && latestVersion != "" && currentVersion != latestVersion {
-				osOutdated := types.OSOutdated.String()
-				results[i].ClientErrors = append(results[i].ClientErrors, osOutdated)
+					osOutdated := types.OSOutdated.String()
+					results[i].ClientErrors = append(results[i].ClientErrors, osOutdated)
 				}
 			}
 		} else { // If OS is not installed

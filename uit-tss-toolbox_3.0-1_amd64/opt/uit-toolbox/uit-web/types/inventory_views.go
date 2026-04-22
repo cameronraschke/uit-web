@@ -19,6 +19,7 @@ const (
 	MissingRequiredInfo
 	MissingImages
 	OSMissingInfo
+	OSInvalidData
 )
 
 var ClientConfigurationErrorCodeToString = map[ConfigurationErrorCode]string{
@@ -29,6 +30,7 @@ var ClientConfigurationErrorCodeToString = map[ConfigurationErrorCode]string{
 	OSNotInstalled:      "OS is not installed",
 	OSOutdated:          "OS is outdated",
 	OSMissingInfo:       "OS is missing required information",
+	OSInvalidData:       "OS data is invalid",
 	NeedsHardwareCheck:  "Needs hardware check",
 	NeedsErasing:        "Needs erasing",
 	MissingRequiredInfo: "Missing required information",
