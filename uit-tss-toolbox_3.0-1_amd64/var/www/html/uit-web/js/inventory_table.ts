@@ -231,7 +231,7 @@ async function renderInventoryTable() {
 			// Location Column
 			const locationCell = document.createElement('td');
 			const locationContainer = document.createElement('div');
-			locationContainer.classList.add('flex-container', 'vertical');
+			locationContainer.classList.add('flex-container', 'vertical', 'centered');
 
 			// Location
 			const locationSpan = document.createElement('span');
@@ -320,7 +320,7 @@ async function renderInventoryTable() {
 					osSpan.textContent = 'Unknown OS Installed';
 				}
 			} else {
-				osSpan.textContent = 'OS Not Detected';
+				osSpan.textContent = 'OS Not Installed';
 				osSpan.style.fontStyle = 'italic';
 			}
 			softwareContainer.appendChild(osSpan);

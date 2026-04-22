@@ -183,12 +183,19 @@ async function updateCheckoutStatus() {
 	}
 }
 
+function resetJSONUpload() {
+	jsonFileUpload.value = "";
+	jsonFileUploadButton.textContent = "Upload JSON";
+	jsonFileUploadButton.classList.remove("changed-input");
+}
+
 function resetInventoryLookupAndUpdateForm() {
 	clientLookupForm.reset();
 	updateForm.reset();
 	setURLParameter('update', null);
 	setURLParameter('tagnumber', 	null);
 	setURLParameter('system_serial', null);
+	resetJSONUpload();
 	for (const el of allInventoryUpdateFields) {
 		if (el instanceof HTMLInputElement) {
 			resetInputElement(el, "", false, undefined);
@@ -1082,9 +1089,7 @@ async function uploadJSONFile(jsonFile: File): Promise<any> {
 	} catch (error) {
 		console.error("Error processing JSON file:", error);
 		alert("Error processing JSON file: " + (error instanceof Error ? error.message : String(error)));
-		jsonFileUpload.value = "";
-		jsonFileUploadButton.textContent = "Upload JSON";
-		jsonFileUploadButton.classList.remove("changed-input");
+		
 	}
 }
 
@@ -1101,8 +1106,7 @@ if (jsonFileUpload && jsonFileUploadButton) {
 			jsonFileUploadButton.textContent = `JSON File: ${jsonFile.name}`;
 			jsonFileUploadButton.classList.add("changed-input");
 		} else {
-			jsonFileUploadButton.textContent = "Upload JSON";
-			jsonFileUploadButton.classList.remove("changed-input");
+			resetJSONUpload();
 		}
 	});
 }
