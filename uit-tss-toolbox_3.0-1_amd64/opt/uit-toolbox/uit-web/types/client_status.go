@@ -14,7 +14,7 @@ type ClientStatusView struct {
 }
 
 type ClientUptime struct {
-	Tagnumber       int64 `json:"tagnumber"`
+	Tagnumber       int64  `json:"tagnumber"`
 	ClientAppUptime *int64 `json:"client_app_uptime"`
 	SystemUptime    *int64 `json:"system_uptime"`
 }
@@ -104,6 +104,9 @@ func CreatePartialClientHealthUpdateRequestDTO(request *ClientHealthUpdateReques
 	if request.EraseCompleted != nil && *request.EraseCompleted {
 		if request.EraseJobDuration != nil && *request.EraseJobDuration > 1 {
 			dto.LastEraseJobTime = &utcTime
+			if dto.OSInstalled == nil {
+				dto.OSInstalled = new(bool)
+			}
 			*dto.OSInstalled = false // order matters
 			dto.AvgEraseTime = request.EraseJobDuration
 		}
@@ -111,6 +114,9 @@ func CreatePartialClientHealthUpdateRequestDTO(request *ClientHealthUpdateReques
 	if request.CloneCompleted != nil && *request.CloneCompleted {
 		if request.CloneJobDuration != nil && *request.CloneJobDuration > 1 {
 			dto.LastCloneJobTime = &utcTime
+			if dto.OSInstalled == nil {
+				dto.OSInstalled = new(bool)
+			}
 			*dto.OSInstalled = true // order matters
 			dto.AvgCloneTime = request.CloneJobDuration
 		}

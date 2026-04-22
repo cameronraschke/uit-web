@@ -295,7 +295,7 @@ function showInventoryUpdateChanges(): void {
 	});
 }
 
-async function populateLocationForm(tag?: number, serial?: string): Promise<void> {
+async function populateLocationForm(tag?: number, serial?: string, lastHardwareCheck?: Date): Promise<void> {
 	// reset/zero/clear out all fields before processing new data
 	resetInputElement(clientLookupTagInput, "Enter Tag Number", false, undefined);
 	clientLookupTagInput.value = clientLookupTagInput.dataset.initialValue || "";
@@ -603,7 +603,16 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				diskRemovedUpdate.classList.add("empty-input");
 			}
 
-			if (locationFormData.last_hardware_check) {
+			if (lastHardwareCheck && !isNaN(new Date(lastHardwareCheck).getTime())) {
+				lastHardwareCheckUpdate.classList.add("empty-input");
+				const lastCheckDate = new Date(lastHardwareCheck).getTime();
+				if (!isNaN(lastCheckDate)) {
+					const lastCheckDateLocal = new Date(lastCheckDate - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+					lastHardwareCheckUpdate.value = lastCheckDateLocal;
+					lastHardwareCheckUpdate.classList.remove("empty-input");
+					lastHardwareCheckUpdate.classList.add("changed-input");
+				}
+			} else if (locationFormData !== null && locationFormData.last_hardware_check !== null) {
 				const hardwareCheckDate = new Date(locationFormData.last_hardware_check);
 				const hardwareCheckDateLocal = !isNaN(hardwareCheckDate.getTime())
 					? new Date(hardwareCheckDate.getTime() - hardwareCheckDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
@@ -1077,7 +1086,10 @@ async function uploadJSONFile(jsonFile: File): Promise<any> {
 		if (!data.ok) throw new Error("Server returned an error: " + data.status + " " + data.statusText);
 		const jsonData = await data.json();
 		if (jsonData && jsonData.tagnumber) {
-			populateLocationForm(jsonData.tagnumber, undefined);
+			populateLocationForm(jsonData.tagnumber, undefined, new Date()).catch(e => {
+				const errorMessage = e instanceof Error ? e.message : String(e);
+				console.error("Error populating location form with JSON data:", errorMessage);
+			});
 			clientLookupTagInput.value = jsonData.tagnumber.toString();
 			clientLookupSerial.value = jsonData.system_serial || '';
 			clientLookupWarningMessage.style.display = "block";

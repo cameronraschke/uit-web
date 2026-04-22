@@ -1946,6 +1946,242 @@ func (updateRepo *UpdateRepo) BulkUpdateClientLocation(ctx context.Context, tran
 	return nil
 }
 
+func UpdateFromWindowsJSON(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.ClientHealthDTO, historicalHardwareData *types.WindowsUpdateDTO) (err error) {
+	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
+	}
+	if clientHealthData == nil {
+		return fmt.Errorf("%w: %s", types.InvalidFieldError, "ClientHealthDTO")
+	}
+	if err := types.IsTagnumberInt64Valid(&clientHealthData.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
+	}
+
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
+	}
+
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	const hardwareDataSql = `
+		INSERT INTO hardware_data (
+			time,
+			transaction_uuid,
+			updated_from_windows,
+			client_uuid,
+			tagnumber,
+			system_serial,
+			ethernet_mac,
+			wifi_mac,
+			system_manufacturer,
+			system_model,
+			cpu_model,
+			cpu_core_count,
+			cpu_thread_count,
+		) VALUES (
+			CURRENT_TIMESTAMP,
+			$1,
+			TRUE,
+			(SELECT uuid FROM ids WHERE tagnumber = $2 and system_serial = $3),
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10
+		) ON CONFLICT (client_uuid) DO UPDATE SET
+			time = CURRENT_TIMESTAMP,
+			transaction_uuid = EXCLUDED.transaction_uuid,
+			updated_from_windows = TRUE,
+			tagnumber = COALESCE(EXCLUDED.tagnumber, hardware_data.tagnumber),
+			system_serial = COALESCE(EXCLUDED.system_serial, hardware_data.system_serial),
+			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, hardware_data.ethernet_mac),
+			wifi_mac = COALESCE(EXCLUDED.wifi_mac, hardware_data.wifi_mac),
+			system_manufacturer = COALESCE(EXCLUDED.system_manufacturer, hardware_data.system_manufacturer),
+			system_model = COALESCE(EXCLUDED.system_model, hardware_data.system_model),
+			cpu_model = COALESCE(EXCLUDED.cpu_model, hardware_data.cpu_model),
+			cpu_core_count = COALESCE(EXCLUDED.cpu_core_count, hardware_data.cpu_core_count),
+			cpu_thread_count = COALESCE(EXCLUDED.cpu_thread_count, hardware_data.cpu_thread_count)
+		)
+	;`
+
+	hardwareDataResult, err := tx.ExecContext(ctx, hardwareDataSql,
+		transactionUUID,
+		toNullInt64(historicalHardwareData.Tagnumber),
+		toNullString(historicalHardwareData.SystemSerial),
+		ptrToNullString(historicalHardwareData.EthernetMACAddr),
+		ptrToNullString(historicalHardwareData.WifiMACAddr),
+		ptrToNullString(historicalHardwareData.SystemManufacturer),
+		ptrToNullString(historicalHardwareData.SystemModel),
+		ptrToNullString(historicalHardwareData.CPUModel),
+		ptrToNullInt64(historicalHardwareData.CPUCoreCount),
+		ptrToNullInt64(historicalHardwareData.CPUThreadCount),
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(hardwareDataResult, 1); err != nil {
+		return err
+	}
+
+	// Insert/update client_health table
+	const clientHealthSql = `
+		INSERT INTO client_health
+			(
+				time, 
+				transaction_uuid, 
+				client_uuid, 
+				disk_health_pcnt, 
+				battery_health_pcnt, 
+				avg_erase_time, 
+				avg_clone_time, 
+				total_jobs_completed, 
+				last_clone_job_time, 
+				last_erase_job_time, 
+				disk_free_space_kb, 
+				last_hardware_check, 
+				updated_from_windows
+			) 
+		VALUES (
+			CURRENT_TIMESTAMP, 
+			$1, 
+			(SELECT uuid FROM ids WHERE tagnumber = $2 AND system_serial = $3 ORDER BY time DESC LIMIT 1), 
+			$4,
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10,
+			$11,
+			$12,
+			TRUE
+		)
+		ON CONFLICT (client_uuid)
+			DO UPDATE SET
+				time = CURRENT_TIMESTAMP,
+				transaction_uuid = EXCLUDED.transaction_uuid,
+				disk_health_pcnt = COALESCE(EXCLUDED.disk_health_pcnt, client_health.disk_health_pcnt),
+				battery_health_pcnt = COALESCE(EXCLUDED.battery_health_pcnt, client_health.battery_health_pcnt),
+				avg_erase_time = COALESCE(EXCLUDED.avg_erase_time, client_health.avg_erase_time),
+				avg_clone_time = COALESCE(EXCLUDED.avg_clone_time, client_health.avg_clone_time),
+				total_jobs_completed = COALESCE(EXCLUDED.total_jobs_completed, client_health.total_jobs_completed),
+				last_clone_job_time = COALESCE(EXCLUDED.last_clone_job_time, client_health.last_clone_job_time),
+				last_erase_job_time = COALESCE(EXCLUDED.last_erase_job_time, client_health.last_erase_job_time),
+				disk_free_space_kb = COALESCE(EXCLUDED.disk_free_space_kb, client_health.disk_free_space_kb),
+				last_hardware_check = COALESCE(EXCLUDED.last_hardware_check, client_health.last_hardware_check),
+				updated_from_windows = TRUE
+	;`
+
+	clientHealthResult, err := tx.ExecContext(ctx, clientHealthSql,
+		transactionUUID,
+		clientHealthData.Tagnumber,
+		clientHealthData.SystemSerial,
+		ptrToNullFloat64(clientHealthData.DiskHealthPcnt),
+		ptrToNullFloat64(clientHealthData.BatteryHealthPcnt),
+		ptrToNullFloat64(clientHealthData.AvgEraseTime),
+		ptrToNullFloat64(clientHealthData.AvgCloneTime),
+		ptrToNullInt64(clientHealthData.TotalJobsCompleted),
+		ptrToNullTime(clientHealthData.LastCloneJobTime),
+		ptrToNullTime(clientHealthData.LastEraseJobTime),
+		ptrToNullTime(clientHealthData.LastHardwareCheck),
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(clientHealthResult, 1); err != nil {
+		return err
+	}
+
+	clientHistoricalHealthSql := `
+		INSERT INTO historical_hardware_data (
+				time,
+				transaction_uuid,
+				updated_from_windows,
+				client_uuid,
+				ethernet_mac,
+				wifi_mac,
+				disk_model,
+				disk_type,
+				disk_size_kb,
+				battery_serial,
+				battery_manufacturer,
+				battery_design_capacity,
+				battery_current_max_capacity,
+				battery_charge_cycles,
+				battery_health,
+				bios_version,
+				bios_release_date,
+				memory_capacity_kb,
+				memory_speed_mhz
+			) VALUES (
+				CURRENT_TIMESTAMP,
+				$1,
+				TRUE,
+				(SELECT uuid FROM ids WHERE tagnumber = $2 and system_serial = $3) 
+				$4,
+				$5,
+				$6,
+				$7,
+				$8,
+				$9,
+				$10,
+				$11,
+				$12,
+				$13,
+				$14,
+				$15,
+				$16,
+				$17,
+				$18
+			) ON CONFLICT DO NOTHING
+	;`
+
+	historicalClientHealthRes, err := tx.ExecContext(ctx, clientHistoricalHealthSql,
+		transactionUUID,
+		historicalHardwareData.Tagnumber,
+		historicalHardwareData.SystemSerial,
+		ptrToNullString(historicalHardwareData.EthernetMACAddr),
+		ptrToNullString(historicalHardwareData.WifiMACAddr),
+		ptrToNullString(historicalHardwareData.DiskModel),
+		ptrToNullString(historicalHardwareData.DiskType),
+		ptrToNullInt64(historicalHardwareData.DiskSizeKB),
+		ptrToNullString(historicalHardwareData.BatterySerial),
+		ptrToNullString(historicalHardwareData.BatteryManufacturer),
+		ptrToNullInt64(historicalHardwareData.BatteryDesignCapacity),
+		ptrToNullInt64(historicalHardwareData.BatteryCurrentMaxCapacity),
+		ptrToNullInt64(historicalHardwareData.BatteryChargeCycleCount),
+		ptrToNullFloat64(historicalHardwareData.BatteryHealthPcnt),
+		ptrToNullString(historicalHardwareData.BIOSVersion),
+		ptrToNullTime(historicalHardwareData.BIOSReleaseDate),
+		ptrToNullInt64(historicalHardwareData.MemoryCapacityKB),
+		ptrToNullInt64(historicalHardwareData.MemorySpeedMHz),
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(historicalClientHealthRes, 1); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUpdateDTO, transactionUUID string) (err error) {
 	if winClientInfo == nil {
 		return fmt.Errorf("%w: %s", types.InvalidStructureError, "WindowsUpdateDTO")
@@ -1983,10 +2219,7 @@ func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUp
 			time,
 			client_uuid,
 			last_hardware_check,
-			tagnumber,
-			system_serial,
 			tpm_version,
-			os_name,
 			disk_free_space_kb,
 			updated_from_windows,
 			transaction_uuid
@@ -1999,18 +2232,13 @@ func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUp
 			$1,
 			$2,
 			$3,
-			$4,
-			$5,
-			$6,
-			$7,
-			$8
+			$4
 		) ON CONFLICT (tagnumber) DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
 			client_uuid = COALESCE(EXCLUDED.client_uuid, client_health.client_uuid),
 			last_hardware_check = CURRENT_TIMESTAMP,
 			system_serial = COALESCE(EXCLUDED.system_serial, client_health.system_serial),
 			tpm_version = COALESCE(EXCLUDED.tpm_version, client_health.tpm_version),
-			os_name = COALESCE(EXCLUDED.os_name, client_health.os_name),
 			disk_free_space_kb = COALESCE(EXCLUDED.disk_free_space_kb, client_health.disk_free_space_kb),
 			updated_from_windows = TRUE,
 			transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, client_health.transaction_uuid)
@@ -2021,7 +2249,8 @@ func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUp
 		toNullInt64(winClientInfo.Tagnumber),
 		toNullString(winClientInfo.SystemSerial),
 		winClientInfo.TPMVersion,
-		winClientInfo.OSName,
+		ptrToNullString(winClientInfo.EthernetMACAddr),
+		ptrToNullString(winClientInfo.WifiMACAddr),
 		winClientInfo.DiskFreeSpaceKB,
 		true,
 		transactionUUID,

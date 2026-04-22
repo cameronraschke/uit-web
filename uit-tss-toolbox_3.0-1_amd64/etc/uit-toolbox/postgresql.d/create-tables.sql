@@ -385,9 +385,9 @@ ON CONFLICT (system_model) DO UPDATE SET
 
 CREATE TABLE IF NOT EXISTS client_health (
 	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
-	client_uuid UUID UNIQUE DEFAULT NULL,
-	tagnumber INTEGER UNIQUE NOT NULL,
-	system_serial VARCHAR(128) DEFAULT NULL,
+	client_uuid UUID PRIMARY KEY,
+	tagnumber INTEGER DEFAULT NULL, -- unused
+	system_serial VARCHAR(128) DEFAULT NULL, -- unused
 	tpm_version VARCHAR(24) DEFAULT NULL,
 	os_name VARCHAR(128) DEFAULT NULL,
 	os_installed BOOLEAN DEFAULT NULL,
@@ -407,9 +407,7 @@ CREATE TABLE IF NOT EXISTS client_health (
 		FOREIGN KEY (client_uuid)
 			REFERENCES ids(uuid)
 		ON UPDATE CASCADE
-		ON DELETE SET NULL,
-	CONSTRAINT client_health_valid_tag
-		CHECK (tagnumber > 100000 AND tagnumber < 999999)
+		ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS job_queue (
@@ -474,7 +472,7 @@ CREATE TABLE IF NOT EXISTS logins (
 
 CREATE TABLE IF NOT EXISTS hardware_data (
 	client_uuid UUID UNIQUE DEFAULT NULL,
-	tagnumber INTEGER UNIQUE NOT NULL,
+	tagnumber INTEGER UNIQUE DEFAULT NULL,
 	system_serial VARCHAR(128) DEFAULT NULL,
 	system_uuid VARCHAR(64) DEFAULT NULL,
 	ethernet_mac VARCHAR(17) DEFAULT NULL,
@@ -494,9 +492,6 @@ CREATE TABLE IF NOT EXISTS hardware_data (
 	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
 	transaction_uuid UUID DEFAULT NULL,
 	updated_from_windows BOOLEAN DEFAULT FALSE NOT NULL,
-
-	CONSTRAINT hardware_data_valid_tag
-		CHECK (tagnumber > 100000 AND tagnumber < 999999),
 
 	CONSTRAINT hardware_data_client_uuid_fkey
 		FOREIGN KEY (client_uuid)
