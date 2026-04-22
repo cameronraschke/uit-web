@@ -990,6 +990,8 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			client_health.os_installed,
 			os_info.os_name,
 			os_info.os_version,
+			os_info.windows_build_number,
+			os_info.windows_ubr,
 			client_health.last_hardware_check,
 			static_bios_stats.bios_version,
 			latest_historical_hardware_data.bios_version,
