@@ -18,6 +18,7 @@ const (
 	NeedsErasing
 	MissingRequiredInfo
 	MissingImages
+	OSMissingInfo
 )
 
 var ClientConfigurationErrorCodeToString = map[ConfigurationErrorCode]string{
@@ -27,6 +28,7 @@ var ClientConfigurationErrorCodeToString = map[ConfigurationErrorCode]string{
 	BIOSOutdated:        "BIOS is outdated",
 	OSNotInstalled:      "OS is not installed",
 	OSOutdated:          "OS is outdated",
+	OSMissingInfo:       "OS is missing required information",
 	NeedsHardwareCheck:  "Needs hardware check",
 	NeedsErasing:        "Needs erasing",
 	MissingRequiredInfo: "Missing required information",
@@ -78,6 +80,7 @@ type InventoryTableRow struct {
 	OsInstalled         *bool      `json:"os_installed"`
 	OsName              *string    `json:"os_name"`
 	OsVersion           *string    `json:"os_version"`
+	LatestOsVersion     *string    `json:"latest_os_version"`
 	LastHardwareCheck   *time.Time `json:"last_hardware_check"`
 	BIOSUpdated         *bool      `json:"bios_updated"`
 	BIOSVersion         *string    `json:"bios_version"`

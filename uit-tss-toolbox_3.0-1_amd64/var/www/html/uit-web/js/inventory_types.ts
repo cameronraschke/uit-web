@@ -123,6 +123,7 @@ type InventoryTableRow = {
 	os_installed: boolean | null;
 	os_name: string | "";
 	os_version: string | "";
+	latest_os_version: string | "";
 	ad_domain_formatted: string | "";
 	status_formatted: string | "";
 	is_broken: boolean | null;

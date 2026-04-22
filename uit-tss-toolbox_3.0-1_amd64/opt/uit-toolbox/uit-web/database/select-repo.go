@@ -938,7 +938,8 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			static_ad_domains.domain_name_formatted, 
 			(CASE WHEN client_health.os_installed THEN TRUE ELSE FALSE END) AS "os_installed",
 			os_info.os_name, 
-			os_info.os_version,
+			CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) AS "os_version",
+			MAX(CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr)) AS "latest_os_version",
 			client_health.last_hardware_check,
 			(CASE 
 				WHEN latest_historical_hardware_data.bios_version = static_bios_stats.bios_version THEN TRUE
@@ -981,6 +982,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			client_health.os_installed,
 			os_info.os_name,
 			os_info.os_version,
+			MAX(CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr)) AS "latest_os_version",
 			client_health.last_hardware_check,
 			static_bios_stats.bios_version,
 			latest_historical_hardware_data.bios_version,
@@ -1094,6 +1096,14 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			if results[i].OsName == nil || strings.TrimSpace(*results[i].OsName) == "" {
 				osMissing := types.OSOutdated.String()
 				results[i].ClientErrors = append(results[i].ClientErrors, osMissing)
+			}
+			if results[i].OsVersion == nil || strings.TrimSpace(*results[i].OsVersion) == "" {
+				osMissingInfo := types.OSMissingInfo.String()
+				results[i].ClientErrors = append(results[i].ClientErrors, osMissingInfo)
+			}
+			if results[i].LatestOsVersion != nil && results[i].OsVersion != nil && *results[i].OsVersion != *results[i].LatestOsVersion {
+				osOutdated := types.OSOutdated.String()
+				results[i].ClientErrors = append(results[i].ClientErrors, osOutdated)
 			}
 		} else { // If OS is not installed
 			osNotInstalled := types.OSNotInstalled.String()

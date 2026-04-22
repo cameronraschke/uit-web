@@ -143,6 +143,10 @@ async function renderInventoryTable() {
 			const systemModel = inventoryRow.system_model ?? '';
 			const deviceTypeFormatted = inventoryRow.device_type_formatted ?? '';
 			const adDomainFormatted = inventoryRow.ad_domain_formatted ?? '';
+			const osInstalled = Boolean(inventoryRow.os_installed);
+			const osName = inventoryRow.os_name ?? '';
+			const osVersion = inventoryRow.os_version ?? '';
+			const latestOSVersion = inventoryRow.latest_os_version ?? '';
 
 
 			tr.dataset.lastUpdated = lastUpdated.toString();
@@ -150,11 +154,13 @@ async function renderInventoryTable() {
 			tr.dataset.systemSerial = systemSerial;
 			tr.dataset.locationFormatted = locationFormatted;
 			tr.dataset.note = note;
-			tr.dataset.systemManufacturer = systemManufacturer;
-			tr.dataset.systemModel = systemModel;
-			tr.dataset.deviceType = deviceTypeFormatted;
-			tr.dataset.adDomain = adDomainFormatted;
-			
+			// tr.dataset.systemManufacturer = systemManufacturer;
+			// tr.dataset.systemModel = systemModel;
+			// tr.dataset.deviceType = deviceTypeFormatted;
+			// tr.dataset.adDomain = adDomainFormatted;
+			// tr.dataset.osName = osName;
+			// tr.dataset.osVersion = osVersion;
+
 			// Actions cell
 			const actionsCell = document.createElement('td');
 			const actionsContainer = document.createElement('div');
@@ -304,8 +310,16 @@ async function renderInventoryTable() {
 
 			// OS Installed
 			const osSpan = document.createElement('span');
-			if (inventoryRow.os_installed === true) {
-				osSpan.textContent = `${inventoryRow.os_name} (${inventoryRow.os_version})`;
+			if (osInstalled === true) {
+				if (osName !== '' && osVersion !== '') {
+					osSpan.textContent = `${inventoryRow.os_name} (${inventoryRow.os_version})`;
+				} else if (osName !== '' && osVersion === '') {
+					osSpan.textContent = `${inventoryRow.os_name} (vers. N/A)`;
+				} else if (osName === '' && osVersion !== '') {
+					osSpan.textContent = `OS Installed (vers. ${inventoryRow.os_version})`;
+				} else {
+					osSpan.textContent = 'Unknown OS Installed';
+				}
 			} else {
 				osSpan.textContent = 'OS Not Detected';
 				osSpan.style.fontStyle = 'italic';
