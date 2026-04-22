@@ -1104,19 +1104,26 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			osOutdated := types.OSOutdated.String()
 			results[i].ClientErrors = append(results[i].ClientErrors, osOutdated)
 		}
-		// If OS is installed but OS name is missing (need to update OS info)
+		// If OS is installed
 		if results[i].OsInstalled != nil && *results[i].OsInstalled {
+			// if OS name is missing (need to update OS info)
 			if results[i].OsName == nil || strings.TrimSpace(*results[i].OsName) == "" {
-				osMissing := types.OSOutdated.String()
+				osMissing := types.OSMissingInfo.String()
 				results[i].ClientErrors = append(results[i].ClientErrors, osMissing)
 			}
+			// If OS version is missing (need to update OS info)
 			if results[i].OsVersion == nil || strings.TrimSpace(*results[i].OsVersion) == "" {
 				osMissingInfo := types.OSMissingInfo.String()
 				results[i].ClientErrors = append(results[i].ClientErrors, osMissingInfo)
 			}
-			if results[i].LatestOsVersion != nil && results[i].OsVersion != nil && *results[i].OsVersion != *results[i].LatestOsVersion {
+			// If OS version is not the latest (need to update OS info and/or update OS)
+			if results[i].LatestOsVersion != nil && results[i].OsVersion != nil {
+				currentVersion := strings.TrimSpace(*results[i].OsVersion)
+				latestVersion := strings.TrimSpace(*results[i].LatestOsVersion)
+				if currentVersion != "" && latestVersion != "" && currentVersion != latestVersion {
 				osOutdated := types.OSOutdated.String()
 				results[i].ClientErrors = append(results[i].ClientErrors, osOutdated)
+				}
 			}
 		} else { // If OS is not installed
 			osNotInstalled := types.OSNotInstalled.String()
