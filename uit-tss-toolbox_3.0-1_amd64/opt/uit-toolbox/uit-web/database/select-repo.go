@@ -914,6 +914,14 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		WITH files AS (
 			SELECT client_uuid, COUNT(*) AS file_count from client_images WHERE hidden = FALSE GROUP BY client_uuid
 		),
+		latest_os_versions AS (
+			SELECT DISTINCT ON (os_info.os_name)
+				os_info.os_name,
+				(CASE WHEN os_info.windows_build_number IS NOT NULL AND os_info.windows_ubr IS NOT NULL THEN CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) ELSE NULL END) AS latest_os_version
+			FROM os_info
+			WHERE os_info.os_name IS NOT NULL
+			ORDER BY os_info.os_name, os_info.windows_build_number DESC NULLS LAST, os_info.windows_ubr DESC NULLS LAST
+		),
 		latest_historical_hardware_data AS (
 			SELECT DISTINCT ON (historical_hardware_data.client_uuid) 
 				historical_hardware_data.client_uuid, 
@@ -938,15 +946,8 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			static_ad_domains.domain_name_formatted, 
 			(CASE WHEN client_health.os_installed THEN TRUE ELSE FALSE END) AS "os_installed",
 			os_info.os_name, 
-			CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) AS "os_version",
-			(
-				SELECT CONCAT(oi.windows_build_number, '.', oi.windows_ubr)
-				FROM os_info oi
-				WHERE oi.client_uuid = locations.client_uuid
-					AND oi.os_name = os_info.os_name
-				ORDER BY oi.windows_build_number DESC NULLS LAST, oi.windows_ubr DESC NULLS LAST
-				LIMIT 1
-			) AS "latest_os_version",
+			(CASE WHEN os_info.windows_build_number IS NOT NULL AND os_info.windows_ubr IS NOT NULL THEN CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) ELSE NULL END) AS "os_version",
+			latest_os_versions.latest_os_version AS "latest_os_version",
 			client_health.last_hardware_check,
 			(CASE 
 				WHEN latest_historical_hardware_data.bios_version = static_bios_stats.bios_version THEN TRUE
@@ -971,6 +972,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			LEFT JOIN latest_historical_hardware_data ON locations.client_uuid = latest_historical_hardware_data.client_uuid
 			LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
 			LEFT JOIN os_info ON locations.client_uuid = os_info.client_uuid
+			LEFT JOIN latest_os_versions ON os_info.os_name = latest_os_versions.os_name
 		WHERE %s
 		GROUP BY 
 			locations.client_uuid,
@@ -992,6 +994,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			os_info.os_version,
 			os_info.windows_build_number,
 			os_info.windows_ubr,
+			latest_os_versions.latest_os_version,
 			client_health.last_hardware_check,
 			static_bios_stats.bios_version,
 			latest_historical_hardware_data.bios_version,
