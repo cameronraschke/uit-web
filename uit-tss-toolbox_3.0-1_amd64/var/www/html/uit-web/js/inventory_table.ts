@@ -304,8 +304,12 @@ async function renderInventoryTable() {
 
 			// OS Installed
 			const osSpan = document.createElement('span');
-			osSpan.textContent = 'OS Not Detected';
-			osSpan.style.fontStyle = 'italic';
+			if (inventoryRow.os_installed === true) {
+				osSpan.textContent = `${inventoryRow.os_name} (${inventoryRow.os_version})`;
+			} else {
+				osSpan.textContent = 'OS Not Detected';
+				osSpan.style.fontStyle = 'italic';
+			}
 			softwareContainer.appendChild(osSpan);
 
 			// AD Domain

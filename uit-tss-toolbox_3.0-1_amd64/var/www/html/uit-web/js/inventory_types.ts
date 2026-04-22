@@ -120,6 +120,9 @@ type InventoryTableRow = {
 	device_type: string | "";
 	device_type_formatted: string | "";
 	department_formatted: string | "";
+	os_installed: boolean | null;
+	os_name: string | "";
+	os_version: string | "";
 	ad_domain_formatted: string | "";
 	status_formatted: string | "";
 	is_broken: boolean | null;
