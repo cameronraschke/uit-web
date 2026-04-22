@@ -146,7 +146,6 @@ async function renderInventoryTable() {
 			const osInstalled = Boolean(inventoryRow.os_installed);
 			const osName = inventoryRow.os_name ?? '';
 			const osVersion = inventoryRow.os_version ?? '';
-			const latestOSVersion = inventoryRow.latest_os_version ?? '';
 
 
 			tr.dataset.lastUpdated = lastUpdated.toString();

@@ -939,7 +939,14 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			(CASE WHEN client_health.os_installed THEN TRUE ELSE FALSE END) AS "os_installed",
 			os_info.os_name, 
 			CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) AS "os_version",
-			MAX(CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr)) AS "latest_os_version",
+			(
+				SELECT CONCAT(oi.windows_build_number, '.', oi.windows_ubr)
+				FROM os_info oi
+				WHERE oi.client_uuid = locations.client_uuid
+					AND oi.os_name = os_info.os_name
+				ORDER BY oi.windows_build_number DESC NULLS LAST, oi.windows_ubr DESC NULLS LAST
+				LIMIT 1
+			) AS "latest_os_version",
 			client_health.last_hardware_check,
 			(CASE 
 				WHEN latest_historical_hardware_data.bios_version = static_bios_stats.bios_version THEN TRUE
@@ -966,6 +973,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			LEFT JOIN os_info ON locations.client_uuid = os_info.client_uuid
 		WHERE %s
 		GROUP BY 
+			locations.client_uuid,
 			locations.tagnumber, 
 			locations.system_serial,
 			locations.location,
@@ -982,7 +990,6 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			client_health.os_installed,
 			os_info.os_name,
 			os_info.os_version,
-			MAX(CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr)) AS "latest_os_version",
 			client_health.last_hardware_check,
 			static_bios_stats.bios_version,
 			latest_historical_hardware_data.bios_version,
@@ -1031,6 +1038,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&row.OsInstalled,
 			&row.OsName,
 			&row.OsVersion,
+			&row.LatestOsVersion,
 			&row.LastHardwareCheck,
 			&row.BIOSUpdated,
 			&row.BIOSVersion,
