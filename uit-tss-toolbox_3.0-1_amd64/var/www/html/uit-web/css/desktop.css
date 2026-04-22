@@ -435,6 +435,15 @@ td > div.flex-container {
 .flex-container.vertical {
   flex-direction: column;
 }
+.flex-container.vertical.centered {
+	justify-content: center;
+	align-items: center;
+	gap: var(--select-element-margin);
+	text-align: center;
+	span {
+		width: 100%;
+	}
+}
 
 .flex-container.vertical.outlined {
 	border: var(--border-width) solid var(--default-border-color);
@@ -460,7 +469,12 @@ td > div.flex-container {
 
 .flex-container.horizontal.centered {
 	justify-content: center;
+	align-items: center;
 	gap: var(--select-element-margin);
+	text-align: center;
+	span {
+		width: 100%;
+	}
 }
 
 .flex-container.horizontal.spaced {

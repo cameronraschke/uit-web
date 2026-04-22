@@ -132,19 +132,29 @@ async function renderInventoryTable() {
 
 			// variables & dataset values
 			const lastUpdated = inventoryRow.last_updated ? new Date(inventoryRow.last_updated).getTime() : '';
-			const tagnumber = inventoryRow.tagnumber.toString() || '';
+			const tagnumber = inventoryRow.tagnumber.toString() ?? '';
 			const systemSerial = inventoryRow.system_serial ? inventoryRow.system_serial.trim() : '';
-			const locationFormatted = inventoryRow.location_formatted || '';
-			const building = inventoryRow.building || '';
-			const room = inventoryRow.room || '';
-			const note = inventoryRow.note || '';
+			const locationFormatted = inventoryRow.location_formatted ?? '';
+			const departmentFormatted = inventoryRow.department_formatted ?? '';
+			const building = inventoryRow.building ?? '';
+			const room = inventoryRow.room ?? '';
+			const note = inventoryRow.note ?? '';
+			const systemManufacturer = inventoryRow.system_manufacturer ?? '';
+			const systemModel = inventoryRow.system_model ?? '';
+			const deviceTypeFormatted = inventoryRow.device_type_formatted ?? '';
+			const adDomainFormatted = inventoryRow.ad_domain_formatted ?? '';
+
 
 			tr.dataset.lastUpdated = lastUpdated.toString();
 			tr.dataset.tagnumber = tagnumber;
 			tr.dataset.systemSerial = systemSerial;
 			tr.dataset.locationFormatted = locationFormatted;
 			tr.dataset.note = note;
-
+			tr.dataset.systemManufacturer = systemManufacturer;
+			tr.dataset.systemModel = systemModel;
+			tr.dataset.deviceType = deviceTypeFormatted;
+			tr.dataset.adDomain = adDomainFormatted;
+			
 			// Actions cell
 			const actionsCell = document.createElement('td');
 			const actionsContainer = document.createElement('div');
@@ -182,18 +192,12 @@ async function renderInventoryTable() {
 			// Tag Number URL with system serial as well
 			const idCell = document.createElement('td');
 			const idContainer = document.createElement('div');
-			const tagDiv = document.createElement('div');
-			const serialDiv = document.createElement('div');
 
-			idContainer.classList.add('flex-container', 'vertical');
-			tagDiv.classList.add('flex-container', 'horizontal');
-			tagDiv.style.justifyContent = 'center';
-			serialDiv.classList.add('flex-container', 'horizontal', 'smaller-text');
+			idContainer.classList.add('flex-container', 'vertical', 'centered');
 			
 			// Tag number
 			const tagSpan = document.createElement('span');
 			tagSpan.appendChild(document.createTextNode(tagnumber));
-			tagDiv.appendChild(tagSpan);
 			// Tooltip to show errors
 			if (inventoryRow.client_configuration_errors && inventoryRow.client_configuration_errors.length > 0) {
 				const tooltipIndicator = document.createElement('img');
@@ -206,95 +210,118 @@ async function renderInventoryTable() {
 					tooltipIndicator,
 					'Configuration Error(s): ' + inventoryRow.client_configuration_errors.join(', '),
 				);
-				tagDiv.appendChild(tooltipIndicator);
+				tagSpan.appendChild(tooltipIndicator);
 			}
-			serialDiv.textContent = systemSerial;
+			idContainer.appendChild(tagSpan);
 
-			idContainer.appendChild(tagDiv);
-			idContainer.appendChild(serialDiv);
+			// System Serial
+			const serialSpan = document.createElement('span');
+			serialSpan.classList.add('smaller-text');
+			serialSpan.textContent = systemSerial;
+			idContainer.appendChild(serialSpan);
+
 			idCell.appendChild(idContainer);
 			tr.appendChild(idCell);
 
-			// Location
+			// Location Column
 			const locationCell = document.createElement('td');
 			const locationContainer = document.createElement('div');
-			const locationFormattedDiv = document.createElement('div');
-			const buildingRoomDiv = document.createElement('div');
-			const departmentDiv = document.createElement('div');
-
 			locationContainer.classList.add('flex-container', 'vertical');
-			locationFormattedDiv.classList.add('flex-container', 'horizontal');
-			buildingRoomDiv.classList.add('flex-container', 'horizontal', 'smaller-text');
-			departmentDiv.classList.add('flex-container', 'horizontal', 'smaller-text');
 
-			locationFormattedDiv.textContent = locationFormatted || 'N/A';
-			buildingRoomDiv.textContent = `B: ${building || 'N/A'} - R: ${room || 'N/A'}`;
-			if (!locationFormatted) locationFormattedDiv.style.fontStyle = 'italic';
-			if (!building && !room) buildingRoomDiv.style.fontStyle = 'italic';
-			if (!inventoryRow.department_formatted) departmentDiv.style.fontStyle = 'italic';
-			departmentDiv.appendChild(document.createTextNode(inventoryRow.department_formatted || 'N/A'));
+			// Location
+			const locationSpan = document.createElement('span');
+			locationSpan.textContent = locationFormatted || 'N/A';
+			if (locationFormatted === '') locationSpan.style.fontStyle = 'italic';
+			locationContainer.appendChild(locationSpan);
 
-			locationContainer.appendChild(locationFormattedDiv);
-			locationContainer.appendChild(buildingRoomDiv);
-			locationContainer.appendChild(departmentDiv);
+			// Building/room
+			const buildingRoomSpan = document.createElement('span');
+			buildingRoomSpan.classList.add('smaller-text');
+			buildingRoomSpan.textContent = `Bldg: ${building || 'N/A'} - Rm: ${room || 'N/A'}`;
+			if (building === '' || room === '') buildingRoomSpan.style.fontStyle = 'italic';
+			locationContainer.appendChild(buildingRoomSpan);
+
+			// Department
+			const deptSpan = document.createElement('span');
+			deptSpan.classList.add('smaller-text');
+			const departmentText = document.createTextNode(`Dept: ${departmentFormatted || 'N/A'}`);
+			if (departmentFormatted === '') deptSpan.style.fontStyle = 'italic';
+			deptSpan.appendChild(departmentText);
+			locationContainer.appendChild(deptSpan);
+
 			locationCell.appendChild(locationContainer);
 			tr.appendChild(locationCell);
 
-			// Manufacturer and Model combined cell
-			const manufacturerModelCell = document.createElement('td');
-			const manufacturerModelContainer = document.createElement('div');
-			const deviceTypeContainer = document.createElement('div');
-			const manufacturerModelDiv = document.createElement('div');
+			// Hardware Info
+			const hardwareCell = document.createElement('td');
 
-			manufacturerModelContainer.classList.add('flex-container', 'vertical');
-			deviceTypeContainer.classList.add('flex-container', 'horizontal');
-			manufacturerModelDiv.classList.add('flex-container', 'horizontal', 'smaller-text');
+			const hardwareContainer = document.createElement('div');
+			hardwareContainer.classList.add('flex-container', 'vertical', 'centered');
 
-			manufacturerModelCell.dataset.systemManufacturer = inventoryRow.system_manufacturer || '';
-			manufacturerModelCell.dataset.systemModel = inventoryRow.system_model || '';
-			manufacturerModelCell.dataset.deviceType = inventoryRow.device_type || '';
-
-
-			let deviceTypeText = 'N/A';
-			if (inventoryRow.device_type) {
-				deviceTypeText = inventoryRow.device_type_formatted || inventoryRow.device_type;
+			// Manufacturer/Model
+			const manufacturerModelSpan = document.createElement('span');
+			if (systemManufacturer !== '' && systemModel !== '') {
+				manufacturerModelSpan.textContent = `${systemManufacturer}/${systemModel}`;
+			} else if (systemManufacturer !== '' && systemModel === '') {
+				manufacturerModelSpan.textContent = `${systemManufacturer}/Unknown Model`;
+			} else if (systemManufacturer === '' && systemModel !== '') {
+				manufacturerModelSpan.textContent = `Unknown Manufacturer/${systemModel}`;
 			} else {
-				deviceTypeContainer.style.fontStyle = 'italic';
+				manufacturerModelSpan.style.fontStyle = 'italic';
 			}
-			deviceTypeContainer.textContent = truncateString(deviceTypeText, 20).truncatedString;
-
-			let manufacturerModelText = 'N/A';
-			if (inventoryRow.system_manufacturer && inventoryRow.system_model) {
-				manufacturerModelText = `${inventoryRow.system_manufacturer}/${inventoryRow.system_model}`;
-			} else if (inventoryRow.system_manufacturer && !inventoryRow.system_model) {
-				manufacturerModelText = `${inventoryRow.system_manufacturer}/Unknown Model`;
-			} else if (!inventoryRow.system_manufacturer && inventoryRow.system_model) {
-				manufacturerModelText = `Unknown Manufacturer/${inventoryRow.system_model}`;
-			} else {
-				manufacturerModelDiv.style.fontStyle = 'italic';
-			}
-			if (manufacturerModelText.length > 30) {
-				const arr = manufacturerModelText.split('/');
+			if (manufacturerModelSpan.textContent.length > 30) {
+				const arr = manufacturerModelSpan.textContent.split('/');
 				const truncated = `${arr[0].substring(0, 11)}.../${arr[1].substring(0, 17)}...`;
-				manufacturerModelDiv.title = manufacturerModelText;
-				manufacturerModelDiv.style.cursor = 'pointer';
-				manufacturerModelDiv.textContent = truncated;
-				manufacturerModelDiv.addEventListener('click', () => {
-					manufacturerModelDiv.textContent = manufacturerModelText;
-					manufacturerModelDiv.style.cursor = 'auto';
+				manufacturerModelSpan.title = manufacturerModelSpan.textContent;
+				manufacturerModelSpan.style.cursor = 'pointer';
+				manufacturerModelSpan.textContent = truncated;
+				manufacturerModelSpan.addEventListener('click', () => {
+					manufacturerModelSpan.textContent = manufacturerModelSpan.title;
+					manufacturerModelSpan.style.cursor = 'auto';
 				}, { once: true });
 			} else {
-				manufacturerModelDiv.textContent = manufacturerModelText;
+				manufacturerModelSpan.textContent = manufacturerModelSpan.textContent;
 			}
+			hardwareContainer.appendChild(manufacturerModelSpan);
 
-			manufacturerModelContainer.appendChild(deviceTypeContainer)
-			manufacturerModelContainer.appendChild(manufacturerModelDiv);
-			manufacturerModelCell.appendChild(manufacturerModelContainer);
-			tr.appendChild(manufacturerModelCell);
-			
+			// Device Type
+			const deviceTypeSpan = document.createElement('span');
+			deviceTypeSpan.classList.add('smaller-text');
+			if (inventoryRow.device_type !== '') {
+				deviceTypeSpan.textContent = `Type: ${truncateString(deviceTypeFormatted, 20).truncatedString}`;
+			} else {
+				deviceTypeSpan.style.fontStyle = 'italic';
+			}
+			hardwareContainer.appendChild(deviceTypeSpan);
+
+			hardwareCell.appendChild(hardwareContainer);
+			tr.appendChild(hardwareCell);
+
+			// Software Info
+			const softwareCell = document.createElement('td');
+			const softwareContainer = document.createElement('div');
+			softwareContainer.classList.add('flex-container', 'vertical', 'centered');
+
+			// OS Installed
+			const osSpan = document.createElement('span');
+			osSpan.textContent = 'OS Not Detected';
+			osSpan.style.fontStyle = 'italic';
+			softwareContainer.appendChild(osSpan);
 
 			// AD Domain
-			tr.appendChild(createTextCell(undefined, 'ad_domain', inventoryRow.ad_domain_formatted, 20, undefined));
+			const domainSpan = document.createElement('span');
+			domainSpan.classList.add('smaller-text');
+			domainSpan.appendChild(document.createTextNode('AD Domain: '));
+			if (adDomainFormatted !== '' && adDomainFormatted !== 'None') {
+				domainSpan.appendChild(document.createTextNode(adDomainFormatted));
+			} else {
+				domainSpan.appendChild(document.createTextNode('N/A'));
+				domainSpan.style.fontStyle = 'italic';
+			}
+			softwareContainer.appendChild(domainSpan);
+
+			softwareCell.appendChild(softwareContainer);
+			tr.appendChild(softwareCell);
 
 			// Status
 			tr.appendChild(createTextCell(undefined, 'status', inventoryRow.status_formatted, undefined, undefined));
