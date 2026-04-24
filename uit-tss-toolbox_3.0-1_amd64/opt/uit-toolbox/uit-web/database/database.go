@@ -14,6 +14,7 @@ import (
 	"uit-toolbox/config"
 	"uit-toolbox/types"
 
+	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -101,6 +102,13 @@ func toNullString(s string) sql.NullString {
 		return sql.NullString{}
 	}
 	return sql.NullString{String: s, Valid: true}
+}
+
+func toNullUUID(u uuid.UUID) sql.NullString {
+	if u.String() == "" || u == (uuid.UUID{}) {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: u.String(), Valid: true}
 }
 
 func toNullInt64(i int64) sql.NullInt64 {

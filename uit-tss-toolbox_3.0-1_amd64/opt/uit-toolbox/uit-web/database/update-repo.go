@@ -1946,22 +1946,28 @@ func (updateRepo *UpdateRepo) BulkUpdateClientLocation(ctx context.Context, tran
 	return nil
 }
 
-func UpdateFromWindowsJSON(ctx context.Context, transactionUUID uuid.UUID, clientHealthData *types.ClientHealthDTO, historicalHardwareData *types.WindowsUpdateDTO) (err error) {
+func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsUpdateDTO, transactionUUID uuid.UUID) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
 		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
 	}
-	if clientHealthData == nil {
+	if windowsUpdateDTO == nil {
 		return fmt.Errorf("%w: %s", types.InvalidFieldError, "ClientHealthDTO")
 	}
-	if err := types.IsTagnumberInt64Valid(&clientHealthData.Tagnumber); err != nil {
+	if err := types.IsTagnumberInt64Valid(&windowsUpdateDTO.Tagnumber); err != nil {
 		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
+	}
+	if strings.TrimSpace(windowsUpdateDTO.SystemSerial) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "SystemSerial")
+	}
+
+	if strings.TrimSpace(transactionUUID.String()) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "TransactionUUID")
 	}
 
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
-
 	tx, err := dbConn.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
@@ -1975,6 +1981,7 @@ func UpdateFromWindowsJSON(ctx context.Context, transactionUUID uuid.UUID, clien
 		}
 	}()
 
+	// hardware_data upsert
 	const hardwareDataSql = `
 		INSERT INTO hardware_data (
 			time,
@@ -2021,16 +2028,16 @@ func UpdateFromWindowsJSON(ctx context.Context, transactionUUID uuid.UUID, clien
 	;`
 
 	hardwareDataResult, err := tx.ExecContext(ctx, hardwareDataSql,
-		transactionUUID,
-		toNullInt64(historicalHardwareData.Tagnumber),
-		toNullString(historicalHardwareData.SystemSerial),
-		ptrToNullString(historicalHardwareData.EthernetMACAddr),
-		ptrToNullString(historicalHardwareData.WifiMACAddr),
-		ptrToNullString(historicalHardwareData.SystemManufacturer),
-		ptrToNullString(historicalHardwareData.SystemModel),
-		ptrToNullString(historicalHardwareData.CPUModel),
-		ptrToNullInt64(historicalHardwareData.CPUCoreCount),
-		ptrToNullInt64(historicalHardwareData.CPUThreadCount),
+		toNullUUID(transactionUUID),
+		toNullInt64(windowsUpdateDTO.Tagnumber),
+		toNullString(windowsUpdateDTO.SystemSerial),
+		ptrToNullString(windowsUpdateDTO.EthernetMACAddr),
+		ptrToNullString(windowsUpdateDTO.WifiMACAddr),
+		ptrToNullString(windowsUpdateDTO.SystemManufacturer),
+		ptrToNullString(windowsUpdateDTO.SystemModel),
+		ptrToNullString(windowsUpdateDTO.CPUModel),
+		ptrToNullInt64(windowsUpdateDTO.CPUCoreCount),
+		ptrToNullInt64(windowsUpdateDTO.CPUThreadCount),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -2039,20 +2046,14 @@ func UpdateFromWindowsJSON(ctx context.Context, transactionUUID uuid.UUID, clien
 		return err
 	}
 
-	// Insert/update client_health table
+	// client_health upsert
 	const clientHealthSql = `
 		INSERT INTO client_health
 			(
 				time, 
 				transaction_uuid, 
 				client_uuid, 
-				disk_health_pcnt, 
 				battery_health_pcnt, 
-				avg_erase_time, 
-				avg_clone_time, 
-				total_jobs_completed, 
-				last_clone_job_time, 
-				last_erase_job_time, 
 				disk_free_space_kb, 
 				last_hardware_check, 
 				updated_from_windows
@@ -2064,42 +2065,25 @@ func UpdateFromWindowsJSON(ctx context.Context, transactionUUID uuid.UUID, clien
 			$4,
 			$5,
 			$6,
-			$7,
-			$8,
-			$9,
-			$10,
-			$11,
-			$12,
 			TRUE
 		)
 		ON CONFLICT (client_uuid)
 			DO UPDATE SET
 				time = CURRENT_TIMESTAMP,
 				transaction_uuid = EXCLUDED.transaction_uuid,
-				disk_health_pcnt = COALESCE(EXCLUDED.disk_health_pcnt, client_health.disk_health_pcnt),
 				battery_health_pcnt = COALESCE(EXCLUDED.battery_health_pcnt, client_health.battery_health_pcnt),
-				avg_erase_time = COALESCE(EXCLUDED.avg_erase_time, client_health.avg_erase_time),
-				avg_clone_time = COALESCE(EXCLUDED.avg_clone_time, client_health.avg_clone_time),
-				total_jobs_completed = COALESCE(EXCLUDED.total_jobs_completed, client_health.total_jobs_completed),
-				last_clone_job_time = COALESCE(EXCLUDED.last_clone_job_time, client_health.last_clone_job_time),
-				last_erase_job_time = COALESCE(EXCLUDED.last_erase_job_time, client_health.last_erase_job_time),
 				disk_free_space_kb = COALESCE(EXCLUDED.disk_free_space_kb, client_health.disk_free_space_kb),
 				last_hardware_check = COALESCE(EXCLUDED.last_hardware_check, client_health.last_hardware_check),
 				updated_from_windows = TRUE
 	;`
 
 	clientHealthResult, err := tx.ExecContext(ctx, clientHealthSql,
-		transactionUUID,
-		clientHealthData.Tagnumber,
-		clientHealthData.SystemSerial,
-		ptrToNullFloat64(clientHealthData.DiskHealthPcnt),
-		ptrToNullFloat64(clientHealthData.BatteryHealthPcnt),
-		ptrToNullFloat64(clientHealthData.AvgEraseTime),
-		ptrToNullFloat64(clientHealthData.AvgCloneTime),
-		ptrToNullInt64(clientHealthData.TotalJobsCompleted),
-		ptrToNullTime(clientHealthData.LastCloneJobTime),
-		ptrToNullTime(clientHealthData.LastEraseJobTime),
-		ptrToNullTime(clientHealthData.LastHardwareCheck),
+		toNullUUID(transactionUUID),
+		toNullInt64(windowsUpdateDTO.Tagnumber),
+		toNullString(windowsUpdateDTO.SystemSerial),
+		ptrToNullFloat64(windowsUpdateDTO.BatteryHealthPcnt),
+		ptrToNullInt64(windowsUpdateDTO.DiskFreeSpaceKB),
+		toNullTime(windowsUpdateDTO.LastHardwareCheck),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -2108,7 +2092,8 @@ func UpdateFromWindowsJSON(ctx context.Context, transactionUUID uuid.UUID, clien
 		return err
 	}
 
-	clientHistoricalHealthSql := `
+	// historical_hardware_data insert
+	const clientHistoricalHealthSql = `
 		INSERT INTO historical_hardware_data (
 				time,
 				transaction_uuid,
@@ -2133,7 +2118,7 @@ func UpdateFromWindowsJSON(ctx context.Context, transactionUUID uuid.UUID, clien
 				CURRENT_TIMESTAMP,
 				$1,
 				TRUE,
-				(SELECT uuid FROM ids WHERE tagnumber = $2 and system_serial = $3) 
+				(SELECT uuid FROM ids WHERE tagnumber = $2 and system_serial = $3),
 				$4,
 				$5,
 				$6,
@@ -2153,24 +2138,24 @@ func UpdateFromWindowsJSON(ctx context.Context, transactionUUID uuid.UUID, clien
 	;`
 
 	historicalClientHealthRes, err := tx.ExecContext(ctx, clientHistoricalHealthSql,
-		transactionUUID,
-		historicalHardwareData.Tagnumber,
-		historicalHardwareData.SystemSerial,
-		ptrToNullString(historicalHardwareData.EthernetMACAddr),
-		ptrToNullString(historicalHardwareData.WifiMACAddr),
-		ptrToNullString(historicalHardwareData.DiskModel),
-		ptrToNullString(historicalHardwareData.DiskType),
-		ptrToNullInt64(historicalHardwareData.DiskSizeKB),
-		ptrToNullString(historicalHardwareData.BatterySerial),
-		ptrToNullString(historicalHardwareData.BatteryManufacturer),
-		ptrToNullInt64(historicalHardwareData.BatteryDesignCapacity),
-		ptrToNullInt64(historicalHardwareData.BatteryCurrentMaxCapacity),
-		ptrToNullInt64(historicalHardwareData.BatteryChargeCycleCount),
-		ptrToNullFloat64(historicalHardwareData.BatteryHealthPcnt),
-		ptrToNullString(historicalHardwareData.BIOSVersion),
-		ptrToNullTime(historicalHardwareData.BIOSReleaseDate),
-		ptrToNullInt64(historicalHardwareData.MemoryCapacityKB),
-		ptrToNullInt64(historicalHardwareData.MemorySpeedMHz),
+		toNullUUID(transactionUUID),
+		toNullInt64(windowsUpdateDTO.Tagnumber),
+		toNullString(windowsUpdateDTO.SystemSerial),
+		ptrToNullString(windowsUpdateDTO.EthernetMACAddr),
+		ptrToNullString(windowsUpdateDTO.WifiMACAddr),
+		ptrToNullString(windowsUpdateDTO.DiskModel),
+		ptrToNullString(windowsUpdateDTO.DiskType),
+		ptrToNullInt64(windowsUpdateDTO.DiskSizeKB),
+		ptrToNullString(windowsUpdateDTO.BatterySerial),
+		ptrToNullString(windowsUpdateDTO.BatteryManufacturer),
+		ptrToNullInt64(windowsUpdateDTO.BatteryDesignCapacity),
+		ptrToNullInt64(windowsUpdateDTO.BatteryCurrentMaxCapacity),
+		ptrToNullInt64(windowsUpdateDTO.BatteryChargeCycleCount),
+		ptrToNullFloat64(windowsUpdateDTO.BatteryHealthPcnt),
+		ptrToNullString(windowsUpdateDTO.BIOSVersion),
+		ptrToNullTime(windowsUpdateDTO.BIOSReleaseDate),
+		ptrToNullInt64(windowsUpdateDTO.MemoryCapacityKB),
+		ptrToNullInt64(windowsUpdateDTO.MemorySpeedMHz),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -2179,199 +2164,7 @@ func UpdateFromWindowsJSON(ctx context.Context, transactionUUID uuid.UUID, clien
 		return err
 	}
 
-	return nil
-}
-
-func UpdateWindowsClientInfo(ctx context.Context, winClientInfo *types.WindowsUpdateDTO, transactionUUID string) (err error) {
-	if winClientInfo == nil {
-		return fmt.Errorf("%w: %s", types.InvalidStructureError, "WindowsUpdateDTO")
-	}
-	if err := types.IsTagnumberInt64Valid(&winClientInfo.Tagnumber); err != nil {
-		return fmt.Errorf("%w: %s", types.InvalidFieldError, "Tagnumber")
-	}
-	if strings.TrimSpace(winClientInfo.SystemSerial) == "" {
-		return fmt.Errorf("%w: %s", types.MissingFieldError, "SystemSerial")
-	}
-	if strings.TrimSpace(transactionUUID) == "" {
-		return fmt.Errorf("%w: %s", types.MissingFieldError, "TransactionUUID")
-	}
-
-	dbConn, err := config.GetDatabaseConn()
-	if err != nil {
-		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
-	}
-	tx, err := dbConn.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
-	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		} else {
-			err = tx.Commit()
-		}
-	}()
-
-	const clientHealthDataSQLCode = `
-		INSERT INTO 
-			client_health
-		(
-			time,
-			client_uuid,
-			last_hardware_check,
-			tpm_version,
-			disk_free_space_kb,
-			updated_from_windows,
-			transaction_uuid
-		)
-		VALUES
-		(
-			CURRENT_TIMESTAMP,
-			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
-			CURRENT_TIMESTAMP,
-			$1,
-			$2,
-			$3,
-			$4
-		) ON CONFLICT (tagnumber) DO UPDATE SET
-			time = CURRENT_TIMESTAMP,
-			client_uuid = COALESCE(EXCLUDED.client_uuid, client_health.client_uuid),
-			last_hardware_check = CURRENT_TIMESTAMP,
-			system_serial = COALESCE(EXCLUDED.system_serial, client_health.system_serial),
-			tpm_version = COALESCE(EXCLUDED.tpm_version, client_health.tpm_version),
-			disk_free_space_kb = COALESCE(EXCLUDED.disk_free_space_kb, client_health.disk_free_space_kb),
-			updated_from_windows = TRUE,
-			transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, client_health.transaction_uuid)
-	;`
-
-	var sqlResult sql.Result
-	sqlResult, err = tx.ExecContext(ctx, clientHealthDataSQLCode,
-		toNullInt64(winClientInfo.Tagnumber),
-		toNullString(winClientInfo.SystemSerial),
-		winClientInfo.TPMVersion,
-		ptrToNullString(winClientInfo.EthernetMACAddr),
-		ptrToNullString(winClientInfo.WifiMACAddr),
-		winClientInfo.DiskFreeSpaceKB,
-		true,
-		transactionUUID,
-	)
-	if err != nil {
-		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
-	}
-	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
-	}
-
-	const historicalHardwareDataSQLCode = `
-		INSERT INTO
-			historical_hardware_data (
-				time,
-				client_uuid,
-				tagnumber,
-				system_serial,
-				ethernet_mac,
-				wifi_mac,
-				bios_version,
-				disk_model,
-				disk_type,
-				disk_size_kb,
-				memory_capacity_kb,
-				memory_speed_mhz,
-				battery_manufacturer,
-				battery_serial,
-				battery_current_max_capacity,
-				battery_design_capacity,
-				battery_charge_cycles,
-				battery_health,
-				updated_from_windows,
-				transaction_uuid
-			)
-		VALUES (
-			CURRENT_TIMESTAMP,
-			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
-			$1,
-			$2,
-			$3,
-			$4,
-			$5,
-			$6,
-			$7,
-			$8,
-			$9,
-			$10,
-			$11,
-			$12,
-			$13,
-			$14,
-			$15,
-			$16,
-			TRUE,
-			$17
-		)
-	;`
-
-	historicalHWData, err := tx.ExecContext(ctx, historicalHardwareDataSQLCode,
-		toNullInt64(winClientInfo.Tagnumber),
-		toNullString(winClientInfo.SystemSerial),
-		ptrToNullString(winClientInfo.EthernetMACAddr),
-		ptrToNullString(winClientInfo.WifiMACAddr),
-		ptrToNullString(winClientInfo.BIOSVersion),
-		ptrToNullString(winClientInfo.DiskModel),
-		ptrToNullString(winClientInfo.DiskType),
-		ptrToNullInt64(winClientInfo.DiskSizeKB),
-		ptrToNullInt64(winClientInfo.MemoryCapacityKB),
-		ptrToNullInt64(winClientInfo.MemorySpeedMHz),
-		ptrToNullString(winClientInfo.BatteryManufacturer),
-		ptrToNullString(winClientInfo.BatterySerial),
-		ptrToNullInt64(winClientInfo.BatteryCurrentMaxCapacity),
-		ptrToNullInt64(winClientInfo.BatteryDesignCapacity),
-		ptrToNullInt64(winClientInfo.BatteryChargeCycleCount),
-		ptrToNullFloat64(winClientInfo.BatteryHealthPcnt),
-		transactionUUID,
-	)
-	if err != nil {
-		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
-	}
-	if err := VerifyRowsAffected(historicalHWData, 1); err != nil {
-		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
-	}
-
-	return nil
-}
-
-func UpsertOSInfo(ctx context.Context, osInfo *types.WindowsUpdateDTO, transactionUUID string) (err error) {
-	if osInfo == nil {
-		return fmt.Errorf("%w: %s", types.InvalidStructureError, "WindowsUpdateDTO")
-	}
-
-	if err := types.IsTagnumberInt64Valid(&osInfo.Tagnumber); err != nil {
-		return fmt.Errorf("%w: %s", types.InvalidFieldError, "Tagnumber")
-	}
-	if strings.TrimSpace(osInfo.SystemSerial) == "" {
-		return fmt.Errorf("%w: %s", types.MissingFieldError, "SystemSerial")
-	}
-	if strings.TrimSpace(transactionUUID) == "" {
-		return fmt.Errorf("%w: %s", types.MissingFieldError, "TransactionUUID")
-	}
-	dbConn, err := config.GetDatabaseConn()
-	if err != nil {
-		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
-	}
-	tx, err := dbConn.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
-	}
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				err = fmt.Errorf("%w: %w", err, rollbackErr)
-			}
-		} else {
-			if commitErr := tx.Commit(); commitErr != nil {
-				err = fmt.Errorf("%w: %w", types.DatabaseUpdateError, commitErr)
-			}
-		}
-	}()
+	// os_info upsert
 	const osInfoSQLCode = `
 		INSERT INTO os_info (
 			client_uuid,
@@ -2438,32 +2231,32 @@ func UpsertOSInfo(ctx context.Context, osInfo *types.WindowsUpdateDTO, transacti
 
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, osInfoSQLCode,
-		ptrToNullString(&transactionUUID),
-		toNullInt64(osInfo.Tagnumber),
-		toNullString(osInfo.SystemSerial),
-		ptrToNullTime(osInfo.OSInstalledAt),
-		ptrToNullString(osInfo.OSVendor),
-		ptrToNullString(osInfo.OSPlatform),
-		ptrToNullString(osInfo.OSArchitecture),
-		ptrToNullString(osInfo.OSName),
-		ptrToNullString(osInfo.OSVersion),
-		ptrToNullString(osInfo.WindowsDisplayVersion),
-		ptrToNullInt64(osInfo.WindowsBuildNumber),
-		ptrToNullInt64(osInfo.WindowsUBR),
-		ptrToNullBool(osInfo.WindowsBitlockerEnabled),
-		ptrToNullString(osInfo.ADAdminUsers),
-		ptrToNullString(osInfo.ComputerName),
-		ptrToNullString(osInfo.ADDomain),
-		ptrToNullString(osInfo.ADComputerName),
-		ptrToNullString(osInfo.ADDistinguishedName),
-		ptrToNullBool(osInfo.IsIntuneJoined),
+		toNullUUID(transactionUUID),
+		toNullInt64(windowsUpdateDTO.Tagnumber),
+		toNullString(windowsUpdateDTO.SystemSerial),
+		ptrToNullTime(windowsUpdateDTO.OSInstalledAt),
+		ptrToNullString(windowsUpdateDTO.OSVendor),
+		ptrToNullString(windowsUpdateDTO.OSPlatform),
+		ptrToNullString(windowsUpdateDTO.OSArchitecture),
+		ptrToNullString(windowsUpdateDTO.OSName),
+		ptrToNullString(windowsUpdateDTO.OSVersion),
+		ptrToNullString(windowsUpdateDTO.WindowsDisplayVersion),
+		ptrToNullInt64(windowsUpdateDTO.WindowsBuildNumber),
+		ptrToNullInt64(windowsUpdateDTO.WindowsUBR),
+		ptrToNullBool(windowsUpdateDTO.WindowsBitlockerEnabled),
+		ptrToNullString(windowsUpdateDTO.ADAdminUsers),
+		ptrToNullString(windowsUpdateDTO.ComputerName),
+		ptrToNullString(windowsUpdateDTO.ADDomain),
+		ptrToNullString(windowsUpdateDTO.ADComputerName),
+		ptrToNullString(windowsUpdateDTO.ADDistinguishedName),
+		ptrToNullBool(windowsUpdateDTO.IsIntuneJoined),
 	)
-
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
+
 	return nil
 }

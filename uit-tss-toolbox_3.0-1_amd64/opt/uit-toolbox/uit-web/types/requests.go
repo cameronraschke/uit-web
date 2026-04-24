@@ -7,52 +7,54 @@ import (
 )
 
 type WindowsUpdateRequest struct {
-	Tagnumber                 *int64   `json:"tagnumber"` // Converted later
-	SystemSerial              *string  `json:"system_serial"`
-	SystemManufacturer        *string  `json:"system_manufacturer"`
-	SystemModel               *string  `json:"system_model"`
-	SystemSKU                 *string  `json:"system_sku"`
-	ChassisType               *string  `json:"chassis_type"`
-	BIOSVersion               *string  `json:"bios_version"`
-	BIOSReleaseDate           *string  `json:"bios_release_date"` // Converted later
-	TPMVersion                *string  `json:"tpm_version"`
-	OSInstalledAt             *string  `json:"os_installed_at"` // Converted later
-	OSVendor                  *string  `json:"os_vendor"`
-	OSPlatform                *string  `json:"os_platform"`
-	OSArchitecture            *string  `json:"os_architecture"`
-	OSName                    *string  `json:"os_name"`
-	OSVersion                 *string  `json:"os_version"`
-	WindowsDisplayVersion     *string  `json:"windows_display_version"`
-	WindowsBuildNumber        *int64   `json:"windows_build_number"`
-	WindowsUBR                *int64   `json:"windows_ubr"`
-	WindowsBitlockerEnabled   *bool    `json:"windows_bitlocker_enabled"`
-	ComputerName              *string  `json:"computer_name"`
-	ADAdminUsers              *string  `json:"ad_admin_users"`
-	ADDomain                  *string  `json:"ad_domain"`
-	ADComputerName            *string  `json:"ad_computer_name"`
-	ADDistinguishedName       *string  `json:"ad_distinguished_name"`
-	IsIntuneJoined            *bool    `json:"is_intune_joined"`
-	MemoryCapacityKB          *int64   `json:"memory_capacity_kb"`
-	MemorySpeedMHz            *int64   `json:"memory_speed_mhz"`
-	CPUModel                  *string  `json:"cpu_model"`
-	CPUCoreCount              *int64   `json:"cpu_core_count"`
-	CPUThreadCount            *int64   `json:"cpu_thread_count"`
-	DiskModel                 *string  `json:"disk_model"`
-	DiskType                  *string  `json:"disk_type"`
-	DiskSizeKB                *int64   `json:"disk_size_kb"`
-	DiskFreeSpaceKB           *int64   `json:"disk_free_space_kb"`
-	EthernetMACAddr           *string  `json:"ethernet_mac_addr"`
-	WifiMACAddr               *string  `json:"wifi_mac_addr"`
-	BatteryManufacturer       *string  `json:"battery_manufacturer"`
-	BatterySerial             *string  `json:"battery_serial"`
-	BatteryCurrentMaxCapacity *int64   `json:"battery_current_max_capacity"`
-	BatteryDesignCapacity     *int64   `json:"battery_design_capacity"`
-	BatteryHealthPcnt         *float64 `json:"battery_health_pct"`
-	BatteryChargeCycleCount   *int64   `json:"battery_charge_cycle_count"`
-	UpdatedFromWindows        *bool    `json:"updated_from_windows"`
+	LastHardwareCheck         *time.Time `json:"last_hardware_check"`
+	Tagnumber                 *int64     `json:"tagnumber"` // Converted later
+	SystemSerial              *string    `json:"system_serial"`
+	SystemManufacturer        *string    `json:"system_manufacturer"`
+	SystemModel               *string    `json:"system_model"`
+	SystemSKU                 *string    `json:"system_sku"`
+	ChassisType               *string    `json:"chassis_type"`
+	BIOSVersion               *string    `json:"bios_version"`
+	BIOSReleaseDate           *string    `json:"bios_release_date"` // Converted later
+	TPMVersion                *string    `json:"tpm_version"`
+	OSInstalledAt             *string    `json:"os_installed_at"` // Converted later
+	OSVendor                  *string    `json:"os_vendor"`
+	OSPlatform                *string    `json:"os_platform"`
+	OSArchitecture            *string    `json:"os_architecture"`
+	OSName                    *string    `json:"os_name"`
+	OSVersion                 *string    `json:"os_version"`
+	WindowsDisplayVersion     *string    `json:"windows_display_version"`
+	WindowsBuildNumber        *int64     `json:"windows_build_number"`
+	WindowsUBR                *int64     `json:"windows_ubr"`
+	WindowsBitlockerEnabled   *bool      `json:"windows_bitlocker_enabled"`
+	ComputerName              *string    `json:"computer_name"`
+	ADAdminUsers              *string    `json:"ad_admin_users"`
+	ADDomain                  *string    `json:"ad_domain"`
+	ADComputerName            *string    `json:"ad_computer_name"`
+	ADDistinguishedName       *string    `json:"ad_distinguished_name"`
+	IsIntuneJoined            *bool      `json:"is_intune_joined"`
+	MemoryCapacityKB          *int64     `json:"memory_capacity_kb"`
+	MemorySpeedMHz            *int64     `json:"memory_speed_mhz"`
+	CPUModel                  *string    `json:"cpu_model"`
+	CPUCoreCount              *int64     `json:"cpu_core_count"`
+	CPUThreadCount            *int64     `json:"cpu_thread_count"`
+	DiskModel                 *string    `json:"disk_model"`
+	DiskType                  *string    `json:"disk_type"`
+	DiskSizeKB                *int64     `json:"disk_size_kb"`
+	DiskFreeSpaceKB           *int64     `json:"disk_free_space_kb"`
+	EthernetMACAddr           *string    `json:"ethernet_mac_addr"`
+	WifiMACAddr               *string    `json:"wifi_mac_addr"`
+	BatteryManufacturer       *string    `json:"battery_manufacturer"`
+	BatterySerial             *string    `json:"battery_serial"`
+	BatteryCurrentMaxCapacity *int64     `json:"battery_current_max_capacity"`
+	BatteryDesignCapacity     *int64     `json:"battery_design_capacity"`
+	BatteryHealthPcnt         *float64   `json:"battery_health_pct"`
+	BatteryChargeCycleCount   *int64     `json:"battery_charge_cycle_count"`
+	UpdatedFromWindows        *bool      `json:"updated_from_windows"`
 }
 
 type WindowsUpdateDTO struct {
+	LastHardwareCheck         time.Time
 	Tagnumber                 int64
 	SystemSerial              string
 	SystemManufacturer        *string
@@ -108,6 +110,10 @@ func NewWindowsUpdateDTO(request WindowsUpdateRequest) (*WindowsUpdateDTO, error
 		return nil, fmt.Errorf("tagnumber is required")
 	}
 
+	if request.LastHardwareCheck == nil || request.LastHardwareCheck.IsZero() {
+		return nil, fmt.Errorf("last_hardware_check is required")
+	}
+
 	if err := IsTagnumberInt64Valid(request.Tagnumber); err != nil {
 		return nil, fmt.Errorf("invalid tagnumber: %w", err)
 	}
@@ -137,6 +143,7 @@ func NewWindowsUpdateDTO(request WindowsUpdateRequest) (*WindowsUpdateDTO, error
 	}
 
 	return &WindowsUpdateDTO{
+		LastHardwareCheck:         *request.LastHardwareCheck,
 		Tagnumber:                 *request.Tagnumber,
 		SystemSerial:              *request.SystemSerial,
 		SystemManufacturer:        request.SystemManufacturer,

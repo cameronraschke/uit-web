@@ -1491,14 +1491,13 @@ func ReceiveWindowsClientInfo(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	if transactionUUID == uuid.Nil {
+	if transactionUUID == uuid.Nil || transactionUUID.String() == "" {
 		log.Error("transaction UUID is nil")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
-	transactionUUIDStr := transactionUUID.String()
-	if err := database.UpsertOSInfo(req.Context(), dto, transactionUUIDStr); err != nil {
+	if err := database.UpdateFromWindowsJSON(req.Context(), dto, transactionUUID); err != nil {
 		log.Error("Failed to update Windows client info: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
