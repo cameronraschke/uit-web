@@ -2086,7 +2086,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			(SELECT uuid FROM ids WHERE tagnumber = $2 AND system_serial = $3 ORDER BY time DESC LIMIT 1), 
 			$4,
 			$5,
-			$6
+			$6, 
 			TRUE
 		)
 		ON CONFLICT (client_uuid)
