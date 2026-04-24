@@ -1996,7 +1996,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			system_model,
 			cpu_model,
 			cpu_core_count,
-			cpu_thread_count,
+			cpu_thread_count
 		) VALUES (
 			CURRENT_TIMESTAMP,
 			$1,
@@ -2054,16 +2054,17 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 				client_uuid, 
 				battery_health_pcnt, 
 				disk_free_space_kb, 
+				tpm_version, 
 				last_hardware_check, 
 				updated_from_windows
-			) 
-		VALUES (
+			) VALUES (
 			CURRENT_TIMESTAMP, 
 			$1, 
 			(SELECT uuid FROM ids WHERE tagnumber = $2 AND system_serial = $3 ORDER BY time DESC LIMIT 1), 
 			$4,
 			$5,
 			$6,
+			$7, 
 			TRUE
 		)
 		ON CONFLICT (client_uuid)
@@ -2082,6 +2083,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		toNullString(windowsUpdateDTO.SystemSerial),
 		ptrToNullFloat64(windowsUpdateDTO.BatteryHealthPcnt),
 		ptrToNullInt64(windowsUpdateDTO.DiskFreeSpaceKB),
+		ptrToNullString(windowsUpdateDTO.TPMVersion),
 		toNullTime(windowsUpdateDTO.LastHardwareCheck),
 	)
 	if err != nil {
@@ -2185,8 +2187,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			ad_computer_name,
 			ad_distinguished_name,
 			is_intune_joined
-		)
-		VALUES (
+		) VALUES (
 			(SELECT uuid FROM ids WHERE tagnumber = $2 AND system_serial = $3),
 			$1,
 			CURRENT_TIMESTAMP,

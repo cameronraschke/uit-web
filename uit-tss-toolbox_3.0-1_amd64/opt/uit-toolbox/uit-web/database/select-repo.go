@@ -948,6 +948,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			os_info.os_name, 
 			(CASE WHEN os_info.windows_build_number IS NOT NULL AND os_info.windows_ubr IS NOT NULL THEN CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) ELSE NULL END) AS "os_version",
 			latest_os_versions.latest_os_version,
+			os_info.windows_bitlocker_enabled,
 			client_health.last_hardware_check,
 			(CASE 
 				WHEN latest_historical_hardware_data.bios_version = static_bios_stats.bios_version THEN TRUE
@@ -995,6 +996,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			os_info.windows_build_number,
 			os_info.windows_ubr,
 			latest_os_versions.latest_os_version,
+			os_info.windows_bitlocker_enabled,
 			client_health.last_hardware_check,
 			static_bios_stats.bios_version,
 			latest_historical_hardware_data.bios_version,
@@ -1044,6 +1046,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&row.OsName,
 			&row.OsVersion,
 			&row.LatestOsVersion,
+			&row.BitlockerEnabled,
 			&row.LastHardwareCheck,
 			&row.BIOSUpdated,
 			&row.BIOSVersion,
@@ -1123,6 +1126,12 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 				if currentVersion != "" && latestVersion != "" && currentVersion != latestVersion {
 					osOutdated := types.OSOutdated.String()
 					results[i].ClientErrors = append(results[i].ClientErrors, osOutdated)
+				}
+			}
+			if results[i].OsName != nil && strings.Contains(strings.ToLower(*results[i].OsName), "windows") {
+				if results[i].BitlockerEnabled != nil && !*results[i].BitlockerEnabled {
+					bitlockerNotEnabled := types.BitlockerNotEnabled.String()
+					results[i].ClientErrors = append(results[i].ClientErrors, bitlockerNotEnabled)
 				}
 			}
 		} else { // If OS is not installed

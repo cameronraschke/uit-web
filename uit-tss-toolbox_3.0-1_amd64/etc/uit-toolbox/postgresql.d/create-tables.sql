@@ -66,11 +66,11 @@ CREATE TABLE IF NOT EXISTS jobstats (
 );
 
 CREATE TABLE IF NOT EXISTS historical_hardware_data (
-	transaction_uuid VARCHAR(64) UNIQUE NOT NULL,
+	transaction_uuid VARCHAR(64) PRIMARY KEY,
 	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
-	client_uuid UUID DEFAULT NULL,
-	tagnumber INTEGER NOT NULL PRIMARY KEY,
-	system_serial VARCHAR(128) DEFAULT NULL,
+	client_uuid UUID DEFAULT NOT NULL,
+	tagnumber INTEGER DEFAULT NULL, -- unused
+	system_serial VARCHAR(128) DEFAULT NULL, -- unused
 	ethernet_mac VARCHAR(17) DEFAULT NULL,
 	wifi_mac VARCHAR(17) DEFAULT NULL,
 	disk_model VARCHAR(36) DEFAULT NULL,
@@ -100,8 +100,6 @@ CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	memory_speed_mhz SMALLINT DEFAULT NULL,
 	updated_from_windows BOOLEAN DEFAULT FALSE NOT NULL,
 
-	CONSTRAINT historical_hardware_data_valid_tag
-		CHECK (tagnumber > 100000 AND tagnumber < 999999),
 	CONSTRAINT historical_hardware_data_client_uuid_fkey
 		FOREIGN KEY (client_uuid)
 			REFERENCES ids(uuid)

@@ -13,13 +13,14 @@ const (
 	DomainNotJoined
 	BIOSOutdated
 	OSNotInstalled
+	OSMissingInfo
+	OSInvalidData
+	BitlockerNotEnabled
 	OSOutdated
 	NeedsHardwareCheck
 	NeedsErasing
 	MissingRequiredInfo
 	MissingImages
-	OSMissingInfo
-	OSInvalidData
 )
 
 var ClientConfigurationErrorCodeToString = map[ConfigurationErrorCode]string{
@@ -31,6 +32,7 @@ var ClientConfigurationErrorCodeToString = map[ConfigurationErrorCode]string{
 	OSOutdated:          "OS is outdated",
 	OSMissingInfo:       "OS is missing required information",
 	OSInvalidData:       "OS data is invalid",
+	BitlockerNotEnabled: "Bitlocker is not enabled",
 	NeedsHardwareCheck:  "Needs hardware check",
 	NeedsErasing:        "Needs erasing",
 	MissingRequiredInfo: "Missing required information",
@@ -83,6 +85,7 @@ type InventoryTableRow struct {
 	OsName              *string    `json:"os_name"`
 	OsVersion           *string    `json:"os_version"`
 	LatestOsVersion     *string    `json:"latest_os_version"`
+	BitlockerEnabled    *bool      `json:"windows_bitlocker_enabled"`
 	LastHardwareCheck   *time.Time `json:"last_hardware_check"`
 	BIOSUpdated         *bool      `json:"bios_updated"`
 	BIOSVersion         *string    `json:"bios_version"`
