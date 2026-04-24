@@ -1140,7 +1140,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 					results[i].ClientErrors = append(results[i].ClientErrors, bitlockerNotEnabled)
 				}
 				// If AD domain not joined
-				if results[i].ADDomain == nil || (results[i].ADDomain != nil && strings.TrimSpace(*results[i].ADDomain) == "" && *results[i].ADDomain == "none") {
+				if results[i].ADDomain == nil || (results[i].ADDomain != nil && strings.TrimSpace(*results[i].ADDomain) == "" && (*results[i].ADDomain == "none") || strings.ToLower(*results[i].ADDomain) == "workgroup") {
 					domainNotJoined := types.DomainNotJoined.String()
 					results[i].ClientErrors = append(results[i].ClientErrors, domainNotJoined)
 				} else {
