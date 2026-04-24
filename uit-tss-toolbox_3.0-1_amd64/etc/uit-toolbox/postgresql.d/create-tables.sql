@@ -348,7 +348,7 @@ VALUES
 	('Dell Pro Slim Plus QBS1250', '1.6.2'),
 	('Latitude 7400', '1.43.0'),
 	('OptiPlex 7000', '1.38.0'),
-	('Latitude 7420', '1.43.1'),
+	('Latitude 7420', '1.48.0'),
 	('Latitude 3500', '1.36.0'),
 	('Latitude 3560', 'A19'),
 	('Latitude 3590', '1.26.0'),
