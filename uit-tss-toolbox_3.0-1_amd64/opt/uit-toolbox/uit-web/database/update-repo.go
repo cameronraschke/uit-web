@@ -1335,7 +1335,6 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 				transaction_uuid, 
 				client_uuid, 
 				tagnumber, 
-				system_serial, 
 				last_hardware_check 
 			) 
 		VALUES (
@@ -1343,21 +1342,18 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 			$1,
 			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
 			$2,
-			$3,
-			$4
+			$3
 		)
 		ON CONFLICT (client_uuid) DO UPDATE SET 
 			time = CURRENT_TIMESTAMP,
 			transaction_uuid = EXCLUDED.transaction_uuid,
 			tagnumber = COALESCE(EXCLUDED.tagnumber, client_health.tagnumber), 
-			system_serial = COALESCE(EXCLUDED.system_serial, client_health.system_serial),
 			last_hardware_check = EXCLUDED.last_hardware_check
 		;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckSQL,
 		toNullString(healthCheck.TransactionUUID),
 		toNullInt64(healthCheck.Tagnumber),
-		ptrToNullString(healthCheck.SystemSerial),
 		ptrToNullTime(healthCheck.LastHardwareCheck),
 	)
 	if err != nil {
