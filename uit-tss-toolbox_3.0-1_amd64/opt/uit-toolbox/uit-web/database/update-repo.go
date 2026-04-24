@@ -2024,7 +2024,6 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			cpu_model = COALESCE(EXCLUDED.cpu_model, hardware_data.cpu_model),
 			cpu_core_count = COALESCE(EXCLUDED.cpu_core_count, hardware_data.cpu_core_count),
 			cpu_thread_count = COALESCE(EXCLUDED.cpu_thread_count, hardware_data.cpu_thread_count)
-		)
 	;`
 
 	hardwareDataResult, err := tx.ExecContext(ctx, hardwareDataSql,
