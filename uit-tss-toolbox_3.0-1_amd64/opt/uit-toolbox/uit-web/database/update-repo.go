@@ -131,7 +131,7 @@ func UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, cl
 			$2, 
 			$3
 		)
-		ON CONFLICT (tagnumber)
+		ON CONFLICT (client_uuid)
 			DO UPDATE SET
 				time = CURRENT_TIMESTAMP,
 				client_uuid = EXCLUDED.client_uuid,
@@ -279,7 +279,7 @@ func UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID,
 				$4, 
 				$5
 			)
-		ON CONFLICT (tagnumber)
+		ON CONFLICT (client_uuid)
 		DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
 			client_uuid = EXCLUDED.client_uuid,
@@ -347,7 +347,7 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 			$1, 
 			$2 
 		)
-		ON CONFLICT (tagnumber) DO NOTHING
+		ON CONFLICT (client_uuid) DO NOTHING
 	;`
 
 	_, err = tx.ExecContext(ctx, idsSql,
