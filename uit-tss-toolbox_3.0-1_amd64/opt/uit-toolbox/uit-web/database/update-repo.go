@@ -347,7 +347,7 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 			$1, 
 			$2 
 		)
-		ON CONFLICT (client_uuid) DO NOTHING
+		ON CONFLICT (uuid) DO NOTHING
 	;`
 
 	_, err = tx.ExecContext(ctx, idsSql,
