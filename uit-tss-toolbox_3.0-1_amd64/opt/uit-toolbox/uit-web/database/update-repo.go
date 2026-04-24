@@ -1331,13 +1331,15 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 	const clientHealthCheckSQL = `
 		INSERT INTO 
 			client_health (
-				transaction_uuid,
-				client_uuid,
+				time, 
+				transaction_uuid, 
+				client_uuid, 
 				tagnumber, 
-				system_serial,
-				last_hardware_check
+				system_serial, 
+				last_hardware_check 
 			) 
 		VALUES (
+			CURRENT_TIMESTAMP, 
 			$1,
 			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
 			$2,
@@ -1345,6 +1347,7 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 			$4
 		)
 		ON CONFLICT (client_uuid) DO UPDATE SET 
+			time = CURRENT_TIMESTAMP,
 			transaction_uuid = EXCLUDED.transaction_uuid,
 			tagnumber = COALESCE(EXCLUDED.tagnumber, client_health.tagnumber), 
 			system_serial = COALESCE(EXCLUDED.system_serial, client_health.system_serial),
@@ -1352,8 +1355,8 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 		;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckSQL,
-		ptrToNullString(&healthCheck.TransactionUUID),
-		ptrToNullInt64(&healthCheck.Tagnumber),
+		toNullString(healthCheck.TransactionUUID),
+		toNullInt64(healthCheck.Tagnumber),
 		ptrToNullString(healthCheck.SystemSerial),
 		ptrToNullTime(healthCheck.LastHardwareCheck),
 	)
@@ -1367,28 +1370,31 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 	const clientHealthCheckHistorySQL = `
 		INSERT INTO 
 			historical_hardware_data (
-				transaction_uuid,
 				time, 
+				transaction_uuid,
 				client_uuid, 
 				tagnumber, 
+				system_serial, 
 				bios_version
 			) 
 		VALUES (
-			$1,
 			CURRENT_TIMESTAMP,
+			$1,
 			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
 			$2,
 			$3
 		) ON CONFLICT (transaction_uuid) DO UPDATE SET
 		 	time = CURRENT_TIMESTAMP,
 			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_hardware_data.client_uuid), 
-			tagnumber = EXCLUDED.tagnumber, 
+			tagnumber = COALESCE(EXCLUDED.tagnumber, historical_hardware_data.tagnumber), 
+			system_serial = COALESCE(EXCLUDED.system_serial, historical_hardware_data.system_serial),
 			bios_version = COALESCE(EXCLUDED.bios_version, historical_hardware_data.bios_version)
 	;`
 
 	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckHistorySQL,
-		ptrToNullString(&healthCheck.TransactionUUID),
-		ptrToNullInt64(&healthCheck.Tagnumber),
+		toNullString(healthCheck.TransactionUUID),
+		toNullInt64(healthCheck.Tagnumber),
+		ptrToNullString(healthCheck.SystemSerial),
 		ptrToNullString(healthCheck.BIOSVersion),
 	)
 	if err != nil {
@@ -1401,26 +1407,31 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 	const clientHardwareSQL = `
 		INSERT INTO hardware_data
 		(
-			transaction_uuid,
 			time,
+			transaction_uuid,
 			client_uuid,
-			tpm_version,
+			tpm_version
 		) VALUES (
-			$1,
 			CURRENT_TIMESTAMP,
-			(SELECT uuid FROM ids WHERE tagnumber = $2 AND system_serial = $3 ORDER BY time DESC LIMIT 1),
-			$4
+			$1,
+			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
+			$3
 		) ON CONFLICT (client_uuid) DO UPDATE SET
-		 	transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, hardware_data.transaction_uuid),
 			time = CURRENT_TIMESTAMP,
+		 	transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, hardware_data.transaction_uuid),
 			tpm_version = COALESCE(EXCLUDED.tpm_version, hardware_data.tpm_version)
 	;`
 	sqlResult, err = tx.ExecContext(ctx, clientHardwareSQL,
-		ptrToNullString(&healthCheck.TransactionUUID),
-		ptrToNullInt64(&healthCheck.Tagnumber),
-		ptrToNullString(healthCheck.SystemSerial),
+		toNullString(healthCheck.TransactionUUID),
+		toNullInt64(healthCheck.Tagnumber),
 		ptrToNullString(healthCheck.TPMVersion),
 	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -1532,7 +1543,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		ptrToNullString(hardwareData.WiFiMAC),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(hardwareResult, 1); err != nil {
 		return err
