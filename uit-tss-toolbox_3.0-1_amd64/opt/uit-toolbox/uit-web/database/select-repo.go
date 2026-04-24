@@ -993,6 +993,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			locations.department_name,
 			static_department_info.department_name_formatted,
 			locations.ad_domain,
+			os_info.is_intune_joined,
 			static_ad_domains.domain_name_formatted,
 			(CASE WHEN os_info.os_name IS NOT NULL THEN TRUE ELSE FALSE END),
 			os_info.os_name,
