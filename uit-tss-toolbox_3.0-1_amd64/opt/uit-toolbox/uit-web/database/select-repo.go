@@ -926,7 +926,10 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			SELECT DISTINCT ON (historical_hardware_data.client_uuid) 
 				historical_hardware_data.client_uuid, 
 				historical_hardware_data.bios_version
-			FROM historical_hardware_data
+			FROM 
+				historical_hardware_data
+			WHERE 
+				historical_hardware_data.bios_version IS NOT NULL
 			ORDER BY historical_hardware_data.client_uuid, historical_hardware_data.time DESC NULLS LAST
 		)
 		SELECT
@@ -1193,6 +1196,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			WHERE 
 				historical_hardware_data.battery_design_capacity IS NOT NULL 
 				AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
+				AND historical_hardware_data.updated_from_windows = FALSE
 			GROUP BY 
 				hardware_data.system_model,
 				historical_hardware_data.tagnumber, 
@@ -1203,23 +1207,24 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	),
 	current_battery_health AS (
 		SELECT 
-			DISTINCT ON (historical_hardware_data.tagnumber) historical_hardware_data.tagnumber,
+			DISTINCT ON (historical_hardware_data.client_uuid) historical_hardware_data.client_uuid,
 			ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt"
 		FROM 
 			historical_hardware_data
 		WHERE
 			historical_hardware_data.battery_design_capacity IS NOT NULL 
 			AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
-			GROUP BY historical_hardware_data.tagnumber, historical_hardware_data.battery_current_max_capacity, historical_hardware_data.battery_design_capacity
-			ORDER BY historical_hardware_data.tagnumber DESC NULLS LAST
+			GROUP BY historical_hardware_data.client_uuid, historical_hardware_data.battery_current_max_capacity, historical_hardware_data.battery_design_capacity
+			ORDER BY historical_hardware_data.client_uuid DESC NULLS LAST
 	),
 	latest_historical_hardware_data AS (
-		SELECT DISTINCT ON (historical_hardware_data.tagnumber) historical_hardware_data.time, historical_hardware_data.tagnumber, 
+		SELECT DISTINCT ON (historical_hardware_data.client_uuid) historical_hardware_data.time, historical_hardware_data.client_uuid, 
 			historical_hardware_data.disk_type, historical_hardware_data.disk_size_kb AS "disk_capacity",
 			historical_hardware_data.bios_version, historical_hardware_data.disk_model,
 			historical_hardware_data.battery_design_capacity, historical_hardware_data.battery_current_max_capacity
 		FROM historical_hardware_data
-		ORDER BY historical_hardware_data.tagnumber, historical_hardware_data.time DESC NULLS LAST),
+		ORDER BY historical_hardware_data.client_uuid, historical_hardware_data.time DESC NULLS LAST
+	),
 	latest_job AS (
 		SELECT DISTINCT ON (jobstats.tagnumber) jobstats.time, jobstats.tagnumber,
 			jobstats.erase_completed, jobstats.erase_mode, jobstats.erase_time, 
@@ -1227,7 +1232,8 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			jobstats.job_cancelled
 		FROM jobstats
 		WHERE jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE
-		ORDER BY jobstats.tagnumber, jobstats.time DESC NULLS LAST),
+		ORDER BY jobstats.tagnumber, jobstats.time DESC NULLS LAST
+	),
 	newest_image AS (
 		SELECT * FROM (
 			SELECT 
@@ -1452,13 +1458,13 @@ func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.Cli
 			FROM 
 				historical_hardware_data 
 			LEFT JOIN 
-				hardware_data ON historical_hardware_data.tagnumber = hardware_data.tagnumber
+				hardware_data ON historical_hardware_data.client_uuid = hardware_data.client_uuid
 			WHERE 
 				historical_hardware_data.battery_design_capacity IS NOT NULL 
 				AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
 			GROUP BY 
 				hardware_data.system_model,
-				historical_hardware_data.tagnumber, 
+				historical_hardware_data.client_uuid, 
 				historical_hardware_data.battery_current_max_capacity, 
 				historical_hardware_data.battery_design_capacity
 		)
@@ -1466,30 +1472,30 @@ func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.Cli
 	),
 	current_battery_health AS (
 		SELECT 
-			tagnumber, ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt"
+			client_uuid, ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt"
 		FROM 
 			historical_hardware_data
 		WHERE 
-			historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY tagnumber)
+			historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY client_uuid)
 			AND historical_hardware_data.battery_design_capacity IS NOT NULL 
 			AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
 	)
 	SELECT 
 		historical_hardware_data.time AS "battery_health_timestamp", 
-		historical_hardware_data.tagnumber, 
+		historical_hardware_data.client_uuid, 
 		current_battery_health.battery_health_pcnt AS "battery_health_pcnt", 
 		ROUND(current_battery_health.battery_health_pcnt - avg_battery_health.avg_battery_health_pcnt, 2) AS "battery_health_deviation"
 	FROM historical_hardware_data
-	LEFT JOIN hardware_data ON historical_hardware_data.tagnumber = hardware_data.tagnumber
+	LEFT JOIN hardware_data ON historical_hardware_data.client_uuid = hardware_data.client_uuid
 	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
-	LEFT JOIN current_battery_health ON historical_hardware_data.tagnumber = current_battery_health.tagnumber
+	LEFT JOIN current_battery_health ON historical_hardware_data.client_uuid = current_battery_health.client_uuid
 	WHERE 
-		historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY tagnumber)
+		historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY client_uuid)
 		AND historical_hardware_data.battery_design_capacity IS NOT NULL 
 		AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
 	GROUP BY 
 		hardware_data.system_model,
-		historical_hardware_data.tagnumber, 
+		historical_hardware_data.client_uuid, 
 		historical_hardware_data.time, 
 		avg_battery_health.avg_battery_health_pcnt,
 		current_battery_health.battery_health_pcnt,
@@ -1745,7 +1751,7 @@ func (repo *SelectRepo) GetClientHardwareOverview(ctx context.Context, tag int64
 	LEFT JOIN historical_hardware_data ON locations.client_uuid = historical_hardware_data.client_uuid
 	WHERE 
 		locations.client_uuid = (SELECT client_uuid FROM locations WHERE tagnumber = $1 ORDER BY time DESC NULLS LAST LIMIT 1)
-		AND historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY tagnumber)
+		AND historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data WHERE client_uuid = locations.client_uuid AND historical_hardware_data.memory_speed_mhz IS NOT NULL GROUP BY client_uuid)
 	ORDER BY 
 		locations.time DESC NULLS LAST LIMIT 1
 	;`
