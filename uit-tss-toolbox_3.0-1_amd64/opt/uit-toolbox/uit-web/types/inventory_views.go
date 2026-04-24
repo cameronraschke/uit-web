@@ -11,6 +11,7 @@ const (
 	IsBroken ConfigurationErrorCode = iota
 	DiskNotRemoved
 	DomainNotJoined
+	InttuneNotEnrolled
 	BIOSOutdated
 	OSNotInstalled
 	OSMissingInfo
@@ -27,6 +28,7 @@ var ClientConfigurationErrorCodeToString = map[ConfigurationErrorCode]string{
 	IsBroken:            "Client is broken",
 	DiskNotRemoved:      "Disk is not removed",
 	DomainNotJoined:     "AD domain is not joined",
+	InttuneNotEnrolled:  "Not enrolled in Intune",
 	BIOSOutdated:        "BIOS is outdated",
 	OSNotInstalled:      "OS is not installed",
 	OSOutdated:          "OS is outdated",
@@ -80,6 +82,7 @@ type InventoryTableRow struct {
 	Department          *string    `json:"department_name"`
 	DepartmentFormatted *string    `json:"department_formatted"`
 	ADDomain            *string    `json:"ad_domain"`
+	IsIntuneJoined      *bool      `json:"is_intune_joined"`
 	DomainFormatted     *string    `json:"ad_domain_formatted"`
 	OsInstalled         *bool      `json:"os_installed"`
 	OsName              *string    `json:"os_name"`

@@ -946,6 +946,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			locations.department_name, 
 			static_department_info.department_name_formatted,
 			locations.ad_domain, 
+			os_info.is_intune_joined,
 			static_ad_domains.domain_name_formatted, 
 			(CASE WHEN os_info.os_name IS NOT NULL THEN TRUE ELSE FALSE END) AS "os_installed",
 			os_info.os_name, 
@@ -1044,6 +1045,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&row.Department,
 			&row.DepartmentFormatted,
 			&row.ADDomain,
+			&row.IsIntuneJoined,
 			&row.DomainFormatted,
 			&row.OsInstalled,
 			&row.OsName,
@@ -1136,6 +1138,16 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 					bitlockerNotEnabled := types.BitlockerNotEnabled.String()
 					results[i].ClientErrors = append(results[i].ClientErrors, bitlockerNotEnabled)
 				}
+				// If AD domain not joined
+				if results[i].ADDomain == nil || (results[i].ADDomain != nil && strings.TrimSpace(*results[i].ADDomain) == "" && *results[i].ADDomain == "none") {
+					domainNotJoined := types.DomainNotJoined.String()
+					results[i].ClientErrors = append(results[i].ClientErrors, domainNotJoined)
+				} else {
+					if results[i].IsIntuneJoined != nil && !*results[i].IsIntuneJoined {
+						intuneNotEnrolled := types.InttuneNotEnrolled.String()
+						results[i].ClientErrors = append(results[i].ClientErrors, intuneNotEnrolled)
+					}
+				}
 			}
 		} else { // If OS is not installed
 			osNotInstalled := types.OSNotInstalled.String()
@@ -1159,15 +1171,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			needsHardwareCheck := types.NeedsHardwareCheck.String()
 			results[i].ClientErrors = append(results[i].ClientErrors, needsHardwareCheck)
 		}
-		// If AD domain not joined
-		if results[i].ADDomain == nil || (results[i].ADDomain != nil && strings.TrimSpace(*results[i].ADDomain) == "") {
-			domainNotJoined := types.DomainNotJoined.String()
-			results[i].ClientErrors = append(results[i].ClientErrors, domainNotJoined)
-		}
-		if results[i].ADDomain != nil && *results[i].ADDomain == "none" {
-			domainNotJoined := types.DomainNotJoined.String()
-			results[i].ClientErrors = append(results[i].ClientErrors, domainNotJoined)
-		}
+
 		// If client is missing images of itself
 		if results[i].FileCount == nil || (results[i].FileCount != nil && *results[i].FileCount <= 0) {
 			missingImages := types.MissingImages.String()
