@@ -1335,7 +1335,6 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 				client_uuid,
 				tagnumber, 
 				system_serial,
-				tpm_version,
 				last_hardware_check
 			) 
 		VALUES (
@@ -1343,14 +1342,12 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
 			$2,
 			$3,
-			$4,
-			$5
+			$4
 		)
 		ON CONFLICT (tagnumber) DO UPDATE SET 
 			transaction_uuid = EXCLUDED.transaction_uuid,
 			client_uuid = COALESCE(EXCLUDED.client_uuid, client_health.client_uuid), 
 			system_serial = COALESCE(EXCLUDED.system_serial, client_health.system_serial),
-			tpm_version = COALESCE(EXCLUDED.tpm_version, client_health.tpm_version),
 			last_hardware_check = EXCLUDED.last_hardware_check
 		;`
 	var sqlResult sql.Result
@@ -1358,7 +1355,6 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 		ptrToNullString(&healthCheck.TransactionUUID),
 		ptrToNullInt64(&healthCheck.Tagnumber),
 		ptrToNullString(healthCheck.SystemSerial),
-		ptrToNullString(healthCheck.TPMVersion),
 		ptrToNullTime(healthCheck.LastHardwareCheck),
 	)
 	if err != nil {
@@ -1401,6 +1397,30 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return err
 	}
+
+	const clientHardwareSQL = `
+		INSERT INTO hardware_data
+		(
+			transaction_uuid,
+			time,
+			client_uuid,
+			tpm_version,
+		) VALUES (
+			$1,
+			CURRENT_TIMESTAMP,
+			(SELECT uuid FROM ids WHERE tagnumber = $2 AND system_serial = $3 ORDER BY time DESC LIMIT 1),
+			$4
+		) ON CONFLICT (client_uuid) DO UPDATE SET
+		 	transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, hardware_data.transaction_uuid),
+			time = CURRENT_TIMESTAMP,
+			tpm_version = COALESCE(EXCLUDED.tpm_version, hardware_data.tpm_version)
+	;`
+	sqlResult, err = tx.ExecContext(ctx, clientHardwareSQL,
+		ptrToNullString(&healthCheck.TransactionUUID),
+		ptrToNullInt64(&healthCheck.Tagnumber),
+		ptrToNullString(healthCheck.SystemSerial),
+		ptrToNullString(healthCheck.TPMVersion),
+	)
 
 	return nil
 }
@@ -1996,7 +2016,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			system_model,
 			cpu_model,
 			cpu_core_count,
-			cpu_thread_count
+			cpu_thread_count,
+			tpm_version
 		) VALUES (
 			CURRENT_TIMESTAMP,
 			$1,
@@ -2010,7 +2031,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			$7,
 			$8,
 			$9,
-			$10
+			$10, 
+			$11
 		) ON CONFLICT (client_uuid) DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
 			transaction_uuid = EXCLUDED.transaction_uuid,
@@ -2023,7 +2045,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			system_model = COALESCE(EXCLUDED.system_model, hardware_data.system_model),
 			cpu_model = COALESCE(EXCLUDED.cpu_model, hardware_data.cpu_model),
 			cpu_core_count = COALESCE(EXCLUDED.cpu_core_count, hardware_data.cpu_core_count),
-			cpu_thread_count = COALESCE(EXCLUDED.cpu_thread_count, hardware_data.cpu_thread_count)
+			cpu_thread_count = COALESCE(EXCLUDED.cpu_thread_count, hardware_data.cpu_thread_count),
+			tpm_version = COALESCE(EXCLUDED.tpm_version, hardware_data.tpm_version)
 	;`
 
 	hardwareDataResult, err := tx.ExecContext(ctx, hardwareDataSql,
@@ -2037,6 +2060,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		ptrToNullString(windowsUpdateDTO.CPUModel),
 		ptrToNullInt64(windowsUpdateDTO.CPUCoreCount),
 		ptrToNullInt64(windowsUpdateDTO.CPUThreadCount),
+		ptrToNullString(windowsUpdateDTO.TPMVersion),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -2054,7 +2078,6 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 				client_uuid, 
 				battery_health_pcnt, 
 				disk_free_space_kb, 
-				tpm_version, 
 				last_hardware_check, 
 				updated_from_windows
 			) VALUES (
@@ -2063,8 +2086,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			(SELECT uuid FROM ids WHERE tagnumber = $2 AND system_serial = $3 ORDER BY time DESC LIMIT 1), 
 			$4,
 			$5,
-			$6,
-			$7, 
+			$6
 			TRUE
 		)
 		ON CONFLICT (client_uuid)
@@ -2083,7 +2105,6 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		toNullString(windowsUpdateDTO.SystemSerial),
 		ptrToNullFloat64(windowsUpdateDTO.BatteryHealthPcnt),
 		ptrToNullInt64(windowsUpdateDTO.DiskFreeSpaceKB),
-		ptrToNullString(windowsUpdateDTO.TPMVersion),
 		toNullTime(windowsUpdateDTO.LastHardwareCheck),
 	)
 	if err != nil {

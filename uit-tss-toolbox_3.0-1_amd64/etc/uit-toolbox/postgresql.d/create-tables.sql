@@ -386,7 +386,7 @@ CREATE TABLE IF NOT EXISTS client_health (
 	client_uuid UUID PRIMARY KEY,
 	tagnumber INTEGER DEFAULT NULL, -- unused
 	system_serial VARCHAR(128) DEFAULT NULL, -- unused
-	tpm_version VARCHAR(24) DEFAULT NULL,
+	tpm_version VARCHAR(24) DEFAULT NULL, --unused, moved to hardware_data
 	os_name VARCHAR(128) DEFAULT NULL,
 	os_installed BOOLEAN DEFAULT NULL,
 	disk_free_space_kb BIGINT DEFAULT NULL,
@@ -480,6 +480,7 @@ CREATE TABLE IF NOT EXISTS hardware_data (
 	system_sku VARCHAR(20) DEFAULT NULL,
 	chassis_type VARCHAR(16) DEFAULT NULL,
 	device_type VARCHAR(64) DEFAULT NULL,
+	tpm_version VARCHAR(24) DEFAULT NULL,
 	cpu_manufacturer VARCHAR(20) DEFAULT NULL,
 	cpu_model VARCHAR(46) DEFAULT NULL,
 	cpu_maxspeed SMALLINT DEFAULT NULL,
