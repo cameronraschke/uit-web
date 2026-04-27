@@ -1352,11 +1352,11 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		NULL AS "plugged_in",
 		job_queue.watts_now AS "power_usage"
 	FROM locations
-	LEFT JOIN job_queue ON locations.tagnumber = job_queue.tagnumber
-	LEFT JOIN hardware_data ON locations.tagnumber = hardware_data.tagnumber
-	LEFT JOIN latest_historical_hardware_data ON locations.tagnumber = latest_historical_hardware_data.tagnumber
+	LEFT JOIN job_queue ON locations.client_uuid = job_queue.client_uuid
+	LEFT JOIN hardware_data ON locations.client_uuid = hardware_data.client_uuid
+	LEFT JOIN latest_historical_hardware_data ON locations.client_uuid = latest_historical_hardware_data.client_uuid
 	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
-	LEFT JOIN current_battery_health ON locations.tagnumber = current_battery_health.tagnumber
+	LEFT JOIN current_battery_health ON locations.client_uuid = current_battery_health.client_uuid
 	LEFT JOIN latest_job ON locations.tagnumber = latest_job.tagnumber
 	LEFT JOIN static_image_names ON latest_job.clone_image = static_image_names.image_name
 	LEFT JOIN static_job_names ON job_queue.job_name = static_job_names.job_name
