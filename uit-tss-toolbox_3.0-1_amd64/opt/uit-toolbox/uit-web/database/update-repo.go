@@ -1378,7 +1378,8 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 			$1,
 			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
 			$2,
-			$3
+			$3,
+			$4
 		) ON CONFLICT (transaction_uuid) DO UPDATE SET
 		 	time = CURRENT_TIMESTAMP,
 			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_hardware_data.client_uuid), 
