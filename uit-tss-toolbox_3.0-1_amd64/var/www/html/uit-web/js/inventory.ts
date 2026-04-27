@@ -909,7 +909,7 @@ if (updateForm) {
 			formObj.property_custodian = getElementStringValue(propertyCustodianUpdate);
 			formObj.acquired_date = getElementDateValue(acquiredDateUpdate, true);
 			formObj.retired_date = getElementDateValue(retiredDateUpdate, true);
-			formObj.is_broken = getElementBooleanValue(isBrokenUpdate); // select values already represent is_broken: "false" = Yes functional, "true" = No broken
+			formObj.is_broken = getElementBooleanValue(isBrokenUpdate); // select values already represent is_broken: "false" = Yes (already inverted in select options)
 			formObj.disk_removed = getElementBooleanValue(diskRemovedUpdate); // select values already represent disk_removed: "false" = Yes present, "true" = No removed
 			formObj.last_hardware_check = lastHardwareCheckUpdate.value ? parseDateTimeLocalToUTC(lastHardwareCheckUpdate.value) : null;
 			formObj.status = getElementStringValue(clientStatusUpdate);
