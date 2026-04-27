@@ -909,8 +909,8 @@ if (updateForm) {
 			formObj.property_custodian = getElementStringValue(propertyCustodianUpdate);
 			formObj.acquired_date = getElementDateValue(acquiredDateUpdate, true);
 			formObj.retired_date = getElementDateValue(retiredDateUpdate, true);
-			formObj.is_broken = !getElementBooleanValue(isBrokenUpdate); // invert because select options are "Is it Functional?" but backend field is "is_broken"
-			formObj.disk_removed = !getElementBooleanValue(diskRemovedUpdate); // invert because select options are "Is the Disk Present?" but backend field is "disk_removed"
+			formObj.is_broken = getElementBooleanValue(isBrokenUpdate); // select values already represent is_broken: "false" = Yes functional, "true" = No broken
+			formObj.disk_removed = getElementBooleanValue(diskRemovedUpdate); // select values already represent disk_removed: "false" = Yes present, "true" = No removed
 			formObj.last_hardware_check = lastHardwareCheckUpdate.value ? parseDateTimeLocalToUTC(lastHardwareCheckUpdate.value) : null;
 			formObj.status = getElementStringValue(clientStatusUpdate);
 			formObj.checkout_bool = formObj.status && statusesThatIndicateCheckout.includes(formObj.status) ? true : false;
