@@ -132,8 +132,8 @@ function getElementBooleanValue(inputEl: HTMLInputElement | HTMLSelectElement): 
 		return null;
 	}
 	const value = inputEl.value !== undefined && inputEl.value !== null && inputEl.value.trim() !== '' ? inputEl.value.trim() : null;
-	if (value === 'true' || Boolean(value) === true) return true;
-	else if (value === 'false' || Boolean(value) === false) return false;
+	if (value === 'true') return true;
+	else if (value === 'false') return false;
 	else if (!inputEl.required) return null;
 	else {
 		console.warn(`${inputEl.id} field is required and must be true or false`);
