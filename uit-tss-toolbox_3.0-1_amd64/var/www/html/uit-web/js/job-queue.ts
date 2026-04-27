@@ -519,13 +519,16 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		jobSelectContainer.classList.add('flex-container', 'horizontal');
 		const jobSelect = document.createElement('select');
 		const existingSelectElID = `${entry.tagnumber}-job-select`;
-		const existingSelectEl = document.getElementById(existingSelectElID) as HTMLSelectElement;
+		const existingSelectEl = document.getElementById(existingSelectElID) as HTMLSelectElement | null;
 		
 		jobSelect.id = existingSelectElID
 		
 		const defaultOption = document.createElement('option');
-		defaultOption.value = existingSelectEl && existingSelectEl.options[existingSelectEl.selectedIndex].value ? existingSelectEl.options[existingSelectEl.selectedIndex].value : '';
-		defaultOption.textContent = existingSelectEl && existingSelectEl.options[existingSelectEl.selectedIndex].text ? existingSelectEl.options[existingSelectEl.selectedIndex].text : 'Select job to queue';
+		const selectedExistingOption = existingSelectEl && existingSelectEl.selectedIndex >= 0
+			? existingSelectEl.options[existingSelectEl.selectedIndex]
+			: null;
+		defaultOption.value = selectedExistingOption?.value || '';
+		defaultOption.textContent = selectedExistingOption?.text || 'Select job to queue';
 		defaultOption.disabled = true;
 		defaultOption.selected = true;
 		jobSelect.appendChild(defaultOption);
