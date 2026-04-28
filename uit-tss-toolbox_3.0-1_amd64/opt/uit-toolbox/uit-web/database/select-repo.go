@@ -1126,6 +1126,11 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			needsHardwareCheck := types.NeedsHardwareCheck.String()
 			results[i].ClientErrors = append(results[i].ClientErrors, needsHardwareCheck)
 		}
+		// If disk is removed but OS is still marked as installed (need to update OS info in DB)
+		if (results[i].DiskRemoved != nil && *results[i].DiskRemoved) && (results[i].OsInstalled == nil || (results[i].OsInstalled != nil && *results[i].OsInstalled)) {
+			osInvalidData := types.OSInvalidData.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, osInvalidData)
+		}
 		// If client has status pre-property or retired status, it need to be erased
 		if results[i].Status != nil && (*results[i].Status == "pre-property" || *results[i].Status == "retired") {
 			if results[i].OsInstalled != nil && *results[i].OsInstalled {
@@ -1137,12 +1142,9 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 				diskNotRemoved := types.DiskNotRemoved.String()
 				results[i].ClientErrors = append(results[i].ClientErrors, diskNotRemoved)
 			}
+			continue
 		}
-		// If disk is removed but OS is still marked as installed (need to update OS info in DB)
-		if (results[i].DiskRemoved != nil && *results[i].DiskRemoved) && (results[i].OsInstalled == nil || (results[i].OsInstalled != nil && *results[i].OsInstalled)) {
-			osInvalidData := types.OSInvalidData.String()
-			results[i].ClientErrors = append(results[i].ClientErrors, osInvalidData)
-		}
+
 		// If OS is installed
 		if results[i].OsInstalled != nil && *results[i].OsInstalled {
 			// if OS name is missing (need to update OS info)
@@ -1164,16 +1166,19 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 					results[i].ClientErrors = append(results[i].ClientErrors, osOutdated)
 				}
 			}
+			// If OS is windows
 			if results[i].OsName != nil && strings.Contains(strings.ToLower(*results[i].OsName), "windows") {
+				// If OS is windows but Bitlocker is not enabled
 				if results[i].BitlockerEnabled != nil && !*results[i].BitlockerEnabled {
 					bitlockerNotEnabled := types.BitlockerNotEnabled.String()
 					results[i].ClientErrors = append(results[i].ClientErrors, bitlockerNotEnabled)
 				}
-				// If AD domain not joined
+				// If OS is windows and AD domain is nil/empty/default (WORKGROUP)
 				if results[i].ADDomain == nil || (results[i].ADDomain != nil && (strings.TrimSpace(*results[i].ADDomain) == "" || *results[i].ADDomain == "none" || strings.ToLower(*results[i].ADDomain) == "workgroup")) {
 					domainNotJoined := types.DomainNotJoined.String()
 					results[i].ClientErrors = append(results[i].ClientErrors, domainNotJoined)
-				} else {
+				} else { // If OS is windows and AD domain is valid
+					// If OS is windows and AD domain is valid but not Intune joined
 					if results[i].IsIntuneJoined != nil && !*results[i].IsIntuneJoined {
 						intuneNotEnrolled := types.InttuneNotEnrolled.String()
 						results[i].ClientErrors = append(results[i].ClientErrors, intuneNotEnrolled)
