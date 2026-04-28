@@ -963,6 +963,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			static_client_statuses.status_formatted,
 			locations.is_broken, 
 			locations.disk_removed,
+			locations.retired_date,
 			locations.note, 
 			locations.time AS last_updated, 
 			files.file_count
@@ -1009,6 +1010,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			static_client_statuses.status_formatted,
 			locations.is_broken,
 			locations.disk_removed,
+			locations.retired_date,
 			locations.note,
 			locations.time,
 			files.file_count
@@ -1060,6 +1062,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&row.StatusFormatted,
 			&row.IsBroken,
 			&row.DiskRemoved,
+			&row.RetiredDate,
 			&row.Note,
 			&row.LastUpdated,
 			&row.FileCount,

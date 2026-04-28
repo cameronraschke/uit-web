@@ -125,8 +125,10 @@ type InventoryTableRow = {
 	os_version: string | "";
 	latest_os_version: string | "";
 	ad_domain_formatted: string | "";
+	status: string | "";
 	status_formatted: string | "";
 	is_broken: boolean | null;
+	retired_date: Date | null;
 	note: string | "";
 	last_updated: string | "";
 	file_count: number | null;

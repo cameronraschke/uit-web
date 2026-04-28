@@ -18,7 +18,7 @@ function showPortalTooltip(anchor: HTMLElement, text: string) {
 	removePortalTooltip();
 
 	const tooltip = document.createElement('div');
-	tooltip.classList.add('portal-tooltip');
+	tooltip.classList.add('tooltip-textbox');
 	tooltip.textContent = text;
 	document.body.appendChild(tooltip);
 
@@ -209,7 +209,7 @@ async function renderInventoryTable() {
 				tooltipIndicator.title = 'Configuration Error(s)';
 				tooltipIndicator.alt = 'Configuration Error(s)';
 				tooltipIndicator.src = '/icons/general/info.svg';
-				tooltipIndicator.classList.add('tooltip-image');
+				tooltipIndicator.classList.add('tooltip-image', 'error');
 				tooltipIndicator.tabIndex = 0;
 				attachPortalTooltip(
 					tooltipIndicator,
@@ -341,7 +341,30 @@ async function renderInventoryTable() {
 			tr.appendChild(softwareCell);
 
 			// Status
-			tr.appendChild(createTextCell(undefined, 'status', inventoryRow.status_formatted, undefined, undefined));
+			const statusCell = document.createElement('td');
+			const statusContainer = document.createElement('div');
+			statusContainer.classList.add('flex-container', 'vertical', 'centered');
+			const statusSpan = document.createElement('span');
+			if (inventoryRow.status_formatted !== '') {
+				statusSpan.textContent = inventoryRow.status_formatted;
+				if (inventoryRow.status === 'retired') {
+					const tooltipIndicator = document.createElement('img');
+					tooltipIndicator.src = '/icons/general/info.svg';
+					tooltipIndicator.classList.add('tooltip-image', 'error');
+					tooltipIndicator.tabIndex = 0;
+					statusSpan.appendChild(tooltipIndicator);
+					attachPortalTooltip(
+						tooltipIndicator,
+						`Retired Date: ${inventoryRow.retired_date ? new Date(inventoryRow.retired_date).toLocaleDateString() : 'N/A'}`,
+					);
+				}
+			} else {
+				statusSpan.textContent = 'N/A';
+				statusSpan.style.fontStyle = 'italic';
+			}
+			statusContainer.appendChild(statusSpan);
+			statusCell.appendChild(statusContainer);
+			tr.appendChild(statusCell);
 
 			// Note (truncated)
 			tr.appendChild(createTextCell(undefined, 'note', inventoryRow.note, 60, ''));

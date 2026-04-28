@@ -66,17 +66,22 @@
 	padding-right: 0.4rem;
 	cursor: help;
 	user-select: none;
+}
+.tooltip-image.info {
+	filter: brightness(0) saturate(100%) invert(78%) sepia(2%) saturate(56%) hue-rotate(14deg) brightness(95%) contrast(90%); /* --tooltip-info-color */
+}
+.tooltip-image.error {
 	filter: invert(31%) sepia(40%) saturate(3320%) hue-rotate(333deg) brightness(86%) contrast(100%); /* --light-accent-color */
 }
 
-.portal-tooltip {
+.tooltip-textbox {
 	position: absolute;
-	max-width: 28rem;
-	padding: 0.5rem 0.75rem;
-	border-radius: 0.5rem;
-	background-color: #111827;
-	color: #ffffff;
-	font-size: 0.875rem;
+	max-width: 30rem;
+	padding: 0.5rem 0.5rem;
+	border-radius: var(--border-radius);
+	background-color: black;
+	color: var(--fg-color);
+	font-size: 0.85rem;
 	line-height: 1.3;
 	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
 	z-index: 99999;
