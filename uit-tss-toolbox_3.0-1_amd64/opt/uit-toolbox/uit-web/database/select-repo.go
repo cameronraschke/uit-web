@@ -988,6 +988,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
 			LEFT JOIN os_info ON locations.client_uuid = os_info.client_uuid
 			LEFT JOIN latest_os_versions ON os_info.os_name = latest_os_versions.os_name
+			LEFT JOIN most_recent_jobs ON locations.tagnumber = most_recent_jobs.tagnumber
 		WHERE %s
 		GROUP BY 
 			locations.client_uuid,
@@ -1005,7 +1006,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			locations.ad_domain,
 			os_info.is_intune_joined,
 			static_ad_domains.domain_name_formatted,
-			(CASE WHEN os_info.os_name IS NOT NULL THEN TRUE ELSE FALSE END),
+			(CASE WHEN most_recent_jobs.clone_completed = TRUE THEN TRUE ELSE FALSE END),
 			os_info.os_name,
 			os_info.os_version,
 			os_info.windows_build_number,
