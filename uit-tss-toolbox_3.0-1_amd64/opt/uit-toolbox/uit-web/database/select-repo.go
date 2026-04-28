@@ -931,6 +931,15 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			WHERE 
 				historical_hardware_data.bios_version IS NOT NULL
 			ORDER BY historical_hardware_data.client_uuid, historical_hardware_data.time DESC NULLS LAST
+		),
+		most_recent_jobs AS (
+			SELECT DISTINCT ON (jobstats.tagnumber)
+				jobstats.tagnumber,
+				jobstats.clone_completed,
+				jobstats.erase_completed
+			FROM jobstats
+			WHERE (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
+			ORDER BY jobstats.tagnumber, jobstats.time DESC NULLS LAST
 		)
 		SELECT
 			locations.tagnumber, 
@@ -948,7 +957,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			locations.ad_domain, 
 			os_info.is_intune_joined,
 			static_ad_domains.domain_name_formatted, 
-			(CASE WHEN os_info.os_name IS NOT NULL THEN TRUE ELSE FALSE END) AS "os_installed",
+			(CASE WHEN most_recent_jobs.clone_completed = TRUE THEN TRUE ELSE FALSE END) AS "os_installed",
 			os_info.os_name, 
 			(CASE WHEN os_info.windows_build_number IS NOT NULL AND os_info.windows_ubr IS NOT NULL THEN CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) ELSE NULL END) AS "os_version",
 			latest_os_versions.latest_os_version,
@@ -1094,10 +1103,28 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			missingRequiredInfo := types.MissingRequiredInfo.String()
 			results[i].ClientErrors = append(results[i].ClientErrors, missingRequiredInfo)
 		}
+		// // If client is missing images of itself
+		// if results[i].FileCount == nil || (results[i].FileCount != nil && *results[i].FileCount <= 0) {
+		// 	missingImages := types.MissingImages.String()
+		// 	results[i].ClientErrors = append(results[i].ClientErrors, missingImages)
+		// }
+		// If client is retired, only pay attention to if disk removed or not
+		if results[i].Status != nil && *results[i].Status == "retired" {
+			if results[i].DiskRemoved != nil && !*results[i].DiskRemoved {
+				diskNotRemoved := types.DiskNotRemoved.String()
+				results[i].ClientErrors = append(results[i].ClientErrors, diskNotRemoved)
+				continue
+			}
+		}
 		// If client is broken
 		if results[i].IsBroken != nil && *results[i].IsBroken {
 			isBroken := types.IsBroken.String()
 			results[i].ClientErrors = append(results[i].ClientErrors, isBroken)
+		}
+		// If no hardware check in over 3 months
+		if results[i].LastHardwareCheck == nil || (results[i].LastHardwareCheck != nil && time.Since(*results[i].LastHardwareCheck) > 90*24*time.Hour) {
+			needsHardwareCheck := types.NeedsHardwareCheck.String()
+			results[i].ClientErrors = append(results[i].ClientErrors, needsHardwareCheck)
 		}
 		// If client has status pre-property or retired status, it need to be erased
 		if results[i].Status != nil && (*results[i].Status == "pre-property" || *results[i].Status == "retired") {
@@ -1105,7 +1132,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 				needsErasing := types.NeedsErasing.String()
 				results[i].ClientErrors = append(results[i].ClientErrors, needsErasing)
 			}
-			// If client has status pre-property or retired status but disk is not removed
+			// If client has status pre-property or retired but disk is not removed
 			if results[i].DiskRemoved != nil && !*results[i].DiskRemoved {
 				diskNotRemoved := types.DiskNotRemoved.String()
 				results[i].ClientErrors = append(results[i].ClientErrors, diskNotRemoved)
@@ -1169,17 +1196,6 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			} else {
 				results[i].ClientErrors = append(results[i].ClientErrors, biosOutdated)
 			}
-		}
-		// If no hardware check in over 3 months
-		if results[i].LastHardwareCheck == nil || (results[i].LastHardwareCheck != nil && time.Since(*results[i].LastHardwareCheck) > 90*24*time.Hour) {
-			needsHardwareCheck := types.NeedsHardwareCheck.String()
-			results[i].ClientErrors = append(results[i].ClientErrors, needsHardwareCheck)
-		}
-
-		// If client is missing images of itself
-		if results[i].FileCount == nil || (results[i].FileCount != nil && *results[i].FileCount <= 0) {
-			missingImages := types.MissingImages.String()
-			results[i].ClientErrors = append(results[i].ClientErrors, missingImages)
 		}
 	}
 

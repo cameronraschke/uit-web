@@ -350,7 +350,7 @@ async function renderInventoryTable() {
 				if (inventoryRow.status === 'retired') {
 					const tooltipIndicator = document.createElement('img');
 					tooltipIndicator.src = '/icons/general/info.svg';
-					tooltipIndicator.classList.add('tooltip-image', 'error');
+					tooltipIndicator.classList.add('tooltip-image', 'info');
 					tooltipIndicator.tabIndex = 0;
 					statusSpan.appendChild(tooltipIndicator);
 					attachPortalTooltip(
