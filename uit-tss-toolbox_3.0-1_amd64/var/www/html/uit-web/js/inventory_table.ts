@@ -185,7 +185,12 @@ async function renderInventoryTable() {
 	
 			editButton.textContent = 'Edit';
 
-			viewImagesButton.textContent = `Images (${inventoryRow.file_count || 0})`;
+			if (inventoryRow.file_count !== null && inventoryRow.file_count > 0) {
+				viewImagesButton.textContent = `Images (${inventoryRow.file_count})`;
+			} else {
+				viewImagesButton.textContent = 'Images (0)';
+				viewImagesButton.style.backgroundColor = "var(--transparent-accent-color)";
+			}
 
 			tagAnchor.appendChild(editButton);
 			imagesAnchor.appendChild(viewImagesButton);
