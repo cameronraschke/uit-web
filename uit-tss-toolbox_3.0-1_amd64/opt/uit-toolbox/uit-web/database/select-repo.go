@@ -1113,8 +1113,8 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			if results[i].DiskRemoved != nil && !*results[i].DiskRemoved {
 				diskNotRemoved := types.DiskNotRemoved.String()
 				results[i].ClientErrors = append(results[i].ClientErrors, diskNotRemoved)
-				continue
 			}
+			continue
 		}
 		// If client is broken
 		if results[i].IsBroken != nil && *results[i].IsBroken {
