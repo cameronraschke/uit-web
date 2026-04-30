@@ -92,9 +92,9 @@ CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	battery_design_capacity INTEGER DEFAULT NULL,
 	battery_manufacturer VARCHAR(64) DEFAULT NULL,
 	battery_manufacture_date DATE DEFAULT NULL,
-	bios_version VARCHAR(24) DEFAULT NULL,
-	bios_release_date VARCHAR(32) DEFAULT NULL,
-	bios_firmware VARCHAR(8) DEFAULT NULL,
+	bios_version VARCHAR(24) DEFAULT NULL, --unused
+	bios_release_date VARCHAR(32) DEFAULT NULL, --unused
+	bios_firmware VARCHAR(8) DEFAULT NULL, --unused 
 	memory_serial VARCHAR(128) DEFAULT NULL,
 	memory_capacity_kb BIGINT DEFAULT NULL,
 	memory_speed_mhz SMALLINT DEFAULT NULL,
@@ -840,3 +840,33 @@ CREATE TABLE IF NOT EXISTS os_info (
 		ON UPDATE CASCADE
 		ON DELETE SET NULL
 );
+
+CREATE TABLE IF NOT EXISTS historical_firmware_data (
+	transaction_uuid VARCHAR(64) PRIMARY KEY,
+	client_uuid UUID NOT NULL,
+	time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	bios_version VARCHAR(24) DEFAULT NULL,
+	bios_release_date VARCHAR(32) DEFAULT NULL,
+	bios_firmware VARCHAR(8) DEFAULT NULL,
+	updated_from_windows BOOLEAN DEFAULT FALSE NOT NULL,
+
+	CONSTRAINT historical_firmware_data_client_uuid_fkey
+		FOREIGN KEY (client_uuid)
+			REFERENCES ids(uuid)
+		ON UPDATE CASCADE
+		ON DELETE SET NULL
+);
+
+-- INSERT INTO historical_firmware_data (client_uuid, time, bios_version, bios_release_date, bios_firmware, transaction_uuid, updated_from_windows)
+-- SELECT
+-- 	client_uuid, 
+-- 	time, 
+-- 	bios_version, 
+-- 	bios_release_date, 
+-- 	bios_firmware, 
+-- 	transaction_uuid, 
+-- 	updated_from_windows 
+-- FROM historical_hardware_data
+-- WHERE
+--  time IS NOT NULL AND bios_version IS NOT NULL
+-- ORDER BY time DESC;

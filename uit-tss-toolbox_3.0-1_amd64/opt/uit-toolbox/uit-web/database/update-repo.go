@@ -1365,27 +1365,21 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 
 	const clientHealthCheckHistorySQL = `
 		INSERT INTO 
-			historical_hardware_data (
+			historical_firmware_data (
 				time, 
 				transaction_uuid,
 				client_uuid, 
-				tagnumber, 
-				system_serial, 
 				bios_version
 			) 
 		VALUES (
 			CURRENT_TIMESTAMP,
 			$1,
 			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
-			$2,
-			$3,
-			$4
+			$2
 		) ON CONFLICT (transaction_uuid) DO UPDATE SET
 		 	time = CURRENT_TIMESTAMP,
-			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_hardware_data.client_uuid), 
-			tagnumber = COALESCE(EXCLUDED.tagnumber, historical_hardware_data.tagnumber), 
-			system_serial = COALESCE(EXCLUDED.system_serial, historical_hardware_data.system_serial),
-			bios_version = COALESCE(EXCLUDED.bios_version, historical_hardware_data.bios_version)
+			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_firmware_data.client_uuid),
+			bios_version = COALESCE(EXCLUDED.bios_version, historical_firmware_data.bios_version)
 	;`
 
 	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckHistorySQL,
@@ -1572,9 +1566,6 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			battery_design_capacity,
 			battery_manufacturer,
 			battery_manufacture_date,
-			bios_version,
-			bios_release_date,
-			bios_firmware,
 			memory_serial,
 			memory_capacity_kb,
 			memory_speed_mhz
@@ -1605,10 +1596,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			$22,
 			$23,
 			$24,
-			$25,
-			$26,
-			$27,
-			$28
+			$25
 		) ON CONFLICT (transaction_uuid) 
 		DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
@@ -1634,9 +1622,6 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			battery_design_capacity = COALESCE(EXCLUDED.battery_design_capacity, historical_hardware_data.battery_design_capacity),
 			battery_manufacturer = COALESCE(EXCLUDED.battery_manufacturer, historical_hardware_data.battery_manufacturer),
 			battery_manufacture_date = COALESCE(EXCLUDED.battery_manufacture_date, historical_hardware_data.battery_manufacture_date),
-			bios_version = COALESCE(EXCLUDED.bios_version, historical_hardware_data.bios_version),
-			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_hardware_data.bios_release_date),
-			bios_firmware = COALESCE(EXCLUDED.bios_firmware, historical_hardware_data.bios_firmware),
 			memory_serial = COALESCE(EXCLUDED.memory_serial, historical_hardware_data.memory_serial),
 			memory_capacity_kb = COALESCE(EXCLUDED.memory_capacity_kb, historical_hardware_data.memory_capacity_kb),
 			memory_speed_mhz = COALESCE(EXCLUDED.memory_speed_mhz, historical_hardware_data.memory_speed_mhz)
@@ -1666,9 +1651,6 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		ptrToNullFloat64(hardwareData.BatteryDesignCapacity),
 		ptrToNullString(hardwareData.BatteryManufacturer),
 		ptrToNullDate(hardwareData.BatteryManufactureDate),
-		ptrToNullString(hardwareData.BiosVersion),
-		ptrToNullString(hardwareData.BiosReleaseDate),
-		ptrToNullString(hardwareData.BiosFirmware),
 		ptrToNullString(hardwareData.MemorySerial),
 		ptrToNullInt64(hardwareData.MemoryCapacityKB),
 		ptrToNullInt64(hardwareData.MemorySpeedMHz),
@@ -1677,6 +1659,45 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		return err
 	}
 	if err := VerifyRowsAffected(hardwareHistoryResult, 1); err != nil {
+		return err
+	}
+
+	const clientHealthCheckHistorySQL = `
+		INSERT INTO 
+			historical_firmware_data (
+				time, 
+				transaction_uuid,
+				client_uuid, 
+				bios_version,
+				bios_firmware,
+				bios_release_date
+			) 
+		VALUES (
+			CURRENT_TIMESTAMP,
+			$1,
+			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
+			$3,
+			$4,
+			$5
+		) ON CONFLICT (transaction_uuid) DO UPDATE SET
+		 	time = CURRENT_TIMESTAMP,
+			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_firmware_data.client_uuid),
+			bios_version = COALESCE(EXCLUDED.bios_version, historical_firmware_data.bios_version),
+			bios_firmware = COALESCE(EXCLUDED.bios_firmware, historical_firmware_data.bios_firmware),
+			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_firmware_data.bios_release_date)
+	;`
+
+	firmwareSQLResult, err := tx.ExecContext(ctx, clientHealthCheckHistorySQL,
+		toNullString(hardwareData.TransactionUUID),
+		toNullInt64(*hardwareData.Tagnumber),
+		ptrToNullString(hardwareData.BiosVersion),
+		ptrToNullString(hardwareData.BiosFirmware),
+		ptrToNullDate(hardwareData.BiosReleaseDate),
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(firmwareSQLResult, 1); err != nil {
 		return err
 	}
 	return nil
@@ -2140,8 +2161,6 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 				battery_current_max_capacity,
 				battery_charge_cycles,
 				battery_health,
-				bios_version,
-				bios_release_date,
 				memory_capacity_kb,
 				memory_speed_mhz
 			) VALUES (
@@ -2161,9 +2180,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 				$13,
 				$14,
 				$15,
-				$16,
-				$17,
-				$18
+				$16
 			) ON CONFLICT DO NOTHING
 	;`
 
@@ -2182,8 +2199,6 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		ptrToNullInt64(windowsUpdateDTO.BatteryCurrentMaxCapacity),
 		ptrToNullInt64(windowsUpdateDTO.BatteryChargeCycleCount),
 		ptrToNullFloat64(windowsUpdateDTO.BatteryHealthPcnt),
-		ptrToNullString(windowsUpdateDTO.BIOSVersion),
-		ptrToNullTime(windowsUpdateDTO.BIOSReleaseDate),
 		ptrToNullInt64(windowsUpdateDTO.MemoryCapacityKB),
 		ptrToNullInt64(windowsUpdateDTO.MemorySpeedMHz),
 	)
@@ -2287,5 +2302,39 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 
+	const clientHealthCheckHistorySQL = `
+		INSERT INTO 
+			historical_firmware_data (
+				time, 
+				transaction_uuid,
+				client_uuid, 
+				bios_version,
+				bios_release_date
+			) 
+		VALUES (
+			CURRENT_TIMESTAMP,
+			$1,
+			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
+			$3,
+			$4
+		) ON CONFLICT (transaction_uuid) DO UPDATE SET
+		 	time = CURRENT_TIMESTAMP,
+			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_firmware_data.client_uuid),
+			bios_version = COALESCE(EXCLUDED.bios_version, historical_firmware_data.bios_version),
+			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_firmware_data.bios_release_date)
+	;`
+
+	firmwareSQLResult, err := tx.ExecContext(ctx, clientHealthCheckHistorySQL,
+		toNullString(transactionUUID.String()),
+		toNullInt64(windowsUpdateDTO.Tagnumber),
+		ptrToNullString(windowsUpdateDTO.BIOSVersion),
+		ptrToNullTime(windowsUpdateDTO.BIOSReleaseDate),
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(firmwareSQLResult, 1); err != nil {
+		return err
+	}
 	return nil
 }

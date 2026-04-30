@@ -922,15 +922,15 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			WHERE os_info.os_name IS NOT NULL
 			ORDER BY os_info.os_name, os_info.windows_build_number DESC NULLS LAST, os_info.windows_ubr DESC NULLS LAST
 		),
-		latest_historical_hardware_data AS (
-			SELECT DISTINCT ON (historical_hardware_data.client_uuid) 
-				historical_hardware_data.client_uuid, 
-				historical_hardware_data.bios_version
+		latest_historical_firmware_data AS (
+			SELECT DISTINCT ON (historical_firmware_data.client_uuid) 
+				historical_firmware_data.client_uuid, 
+				historical_firmware_data.bios_version
 			FROM 
-				historical_hardware_data
+				historical_firmware_data
 			WHERE 
-				historical_hardware_data.bios_version IS NOT NULL
-			ORDER BY historical_hardware_data.client_uuid, historical_hardware_data.time DESC NULLS LAST
+				historical_firmware_data.bios_version IS NOT NULL
+			ORDER BY historical_firmware_data.client_uuid, historical_firmware_data.time DESC NULLS LAST
 		),
 		os_installed_table AS (
 			SELECT DISTINCT ON (jobstats.tagnumber)
@@ -963,10 +963,10 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			os_info.windows_bitlocker_enabled,
 			client_health.last_hardware_check,
 			(CASE 
-				WHEN latest_historical_hardware_data.bios_version = static_bios_stats.bios_version THEN TRUE
+				WHEN latest_historical_firmware_data.bios_version = static_bios_stats.bios_version THEN TRUE
 				ELSE FALSE
 			END) AS "bios_updated",
-			latest_historical_hardware_data.bios_version,
+			latest_historical_firmware_data.bios_version,
 			locations.client_status,
 			static_client_statuses.status_formatted,
 			locations.is_broken, 
@@ -983,7 +983,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
 			LEFT JOIN static_device_types ON hardware_data.device_type = static_device_types.device_type
 			LEFT JOIN files ON locations.client_uuid = files.client_uuid
-			LEFT JOIN latest_historical_hardware_data ON locations.client_uuid = latest_historical_hardware_data.client_uuid
+			LEFT JOIN latest_historical_firmware_data ON locations.client_uuid = latest_historical_firmware_data.client_uuid
 			LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
 			LEFT JOIN os_info ON locations.client_uuid = os_info.client_uuid
 			LEFT JOIN latest_os_versions ON os_info.os_name = latest_os_versions.os_name
@@ -1014,7 +1014,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			os_info.windows_bitlocker_enabled,
 			client_health.last_hardware_check,
 			static_bios_stats.bios_version,
-			latest_historical_hardware_data.bios_version,
+			latest_historical_firmware_data.bios_version,
 			locations.client_status,
 			static_client_statuses.status_formatted,
 			locations.is_broken,
@@ -1221,14 +1221,14 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			FROM 
 				historical_hardware_data 
 			LEFT JOIN 
-				hardware_data ON historical_hardware_data.tagnumber = hardware_data.tagnumber
+				hardware_data ON historical_hardware_data.client_uuid = hardware_data.client_uuid
 			WHERE 
 				historical_hardware_data.battery_design_capacity IS NOT NULL 
 				AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
 				AND historical_hardware_data.updated_from_windows = FALSE
 			GROUP BY 
 				hardware_data.system_model,
-				historical_hardware_data.tagnumber, 
+				historical_hardware_data.client_uuid, 
 				historical_hardware_data.battery_current_max_capacity, 
 				historical_hardware_data.battery_design_capacity
 		)
@@ -1249,9 +1249,10 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	latest_historical_hardware_data AS (
 		SELECT DISTINCT ON (historical_hardware_data.client_uuid) historical_hardware_data.time, historical_hardware_data.client_uuid, 
 			historical_hardware_data.disk_type, historical_hardware_data.disk_size_kb AS "disk_capacity",
-			historical_hardware_data.bios_version, historical_hardware_data.disk_model,
+			historical_firmware_data.bios_version, historical_hardware_data.disk_model,
 			historical_hardware_data.battery_design_capacity, historical_hardware_data.battery_current_max_capacity
 		FROM historical_hardware_data
+		LEFT JOIN historical_firmware_data ON historical_hardware_data.client_uuid = historical_firmware_data.client_uuid
 		ORDER BY historical_hardware_data.client_uuid, historical_hardware_data.time DESC NULLS LAST
 	),
 	latest_job AS (
@@ -1270,7 +1271,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 				hardware_data.system_model, 
 				ROW_NUMBER() OVER (PARTITION BY hardware_data.system_model ORDER BY jobstats.time DESC NULLS LAST) AS "row_num"
 			FROM jobstats
-			LEFT JOIN hardware_data ON jobstats.tagnumber = hardware_data.tagnumber
+			LEFT JOIN hardware_data ON jobstats.tagnumber = (SELECT tagnumber from ids where uuid = hardware_data.client_uuid)
 			WHERE
 				jobstats.clone_master = TRUE 
 				GROUP BY hardware_data.system_model, jobstats.time
