@@ -1375,7 +1375,7 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 			CURRENT_TIMESTAMP,
 			$1,
 			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
-			$2
+			$3
 		) ON CONFLICT (transaction_uuid) DO UPDATE SET
 		 	time = CURRENT_TIMESTAMP,
 			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_firmware_data.client_uuid),
@@ -1385,7 +1385,6 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckHistorySQL,
 		toNullString(healthCheck.TransactionUUID),
 		toNullInt64(healthCheck.Tagnumber),
-		ptrToNullString(healthCheck.SystemSerial),
 		ptrToNullString(healthCheck.BIOSVersion),
 	)
 	if err != nil {
