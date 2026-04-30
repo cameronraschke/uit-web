@@ -1253,6 +1253,9 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			historical_hardware_data.battery_design_capacity, historical_hardware_data.battery_current_max_capacity
 		FROM historical_hardware_data
 		LEFT JOIN historical_firmware_data ON historical_hardware_data.client_uuid = historical_firmware_data.client_uuid
+		WHERE historical_hardware_data.time IN (
+			SELECT MAX(time) FROM historical_hardware_data GROUP BY client_uuid
+		)
 		ORDER BY historical_hardware_data.client_uuid, historical_hardware_data.time DESC NULLS LAST
 	),
 	latest_job AS (
