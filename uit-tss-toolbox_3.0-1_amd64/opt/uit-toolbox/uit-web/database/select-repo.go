@@ -1285,7 +1285,9 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		FROM 
 			job_queue 
 		WHERE 
-			job_queued = TRUE OR job_name IS NOT NULL
+			(job_queued = TRUE OR job_name IS NOT NULL)
+			AND job_queue.last_heard IS NOT NULL
+			AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.last_heard)) < 30
 	)
 	SELECT
 		locations.tagnumber,
