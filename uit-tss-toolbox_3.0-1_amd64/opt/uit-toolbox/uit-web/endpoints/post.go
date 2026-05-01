@@ -1252,11 +1252,11 @@ func SetClientHardwareData(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if err := types.IsTagnumberInt64Valid(hardwareData.Tagnumber); err != nil {
-		log.Warn("Invalid tagnumber: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
+	// if err := types.IsTagnumberInt64Valid(hardwareData.Tagnumber); err != nil {
+	// 	log.Warn("Invalid tagnumber: " + err.Error())
+	// 	middleware.WriteJsonError(w, http.StatusBadRequest)
+	// 	return
+	// }
 	updateRepo, err := database.NewUpdateRepo()
 	if err != nil {
 		log.Error("No database connection available for SetClientHardwareData")
