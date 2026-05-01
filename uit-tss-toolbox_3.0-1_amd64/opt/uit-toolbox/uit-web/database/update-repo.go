@@ -1420,7 +1420,7 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 }
 
 func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error) {
-	if hardwareData == nil || hardwareData.Tagnumber == nil || strings.TrimSpace(hardwareData.TransactionUUID) == "" {
+	if hardwareData == nil || hardwareData.SystemSerial == nil || strings.TrimSpace(hardwareData.TransactionUUID) == "" {
 		return fmt.Errorf("hardwareData is invalid")
 	}
 	if ctx.Err() != nil {
