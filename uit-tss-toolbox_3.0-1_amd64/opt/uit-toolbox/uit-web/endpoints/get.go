@@ -1108,3 +1108,49 @@ func FetchAllBuildingsAndRooms(w http.ResponseWriter, req *http.Request) {
 	}
 	middleware.WriteJson(w, http.StatusOK, result)
 }
+
+func InitClient(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "InitClient"))
+
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Error reading request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	var requestData types.ClientInitRequest
+	if err := json.Unmarshal(body, &requestData); err != nil {
+		log.Warn("Error unmarshalling request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if requestData.Tagnumber == nil || types.IsTagnumberInt64Valid(requestData.Tagnumber) != nil {
+		log.Warn("Invalid or missing tagnumber in request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if requestData.SystemSerial == nil || strings.TrimSpace(*requestData.SystemSerial) == "" {
+		log.Warn("Invalid or missing system serial in request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if requestData.TransactionUUID == nil || strings.TrimSpace(*requestData.TransactionUUID) == "" {
+		log.Warn("Invalid or missing transaction UUID in request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	clientUUID, err := database.InitClient(ctx, requestData)
+	if err != nil || clientUUID == nil {
+		log.Warn("Error initializing client: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	returnedJson := struct {
+		ClientUUID string `json:"client_uuid"`
+	}{
+		ClientUUID: *clientUUID,
+	}
+	middleware.WriteJson(w, http.StatusOK, returnedJson)
+}

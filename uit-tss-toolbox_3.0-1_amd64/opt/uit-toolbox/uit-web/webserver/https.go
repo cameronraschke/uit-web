@@ -102,6 +102,7 @@ func StartWebServer(ctx context.Context) error {
 
 	// Client hardware
 	httpsRouter.Handle("POST /api/client/hardware", httpsFullAPIChain.ThenFunc(endpoints.SetClientHardwareData))
+	httpsRouter.Handle("POST /api/client/init", httpsFullAPIChain.ThenFunc(endpoints.InitClient))
 	httpsRouter.Handle("POST /api/client/hardware/battery", httpsFullAPIChain.ThenFunc(endpoints.UpdateClientBatteryChargePcnt))
 	httpsRouter.Handle("POST /api/client/health", httpsFullAPIChain.ThenFunc(endpoints.UpdateClientHealthCheck))
 	httpsRouter.Handle("POST /api/windows-client-info", httpsFullAPIChain.ThenFunc(endpoints.ReceiveWindowsClientInfo))
@@ -179,14 +180,14 @@ func StartWebServer(ctx context.Context) error {
 	}
 
 	httpsServer := http.Server{
-		Addr:           ":31411",
-		Handler:        httpsRouter,
-		TLSConfig:      tlsConfig,
+		Addr:              ":31411",
+		Handler:           httpsRouter,
+		TLSConfig:         tlsConfig,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       apiTimeout,
 		WriteTimeout:      apiTimeout,
-		IdleTimeout:    120 * time.Second,
-		MaxHeaderBytes: 1 << 20, // 1MB header size max
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1MB header size max
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx // Propagate cancellation to requests
 		},

@@ -120,14 +120,12 @@ func UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, cl
 			(
 				time, 
 				client_uuid,
-				tagnumber, 
 				last_hardware_check, 
 				transaction_uuid
 			) 
 		VALUES (
 			CURRENT_TIMESTAMP, 
 			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
-			$1, 
 			$2, 
 			$3
 		)
@@ -1332,7 +1330,6 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 				time, 
 				transaction_uuid, 
 				client_uuid, 
-				tagnumber, 
 				last_hardware_check 
 			) 
 		VALUES (
@@ -1464,7 +1461,8 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			cpu_core_count,
 			cpu_thread_count,
 			ethernet_mac,
-			wifi_mac
+			wifi_mac,
+			tpm_version
 		) VALUES (
 			$1,
 			CURRENT_TIMESTAMP,
@@ -1485,7 +1483,8 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			$15,
 			$16,
 			$17,
-			$18
+			$18,
+			$19
 		) ON CONFLICT (tagnumber)
 		 DO UPDATE SET
 		 	transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, hardware_data.transaction_uuid),
@@ -1506,7 +1505,8 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			cpu_core_count = COALESCE(EXCLUDED.cpu_core_count, hardware_data.cpu_core_count),
 			cpu_thread_count = COALESCE(EXCLUDED.cpu_thread_count, hardware_data.cpu_thread_count),
 			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, hardware_data.ethernet_mac),
-			wifi_mac = COALESCE(EXCLUDED.wifi_mac, hardware_data.wifi_mac)
+			wifi_mac = COALESCE(EXCLUDED.wifi_mac, hardware_data.wifi_mac),
+			tpm_version = COALESCE(EXCLUDED.tpm_version, hardware_data.tpm_version)
 			;
 	`
 	var hardwareResult sql.Result
@@ -1529,6 +1529,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		ptrToNullInt64(hardwareData.CPUThreadCount),
 		ptrToNullString(hardwareData.EthernetMAC),
 		ptrToNullString(hardwareData.WiFiMAC),
+		ptrToNullString(hardwareData.TPMVersion),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -2338,4 +2339,47 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		return err
 	}
 	return nil
+}
+
+func InitClient(ctx context.Context, request types.ClientInitRequest) (clientUUID *string, err error) {
+	if request.Tagnumber == nil || types.IsTagnumberInt64Valid(request.Tagnumber) != nil {
+		return nil, fmt.Errorf("%w: %s", types.MissingFieldError, "tagnumber")
+	}
+	if request.SystemSerial == nil || strings.TrimSpace(*request.SystemSerial) == "" {
+		return nil, fmt.Errorf("%w: %s", types.MissingFieldError, "system serial")
+	}
+	if request.TransactionUUID == nil || strings.TrimSpace(*request.TransactionUUID) == "" {
+		return nil, fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
+	}
+
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+	const sqlCode = `
+	INSERT INTO ids (uuid, time, tagnumber, system_serial)
+	VALUES (gen_random_uuid(), CURRENT_TIMESTAMP, $1, $2)
+	ON CONFLICT (system_serial) DO NOTHING
+	RETURNING client_uuid;
+	`
+	var idResult sql.NullString
+	err = tx.QueryRowContext(ctx, sqlCode, ptrToNullInt64(request.Tagnumber), ptrToNullString(request.SystemSerial)).Scan(&idResult)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+	if !idResult.Valid {
+		return nil, fmt.Errorf("%w: no client UUID returned for serial %s", types.DatabaseQueryError, *request.SystemSerial)
+	}
+	return &idResult.String, nil
 }

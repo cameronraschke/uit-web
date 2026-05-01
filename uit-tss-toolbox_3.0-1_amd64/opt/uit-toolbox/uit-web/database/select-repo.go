@@ -987,7 +987,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
 			LEFT JOIN os_info ON locations.client_uuid = os_info.client_uuid
 			LEFT JOIN latest_os_versions ON os_info.os_name = latest_os_versions.os_name
-			LEFT JOIN os_installed_table ON locations.tagnumber = os_installed_table.tagnumber
+			LEFT JOIN os_installed_table ON locations.client_uuid = os_installed_table.client_uuid
 		WHERE %s
 		GROUP BY 
 			locations.client_uuid,

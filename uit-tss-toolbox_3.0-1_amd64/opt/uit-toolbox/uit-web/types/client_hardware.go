@@ -26,6 +26,7 @@ type ClientHardwareView struct {
 	CPUThreadCount            *int64   `json:"cpu_thread_count"`
 	EthernetMAC               *string  `json:"ethernet_mac"`
 	WiFiMAC                   *string  `json:"wifi_mac"`
+	TPMVersion                *string  `json:"tpm_version"`
 	DiskModel                 *string  `json:"disk_model"`
 	DiskType                  *string  `json:"disk_type"`
 	DiskSize                  *int64   `json:"disk_size_kb"`

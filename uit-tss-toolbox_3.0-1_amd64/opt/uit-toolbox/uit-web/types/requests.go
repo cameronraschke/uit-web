@@ -189,3 +189,9 @@ func NewWindowsUpdateDTO(request WindowsUpdateRequest) (*WindowsUpdateDTO, error
 		UpdatedFromWindows:        *request.UpdatedFromWindows,
 	}, nil
 }
+
+type ClientInitRequest struct {
+	Tagnumber       *int64  `json:"tagnumber"`
+	SystemSerial    *string `json:"system_serial"`
+	TransactionUUID *string `json:"transaction_uuid,omitempty"`
+}
