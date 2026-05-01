@@ -1336,13 +1336,11 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 			CURRENT_TIMESTAMP, 
 			$1,
 			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
-			$2,
 			$3
 		)
 		ON CONFLICT (client_uuid) DO UPDATE SET 
 			time = CURRENT_TIMESTAMP,
 			transaction_uuid = EXCLUDED.transaction_uuid,
-			tagnumber = COALESCE(EXCLUDED.tagnumber, client_health.tagnumber), 
 			last_hardware_check = EXCLUDED.last_hardware_check
 		;`
 	var sqlResult sql.Result
@@ -1445,7 +1443,6 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			transaction_uuid,
 			time,
 			client_uuid,
-			tagnumber,
 			system_serial,
 			system_uuid,
 			system_manufacturer,
@@ -1466,7 +1463,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		) VALUES (
 			$1,
 			CURRENT_TIMESTAMP,
-			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
+			(SELECT uuid FROM ids WHERE system_serial = $2 ORDER BY time DESC LIMIT 1),
 			$2,
 			$3,
 			$4,
@@ -1483,13 +1480,11 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			$15,
 			$16,
 			$17,
-			$18,
-			$19
-		) ON CONFLICT (tagnumber)
+			$18
+		) ON CONFLICT (client_uuid)
 		 DO UPDATE SET
 		 	transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, hardware_data.transaction_uuid),
 			time = CURRENT_TIMESTAMP,
-			client_uuid = COALESCE(EXCLUDED.client_uuid, hardware_data.client_uuid),
 			system_serial = COALESCE(EXCLUDED.system_serial, hardware_data.system_serial),
 			system_uuid = COALESCE(EXCLUDED.system_uuid, hardware_data.system_uuid),
 			system_manufacturer = COALESCE(EXCLUDED.system_manufacturer, hardware_data.system_manufacturer),
@@ -1512,7 +1507,6 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 	var hardwareResult sql.Result
 	hardwareResult, err = tx.ExecContext(ctx, hardwareDataTable,
 		ptrToNullString(&hardwareData.TransactionUUID),
-		ptrToNullInt64(hardwareData.Tagnumber),
 		ptrToNullString(hardwareData.SystemSerial),
 		ptrToNullString(hardwareData.SystemUUID),
 		ptrToNullString(hardwareData.SystemManufacturer),
@@ -1543,8 +1537,6 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			transaction_uuid,
 			time,
 			client_uuid,
-			tagnumber, 
-			system_serial, 
 			ethernet_mac, 
 			wifi_mac, 
 			disk_model,
@@ -1570,8 +1562,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		) VALUES (
 			$1,
 			CURRENT_TIMESTAMP,
-			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
-			$2,
+			(SELECT uuid FROM ids WHERE system_serial = $2 ORDER BY time DESC LIMIT 1),
 			$3,
 			$4,
 			$5,
@@ -1593,14 +1584,11 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			$21,
 			$22,
 			$23,
-			$24,
-			$25
+			$24
 		) ON CONFLICT (transaction_uuid) 
 		DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
 			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_hardware_data.client_uuid),
-			tagnumber =  COALESCE(EXCLUDED.tagnumber, historical_hardware_data.tagnumber),
-			system_serial = COALESCE(EXCLUDED.system_serial, historical_hardware_data.system_serial),
 			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, historical_hardware_data.ethernet_mac),
 			wifi_mac =  COALESCE(EXCLUDED.wifi_mac, historical_hardware_data.wifi_mac),
 			disk_model = COALESCE(EXCLUDED.disk_model, historical_hardware_data.disk_model),
@@ -1628,7 +1616,6 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 	var hardwareHistoryResult sql.Result
 	hardwareHistoryResult, err = tx.ExecContext(ctx, historicalHardwareDataTable,
 		ptrToNullString(&hardwareData.TransactionUUID),
-		ptrToNullInt64(hardwareData.Tagnumber),
 		ptrToNullString(hardwareData.SystemSerial),
 		ptrToNullString(hardwareData.EthernetMAC),
 		ptrToNullString(hardwareData.WiFiMAC),
