@@ -1660,7 +1660,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		VALUES (
 			CURRENT_TIMESTAMP,
 			$1,
-			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
+			(SELECT uuid FROM ids WHERE system_serial = $2 ORDER BY time DESC LIMIT 1),
 			$3,
 			$4,
 			$5
@@ -1674,7 +1674,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 
 	firmwareSQLResult, err := tx.ExecContext(ctx, clientHealthCheckHistorySQL,
 		toNullString(hardwareData.TransactionUUID),
-		toNullInt64(*hardwareData.Tagnumber),
+		ptrToNullString(hardwareData.SystemSerial),
 		ptrToNullString(hardwareData.BiosVersion),
 		ptrToNullString(hardwareData.BiosFirmware),
 		ptrToNullDate(hardwareData.BiosReleaseDate),
