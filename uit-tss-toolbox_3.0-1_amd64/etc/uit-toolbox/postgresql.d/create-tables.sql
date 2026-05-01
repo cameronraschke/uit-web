@@ -1,4 +1,3 @@
--- Tables with tagnmbers: clientstats, jobstats, locations, client_health, job_queue, hardware_data, bitlocker, checkout
 DROP TABLE IF EXISTS serverstats;
 CREATE TABLE serverstats (
 	date DATE UNIQUE NOT NULL,
@@ -16,37 +15,15 @@ CREATE TABLE serverstats (
 
 
 CREATE TABLE IF NOT EXISTS jobstats (
-	uuid VARCHAR(64) UNIQUE NOT NULL,
+	uuid VARCHAR(64) PRIMARY KEY,
+	client_uuid UUID NOT NULL,
 	tagnumber INTEGER DEFAULT NULL,
-	-- etheraddress VARCHAR(17) DEFAULT NULL,
+	-- etheraddress VARCHAR(17) DEFAULT NULL, -- unused, moved to hardware_data
 	date DATE DEFAULT NULL,
 	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
 	system_serial VARCHAR(128) DEFAULT NULL,
 	disk VARCHAR(8) DEFAULT NULL,
-	-- disk_model VARCHAR(36) DEFAULT NULL,
-	-- disk_type VARCHAR(4) DEFAULT NULL,
-	-- disk_size SMALLINT DEFAULT NULL,
-	-- disk_serial VARCHAR(32) DEFAULT NULL,
-	-- disk_writes DECIMAL(5,2) DEFAULT NULL,
-	-- disk_reads DECIMAL(5,2) DEFAULT NULL,
-	-- disk_power_on_hours INTEGER DEFAULT NULL,
-	-- disk_errors INT DEFAULT NULL,
-	-- disk_power_cycles INTEGER DEFAULT NULL,
-	-- disk_temp SMALLINT DEFAULT NULL,
-	-- disk_firmware VARCHAR(10) DEFAULT NULL,
-	-- battery_model VARCHAR(16) DEFAULT NULL,
-	-- battery_serial VARCHAR(16) DEFAULT NULL,
-	-- battery_health SMALLINT DEFAULT NULL,
-	-- battery_charge_cycles SMALLINT DEFAULT NULL,
-	-- battery_capacity INTEGER DEFAULT NULL,
-	-- battery_manufacturedate DATE DEFAULT NULL,
 	avg_cpu_temp SMALLINT DEFAULT NULL,
-	-- bios_version VARCHAR(24) DEFAULT NULL,
-	-- bios_date VARCHAR(12) DEFAULT NULL,
-	-- bios_firmware VARCHAR(8) DEFAULT NULL,
-	-- ram_serial VARCHAR(128) DEFAULT NULL,
-	-- ram_capacity SMALLINT DEFAULT NULL,
-	-- memory_speed_mhz SMALLINT DEFAULT NULL,
 	avg_cpu_usage DECIMAL(6,2) DEFAULT NULL,
 	avg_network_usage DECIMAL(5,2) DEFAULT NULL,
 	boot_time DECIMAL(5,2) DEFAULT NULL,
@@ -62,15 +39,18 @@ CREATE TABLE IF NOT EXISTS jobstats (
 	host_connected BOOLEAN DEFAULT FALSE,
 
 	CONSTRAINT jobstats_valid_tag
-		CHECK (tagnumber > 100000 AND tagnumber < 999999)
+		CHECK (tagnumber > 100000 AND tagnumber < 999999),
+	CONSTRAINT jobstats_client_uuid_fkey
+		FOREIGN KEY (client_uuid)
+			REFERENCES ids(uuid)
+		ON UPDATE CASCADE
+		ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	transaction_uuid VARCHAR(64) PRIMARY KEY,
 	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
 	client_uuid UUID DEFAULT NOT NULL,
-	tagnumber INTEGER DEFAULT NULL, -- unused
-	system_serial VARCHAR(128) DEFAULT NULL, -- unused
 	ethernet_mac VARCHAR(17) DEFAULT NULL,
 	wifi_mac VARCHAR(17) DEFAULT NULL,
 	disk_model VARCHAR(36) DEFAULT NULL,
@@ -82,19 +62,14 @@ CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	disk_power_on_hours INTEGER DEFAULT NULL,
 	disk_errors INTEGER DEFAULT NULL,
 	disk_power_cycles INTEGER DEFAULT NULL,
-	disk_temp SMALLINT DEFAULT NULL, -- unused
 	disk_firmware VARCHAR(10) DEFAULT NULL,
 	battery_model VARCHAR(16) DEFAULT NULL,
 	battery_serial VARCHAR(16) DEFAULT NULL,
-	battery_health SMALLINT DEFAULT NULL, -- unused
 	battery_charge_cycles SMALLINT DEFAULT NULL,
 	battery_current_max_capacity INTEGER DEFAULT NULL,
 	battery_design_capacity INTEGER DEFAULT NULL,
 	battery_manufacturer VARCHAR(64) DEFAULT NULL,
 	battery_manufacture_date DATE DEFAULT NULL,
-	bios_version VARCHAR(24) DEFAULT NULL, --unused
-	bios_release_date VARCHAR(32) DEFAULT NULL, --unused
-	bios_firmware VARCHAR(8) DEFAULT NULL, --unused 
 	memory_serial VARCHAR(128) DEFAULT NULL,
 	memory_capacity_kb BIGINT DEFAULT NULL,
 	memory_speed_mhz SMALLINT DEFAULT NULL,
@@ -197,53 +172,6 @@ CREATE TABLE IF NOT EXISTS locations_log (
 		ON UPDATE CASCADE 
 		ON DELETE RESTRICT
 );
-
--- INSERT INTO locations (
--- 	time,
--- 	client_uuid,
--- 	tagnumber,
--- 	system_serial,
--- 	location,
--- 	is_broken,
--- 	disk_removed,
--- 	department_name,
--- 	ad_domain,
--- 	note,
--- 	client_status,
--- 	building,
--- 	room,
--- 	property_custodian,
--- 	acquired_date,
--- 	retired_date,
--- 	transaction_uuid,
--- 	bulk_update
---  )
---  SELECT 
--- 	locations_log.time,
--- 	ids.uuid,
--- 	locations_log.tagnumber,
--- 	locations_log.system_serial,
--- 	locations_log.location,
--- 	locations_log.is_broken,
--- 	locations_log.disk_removed,
--- 	locations_log.department_name,
--- 	locations_log.ad_domain,
--- 	locations_log.note,
--- 	locations_log.client_status,
--- 	locations_log.building,
--- 	locations_log.room,
--- 	locations_log.property_custodian,
--- 	locations_log.acquired_date,
--- 	locations_log.retired_date,
--- 	locations_log.transaction_uuid,
--- 	locations_log.bulk_update
--- FROM locations_log
--- INNER JOIN ids ON ids.tagnumber = locations_log.tagnumber
--- WHERE locations_log.time IN (SELECT MAX(time) FROM locations_log GROUP BY tagnumber)
--- ORDER BY locations_log.time DESC
--- ;
-
--- update locations_log set client_uuid = ids.uuid from ids where ids.tagnumber = locations_log.tagnumber;
 
 
 DROP TABLE IF EXISTS static_disk_stats;
@@ -384,9 +312,6 @@ ON CONFLICT (system_model) DO UPDATE SET
 CREATE TABLE IF NOT EXISTS client_health (
 	time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
 	client_uuid UUID PRIMARY KEY,
-	tagnumber INTEGER DEFAULT NULL, -- unused
-	system_serial VARCHAR(128) DEFAULT NULL, -- unused
-	tpm_version VARCHAR(24) DEFAULT NULL, --unused, moved to hardware_data
 	os_name VARCHAR(128) DEFAULT NULL,
 	os_installed BOOLEAN DEFAULT NULL,
 	disk_free_space_kb BIGINT DEFAULT NULL,
@@ -394,9 +319,9 @@ CREATE TABLE IF NOT EXISTS client_health (
 	battery_health_pcnt NUMERIC(6,3) DEFAULT NULL, 
 	avg_erase_time SMALLINT DEFAULT NULL, 
 	avg_clone_time SMALLINT DEFAULT NULL, 
-	last_clone_job_time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL, -- rename from last_imaged_time to last_clone_job_time
-	last_erase_job_time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL, -- add last_erase_job_time
-	total_jobs_completed SMALLINT DEFAULT NULL, -- rename from all_jobs to total_jobs_completed
+	last_clone_job_time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
+	last_erase_job_time TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
+	total_jobs_completed SMALLINT DEFAULT NULL,
 	last_hardware_check TIMESTAMP(3) WITH TIME ZONE DEFAULT NULL,
 	transaction_uuid UUID DEFAULT NULL,
 	updated_from_windows BOOLEAN DEFAULT FALSE NOT NULL,

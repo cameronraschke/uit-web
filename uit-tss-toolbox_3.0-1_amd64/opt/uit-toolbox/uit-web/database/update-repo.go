@@ -334,14 +334,12 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 
 	// Insert/update ids table
 	const idsSql = `
-		INSERT INTO 
-			ids (
-				uuid, 
-				time, 
-				tagnumber, 
-				system_serial
-			)
-		VALUES (
+		INSERT INTO ids (
+			uuid, 
+			time, 
+			tagnumber, 
+			system_serial
+		) VALUES (
 			uuidv7(), 
 			CURRENT_TIMESTAMP, 
 			$1, 
@@ -2142,71 +2140,71 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		return err
 	}
 
-	// historical_hardware_data insert
-	const clientHistoricalHealthSql = `
-		INSERT INTO historical_hardware_data (
-				time,
-				transaction_uuid,
-				updated_from_windows,
-				client_uuid,
-				ethernet_mac,
-				wifi_mac,
-				disk_model,
-				disk_type,
-				disk_size_kb,
-				battery_serial,
-				battery_manufacturer,
-				battery_design_capacity,
-				battery_current_max_capacity,
-				battery_charge_cycles,
-				battery_health,
-				memory_capacity_kb,
-				memory_speed_mhz
-			) VALUES (
-				CURRENT_TIMESTAMP,
-				$1,
-				TRUE,
-				(SELECT uuid FROM ids WHERE tagnumber = $2 and system_serial = $3),
-				$4,
-				$5,
-				$6,
-				$7,
-				$8,
-				$9,
-				$10,
-				$11,
-				$12,
-				$13,
-				$14,
-				$15,
-				$16
-			) ON CONFLICT DO NOTHING
-	;`
+	// // historical_hardware_data insert
+	// const clientHistoricalHealthSql = `
+	// 	INSERT INTO historical_hardware_data (
+	// 			time,
+	// 			transaction_uuid,
+	// 			updated_from_windows,
+	// 			client_uuid,
+	// 			ethernet_mac,
+	// 			wifi_mac,
+	// 			disk_model,
+	// 			disk_type,
+	// 			disk_size_kb,
+	// 			battery_serial,
+	// 			battery_manufacturer,
+	// 			battery_design_capacity,
+	// 			battery_current_max_capacity,
+	// 			battery_charge_cycles,
+	// 			battery_health,
+	// 			memory_capacity_kb,
+	// 			memory_speed_mhz
+	// 		) VALUES (
+	// 			CURRENT_TIMESTAMP,
+	// 			$1,
+	// 			TRUE,
+	// 			(SELECT uuid FROM ids WHERE tagnumber = $2 and system_serial = $3),
+	// 			$4,
+	// 			$5,
+	// 			$6,
+	// 			$7,
+	// 			$8,
+	// 			$9,
+	// 			$10,
+	// 			$11,
+	// 			$12,
+	// 			$13,
+	// 			$14,
+	// 			$15,
+	// 			$16
+	// 		) ON CONFLICT DO NOTHING
+	// ;`
 
-	historicalClientHealthRes, err := tx.ExecContext(ctx, clientHistoricalHealthSql,
-		toNullUUID(transactionUUID),
-		toNullInt64(windowsUpdateDTO.Tagnumber),
-		toNullString(windowsUpdateDTO.SystemSerial),
-		ptrToNullString(windowsUpdateDTO.EthernetMACAddr),
-		ptrToNullString(windowsUpdateDTO.WifiMACAddr),
-		ptrToNullString(windowsUpdateDTO.DiskModel),
-		ptrToNullString(windowsUpdateDTO.DiskType),
-		ptrToNullInt64(windowsUpdateDTO.DiskSizeKB),
-		ptrToNullString(windowsUpdateDTO.BatterySerial),
-		ptrToNullString(windowsUpdateDTO.BatteryManufacturer),
-		ptrToNullInt64(windowsUpdateDTO.BatteryDesignCapacity),
-		ptrToNullInt64(windowsUpdateDTO.BatteryCurrentMaxCapacity),
-		ptrToNullInt64(windowsUpdateDTO.BatteryChargeCycleCount),
-		ptrToNullFloat64(windowsUpdateDTO.BatteryHealthPcnt),
-		ptrToNullInt64(windowsUpdateDTO.MemoryCapacityKB),
-		ptrToNullInt64(windowsUpdateDTO.MemorySpeedMHz),
-	)
-	if err != nil {
-		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
-	}
-	if err := VerifyRowsAffected(historicalClientHealthRes, 1); err != nil {
-		return err
-	}
+	// historicalClientHealthRes, err := tx.ExecContext(ctx, clientHistoricalHealthSql,
+	// 	toNullUUID(transactionUUID),
+	// 	toNullInt64(windowsUpdateDTO.Tagnumber),
+	// 	toNullString(windowsUpdateDTO.SystemSerial),
+	// 	ptrToNullString(windowsUpdateDTO.EthernetMACAddr),
+	// 	ptrToNullString(windowsUpdateDTO.WifiMACAddr),
+	// 	ptrToNullString(windowsUpdateDTO.DiskModel),
+	// 	ptrToNullString(windowsUpdateDTO.DiskType),
+	// 	ptrToNullInt64(windowsUpdateDTO.DiskSizeKB),
+	// 	ptrToNullString(windowsUpdateDTO.BatterySerial),
+	// 	ptrToNullString(windowsUpdateDTO.BatteryManufacturer),
+	// 	ptrToNullInt64(windowsUpdateDTO.BatteryDesignCapacity),
+	// 	ptrToNullInt64(windowsUpdateDTO.BatteryCurrentMaxCapacity),
+	// 	ptrToNullInt64(windowsUpdateDTO.BatteryChargeCycleCount),
+	// 	ptrToNullFloat64(windowsUpdateDTO.BatteryHealthPcnt),
+	// 	ptrToNullInt64(windowsUpdateDTO.MemoryCapacityKB),
+	// 	ptrToNullInt64(windowsUpdateDTO.MemorySpeedMHz),
+	// )
+	// if err != nil {
+	// 	return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	// }
+	// if err := VerifyRowsAffected(historicalClientHealthRes, 1); err != nil {
+	// 	return err
+	// }
 
 	// os_info upsert
 	const osInfoSQLCode = `
@@ -2306,6 +2304,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			historical_firmware_data (
 				time, 
 				transaction_uuid,
+				updated_from_windows,
 				client_uuid, 
 				bios_version,
 				bios_release_date
@@ -2315,12 +2314,14 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			$1,
 			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
 			$3,
-			$4
+			$4, 
+			$5
 		) ON CONFLICT (transaction_uuid) DO UPDATE SET
 		 	time = CURRENT_TIMESTAMP,
 			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_firmware_data.client_uuid),
 			bios_version = COALESCE(EXCLUDED.bios_version, historical_firmware_data.bios_version),
-			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_firmware_data.bios_release_date)
+			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_firmware_data.bios_release_date),
+			updated_from_windows = COALESCE(EXCLUDED.updated_from_windows, historical_firmware_data.updated_from_windows)
 	;`
 
 	firmwareSQLResult, err := tx.ExecContext(ctx, clientHealthCheckHistorySQL,
@@ -2328,6 +2329,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		toNullInt64(windowsUpdateDTO.Tagnumber),
 		ptrToNullString(windowsUpdateDTO.BIOSVersion),
 		ptrToNullTime(windowsUpdateDTO.BIOSReleaseDate),
+		ptrToNullBool(&windowsUpdateDTO.UpdatedFromWindows),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)

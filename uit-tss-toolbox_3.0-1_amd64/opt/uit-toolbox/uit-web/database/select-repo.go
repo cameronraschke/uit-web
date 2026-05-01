@@ -933,12 +933,12 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			ORDER BY historical_firmware_data.client_uuid, historical_firmware_data.time DESC NULLS LAST
 		),
 		os_installed_table AS (
-			SELECT DISTINCT ON (jobstats.tagnumber)
-				jobstats.tagnumber,
+			SELECT DISTINCT ON (jobstats.client_uuid)
+				jobstats.client_uuid,
 				(CASE WHEN jobstats.erase_completed = TRUE AND NOT jobstats.clone_completed = TRUE THEN FALSE ELSE TRUE END) AS "os_installed"
 			FROM jobstats
 			WHERE (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
-			ORDER BY jobstats.tagnumber, jobstats.time DESC NULLS LAST
+			ORDER BY jobstats.client_uuid, jobstats.time DESC NULLS LAST
 		)
 		SELECT
 			locations.tagnumber, 
