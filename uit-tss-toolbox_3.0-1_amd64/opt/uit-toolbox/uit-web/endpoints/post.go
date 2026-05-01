@@ -1252,11 +1252,18 @@ func SetClientHardwareData(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	// if err := types.IsTagnumberInt64Valid(hardwareData.Tagnumber); err != nil {
-	// 	log.Warn("Invalid tagnumber: " + err.Error())
-	// 	middleware.WriteJsonError(w, http.StatusBadRequest)
-	// 	return
-	// }
+	if hardwareData.Tagnumber != nil && *hardwareData.Tagnumber != 0 {
+		if err := types.IsTagnumberInt64Valid(hardwareData.Tagnumber); err != nil {
+			log.Warn("Invalid tagnumber: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+	}
+	if hardwareData.SystemSerial == nil || strings.TrimSpace(*hardwareData.SystemSerial) == "" {
+		log.Warn("System serial number is missing or empty in SetClientHardwareData")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
 	updateRepo, err := database.NewUpdateRepo()
 	if err != nil {
 		log.Error("No database connection available for SetClientHardwareData")
@@ -1268,11 +1275,7 @@ func SetClientHardwareData(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if hardwareData.Tagnumber == nil || *hardwareData.Tagnumber == 0 {
-		log.Warn("Tagnumber is missing or zero in SetClientHardwareData")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
+
 	if strings.TrimSpace(hardwareData.TransactionUUID) == "" {
 		log.Warn("Transaction UUID is missing or nil in SetClientHardwareData")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
