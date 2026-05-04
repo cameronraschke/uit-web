@@ -939,6 +939,29 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			FROM jobstats
 			WHERE (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
 			ORDER BY jobstats.client_uuid, jobstats.time DESC NULLS LAST
+		),
+		latest_job AS (
+			SELECT DISTINCT ON (jobstats.tagnumber) jobstats.time, jobstats.tagnumber,
+				jobstats.erase_completed, jobstats.erase_mode, jobstats.erase_time, 
+				jobstats.clone_completed, jobstats.clone_image, jobstats.clone_master, jobstats.clone_time, 
+				jobstats.job_cancelled
+			FROM jobstats
+			WHERE jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE
+			ORDER BY jobstats.tagnumber, jobstats.time DESC NULLS LAST
+		),
+		newest_image AS (
+			SELECT * FROM (
+				SELECT 
+					jobstats.time, 
+					hardware_data.system_model, 
+					ROW_NUMBER() OVER (PARTITION BY hardware_data.system_model ORDER BY jobstats.time DESC NULLS LAST) AS "row_num"
+				FROM jobstats
+				LEFT JOIN hardware_data ON jobstats.tagnumber = (SELECT tagnumber from ids where uuid = hardware_data.client_uuid)
+				WHERE
+					jobstats.clone_master = TRUE 
+					GROUP BY hardware_data.system_model, jobstats.time
+					ORDER BY jobstats.time DESC NULLS LAST
+			) t1 WHERE t1.row_num = 1
 		)
 		SELECT
 			locations.tagnumber, 
