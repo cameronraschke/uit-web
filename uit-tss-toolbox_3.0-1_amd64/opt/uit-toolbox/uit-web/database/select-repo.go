@@ -1335,14 +1335,14 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			ELSE NULL
 		END) AS "last_job_time",
 		(CASE 
-			WHEN latest_job.clone_completed = TRUE THEN TRUE
-			ELSE FALSE
+			WHEN latest_job.erase_completed = TRUE AND NOT latest_job.clone_completed = TRUE THEN FALSE
+			ELSE TRUE
 		END) AS "os_installed",
-		static_image_names.image_name_readable AS "os_name",
+		COALESCE(os_info.os_name, static_image_names.image_name_readable) AS "os_name",
 		(CASE
 			WHEN latest_job.clone_completed = TRUE AND newest_image.time <= latest_job.time THEN TRUE
 			ELSE FALSE
-		END) AS "os_updated",
+		END) AS "latest_image_installed",
 		(CASE 
 			WHEN locations.ad_domain IS NOT NULL AND NOT locations.ad_domain = 'none' THEN TRUE
 			ELSE FALSE
@@ -1397,6 +1397,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN newest_image ON hardware_data.system_model = newest_image.system_model
 	LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
 	LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
+	LEFT JOIN os_info ON locations.client_uuid = os_info.client_uuid
 	ORDER BY
 		job_queue.last_heard DESC NULLS LAST
 	LIMIT 50
@@ -1443,7 +1444,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			&row.LastJobTime,
 			&row.OSInstalled,
 			&row.OSName,
-			&row.OSUpdated,
+			&row.LatestImageInstalled,
 			&row.DomainJoined,
 			&row.DomainName,
 			&row.DomainNameFormatted,

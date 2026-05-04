@@ -292,7 +292,7 @@ type JobQueueTableRowView struct {
 	LastJobTime            *time.Time     `json:"last_job_time"`
 	OSInstalled            *bool          `json:"os_installed"`
 	OSName                 *string        `json:"os_name"`
-	OSUpdated              *bool          `json:"os_updated"`
+	LatestImageInstalled   *bool          `json:"latest_image_installed"`
 	DomainJoined           *bool          `json:"domain_joined"`
 	DomainName             *string        `json:"ad_domain"`
 	DomainNameFormatted    *string        `json:"ad_domain_formatted"`

@@ -28,7 +28,7 @@ type JobQueueTableRowView = {
 	last_job_time: Date | null;
 	os_installed: boolean | null;
 	os_name: string | null;
-	os_updated: boolean | null;
+	latest_image_installed: boolean | null;
 	domain_joined: boolean | null;
 	ad_domain: string | null;
 	ad_domain_formatted: string | null;
@@ -638,7 +638,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 			osNameSpan.style.fontStyle = 'italic';
 			osInfo.appendChild(osNameSpan);
 		}
-		if (entry.os_updated !== null && entry.os_updated === true) {
+		if (entry.latest_image_installed !== null && entry.latest_image_installed === true) {
 			const osWarning = document.createElement('span');
 			osWarning.style.color = "green";
 			osWarning.appendChild(document.createTextNode(' (Updated)'));
