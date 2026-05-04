@@ -314,7 +314,7 @@ async function renderInventoryTable() {
 
 			// OS Installed
 			const osSpan = document.createElement('span');
-			if (osInstalled === true) {
+			if (osInstalled === true && inventoryRow.disk_removed === false) {
 				if (osName !== '' && osVersion !== '') {
 					osSpan.textContent = `${inventoryRow.os_name} (${inventoryRow.os_version})`;
 				} else if (osName !== '' && osVersion === '') {
@@ -325,7 +325,11 @@ async function renderInventoryTable() {
 					osSpan.textContent = 'Unknown OS Installed';
 				}
 			} else {
-				osSpan.textContent = 'OS Not Installed';
+				if (inventoryRow.disk_removed === true) {
+					osSpan.textContent = 'Disk Removed - No OS';
+				} else {
+					osSpan.textContent = 'OS Not Installed';
+				}
 				osSpan.style.fontStyle = 'italic';
 			}
 			softwareContainer.appendChild(osSpan);

@@ -133,6 +133,7 @@ type InventoryTableRow = {
 	last_updated: string | "";
 	file_count: number | null;
 	client_configuration_errors: string[] | null;
+	disk_removed: boolean | null;
 };
 
 type AllBuildingsAndRooms = {
