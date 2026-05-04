@@ -333,7 +333,7 @@ func SetClientHealth(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	transactionUUID, err := uuid.NewUUID()
+	transactionUUID, err := uuid.NewV7()
 	if err != nil {
 		log.Error("Failed to generate transaction UUID: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -754,7 +754,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	files := req.MultipartForm.File["inventory-update-file-input"]
 
 	// Generate transaction UUID to share between multiple DB tables
-	transactionUUID, err := uuid.NewUUID()
+	transactionUUID, err := uuid.NewV7()
 	if err != nil {
 		log.Error("error generation a transaction UUID")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -841,10 +841,17 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 
 		// Generate unique file name
 		fileTimeStampFormatted := manifest.Time.Format("2006-01-02-150405")
-		fileUUID := uuid.New().String()
-		fileName := fileTimeStampFormatted + "-" + fileUUID + ext
+		fileUUID, err := uuid.NewV7()
+		if err != nil {
+			log.Error("Failed to generate file UUID for uploaded file '" + fileHeader.Filename + "': " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		fileUUIDStr := fileUUID.String()
+
+		fileName := fileTimeStampFormatted + "-" + fileUUIDStr + ext
 		manifest.FileName = fileName
-		manifest.UUID = fileUUID
+		manifest.UUID = fileUUIDStr
 
 		// Compute SHA256 hash of file
 		fileHash := crypto.SHA256.New()
@@ -1400,7 +1407,7 @@ func BulkUpdateInventoryLocation(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	transactionUUID, err := uuid.NewUUID()
+	transactionUUID, err := uuid.NewV7()
 	if err != nil {
 		log.Error("error generation a transaction UUID (BulkUpdateInventoryLocation)")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -1488,7 +1495,7 @@ func ReceiveWindowsClientInfo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	transactionUUID, err := uuid.NewUUID()
+	transactionUUID, err := uuid.NewV7()
 	if err != nil {
 		log.Error("error generation a transaction UUID: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
