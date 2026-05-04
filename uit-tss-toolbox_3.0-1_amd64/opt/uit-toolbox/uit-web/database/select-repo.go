@@ -935,33 +935,13 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		os_installed_table AS (
 			SELECT DISTINCT ON (jobstats.client_uuid)
 				jobstats.client_uuid,
-				(CASE WHEN jobstats.erase_completed = TRUE AND NOT jobstats.clone_completed = TRUE THEN FALSE ELSE TRUE END) AS "os_installed"
+				static_image_names.image_version,
+				(CASE WHEN jobstats.erase_completed IS TRUE AND NOT jobstats.clone_completed IS DISTINCT FROM TRUE THEN FALSE ELSE TRUE END) AS "os_installed"
 			FROM jobstats
+			LEFT JOIN hardware_data ON jobstats.client_uuid = hardware_data.client_uuid
+			LEFT JOIN static_image_names ON hardware_data.system_model = static_image_names.image_platform_model
 			WHERE (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
 			ORDER BY jobstats.client_uuid, jobstats.time DESC NULLS LAST
-		),
-		latest_job AS (
-			SELECT DISTINCT ON (jobstats.tagnumber) jobstats.time, jobstats.tagnumber,
-				jobstats.erase_completed, jobstats.erase_mode, jobstats.erase_time, 
-				jobstats.clone_completed, jobstats.clone_image, jobstats.clone_master, jobstats.clone_time, 
-				jobstats.job_cancelled
-			FROM jobstats
-			WHERE jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE
-			ORDER BY jobstats.tagnumber, jobstats.time DESC NULLS LAST
-		),
-		newest_image AS (
-			SELECT * FROM (
-				SELECT 
-					jobstats.time, 
-					hardware_data.system_model, 
-					ROW_NUMBER() OVER (PARTITION BY hardware_data.system_model ORDER BY jobstats.time DESC NULLS LAST) AS "row_num"
-				FROM jobstats
-				LEFT JOIN hardware_data ON jobstats.tagnumber = (SELECT tagnumber from ids where uuid = hardware_data.client_uuid)
-				WHERE
-					jobstats.clone_master = TRUE 
-					GROUP BY hardware_data.system_model, jobstats.time
-					ORDER BY jobstats.time DESC NULLS LAST
-			) t1 WHERE t1.row_num = 1
 		)
 		SELECT
 			locations.tagnumber, 
@@ -980,7 +960,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			os_info.is_intune_joined,
 			static_ad_domains.domain_name_formatted, 
 			os_installed_table.os_installed,
-			(CASE WHEN locations.disk_removed = TRUE THEN NULL ELSE os_info.os_name END) AS "os_name", 
+			(CASE WHEN locations.disk_removed = TRUE THEN NULL ELSE COALESCE(os_info.os_name, os_installed_table.image_version) END) AS "os_name", 
 			(CASE WHEN locations.disk_removed = TRUE THEN NULL WHEN os_info.windows_build_number IS NOT NULL AND os_info.windows_ubr IS NOT NULL THEN CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) ELSE NULL END) AS "os_version",
 			latest_os_versions.latest_os_version,
 			os_info.windows_bitlocker_enabled,
