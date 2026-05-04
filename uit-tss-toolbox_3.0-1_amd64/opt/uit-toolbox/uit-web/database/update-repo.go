@@ -2050,7 +2050,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		) ON CONFLICT (client_uuid) DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
 			transaction_uuid = EXCLUDED.transaction_uuid,
-			updated_from_windows = TRUE,
+			updated_from_windows = EXCLUDED.updated_from_windows,
 			tagnumber = COALESCE(EXCLUDED.tagnumber, hardware_data.tagnumber),
 			system_serial = COALESCE(EXCLUDED.system_serial, hardware_data.system_serial),
 			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, hardware_data.ethernet_mac),
@@ -2110,7 +2110,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 				battery_health_pcnt = COALESCE(EXCLUDED.battery_health_pcnt, client_health.battery_health_pcnt),
 				disk_free_space_kb = COALESCE(EXCLUDED.disk_free_space_kb, client_health.disk_free_space_kb),
 				last_hardware_check = COALESCE(EXCLUDED.last_hardware_check, client_health.last_hardware_check),
-				updated_from_windows = TRUE
+				updated_from_windows = EXCLUDED.updated_from_windows
 	;`
 
 	clientHealthResult, err := tx.ExecContext(ctx, clientHealthSql,
@@ -2300,24 +2300,24 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		VALUES (
 			CURRENT_TIMESTAMP,
 			$1,
-			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
 			$3,
-			$4, 
+			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
+			$4,
 			$5
 		) ON CONFLICT (transaction_uuid) DO UPDATE SET
 		 	time = CURRENT_TIMESTAMP,
 			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_firmware_data.client_uuid),
+			updated_from_windows = EXCLUDED.updated_from_windows,
 			bios_version = COALESCE(EXCLUDED.bios_version, historical_firmware_data.bios_version),
-			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_firmware_data.bios_release_date),
-			updated_from_windows = COALESCE(EXCLUDED.updated_from_windows, historical_firmware_data.updated_from_windows)
+			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_firmware_data.bios_release_date)
 	;`
 
 	firmwareSQLResult, err := tx.ExecContext(ctx, clientHealthCheckHistorySQL,
 		toNullString(transactionUUID.String()),
 		toNullInt64(windowsUpdateDTO.Tagnumber),
+		ptrToNullBool(&windowsUpdateDTO.UpdatedFromWindows),
 		ptrToNullString(windowsUpdateDTO.BIOSVersion),
 		ptrToNullTime(windowsUpdateDTO.BIOSReleaseDate),
-		ptrToNullBool(&windowsUpdateDTO.UpdatedFromWindows),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
