@@ -1009,6 +1009,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			os_info.is_intune_joined,
 			static_ad_domains.domain_name_formatted,
 			os_installed_table.os_installed,
+			os_installed_table.image_version,
 			os_info.os_name,
 			os_info.os_version,
 			os_info.windows_build_number,
