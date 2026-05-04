@@ -372,17 +372,18 @@ func InitApp() (*AppState, error) {
 		slog.LevelWarn,
 		slog.LevelError,
 	)
-	jsonLogFile, err := os.OpenFile("/var/log/uit-web/"+time.Now().Format("2006-01-02_15-04-05")+".json.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o0640)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open JSON log file: %w", err)
-	}
-	jsonFileHandler := newLevelRangeHandler(
-		slog.NewJSONHandler(jsonLogFile, &slog.HandlerOptions{Level: slog.LevelInfo}),
-		slog.LevelInfo,
-		slog.LevelError,
-	)
+	// jsonLogFile, err := os.OpenFile("/var/log/uit-web/"+time.Now().Format("2006-01-02_15-04-05")+".json.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o0640)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to open JSON log file: %w", err)
+	// }
+	// jsonFileHandler := newLevelRangeHandler(
+	// 	slog.NewJSONHandler(jsonLogFile, &slog.HandlerOptions{Level: slog.LevelInfo}),
+	// 	slog.LevelInfo,
+	// 	slog.LevelError,
+	// )
 
-	multiHandler := slog.NewMultiHandler(stdoutTextHandler, stderrTextHandler, jsonFileHandler)
+	// multiHandler := slog.NewMultiHandler(stdoutTextHandler, stderrTextHandler, jsonFileHandler)
+	multiHandler := slog.NewMultiHandler(stdoutTextHandler, stderrTextHandler)
 	logger := slog.New(multiHandler)
 	slog.SetDefault(logger)
 	appState.appLogger.Store(logger)
