@@ -147,28 +147,32 @@ input[type="file"] {
 
 input.changed-input,
 select.changed-input,
-textarea.changed-input {
+textarea.changed-input,
+button.changed-input {
 	background-color: var(--changed-input-color);
 	border: var(--input-border-width) solid var(--changed-input-border-color);
 }
 
 input.empty-input,
 select.empty-input,
-textarea.empty-input {
+textarea.empty-input,
+button.empty-input {
 	background-color: var(--empty-input-color);
 	border: var(--input-border-width) solid var(--empty-input-border-color);
 }
 
 input.empty-required-input,
 select.empty-required-input,
-textarea.empty-required-input {
+textarea.empty-required-input,
+button.empty-required-input {
 	background-color: var(--empty-required-input-color);
 	border: var(--input-border-width) solid var(--empty-required-input-border-color);
 }
 
 input.readonly-input,
 select.readonly-input,
-textarea.readonly-input {
+textarea.readonly-input,
+button.readonly-input {
 	background-color: var(--bg-color-darker);
 	border: var(--border-width) solid var(--default-border-color);
 	opacity: 0.5;

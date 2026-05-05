@@ -603,13 +603,40 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				diskRemovedUpdate.classList.add("empty-input");
 			}
 
-			if (locationFormData !== null && locationFormData.last_hardware_check !== null) {
+			if (jsonFileUpload.files && jsonFileUpload.files.length > 0) {
+				lastHardwareCheckUpdate.classList.remove("empty-input");
+				const jsonText = await jsonFileUpload.files[0].text();
+				try {
+					const jsonData = JSON.parse(jsonText);
+					if (jsonData && jsonData.last_hardware_check) {
+						const hardwareCheckDate = new Date(jsonData.last_hardware_check);
+						const hardwareCheckDateLocalTZ = !isNaN(hardwareCheckDate.getTime())
+							? new Date(hardwareCheckDate.getTime() - hardwareCheckDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+							: "";
+						if (hardwareCheckDateLocalTZ && !isNaN(new Date(hardwareCheckDateLocalTZ).getTime())) {
+							lastHardwareCheckUpdate.value = hardwareCheckDateLocalTZ;
+							lastHardwareCheckUpdate.classList.remove("empty-input");
+						} else {
+							lastHardwareCheckUpdate.value = "";
+							lastHardwareCheckUpdate.classList.add("empty-input");
+						}
+					} else {
+						lastHardwareCheckUpdate.value = "";
+						lastHardwareCheckUpdate.classList.add("empty-input");
+					}
+				} catch (e) {
+					console.error("Error parsing JSON file for hardware check date:", e);
+					lastHardwareCheckUpdate.value = "";
+					lastHardwareCheckUpdate.classList.add("empty-input");
+				}
+				lastHardwareCheckUpdate.classList.add("changed-input");
+			} else if (locationFormData !== null && locationFormData.last_hardware_check !== null) {
 				const hardwareCheckDate = new Date(locationFormData.last_hardware_check);
-				const hardwareCheckDateLocal = !isNaN(hardwareCheckDate.getTime())
+				const hardwareCheckDateLocalTZ = !isNaN(hardwareCheckDate.getTime())
 					? new Date(hardwareCheckDate.getTime() - hardwareCheckDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 					: "";
-				if (hardwareCheckDateLocal && !isNaN(new Date(hardwareCheckDateLocal).getTime())) {
-					lastHardwareCheckUpdate.value = hardwareCheckDateLocal;
+				if (hardwareCheckDateLocalTZ && !isNaN(new Date(hardwareCheckDateLocalTZ).getTime())) {
+					lastHardwareCheckUpdate.value = hardwareCheckDateLocalTZ;
 					lastHardwareCheckUpdate.classList.remove("empty-input");
 				} else {
 					lastHardwareCheckUpdate.value = "";
@@ -970,6 +997,12 @@ if (updateForm) {
 			if (fileInputUpdate) fileInputUpdate.value = "";
 			clientLookupWarningMessage.style.display = "none";
 			lastUpdateTime.textContent = "";
+
+			if (jsonFileUpload.files && jsonFileUpload.files.length > 0) {
+				const jsonFile = jsonFileUpload.files[0];
+				await uploadJSONFile(jsonFile);
+			}
+			resetJSONUpload();
 			await populateLocationForm(returnedJson.tagnumber, undefined);
 			await renderInventoryTable();
 		} catch (error) {
@@ -979,6 +1012,7 @@ if (updateForm) {
 		} finally {
 			updatingInventory = false;
 			submitUpdate.disabled = false;
+			resetJSONUpload();
 			showInventoryUpdateChanges();
 		}
 	});
@@ -1051,68 +1085,84 @@ if (fileInputUpdate) {
 }
 
 async function uploadJSONFile(jsonFile: File): Promise<any> {
-	const fileName = jsonFile.name || '';
-	if (fileName.length > 100) {
-		console.error(`File name ${fileName} exceeds the maximum allowed length of 100 characters`);
-		alert(`File name ${fileName} exceeds the maximum allowed length of 100 characters`);
-		return;
-	}
-	if (!allowedFileNameRegex.test(fileName)) {
-		console.error(`File name ${fileName} contains invalid characters`);
-		alert(`File name ${fileName} contains invalid characters`);
-		return;
-	}
-	if (!fileName.toLowerCase().endsWith('.json')) {
-		console.error(`File name ${fileName} does not have a .json extension`);
-		alert(`File name ${fileName} does not have a .json extension`);
-		return;
-	}
-	const multipartFormData = new FormData();
-	multipartFormData.append("json_file", jsonFile, fileName);
-	try {
-		const data = await fetch(`/api/windows-client-info`, {
-			method: "POST",
-			body: multipartFormData
-		});
-		if (!data.ok) throw new Error("Server returned an error: " + data.status + " " + data.statusText);
-		const jsonData = await data.json();
-		if (jsonData && jsonData.tagnumber) {
-			populateLocationForm(jsonData.tagnumber, jsonData.system_serial).catch(e => {
-				const errorMessage = e instanceof Error ? e.message : String(e);
-				console.error("Error populating location form with JSON data:", errorMessage);
-			}).then(() => {
-				clientLookupTagInput.value = jsonData.tagnumber.toString();
-				clientLookupSerial.value = jsonData.system_serial || '';
-				clientLookupWarningMessage.style.display = "block";
-				clientLookupWarningMessage.textContent = "Client information populated from JSON file. Please review and submit to update inventory.";
-				updateURLFromAdvFilters();
-				lastHardwareCheckUpdate.classList.remove("empty-input");
-				lastHardwareCheckUpdate.classList.add("changed-input");
-			});
-		} else {
-			throw new Error("Invalid JSON data returned from server");
+	if (jsonFileUpload.files && jsonFileUpload.files.length > 0) {
+		if (jsonFile.size > 5 * 1024 * 1024) { // 5 MB limit for JSON file
+			console.error(`File ${jsonFile.name} exceeds the maximum allowed size of 5 MB`);
+			alert(`File ${jsonFile.name} exceeds the maximum allowed size of 5 MB`);
+			return;
 		}
-	} catch (error) {
-		console.error("Error processing JSON file:", error);
-		alert("Error processing JSON file: " + (error instanceof Error ? error.message : String(error)));
-		
+		if (jsonFileUpload.files.length > 1) {
+			console.error(`Multiple files selected. Please select only one JSON file.`);
+			alert(`Multiple files selected. Please select only one JSON file.`);
+			return;
+		}
+		const fileName = jsonFile.name || '';
+		if (fileName.length > 100) {
+			console.error(`File name ${fileName} exceeds the maximum allowed length of 100 characters`);
+			alert(`File name ${fileName} exceeds the maximum allowed length of 100 characters`);
+			return;
+		}
+		if (!allowedFileNameRegex.test(fileName)) {
+			console.error(`File name ${fileName} contains invalid characters`);
+			alert(`File name ${fileName} contains invalid characters`);
+			return;
+		}
+		if (!fileName.toLowerCase().endsWith('.json')) {
+			console.error(`File name ${fileName} does not have a .json extension`);
+			alert(`File name ${fileName} does not have a .json extension`);
+			return;
+		}
+		const multipartFormData = new FormData();
+		multipartFormData.append("json_file", jsonFile, fileName);
+		try {
+			const data = await fetch(`/api/windows-client-info`, {
+				method: "POST",
+				body: multipartFormData
+			});
+			if (!data.ok) throw new Error("Server returned an error: " + data.status + " " + data.statusText);
+			const jsonData = await data.json();
+			if (jsonData && jsonData.tagnumber > 0) {
+				try {
+					await populateLocationForm(jsonData.tagnumber, jsonData.system_serial);
+					clientLookupTagInput.value = jsonData.tagnumber.toString();
+					clientLookupSerial.value = jsonData.system_serial || '';
+					lastHardwareCheckUpdate.classList.remove("empty-input");
+					lastHardwareCheckUpdate.classList.add("changed-input");
+					updateURLFromAdvFilters();
+				} catch (error) {
+					const errorMessage = error instanceof Error ? error.message : String(error);
+					console.error("Error populating location form with JSON data:", errorMessage);
+				}
+			} else {
+				throw new Error("Invalid JSON data returned from server");
+			}
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			console.error("Error processing JSON file:", errorMessage);
+			alert("Error processing JSON file: " + errorMessage);
+		} finally {
+			resetJSONUpload();
+		}
 	}
 }
 
 
 if (jsonFileUpload && jsonFileUploadButton) {
 	jsonFileUploadButton.addEventListener("click", (event) => {
+		resetJSONUpload();
 		event.preventDefault();
 		jsonFileUpload.click();
 	});
-	jsonFileUpload.addEventListener("change", () => {
+	jsonFileUpload.addEventListener("change", async () => {
 		if (jsonFileUpload.files && jsonFileUpload.files.length > 0) {
 			const jsonFile = jsonFileUpload.files[0];
-			uploadJSONFile(jsonFile);
 			jsonFileUploadButton.textContent = `JSON File: ${jsonFile.name}`;
 			jsonFileUploadButton.classList.add("changed-input");
+			const jsonData = await JSON.parse(await jsonFile.text());
+			await populateLocationForm(jsonData.tagnumber, jsonData.system_serial);
 		} else {
-			resetJSONUpload();
+			jsonFileUploadButton.textContent = "Upload JSON File";
+			jsonFileUploadButton.classList.remove("changed-input");
 		}
 	});
 }
@@ -1249,6 +1299,7 @@ if (bulkUpdateCancelButton) {
 	bulkUpdateCancelButton.addEventListener("click", (event) => {
 		event.preventDefault();
 		bulkUpdateForm.reset();
+		if (toggleBulkUpdate) toggleBulkUpdate.click();
 		clientLookupTagInput.focus();
 	});
 }
