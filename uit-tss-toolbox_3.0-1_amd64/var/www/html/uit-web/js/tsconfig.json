@@ -15,4 +15,6 @@
 		"sourceMap": false
 	},
 	"include": ["./*.ts"],
+	"rootDir": "/var/www/html/uit-web/js/",
+	"outDir": "/var/www/html/uit-web/js/"
 }
