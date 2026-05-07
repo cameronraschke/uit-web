@@ -1049,6 +1049,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			return nil, fmt.Errorf("context error: %w", err)
 		}
 		var row types.InventoryTableRow
+		var adminUsers []string
 		if err := rows.Scan(
 			&row.Tagnumber,
 			&row.SystemSerial,
@@ -1069,7 +1070,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&row.OsName,
 			&row.OsVersion,
 			&row.LatestOsVersion,
-			&row.AdminUsers,
+			&adminUsers,
 			&row.BitlockerEnabled,
 			&row.LastHardwareCheck,
 			&row.BIOSUpdated,
@@ -1085,6 +1086,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		); err != nil {
 			return nil, fmt.Errorf("query error: %w", err)
 		}
+		row.AdminUsers = &adminUsers
 		results = append(results, row)
 	}
 	if err := rows.Err(); err != nil {
@@ -1190,7 +1192,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 						intuneNotEnrolled := types.InttuneNotEnrolled.String()
 						results[i].ClientErrors = append(results[i].ClientErrors, intuneNotEnrolled)
 					}
-					if len(results[i].AdminUsers) < 2 {
+					if results[i].AdminUsers == nil || len(*results[i].AdminUsers) < 2 {
 						adminUsersMissing := types.AdminUsersMissing.String()
 						results[i].ClientErrors = append(results[i].ClientErrors, adminUsersMissing)
 					}
