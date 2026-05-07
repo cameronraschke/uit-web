@@ -2210,7 +2210,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			windows_build_number,
 			windows_ubr,
 			windows_bitlocker_enabled,
-			ad_admin_users,
+			admin_users,
 			computer_name,
 			ad_domain,
 			ad_computer_name,
@@ -2250,13 +2250,18 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			windows_build_number = EXCLUDED.windows_build_number,
 			windows_ubr = EXCLUDED.windows_ubr,
 			windows_bitlocker_enabled = EXCLUDED.windows_bitlocker_enabled,
-			ad_admin_users = EXCLUDED.ad_admin_users,
+			admin_users = EXCLUDED.admin_users,
 			computer_name = EXCLUDED.computer_name,
 			ad_domain = EXCLUDED.ad_domain,
 			ad_computer_name = EXCLUDED.ad_computer_name,
 			ad_distinguished_name = EXCLUDED.ad_distinguished_name,
 			is_intune_joined = EXCLUDED.is_intune_joined
 			;`
+
+	adminUsers := windowsUpdateDTO.AdminUsers
+	if len(adminUsers) == 0 {
+		adminUsers = nil
+	}
 
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, osInfoSQLCode,
@@ -2273,7 +2278,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		ptrToNullInt64(windowsUpdateDTO.WindowsBuildNumber),
 		ptrToNullInt64(windowsUpdateDTO.WindowsUBR),
 		ptrToNullBool(windowsUpdateDTO.WindowsBitlockerEnabled),
-		ptrToNullString(windowsUpdateDTO.ADAdminUsers),
+		adminUsers,
 		ptrToNullString(windowsUpdateDTO.ComputerName),
 		ptrToNullString(windowsUpdateDTO.ADDomain),
 		ptrToNullString(windowsUpdateDTO.ADComputerName),

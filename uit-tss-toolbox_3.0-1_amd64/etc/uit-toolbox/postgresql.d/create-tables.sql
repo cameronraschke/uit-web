@@ -752,7 +752,7 @@ CREATE TABLE IF NOT EXISTS os_info (
 	windows_build_number INTEGER DEFAULT NULL,
 	windows_ubr INTEGER DEFAULT NULL,
 	windows_bitlocker_enabled BOOLEAN DEFAULT NULL,
-	ad_admin_users VARCHAR(512) DEFAULT NULL,
+	admin_users TEXT[] DEFAULT NULL,
 	computer_name VARCHAR(128) DEFAULT NULL,
 	ad_domain VARCHAR(64) DEFAULT NULL,
 	ad_computer_name VARCHAR(128) DEFAULT NULL,

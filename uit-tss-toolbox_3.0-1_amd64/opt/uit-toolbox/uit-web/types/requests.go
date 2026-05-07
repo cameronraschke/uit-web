@@ -28,7 +28,7 @@ type WindowsUpdateRequest struct {
 	WindowsUBR                *int64     `json:"windows_ubr"`
 	WindowsBitlockerEnabled   *bool      `json:"windows_bitlocker_enabled"`
 	ComputerName              *string    `json:"computer_name"`
-	ADAdminUsers              *string    `json:"ad_admin_users"`
+	AdminUsers                *string    `json:"ad_admin_users"`
 	ADDomain                  *string    `json:"ad_domain"`
 	ADComputerName            *string    `json:"ad_computer_name"`
 	ADDistinguishedName       *string    `json:"ad_distinguished_name"`
@@ -75,7 +75,7 @@ type WindowsUpdateDTO struct {
 	WindowsUBR                *int64
 	WindowsBitlockerEnabled   *bool
 	ComputerName              *string
-	ADAdminUsers              *string
+	AdminUsers                []string
 	ADDomain                  *string
 	ADComputerName            *string
 	ADDistinguishedName       *string
@@ -142,6 +142,11 @@ func NewWindowsUpdateDTO(request WindowsUpdateRequest) (*WindowsUpdateDTO, error
 		request.UpdatedFromWindows = new(bool) // default to false if not provided
 	}
 
+	adAdminUsersArr := make([]string, 0)
+	if request.AdminUsers != nil && strings.TrimSpace(*request.AdminUsers) != "" {
+		adAdminUsersArr = strings.Split(*request.AdminUsers, ";")
+	}
+
 	return &WindowsUpdateDTO{
 		LastHardwareCheck:         *request.LastHardwareCheck,
 		Tagnumber:                 *request.Tagnumber,
@@ -164,7 +169,7 @@ func NewWindowsUpdateDTO(request WindowsUpdateRequest) (*WindowsUpdateDTO, error
 		WindowsUBR:                request.WindowsUBR,
 		WindowsBitlockerEnabled:   request.WindowsBitlockerEnabled,
 		ComputerName:              request.ComputerName,
-		ADAdminUsers:              request.ADAdminUsers,
+		AdminUsers:                adAdminUsersArr,
 		ADDomain:                  request.ADDomain,
 		ADComputerName:            request.ADComputerName,
 		ADDistinguishedName:       request.ADDistinguishedName,
