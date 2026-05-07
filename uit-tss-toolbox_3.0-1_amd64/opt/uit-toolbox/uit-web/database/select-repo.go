@@ -10,13 +10,14 @@ package database
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 	"uit-toolbox/config"
 	"uit-toolbox/types"
+
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 type Select interface {
@@ -964,7 +965,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			(CASE WHEN locations.disk_removed = TRUE THEN NULL ELSE COALESCE(os_info.os_name, os_installed_table.image_version) END) AS "os_name", 
 			(CASE WHEN locations.disk_removed = TRUE THEN NULL WHEN os_info.windows_build_number IS NOT NULL AND os_info.windows_ubr IS NOT NULL THEN CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) ELSE NULL END) AS "os_version",
 			latest_os_versions.latest_os_version,
-			array_to_json(os_info.admin_users),
+			os_info.admin_users,
 			os_info.windows_bitlocker_enabled,
 			client_health.last_hardware_check,
 			(CASE 
@@ -1038,66 +1039,82 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
-	rows, err := dbConn.QueryContext(ctx, sqlQuery, whereArgs...)
+	results := make([]types.InventoryTableRow, 0, approxClientCount)
+	sqlConn, err := dbConn.Conn(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("query error: %w", err)
 	}
-	defer rows.Close()
+	defer sqlConn.Close()
 
-	results := make([]types.InventoryTableRow, 0, approxClientCount)
-	for rows.Next() {
-		if err := ctx.Err(); err != nil {
-			return nil, fmt.Errorf("context error: %w", err)
+	err = sqlConn.Raw(func(driverConn any) error {
+		stdlibConn, ok := driverConn.(*stdlib.Conn)
+		if !ok {
+			return fmt.Errorf("query error: unexpected driver connection type %T", driverConn)
 		}
-		var row types.InventoryTableRow
-		var adminUsersJSON sql.NullString
-		if err := rows.Scan(
-			&row.Tagnumber,
-			&row.SystemSerial,
-			&row.Location,
-			&row.LocationFormatted,
-			&row.Building,
-			&row.Room,
-			&row.SystemManufacturer,
-			&row.SystemModel,
-			&row.DeviceType,
-			&row.DeviceTypeFormatted,
-			&row.Department,
-			&row.DepartmentFormatted,
-			&row.ADDomain,
-			&row.IsIntuneJoined,
-			&row.DomainFormatted,
-			&row.OsInstalled,
-			&row.OsName,
-			&row.OsVersion,
-			&row.LatestOsVersion,
-			&adminUsersJSON,
-			&row.BitlockerEnabled,
-			&row.LastHardwareCheck,
-			&row.BIOSUpdated,
-			&row.BIOSVersion,
-			&row.Status,
-			&row.StatusFormatted,
-			&row.IsBroken,
-			&row.DiskRemoved,
-			&row.RetiredDate,
-			&row.Note,
-			&row.LastUpdated,
-			&row.FileCount,
-		); err != nil {
-			return nil, fmt.Errorf("query error: %w", err)
+
+		rows, err := stdlibConn.Conn().Query(ctx, sqlQuery, whereArgs...)
+		if err != nil {
+			return fmt.Errorf("query error: %w", err)
 		}
-		if adminUsersJSON.Valid && strings.TrimSpace(adminUsersJSON.String) != "" && adminUsersJSON.String != "null" {
-			var adminUsers []string
-			if err := json.Unmarshal([]byte(adminUsersJSON.String), &adminUsers); err != nil {
-				return nil, fmt.Errorf("query error: failed to parse admin_users JSON: %w", err)
+		defer rows.Close()
+
+		for rows.Next() {
+			if err := ctx.Err(); err != nil {
+				return fmt.Errorf("context error: %w", err)
 			}
-			row.AdminUsers = &adminUsers
+
+			var row types.InventoryTableRow
+			var adminUsers []string
+			if err := rows.Scan(
+				&row.Tagnumber,
+				&row.SystemSerial,
+				&row.Location,
+				&row.LocationFormatted,
+				&row.Building,
+				&row.Room,
+				&row.SystemManufacturer,
+				&row.SystemModel,
+				&row.DeviceType,
+				&row.DeviceTypeFormatted,
+				&row.Department,
+				&row.DepartmentFormatted,
+				&row.ADDomain,
+				&row.IsIntuneJoined,
+				&row.DomainFormatted,
+				&row.OsInstalled,
+				&row.OsName,
+				&row.OsVersion,
+				&row.LatestOsVersion,
+				&adminUsers,
+				&row.BitlockerEnabled,
+				&row.LastHardwareCheck,
+				&row.BIOSUpdated,
+				&row.BIOSVersion,
+				&row.Status,
+				&row.StatusFormatted,
+				&row.IsBroken,
+				&row.DiskRemoved,
+				&row.RetiredDate,
+				&row.Note,
+				&row.LastUpdated,
+				&row.FileCount,
+			); err != nil {
+				return fmt.Errorf("query error: %w", err)
+			}
+
+			if adminUsers != nil {
+				row.AdminUsers = &adminUsers
+			}
+			results = append(results, row)
 		}
-		results = append(results, row)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("error during row iteration: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	if len(results) == 0 {
 		return nil, nil
