@@ -9,6 +9,7 @@ import (
 	"time"
 	"uit-toolbox/types"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
@@ -48,4 +49,46 @@ func NewDBConnection(dbConnection *types.DBConnection) (*sql.DB, error) {
 	}
 
 	return dbConn, nil
+}
+
+func NewPGXPool(dbConnection *types.DBConnection) (*pgxpool.Pool, error) {
+	if dbConnection == nil {
+		return nil, fmt.Errorf("db connection is nil")
+	}
+
+	dbConnURL := url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(dbConnection.DBUsername, dbConnection.DBPassword),
+		Host:   net.JoinHostPort(dbConnection.DBHost, dbConnection.DBPort),
+		Path:   dbConnection.DBName,
+	}
+	dbConnQuery := dbConnURL.Query()
+	dbConnQuery.Set("sslmode", "disable")
+	dbConnURL.RawQuery = dbConnQuery.Encode()
+
+	poolConfig, err := pgxpool.ParseConfig(dbConnURL.String())
+	if err != nil {
+		return nil, fmt.Errorf("error parsing pgx pool config: %w", err)
+	}
+
+	poolConfig.MaxConns = 50
+	poolConfig.MinConns = 0
+	poolConfig.MaxConnIdleTime = 1 * time.Hour
+	poolConfig.MaxConnLifetime = 24 * time.Hour
+	poolConfig.HealthCheckPeriod = 1 * time.Minute
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error opening pgx pool: %w", err)
+	}
+
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("error pinging pgx pool: %w", err)
+	}
+
+	return pool, nil
 }

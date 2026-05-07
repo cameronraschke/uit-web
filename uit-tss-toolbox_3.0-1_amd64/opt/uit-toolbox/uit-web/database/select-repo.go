@@ -16,8 +16,6 @@ import (
 	"time"
 	"uit-toolbox/config"
 	"uit-toolbox/types"
-
-	"github.com/jackc/pgx/v5/stdlib"
 )
 
 type Select interface {
@@ -1034,87 +1032,69 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		ORDER BY locations.time DESC NULLS LAST
 	;`, whereSQL)
 
-	dbConn, err := config.GetDatabaseConn()
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
 	results := make([]types.InventoryTableRow, 0, approxClientCount)
-	sqlConn, err := dbConn.Conn(ctx)
+	rows, err := pgxPool.Query(ctx, sqlQuery, whereArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("query error: %w", err)
 	}
-	defer sqlConn.Close()
+	defer rows.Close()
 
-	err = sqlConn.Raw(func(driverConn any) error {
-		stdlibConn, ok := driverConn.(*stdlib.Conn)
-		if !ok {
-			return fmt.Errorf("query error: unexpected driver connection type %T", driverConn)
+	for rows.Next() {
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("context error: %w", err)
 		}
 
-		rows, err := stdlibConn.Conn().Query(ctx, sqlQuery, whereArgs...)
-		if err != nil {
-			return fmt.Errorf("query error: %w", err)
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			if err := ctx.Err(); err != nil {
-				return fmt.Errorf("context error: %w", err)
-			}
-
-			var row types.InventoryTableRow
-			var adminUsers []string
-			if err := rows.Scan(
-				&row.Tagnumber,
-				&row.SystemSerial,
-				&row.Location,
-				&row.LocationFormatted,
-				&row.Building,
-				&row.Room,
-				&row.SystemManufacturer,
-				&row.SystemModel,
-				&row.DeviceType,
-				&row.DeviceTypeFormatted,
-				&row.Department,
-				&row.DepartmentFormatted,
-				&row.ADDomain,
-				&row.IsIntuneJoined,
-				&row.DomainFormatted,
-				&row.OsInstalled,
-				&row.OsName,
-				&row.OsVersion,
-				&row.LatestOsVersion,
-				&adminUsers,
-				&row.BitlockerEnabled,
-				&row.LastHardwareCheck,
-				&row.BIOSUpdated,
-				&row.BIOSVersion,
-				&row.Status,
-				&row.StatusFormatted,
-				&row.IsBroken,
-				&row.DiskRemoved,
-				&row.RetiredDate,
-				&row.Note,
-				&row.LastUpdated,
-				&row.FileCount,
-			); err != nil {
-				return fmt.Errorf("query error: %w", err)
-			}
-
-			if adminUsers != nil {
-				row.AdminUsers = &adminUsers
-			}
-			results = append(results, row)
-		}
-		if err := rows.Err(); err != nil {
-			return fmt.Errorf("error during row iteration: %w", err)
+		var row types.InventoryTableRow
+		var adminUsers []string
+		if err := rows.Scan(
+			&row.Tagnumber,
+			&row.SystemSerial,
+			&row.Location,
+			&row.LocationFormatted,
+			&row.Building,
+			&row.Room,
+			&row.SystemManufacturer,
+			&row.SystemModel,
+			&row.DeviceType,
+			&row.DeviceTypeFormatted,
+			&row.Department,
+			&row.DepartmentFormatted,
+			&row.ADDomain,
+			&row.IsIntuneJoined,
+			&row.DomainFormatted,
+			&row.OsInstalled,
+			&row.OsName,
+			&row.OsVersion,
+			&row.LatestOsVersion,
+			&adminUsers,
+			&row.BitlockerEnabled,
+			&row.LastHardwareCheck,
+			&row.BIOSUpdated,
+			&row.BIOSVersion,
+			&row.Status,
+			&row.StatusFormatted,
+			&row.IsBroken,
+			&row.DiskRemoved,
+			&row.RetiredDate,
+			&row.Note,
+			&row.LastUpdated,
+			&row.FileCount,
+		); err != nil {
+			return nil, fmt.Errorf("query error: %w", err)
 		}
 
-		return nil
-	})
-	if err != nil {
-		return nil, err
+		if adminUsers != nil {
+			row.AdminUsers = &adminUsers
+		}
+		results = append(results, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during row iteration: %w", err)
 	}
 	if len(results) == 0 {
 		return nil, nil

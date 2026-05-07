@@ -68,8 +68,19 @@ func main() {
 	}
 	defer dbConn.Close()
 
+	pgxPool, err := database.NewPGXPool(dbConnectionInfo)
+	if err != nil {
+		log.Error("Failed to connect to the pgx pool: " + err.Error())
+		os.Exit(1)
+	}
+	defer pgxPool.Close()
+
 	if err := config.SetDatabaseConn(dbConn); err != nil {
 		log.Error("Failed to set database connection: " + err.Error())
+		os.Exit(1)
+	}
+	if err := config.SetPGXPool(pgxPool); err != nil {
+		log.Error("Failed to set pgx pool: " + err.Error())
 		os.Exit(1)
 	}
 

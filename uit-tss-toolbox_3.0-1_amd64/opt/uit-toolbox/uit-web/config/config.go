@@ -17,6 +17,8 @@ import (
 	"sync/atomic"
 	"time"
 	"uit-toolbox/types"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type AppConfiguration struct {
@@ -86,6 +88,7 @@ type ClientConfig struct {
 type AppState struct {
 	appConfig          atomic.Pointer[AppConfiguration]
 	dbConn             atomic.Pointer[sql.DB]
+	pgxPool            atomic.Pointer[pgxpool.Pool]
 	authMap            sync.Map
 	authMapEntryCount  atomic.Int64
 	appLogger          atomic.Pointer[slog.Logger]
@@ -331,6 +334,7 @@ func InitApp() (*AppState, error) {
 
 	// Set DB connection to nil initially
 	appState.dbConn.Store(nil)
+	appState.pgxPool.Store(nil)
 
 	// Store rate limiters in app state
 	appState.webServerLimiter.Store(webRateLimiter.Load())
@@ -539,6 +543,33 @@ func SetDatabaseConn(newDbConn *sql.DB) error {
 		return types.NilAppStateError
 	}
 	appState.dbConn.Store(newDbConn)
+	return nil
+}
+
+func GetPGXPool() (*pgxpool.Pool, error) {
+	as, err := GetAppState()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	}
+	pool := as.pgxPool.Load()
+	if pool == nil {
+		return nil, types.DatabaseConnNilError
+	}
+	return pool, nil
+}
+
+func SetPGXPool(newPool *pgxpool.Pool) error {
+	if newPool == nil {
+		return types.DatabaseConnNilError
+	}
+	appState, err := GetAppState()
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	}
+	if appState == nil {
+		return types.NilAppStateError
+	}
+	appState.pgxPool.Store(newPool)
 	return nil
 }
 
