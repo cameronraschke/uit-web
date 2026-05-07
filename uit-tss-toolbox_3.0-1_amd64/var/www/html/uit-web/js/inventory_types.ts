@@ -125,6 +125,7 @@ type InventoryTableRow = {
 	os_version: string | "";
 	latest_os_version: string | "";
 	ad_domain_formatted: string | "";
+	admin_users: string[] | null;
 	status: string | "";
 	status_formatted: string | "";
 	is_broken: boolean | null;

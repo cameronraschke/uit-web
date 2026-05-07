@@ -12,11 +12,13 @@ const (
 	DiskNotRemoved
 	DomainNotJoined
 	InttuneNotEnrolled
+	AdminUsersMissing
 	BIOSOutdated
 	OSNotInstalled
 	OSMissingInfo
 	OSInvalidData
 	BitlockerNotEnabled
+	BitlockerNotCompleted
 	OSOutdated
 	NeedsHardwareCheck
 	NeedsErasing
@@ -25,20 +27,22 @@ const (
 )
 
 var ClientConfigurationErrorCodeToString = map[ConfigurationErrorCode]string{
-	IsBroken:            "Client is broken",
-	DiskNotRemoved:      "Disk is not removed",
-	DomainNotJoined:     "AD domain is not joined",
-	InttuneNotEnrolled:  "Not enrolled in Intune",
-	BIOSOutdated:        "BIOS is outdated",
-	OSNotInstalled:      "OS is not installed",
-	OSOutdated:          "OS is outdated",
-	OSMissingInfo:       "OS is missing required information",
-	OSInvalidData:       "OS data is invalid",
-	BitlockerNotEnabled: "Bitlocker is not enabled",
-	NeedsHardwareCheck:  "Needs hardware check",
-	NeedsErasing:        "Needs erasing",
-	MissingRequiredInfo: "Missing required information",
-	MissingImages:       "Missing images",
+	IsBroken:              "Client is broken",
+	DiskNotRemoved:        "Disk is not removed",
+	DomainNotJoined:       "AD domain is not joined",
+	InttuneNotEnrolled:    "Not enrolled in Intune",
+	AdminUsersMissing:     "Not all admin users are configured",
+	BIOSOutdated:          "BIOS is outdated",
+	OSNotInstalled:        "OS is not installed",
+	OSOutdated:            "OS is outdated",
+	OSMissingInfo:         "OS is missing required information",
+	OSInvalidData:         "OS data is invalid",
+	BitlockerNotEnabled:   "Bitlocker is not enabled",
+	BitlockerNotCompleted: "Bitlocker has not completed",
+	NeedsHardwareCheck:    "Needs hardware check",
+	NeedsErasing:          "Needs erasing",
+	MissingRequiredInfo:   "Missing required information",
+	MissingImages:         "Missing images",
 }
 
 func (c ConfigurationErrorCode) String() string {
@@ -82,6 +86,7 @@ type InventoryTableRow struct {
 	Department          *string    `json:"department_name"`
 	DepartmentFormatted *string    `json:"department_formatted"`
 	ADDomain            *string    `json:"ad_domain"`
+	AdminUsers          []string   `json:"admin_users"`
 	IsIntuneJoined      *bool      `json:"is_intune_joined"`
 	DomainFormatted     *string    `json:"ad_domain_formatted"`
 	OsInstalled         *bool      `json:"os_installed"`

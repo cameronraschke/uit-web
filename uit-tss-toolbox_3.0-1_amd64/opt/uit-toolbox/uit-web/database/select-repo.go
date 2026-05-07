@@ -963,6 +963,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			(CASE WHEN locations.disk_removed = TRUE THEN NULL ELSE COALESCE(os_info.os_name, os_installed_table.image_version) END) AS "os_name", 
 			(CASE WHEN locations.disk_removed = TRUE THEN NULL WHEN os_info.windows_build_number IS NOT NULL AND os_info.windows_ubr IS NOT NULL THEN CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) ELSE NULL END) AS "os_version",
 			latest_os_versions.latest_os_version,
+			os_info.admin_users,
 			os_info.windows_bitlocker_enabled,
 			client_health.last_hardware_check,
 			(CASE 
@@ -1015,6 +1016,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			os_info.windows_build_number,
 			os_info.windows_ubr,
 			latest_os_versions.latest_os_version,
+			os_info.admin_users,
 			os_info.windows_bitlocker_enabled,
 			client_health.last_hardware_check,
 			static_bios_stats.bios_version,
@@ -1067,6 +1069,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&row.OsName,
 			&row.OsVersion,
 			&row.LatestOsVersion,
+			&row.AdminUsers,
 			&row.BitlockerEnabled,
 			&row.LastHardwareCheck,
 			&row.BIOSUpdated,
@@ -1174,8 +1177,8 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			if results[i].OsName != nil && strings.Contains(strings.ToLower(*results[i].OsName), "windows") {
 				// If OS is windows but Bitlocker is not enabled
 				if results[i].BitlockerEnabled != nil && !*results[i].BitlockerEnabled {
-					bitlockerNotEnabled := types.BitlockerNotEnabled.String()
-					results[i].ClientErrors = append(results[i].ClientErrors, bitlockerNotEnabled)
+					bitlockerNotCompleted := types.BitlockerNotCompleted.String()
+					results[i].ClientErrors = append(results[i].ClientErrors, bitlockerNotCompleted)
 				}
 				// If OS is windows and AD domain is nil/empty/default (WORKGROUP)
 				if results[i].ADDomain == nil || (results[i].ADDomain != nil && (strings.TrimSpace(*results[i].ADDomain) == "" || *results[i].ADDomain == "none" || strings.ToLower(*results[i].ADDomain) == "workgroup")) {
@@ -1186,6 +1189,10 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 					if results[i].IsIntuneJoined != nil && !*results[i].IsIntuneJoined {
 						intuneNotEnrolled := types.InttuneNotEnrolled.String()
 						results[i].ClientErrors = append(results[i].ClientErrors, intuneNotEnrolled)
+					}
+					if len(results[i].AdminUsers) < 2 {
+						adminUsersMissing := types.AdminUsersMissing.String()
+						results[i].ClientErrors = append(results[i].ClientErrors, adminUsersMissing)
 					}
 				}
 			}
