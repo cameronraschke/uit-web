@@ -10,6 +10,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -963,7 +964,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			(CASE WHEN locations.disk_removed = TRUE THEN NULL ELSE COALESCE(os_info.os_name, os_installed_table.image_version) END) AS "os_name", 
 			(CASE WHEN locations.disk_removed = TRUE THEN NULL WHEN os_info.windows_build_number IS NOT NULL AND os_info.windows_ubr IS NOT NULL THEN CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) ELSE NULL END) AS "os_version",
 			latest_os_versions.latest_os_version,
-			os_info.admin_users,
+			array_to_json(os_info.admin_users),
 			os_info.windows_bitlocker_enabled,
 			client_health.last_hardware_check,
 			(CASE 
@@ -1049,7 +1050,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			return nil, fmt.Errorf("context error: %w", err)
 		}
 		var row types.InventoryTableRow
-		var adminUsers []string
+		var adminUsersJSON sql.NullString
 		if err := rows.Scan(
 			&row.Tagnumber,
 			&row.SystemSerial,
@@ -1070,7 +1071,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&row.OsName,
 			&row.OsVersion,
 			&row.LatestOsVersion,
-			&adminUsers,
+			&adminUsersJSON,
 			&row.BitlockerEnabled,
 			&row.LastHardwareCheck,
 			&row.BIOSUpdated,
@@ -1086,7 +1087,13 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		); err != nil {
 			return nil, fmt.Errorf("query error: %w", err)
 		}
-		row.AdminUsers = &adminUsers
+		if adminUsersJSON.Valid && strings.TrimSpace(adminUsersJSON.String) != "" && adminUsersJSON.String != "null" {
+			var adminUsers []string
+			if err := json.Unmarshal([]byte(adminUsersJSON.String), &adminUsers); err != nil {
+				return nil, fmt.Errorf("query error: failed to parse admin_users JSON: %w", err)
+			}
+			row.AdminUsers = &adminUsers
+		}
 		results = append(results, row)
 	}
 	if err := rows.Err(); err != nil {
