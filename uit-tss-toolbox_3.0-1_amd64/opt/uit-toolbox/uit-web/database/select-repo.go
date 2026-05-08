@@ -2027,9 +2027,8 @@ func SelectCheckoutData(ctx context.Context, tag *int64) (*types.CheckoutData, e
 	}
 	const sqlQuery = `
 	SELECT
-		$1 AS "tagnumber",
+		$1::BIGINT AS "tagnumber",
 		customer_name,
-
 		checkout_date,
 		return_date
 	FROM

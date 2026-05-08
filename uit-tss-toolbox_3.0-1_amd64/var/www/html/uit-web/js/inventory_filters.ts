@@ -458,7 +458,11 @@ async function populateStatusSelect(el: HTMLSelectElement, purgeCache: boolean =
 
 		for (const key of sortedKeys) {
 			const statuses = statusMap[key];
-			statuses.sort((a, b) => a.status_sort_order - b.status_sort_order);
+			statuses.sort((a, b) => {
+				if (a.status === 'other') return 1;
+				if (b.status === 'other') return -1;
+				return a.status_formatted.localeCompare(b.status_formatted);
+			});
 
 			const optGroup = document.createElement('optgroup');
 			optGroup.label = key;

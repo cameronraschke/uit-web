@@ -162,13 +162,14 @@ async function renderInventoryTable() {
 
 			// Actions cell
 			const actionsCell = document.createElement('td');
+			actionsCell.classList.add('flex-container', 'horizontal', 'centered');
 			const actionsContainer = document.createElement('div');
 			const tagAnchor = document.createElement('a');
 			const editButton = document.createElement('button');
 			const imagesAnchor = document.createElement('a');
 			const viewImagesButton = document.createElement('button');
 
-			actionsContainer.classList.add('flex-container', 'horizontal');
+			actionsContainer.classList.add('flex-container', 'vertical', 'centered');
 			tagAnchor.classList.add('smaller-text');
 			editButton.classList.add('svg-button', 'edit');
 			viewImagesButton.classList.add('svg-button', 'photo-album');
