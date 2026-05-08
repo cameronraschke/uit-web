@@ -1,10 +1,44 @@
-document.addEventListener('DOMContentLoaded', () => {
+type CheckoutData = {
+	tagnumber: number | null;
+	customer_name: string | null;
+	customer_psid: string | null;
+	checkout_date: string | null;
+	return_date: string | null;
+};
+
+async function fetchCheckoutData(): Promise<CheckoutData> {
+	const urlParams = new URLSearchParams(window.location.search);
+	const tagNumber = urlParams.get("tagnumber");
+	if (!tagNumber) {
+		throw new Error("Tag number is required");
+	}
+	const response = await fetch(`/api/checkout?tagnumber=${encodeURIComponent(tagNumber)}`);
+	if (!response.ok) {
+		throw new Error(`Failed to fetch checkout data: ${response.statusText}`);
+	}
+	const data: CheckoutData = await response.json();
+	return data;
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
 	const printCheckoutFormContainer = document.getElementById('print-checkout-form-container') as HTMLElement;
 	const customerNameEl = document.getElementById('print-customer-name') as HTMLInputElement;
 	const customerPSIDEl = document.getElementById('print-customer-psid') as HTMLInputElement;
 	const checkoutDateEl = document.getElementById('print-checkout-date') as HTMLInputElement;
 	const returnDateEl = document.getElementById('print-return-date') as HTMLInputElement;
 	const confirmAndPrint = document.getElementById('confirm-and-print') as HTMLElement;
+
+	const checkoutData = await fetchCheckoutData();
+	customerNameEl.value = checkoutData.customer_name ?? '';
+	customerPSIDEl.value = checkoutData.customer_psid ?? '';
+	if (checkoutData.checkout_date !== null) {
+		const checkoutDateFormatted = new Date(checkoutData.checkout_date).toISOString().split('T')[0];
+		checkoutDateEl.value = checkoutDateFormatted;
+	}
+	if (checkoutData.return_date !== null) {
+		const returnDateFormatted = new Date(checkoutData.return_date).toISOString().split('T')[0];
+		returnDateEl.value = returnDateFormatted;
+	}
 	
 	const options: Intl.DateTimeFormatOptions = {
 		timeZone: "America/Chicago",

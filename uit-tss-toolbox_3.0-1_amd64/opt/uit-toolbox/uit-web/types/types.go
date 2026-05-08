@@ -321,6 +321,14 @@ type JobQueueTableRowView struct {
 	PowerUsage             *float64       `json:"power_usage"`
 }
 
+type CheckoutData struct {
+	Tagnumber    *int64  `json:"tagnumber"`
+	CustomerName *string `json:"customer_name"`
+	CustomerPSID *int64  `json:"customer_psid"`
+	CheckoutDate *string `json:"checkout_date"`
+	ReturnDate   *string `json:"return_date"`
+}
+
 type Note struct {
 	NoteType *string `json:"note_type"`
 	Content  *string `json:"note"`

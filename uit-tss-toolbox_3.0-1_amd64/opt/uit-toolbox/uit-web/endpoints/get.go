@@ -1145,3 +1145,21 @@ func InitClient(w http.ResponseWriter, req *http.Request) {
 	}
 	middleware.WriteJson(w, http.StatusOK, returnedJson)
 }
+
+func FetchCheckoutData(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "FetchCheckoutData"))
+	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
+	if err != nil {
+		log.Warn("Invalid tagnumber provided: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	checkoutData, err := database.SelectCheckoutData(ctx, tagnumber)
+	if err != nil {
+		log.Warn("Error fetching checkout data: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, checkoutData)
+}

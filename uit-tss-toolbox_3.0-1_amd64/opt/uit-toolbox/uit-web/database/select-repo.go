@@ -958,7 +958,13 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			ORDER BY jobstats.client_uuid, jobstats.time DESC NULLS LAST
 		),
 		most_recent_checkout AS (
-			SELECT DISTINCT ON (checkout_log.client_uuid) client_uuid, checkout_date, return_date, customer_name FROM checkout_log ORDER BY checkout_log.client_uuid, time DESC NULLS LAST
+			SELECT DISTINCT ON (client_uuid)
+				client_uuid,
+				checkout_date,
+				return_date,
+				customer_name
+			FROM checkout_log
+			ORDER BY client_uuid, time DESC NULLS LAST;
 		)
 		SELECT
 			locations.tagnumber, 
@@ -1045,7 +1051,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			locations.is_broken,
 			locations.disk_removed,
 			locations.retired_date,
-			most_recent_checkout.checkout_bool,
+			most_recent_checkout.return_date,
 			locations.note,
 			locations.time,
 			files.file_count
@@ -2009,4 +2015,46 @@ func GetAllBuildingsAndRooms(ctx context.Context) ([]types.AllBuildingsAndRooms,
 		return nil, nil
 	}
 	return buildingAndRooms, nil
+}
+
+func SelectCheckoutData(ctx context.Context, tag *int64) (*types.CheckoutData, error) {
+	if err := types.IsTagnumberInt64Valid(tag); err != nil {
+		return nil, err
+	}
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+	const sqlQuery = `
+	SELECT
+		$1 AS "tagnumber",
+		customer_name,
+
+		checkout_date,
+		return_date
+	FROM
+		checkout_log
+	WHERE
+		client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1)
+	ORDER BY
+		time DESC NULLS LAST
+	LIMIT 1
+	;`
+
+	var checkoutData types.CheckoutData
+	if err := dbConn.QueryRowContext(ctx, sqlQuery,
+		ptrToNullInt64(tag),
+	).Scan(
+		&checkoutData.Tagnumber,
+		&checkoutData.CustomerName,
+		&checkoutData.CheckoutDate,
+		&checkoutData.ReturnDate,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
+	}
+
+	return &checkoutData, nil
 }

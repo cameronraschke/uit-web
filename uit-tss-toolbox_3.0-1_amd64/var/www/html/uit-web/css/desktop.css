@@ -338,6 +338,14 @@ td > div.flex-container {
 	background-image: url(/icons/general/location_off.svg);
 }
 
+.svg-button.print {
+	background-color: var(--bg-color);
+	background-image: url(/icons/general/print.svg);
+}
+.svg-button.print:hover, .svg-button.print:focus {
+	background-color: var(--light-accent-color);
+}
+
 .svg-select {
 	margin-right: 2rem;
 	background-color: var(--fg-color);

@@ -136,6 +136,7 @@ type InventoryTableRow = {
 	file_count: number | null;
 	client_configuration_errors: string[] | null;
 	disk_removed: boolean | null;
+	checkout_bool: boolean | null;
 };
 
 type AllBuildingsAndRooms = {

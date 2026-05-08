@@ -83,6 +83,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/client/files", httpsFullAPIChain.ThenFunc(endpoints.GetImage))
 	httpsRouter.Handle("GET /api/client/live_image", httpsFullAPIChain.ThenFunc(endpoints.DownloadLiveImage))
 	httpsRouter.Handle("GET /api/client/hardware", httpsFullAPIChain.ThenFunc(endpoints.FetchClientHardwareData))
+	httpsRouter.Handle("GET /api/checkout", httpsFullAPIChain.ThenFunc(endpoints.FetchCheckoutData))
 
 	// Job queue
 	httpsRouter.Handle("GET /api/client/job_name", httpsFullAPIChain.ThenFunc(endpoints.FetchClientJobName))
