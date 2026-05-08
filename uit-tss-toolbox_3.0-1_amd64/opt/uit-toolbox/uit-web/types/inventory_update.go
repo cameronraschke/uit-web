@@ -31,6 +31,7 @@ type InventoryUpdateRequest struct {
 	CheckoutBool       *bool      `json:"checkout_bool"`
 	CheckoutDate       *time.Time `json:"checkout_date"`
 	ReturnDate         *time.Time `json:"return_date"`
+	CustomerName       *string    `json:"customer_name"`
 	Note               *string    `json:"note"`
 }
 
@@ -56,6 +57,7 @@ type InventoryUpdateDTO struct {
 	CheckoutBool       *bool
 	CheckoutDate       *time.Time
 	ReturnDate         *time.Time
+	CustomerName       *string
 	Note               *string
 }
 
@@ -91,6 +93,7 @@ type InventoryCheckoutWriteModel struct {
 	Tagnumber       int64
 	CheckoutDate    *time.Time
 	ReturnDate      *time.Time
+	CustomerName    *string
 	CheckoutBool    *bool
 }
 
@@ -258,6 +261,16 @@ func CreateInventoryUpdateDTO(updateRequest *InventoryUpdateRequest, htmlFormCon
 		return nil, fmt.Errorf("return_date is required")
 	}
 
+	// Customer name (optional, min 1 char, max 64 Unicode chars)
+	if updateRequest.CustomerName != nil && strings.TrimSpace(*updateRequest.CustomerName) != "" {
+		if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.CustomerName)) < 1 || utf8.RuneCountInString(*updateRequest.CustomerName) > 128 {
+			return nil, fmt.Errorf("customer name must be between %d and %d characters", 1, 128)
+		}
+		if !IsPrintableUnicodeString(*updateRequest.CustomerName) {
+			return nil, fmt.Errorf("non-printable Unicode characters in customer name field")
+		}
+	}
+
 	// Note (optional)
 	if updateRequest.Note != nil && strings.TrimSpace(*updateRequest.Note) != "" {
 		if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.Note)) < htmlFormConstraints.InventoryForm.ClientNoteMinChars || utf8.RuneCountInString(*updateRequest.Note) > htmlFormConstraints.InventoryForm.ClientNoteMaxChars {
@@ -289,6 +302,7 @@ func CreateInventoryUpdateDTO(updateRequest *InventoryUpdateRequest, htmlFormCon
 		CheckoutBool:       copyBoolPtr(updateRequest.CheckoutBool),
 		CheckoutDate:       timePtrToUTC(updateRequest.CheckoutDate),
 		ReturnDate:         timePtrToUTC(updateRequest.ReturnDate),
+		CustomerName:       copyTrimmedStringPtr(updateRequest.CustomerName),
 		Note:               copyTrimmedStringPtr(updateRequest.Note),
 	}
 
@@ -352,9 +366,10 @@ func MapInventoryUpdateDomainToCheckoutWriteModel(transactionUUID uuid.UUID, dom
 	return &InventoryCheckoutWriteModel{
 		TransactionUUID: transactionUUID,
 		Tagnumber:       domain.Tagnumber,
+		CheckoutBool:    copyBoolPtr(domain.CheckoutBool),
 		CheckoutDate:    copyTimePtr(domain.CheckoutDate),
 		ReturnDate:      copyTimePtr(domain.ReturnDate),
-		CheckoutBool:    copyBoolPtr(domain.CheckoutBool),
+		CustomerName:    copyStringPtr(domain.CustomerName),
 	}
 }
 

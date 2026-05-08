@@ -942,6 +942,7 @@ if (updateForm) {
 			formObj.status = getElementStringValue(clientStatusUpdate);
 			formObj.checkout_bool = formObj.status && statusesThatIndicateCheckout.includes(formObj.status) ? true : false;
 			formObj.checkout_date = getElementDateValue(checkoutDateUpdate, true);
+			formObj.customer_name = getElementStringValue(customerNameUpdate);
 			formObj.return_date = getElementDateValue(returnDateUpdate, true);
 			formObj.note = getElementStringValue(noteUpdate);
 			// const jsonBase64 = jsonToBase64(JSON.stringify(formObj));

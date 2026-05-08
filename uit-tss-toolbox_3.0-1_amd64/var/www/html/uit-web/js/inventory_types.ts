@@ -73,6 +73,7 @@ type InventoryFormPrefill = {
 	checkout_bool: boolean | null;
 	checkout_date: Date | null;
 	return_date: Date | null;
+	customer_name: string | null;
 	note: string | null;
 	file_count: number | null;
 };
@@ -252,6 +253,7 @@ const lastHardwareCheckUpdate = document.querySelector("#last_hardware_check") a
 const clientStatusUpdate = document.querySelector("#status") as HTMLSelectElement;
 const checkoutBoolUpdate = document.querySelector("#checkout_bool") as HTMLSelectElement;
 const checkoutDateUpdate = document.querySelector("#checkout_date") as HTMLInputElement;
+const customerNameUpdate = document.querySelector("#customer_name") as HTMLInputElement;
 const returnDateUpdate = document.querySelector("#return_date") as HTMLInputElement;
 const noteUpdate = document.querySelector("#note") as HTMLInputElement;
 const fileInputUpdate = document.querySelector("#inventory-update-file-input") as HTMLInputElement;
@@ -304,6 +306,7 @@ const allInventoryUpdateFields = [
 	returnDateUpdate,
 	noteUpdate,
 	fileInputUpdate,
+	customerNameUpdate
 ];
 
 const requiredInventoryUpdateFields = [

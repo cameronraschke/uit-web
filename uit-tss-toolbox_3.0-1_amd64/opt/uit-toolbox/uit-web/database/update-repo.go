@@ -164,7 +164,8 @@ func InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID,
 	}
 	if checkoutData.CheckoutDate == nil &&
 		checkoutData.ReturnDate == nil &&
-		(checkoutData.CheckoutBool != nil && !*checkoutData.CheckoutBool) {
+		(checkoutData.CheckoutBool != nil && !*checkoutData.CheckoutBool) &&
+		(checkoutData.CustomerName == nil || strings.TrimSpace(*checkoutData.CustomerName) == "") {
 		return nil
 	}
 
@@ -190,13 +191,14 @@ func InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID,
 	const checkoutSql = `
 		INSERT INTO checkout_log
 			(
-				log_entry_time, 
+				time, 
 				client_uuid,
 				transaction_uuid, 
 				tagnumber, 
 				checkout_date, 
 				return_date, 
-				checkout_bool
+				checkout_bool,
+				customer_name
 			)
 		VALUES 
 			(
@@ -206,7 +208,8 @@ func InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID,
 				$2, 
 				$3, 
 				$4, 
-				$5
+				$5,
+				$6
 			)
 	;`
 
@@ -216,6 +219,7 @@ func InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID,
 		ptrToNullTime(checkoutData.CheckoutDate),
 		ptrToNullTime(checkoutData.ReturnDate),
 		ptrToNullBool(checkoutData.CheckoutBool),
+		ptrToNullString(checkoutData.CustomerName),
 	)
 	if err != nil {
 		return err

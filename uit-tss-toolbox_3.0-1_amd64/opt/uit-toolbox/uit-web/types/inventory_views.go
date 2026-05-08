@@ -130,6 +130,7 @@ type InventoryFormPrefill struct {
 	CheckoutBool       *bool      `json:"checkout_bool"`
 	CheckoutDate       *time.Time `json:"checkout_date"`
 	ReturnDate         *time.Time `json:"return_date"`
+	CustomerName       *string    `json:"customer_name"`
 	Note               *string    `json:"note"`
 	FileCount          *int64     `json:"file_count"`
 }
