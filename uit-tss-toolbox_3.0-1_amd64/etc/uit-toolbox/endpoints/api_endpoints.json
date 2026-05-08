@@ -84,5 +84,6 @@
 	},
 	"/api/client/health": {
 		"allowed_methods": ["POST"]
-	}
+	},
+	"/api/checkout": {}
 }

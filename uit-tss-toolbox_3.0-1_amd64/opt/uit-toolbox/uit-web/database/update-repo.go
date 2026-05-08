@@ -162,12 +162,12 @@ func InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID,
 	if err := types.IsTagnumberInt64Valid(&checkoutData.Tagnumber); err != nil {
 		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
-	if checkoutData.CheckoutDate == nil &&
-		checkoutData.ReturnDate == nil &&
-		(checkoutData.CheckoutBool != nil && !*checkoutData.CheckoutBool) &&
-		(checkoutData.CustomerName == nil || strings.TrimSpace(*checkoutData.CustomerName) == "") {
-		return nil
-	}
+	// if checkoutData.CheckoutDate == nil &&
+	// 	checkoutData.ReturnDate == nil &&
+	// 	(checkoutData.CheckoutBool != nil && !*checkoutData.CheckoutBool) &&
+	// 	(checkoutData.CustomerName == nil || strings.TrimSpace(*checkoutData.CustomerName) == "") {
+	// 	return nil
+	// }
 
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {

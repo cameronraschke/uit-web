@@ -593,8 +593,8 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 
 			if (locationFormData.checkout_bool === true) {
 				if (locationFormData.customer_name !== null) {
-					propertyCustodianUpdate.value = locationFormData.customer_name.trim();
-					propertyCustodianUpdate.classList.remove("empty-input");
+					customerNameUpdate.value = locationFormData.customer_name.trim();
+					customerNameUpdate.classList.remove("empty-input");
 				}
 				if (locationFormData.checkout_date !== null) {
 					const checkoutDateValue = new Date(locationFormData.checkout_date);

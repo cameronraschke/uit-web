@@ -200,7 +200,7 @@ async function renderInventoryTable() {
 			if (inventoryRow.checkout_bool === true) {
 				const printAnchor = document.createElement('a');
 				printAnchor.target = '_blank';
-				printAnchor.href = new URL(`checkout_form?tagnumber=${tagnumber}`, window.location.origin).toString();
+				printAnchor.href = new URL(`checkout-form?tagnumber=${tagnumber}`, window.location.origin).toString();
 
 				const printButton = document.createElement('button');
 				printButton.classList.add('svg-button', 'print');

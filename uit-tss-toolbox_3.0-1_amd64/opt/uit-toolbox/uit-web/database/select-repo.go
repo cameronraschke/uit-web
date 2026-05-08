@@ -964,7 +964,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 				return_date,
 				customer_name
 			FROM checkout_log
-			ORDER BY client_uuid, time DESC NULLS LAST;
+			ORDER BY client_uuid, time DESC NULLS LAST
 		)
 		SELECT
 			locations.tagnumber, 
