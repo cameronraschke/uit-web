@@ -360,9 +360,10 @@ func MapInventoryUpdateDomainToCheckoutWriteModel(transactionUUID uuid.UUID, dom
 	if domain == nil {
 		return nil
 	}
-	if domain.CheckoutDate == nil && domain.ReturnDate == nil && (domain.CheckoutBool == nil || !*domain.CheckoutBool) {
-		return nil
-	}
+	// if err := IsTagnumberInt64Valid(&domain.Tagnumber); err != nil {
+	// 	return nil
+	// }
+
 	return &InventoryCheckoutWriteModel{
 		TransactionUUID: transactionUUID,
 		Tagnumber:       domain.Tagnumber,
