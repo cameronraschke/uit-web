@@ -186,29 +186,20 @@ func GetNotes(w http.ResponseWriter, req *http.Request) {
 }
 
 func GetLocationFormData(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	requestQueries := req.URL.Query()
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "GetLocationFormData"))
 
-	serial := strings.TrimSpace(requestQueries.Get("system_serial"))
-	tagnumber, tagErr := types.ConvertAndVerifyTagnumber(requestQueries.Get("tagnumber"))
-	if tagErr != nil {
-		if serial == "" {
-			log.Warn("No or invalid tagnumber and no system_serial provided in GetLocationFormData")
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-	}
-
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository in GetLocationFormData: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
+	serial := middleware.GetStrQuery(req.URL.Query(), "system_serial")
+	tagnumber := middleware.GetInt64Query(req.URL.Query(), "tagnumber")
+	tagErr := types.IsTagnumberInt64Valid(tagnumber)
+	if tagErr != nil && (serial == nil || strings.TrimSpace(*serial) == "") {
+		log.Warn("Missing/invalid tagnumber and system_serial provided")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	locationData, err := db.GetLocationFormData(ctx, tagnumber, &serial)
+
+	locationData, err := database.GetLocationFormData(req.Context(), tagnumber, serial)
 	if err != nil {
-		log.Warn("Query error in GetLocationFormData: " + err.Error())
+		log.Warn("Query error: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}

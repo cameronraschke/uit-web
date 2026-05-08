@@ -25,7 +25,6 @@ type Select interface {
 	GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error)
 	GetJobQueueOverview(ctx context.Context) (*types.JobQueueOverview, error)
 	GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteRow, error)
-	GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryFormPrefill, error)
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
 	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifestView, error)
 	GetClientBatteryReport(ctx context.Context) ([]types.ClientReportRow, error)
@@ -440,8 +439,8 @@ func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.A
 }
 
 func SelectIsClientJobAvailable(ctx context.Context, tag *int64) (*bool, error) {
-	if tag == nil || *tag <= 0 {
-		return nil, fmt.Errorf("tagnumber is nil or invalid")
+	if err := types.IsTagnumberInt64Valid(tag); err != nil {
+		return nil, fmt.Errorf("tagnumber is nil or invalid: %w", err)
 	}
 
 	if ctx.Err() != nil {
@@ -530,8 +529,8 @@ func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*types.
 	return &generalNoteRow, nil
 }
 
-func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryFormPrefill, error) {
-	if tag == nil && (serial == nil || strings.TrimSpace(*serial) == "") {
+func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryFormPrefill, error) {
+	if err := types.IsTagnumberInt64Valid(tag); err != nil && (serial == nil || strings.TrimSpace(*serial) == "") {
 		return nil, fmt.Errorf("either tag or serial must be provided")
 	}
 
@@ -539,9 +538,15 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		return nil, fmt.Errorf("context error: %w", ctx.Err())
 	}
 
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
 	const sqlQuery = `WITH files AS
 	(
-		SELECT client_uuid, COUNT(client_images.client_uuid) AS file_count from client_images WHERE hidden = FALSE GROUP BY client_uuid
+		SELECT client_uuid, COUNT(client_images.client_uuid) AS "file_count" FROM client_images WHERE hidden = FALSE AND client_uuid = (SELECT uuid FROM ids WHERE (tagnumber = $1 OR system_serial = $2))
+		GROUP BY client_uuid
 	),
 	default_system_model AS (
 		SELECT 
@@ -563,6 +568,9 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 			GROUP BY hardware_data.client_uuid, hardware_data.device_type
 			ORDER BY MAX(hardware_data.time) DESC NULLS LAST 
 			LIMIT 1
+	),
+	most_recent_checkout AS (
+		SELECT client_uuid, checkout_date, return_date, checkout_bool FROM checkout_log WHERE client_uuid = (SELECT uuid FROM ids WHERE (tagnumber = $1 OR system_serial = $2)) ORDER BY log_entry_time DESC NULLS LAST LIMIT 1
 	)
 	SELECT 
 		locations.time, 
@@ -583,15 +591,15 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		locations.disk_removed, 
 		client_health.last_hardware_check,
 		locations.client_status, 
-		checkout_log.checkout_date,
-		checkout_log.return_date,
+		most_recent_checkout.checkout_date,
+		most_recent_checkout.return_date,
 		locations.note,
 		COALESCE(files.file_count, 0) AS "file_count"
 	FROM locations
 	LEFT JOIN files ON locations.client_uuid = files.client_uuid
 	LEFT JOIN hardware_data ON locations.client_uuid = hardware_data.client_uuid
 	LEFT JOIN client_health ON locations.client_uuid = client_health.client_uuid
-	LEFT JOIN checkout_log ON locations.client_uuid = checkout_log.client_uuid AND checkout_log.log_entry_time IN (SELECT MAX(log_entry_time) FROM checkout_log WHERE log_entry_time IS NOT NULL GROUP BY client_uuid)
+	LEFT JOIN checkout_log ON locations.client_uuid = checkout_log.client_uuid
 	LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 	LEFT JOIN client_images ON locations.client_uuid = client_images.client_uuid
 	LEFT JOIN default_system_model ON locations.client_uuid = default_system_model.client_uuid
@@ -616,15 +624,15 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		locations.disk_removed,
 		client_health.last_hardware_check,
 		locations.client_status,
-		checkout_log.checkout_date,
-		checkout_log.return_date,
+		most_recent_checkout.checkout_date,
+		most_recent_checkout.return_date,
 		locations.note,
 		COALESCE(files.file_count, 0),
 		files.client_uuid,
 		client_images.client_uuid
 	ORDER BY locations.time DESC NULLS LAST
 	LIMIT 1;`
-	row := repo.DB.QueryRowContext(ctx, sqlQuery,
+	row := dbConn.QueryRowContext(ctx, sqlQuery,
 		ptrToNullInt64(tag),
 		ptrToNullString(serial),
 	)
@@ -657,7 +665,7 @@ func (repo *SelectRepo) GetLocationFormData(ctx context.Context, tag *int64, ser
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("error during row scan: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 	}
 	return inventoryUpdate, nil
 }

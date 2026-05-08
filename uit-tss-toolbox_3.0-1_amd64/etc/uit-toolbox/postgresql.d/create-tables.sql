@@ -1,5 +1,18 @@
-DROP TABLE IF EXISTS serverstats;
-CREATE TABLE serverstats (
+CREATE TABLE IF NOT EXISTS ids (
+	uuid UUID PRIMARY KEY DEFAULT uuidv7(),
+	tagnumber INTEGER NOT NULL,
+	system_serial VARCHAR(128) NOT NULL,
+	time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+
+	CONSTRAINT ids_valid_tag
+		CHECK (tagnumber > 100000 AND tagnumber < 999999),
+	CONSTRAINT ids_system_serial_unique
+		UNIQUE (system_serial),
+	CONSTRAINT ids_tagnumber_unique
+		UNIQUE (tagnumber)
+);
+
+CREATE TABLE IF NOT EXISTS serverstats (
 	date DATE UNIQUE NOT NULL,
 	client_count SMALLINT DEFAULT NULL,
 	total_os_installed SMALLINT DEFAULT NULL,
@@ -603,10 +616,9 @@ INSERT INTO static_note_info (note_type, note_type_readable, sort_order) VALUES
 
 
 CREATE TABLE IF NOT EXISTS checkout_log (
-	id SERIAL PRIMARY KEY,
+	transaction_uuid UUID PRIMARY KEY,
 	client_uuid UUID DEFAULT NULL,
 	log_entry_time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	transaction_uuid UUID DEFAULT NULL,
 	tagnumber INTEGER NOT NULL,
 	customer_name VARCHAR(48) DEFAULT NULL,
 	checkout_bool BOOLEAN DEFAULT FALSE,
@@ -713,19 +725,7 @@ CREATE TABLE IF NOT EXISTS static_building_info (
 	building_sort_order SMALLINT NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS ids (
-	uuid UUID PRIMARY KEY DEFAULT uuidv7(),
-	tagnumber INTEGER NOT NULL,
-	system_serial VARCHAR(128) NOT NULL,
-	time TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
-	CONSTRAINT ids_valid_tag
-		CHECK (tagnumber > 100000 AND tagnumber < 999999),
-	CONSTRAINT ids_system_serial_unique
-		UNIQUE (system_serial),
-	CONSTRAINT ids_tagnumber_unique
-		UNIQUE (tagnumber)
-);
 
 CREATE TABLE IF NOT EXISTS static_os_info (
 	os_name VARCHAR(128) PRIMARY KEY,

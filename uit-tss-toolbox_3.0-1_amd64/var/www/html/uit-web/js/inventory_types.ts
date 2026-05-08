@@ -51,8 +51,8 @@ type BulkUpdateRequest = {
 	bulk_tagnumbers: number[];
 };
 
-type InventoryForm = {
-	time: string | null;
+type InventoryFormPrefill = {
+	time: Date | null;
 	tagnumber: number | null;
 	system_serial: string | null;
 	location: string | null;
