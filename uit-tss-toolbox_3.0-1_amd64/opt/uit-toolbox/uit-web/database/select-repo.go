@@ -629,9 +629,9 @@ func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*type
 		most_recent_checkout.checkout_date,
 		most_recent_checkout.return_date,
 		most_recent_checkout.customer_name,
-		(CASE WHEN DATE(CURRENT_TIMESTAMP) < most_recent_checkout.return_date THEN TRUE ELSE FALSE END) AS "checkout_bool",
+		most_recent_checkout.return_date,
 		locations.note,
-		COALESCE(files.file_count, 0),
+		files.file_count,
 		files.client_uuid,
 		client_images.client_uuid
 	ORDER BY locations.time DESC NULLS LAST
@@ -664,6 +664,7 @@ func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*type
 		&inventoryUpdate.CheckoutDate,
 		&inventoryUpdate.ReturnDate,
 		&inventoryUpdate.CustomerName,
+		&inventoryUpdate.CheckoutBool,
 		&inventoryUpdate.Note,
 		&inventoryUpdate.FileCount,
 	); err != nil {
@@ -955,6 +956,9 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			LEFT JOIN static_image_names ON hardware_data.system_model = static_image_names.image_platform_model
 			WHERE (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
 			ORDER BY jobstats.client_uuid, jobstats.time DESC NULLS LAST
+		),
+		most_recent_checkout AS (
+			SELECT DISTINCT ON (checkout_log.client_uuid) client_uuid, checkout_date, return_date, customer_name FROM checkout_log ORDER BY checkout_log.client_uuid, time DESC NULLS LAST
 		)
 		SELECT
 			locations.tagnumber, 
@@ -989,6 +993,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			locations.is_broken, 
 			locations.disk_removed,
 			locations.retired_date,
+			(CASE WHEN DATE(CURRENT_TIMESTAMP) < most_recent_checkout.return_date THEN TRUE ELSE FALSE END) AS "checkout_bool",
 			locations.note, 
 			locations.time AS last_updated, 
 			files.file_count
@@ -1005,6 +1010,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			LEFT JOIN os_info ON locations.client_uuid = os_info.client_uuid
 			LEFT JOIN latest_os_versions ON os_info.os_name = latest_os_versions.os_name
 			LEFT JOIN os_installed_table ON locations.client_uuid = os_installed_table.client_uuid
+			LEFT JOIN most_recent_checkout ON locations.client_uuid = most_recent_checkout.client_uuid
 		WHERE %s
 		GROUP BY 
 			locations.client_uuid,
@@ -1039,6 +1045,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			locations.is_broken,
 			locations.disk_removed,
 			locations.retired_date,
+			most_recent_checkout.checkout_bool,
 			locations.note,
 			locations.time,
 			files.file_count
@@ -1094,6 +1101,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&row.IsBroken,
 			&row.DiskRemoved,
 			&row.RetiredDate,
+			&row.IsCheckedOut,
 			&row.Note,
 			&row.LastUpdated,
 			&row.FileCount,

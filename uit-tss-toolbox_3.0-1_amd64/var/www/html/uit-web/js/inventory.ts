@@ -362,6 +362,14 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 
 	resetInputElement(propertyCustodianUpdate, "Property Custodian", false, "empty-input");
 
+	resetInputElement(customerNameUpdate, "Customer Name", false, "empty-input");
+
+	checkoutDateUpdate.value = "";
+	checkoutDateUpdate.classList.add("empty-input");
+
+	returnDateUpdate.value = "";
+	returnDateUpdate.classList.add("empty-input");
+
 	resetInputElement(acquiredDateUpdate, "Acquired Date", false, "empty-input");
 
 	resetInputElement(retiredDateUpdate, "Retired Date", false, "empty-input");
@@ -581,6 +589,35 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				}
 			} else {
 				retiredDateUpdate.classList.add("empty-input");
+			}
+
+			if (locationFormData.checkout_bool === true) {
+				if (locationFormData.customer_name !== null) {
+					propertyCustodianUpdate.value = locationFormData.customer_name.trim();
+					propertyCustodianUpdate.classList.remove("empty-input");
+				}
+				if (locationFormData.checkout_date !== null) {
+					const checkoutDateValue = new Date(locationFormData.checkout_date);
+					if (checkoutDateValue && !isNaN(checkoutDateValue.getTime())) {
+						const year = checkoutDateValue.getFullYear();
+						const month = String(checkoutDateValue.getMonth() + 1).padStart(2, '0');
+						const day = String(checkoutDateValue.getDate()).padStart(2, '0');
+						const checkoutDateFormatted = `${year}-${month}-${day}`;
+						checkoutDateUpdate.value = checkoutDateFormatted;
+						checkoutDateUpdate.classList.remove("empty-input");
+					}
+				}
+				if (locationFormData.return_date !== null) {
+					const returnDateValue = new Date(locationFormData.return_date);
+					if (returnDateValue && !isNaN(returnDateValue.getTime())) {
+						const year = returnDateValue.getFullYear();
+						const month = String(returnDateValue.getMonth() + 1).padStart(2, '0');
+						const day = String(returnDateValue.getDate()).padStart(2, '0');
+						const returnDateFormatted = `${year}-${month}-${day}`;
+						returnDateUpdate.value = returnDateFormatted;
+						returnDateUpdate.classList.remove("empty-input");
+					}
+				}
 			}
 			
 			if (locationFormData.is_broken === true) {

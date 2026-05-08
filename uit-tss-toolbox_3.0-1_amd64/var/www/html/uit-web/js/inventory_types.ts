@@ -251,7 +251,6 @@ const isBrokenUpdate = document.querySelector("#is_broken") as HTMLSelectElement
 const diskRemovedUpdate = document.querySelector("#disk_removed") as HTMLSelectElement;
 const lastHardwareCheckUpdate = document.querySelector("#last_hardware_check") as HTMLInputElement;
 const clientStatusUpdate = document.querySelector("#status") as HTMLSelectElement;
-const checkoutBoolUpdate = document.querySelector("#checkout_bool") as HTMLSelectElement;
 const checkoutDateUpdate = document.querySelector("#checkout_date") as HTMLInputElement;
 const customerNameUpdate = document.querySelector("#customer_name") as HTMLInputElement;
 const returnDateUpdate = document.querySelector("#return_date") as HTMLInputElement;
@@ -301,12 +300,11 @@ const allInventoryUpdateFields = [
 	diskRemovedUpdate,
 	lastHardwareCheckUpdate,
 	clientStatusUpdate,
-	checkoutBoolUpdate,
 	checkoutDateUpdate,
 	returnDateUpdate,
+	customerNameUpdate,
 	noteUpdate,
-	fileInputUpdate,
-	customerNameUpdate
+	fileInputUpdate
 ];
 
 const requiredInventoryUpdateFields = [

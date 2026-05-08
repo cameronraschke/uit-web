@@ -102,6 +102,7 @@ type InventoryTableRow struct {
 	IsBroken            *bool      `json:"is_broken"`
 	DiskRemoved         *bool      `json:"disk_removed"`
 	RetiredDate         *time.Time `json:"retired_date"`
+	IsCheckedOut        *bool      `json:"checkout_bool"`
 	Note                *string    `json:"note"`
 	LastUpdated         *time.Time `json:"last_updated"`
 	FileCount           *int64     `json:"file_count"`
