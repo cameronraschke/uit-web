@@ -558,33 +558,33 @@ async function getGlobalLookupData(purgeCache = false): Promise<GlobalLookupResu
 	}
 
 	const newCache: GlobalLookupResultCache = { timestamp: Date.now(), entries: [] };
-	const url = "/api/overview/global_lookup";
+	const url = "/api/overview/all_client_ids";
 	try {
 		const response: GlobalLookupResult | null = await fetchData(url, false);
 		if (!response) {
-			console.warn("Invalid response returned from /api/overview/global_lookup");
+			console.warn("Invalid response returned from /api/overview/all_client_ids");
 			return null;
 		}
 
 		if (!Array.isArray(response) || response.length === 0) {
-			console.warn("/api/overview/global_lookup response is not an array or is empty");
+			console.warn("/api/overview/all_client_ids response is not an array or is empty");
 			return null;
 		}
 		for (const result of response) {
 			if (result === null) {
-				console.warn("Invalid result in /api/overview/global_lookup response: " + result);
+				console.warn("Invalid result in /api/overview/all_client_ids response: " + result);
 				return null;
 			}
 			if (typeof result.tagnumber !== "number" && typeof result.tagnumber !== "string") {
-				console.warn("Invalid tagnumber in /api/overview/global_lookup response: " + result.tagnumber);
+				console.warn("Invalid tagnumber in /api/overview/all_client_ids response: " + result.tagnumber);
 				return null;
 			}
 			if (typeof result.system_serial !== "string" && result.system_serial !== null) {
-				console.warn("Invalid system_serial in /api/overview/global_lookup response: " + result.system_serial);
+				console.warn("Invalid system_serial in /api/overview/all_client_ids response: " + result.system_serial);
 				return null;
 			}
 			if (result.last_inventory_entry !== null && isNaN(Date.parse(result.last_inventory_entry))) {
-				console.warn("Invalid last_inventory_entry in /api/overview/global_lookup response: " + result.last_inventory_entry);
+				console.warn("Invalid last_inventory_entry in /api/overview/all_client_ids response: " + result.last_inventory_entry);
 				return null;
 			}
 		}

@@ -126,7 +126,7 @@ func InitWebEndpoints(as *AppState) error {
 				case "/api/overview/note":
 					merged.MaxUploadSize = new(int64)
 					*merged.MaxUploadSize += as.appConfig.Load().FormConstraints.Load().GeneralNote.MaxFormBytes
-				case "/api/inventory/update":
+				case "/api/inventory/update_client_data":
 					maxOverallJSONSize := as.appConfig.Load().FormConstraints.Load().InventoryForm.MaxJSONBytes
 					maxOverallImageSize := as.appConfig.Load().FileConstraints.Load().ImageConstraints.MaxFileSize * int64(as.appConfig.Load().FileConstraints.Load().ImageConstraints.MaxFileCount)
 					maxOverallVideoSize := as.appConfig.Load().FileConstraints.Load().VideoConstraints.MaxFileSize * int64(as.appConfig.Load().FileConstraints.Load().VideoConstraints.MaxFileCount)

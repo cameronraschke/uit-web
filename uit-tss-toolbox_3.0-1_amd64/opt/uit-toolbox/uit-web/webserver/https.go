@@ -56,32 +56,28 @@ func StartWebServer(ctx context.Context) error {
 
 	httpsRouter := http.NewServeMux()
 
-	// API GET endpoints //
+	// API endpoints //
 	// Overviews
-	httpsRouter.Handle("GET /api/overview/global_lookup", httpsFullAPIChain.ThenFunc(endpoints.GetAllClientIDs))
 	httpsRouter.Handle("GET /api/overview/inventory_table", httpsFullAPIChain.ThenFunc(endpoints.GetInventoryTableData))
-	httpsRouter.Handle("GET /api/overview/job_queue", httpsFullAPIChain.ThenFunc(endpoints.GetJobQueueTable))
+	httpsRouter.Handle("GET /api/overview/job_queue_table", httpsFullAPIChain.ThenFunc(endpoints.GetJobQueueTable))
+	httpsRouter.Handle("GET /api/overview/all_client_ids", httpsFullAPIChain.ThenFunc(endpoints.GetAllClientIDs))
 	httpsRouter.Handle("GET /api/overview/all_models", httpsFullAPIChain.ThenFunc(endpoints.GetManufacturersAndModels))
 	httpsRouter.Handle("GET /api/overview/all_domains", httpsFullAPIChain.ThenFunc(endpoints.GetAllDomains))
 	httpsRouter.Handle("GET /api/overview/all_departments", httpsFullAPIChain.ThenFunc(endpoints.GetDepartments))
 	httpsRouter.Handle("GET /api/overview/all_statuses", httpsFullAPIChain.ThenFunc(endpoints.GetAllStatuses))
 	httpsRouter.Handle("GET /api/overview/all_locations", httpsFullAPIChain.ThenFunc(endpoints.GetAllLocations))
 	httpsRouter.Handle("GET /api/overview/all_buildings_and_rooms", httpsFullAPIChain.ThenFunc(endpoints.FetchAllBuildingsAndRooms))
-	httpsRouter.Handle("GET /api/overview/job_queue/all_jobs", httpsFullAPIChain.ThenFunc(endpoints.GetAllJobs))
 	httpsRouter.Handle("GET /api/overview/all_device_types", httpsFullAPIChain.ThenFunc(endpoints.GetAllDeviceTypes))
+	httpsRouter.Handle("GET /api/overview/job_queue/all_jobs", httpsFullAPIChain.ThenFunc(endpoints.GetAllJobs))
 	httpsRouter.Handle("GET /api/overview/note", httpsFullAPIChain.ThenFunc(endpoints.GetNotes))
+	httpsRouter.Handle("POST /api/overview/note", httpsFullAPIChain.ThenFunc(endpoints.InsertNewNote))
 
 	// Reports
 	httpsRouter.Handle("GET /api/reports/client/battery_health", httpsFullAPIChain.ThenFunc(endpoints.FetchBatteryStandardDeviation))
 
 	// Client-specific
-	httpsRouter.Handle("GET /api/client/lookup", httpsFullAPIChain.ThenFunc(endpoints.GetClientIDs))
-	httpsRouter.Handle("GET /api/client/location_form_data", httpsFullAPIChain.ThenFunc(endpoints.GetLocationFormData))
 	httpsRouter.Handle("GET /api/client/job_queue/queued_job", httpsFullAPIChain.ThenFunc(endpoints.GetClientQueuedJobs))
 	httpsRouter.Handle("GET /api/client/job_queue/job_available", httpsFullAPIChain.ThenFunc(endpoints.IsClientJobAvailable))
-	httpsRouter.Handle("GET /api/client/files/manifest", httpsFullAPIChain.ThenFunc(endpoints.GetClientImagesManifest))
-	httpsRouter.Handle("GET /api/client/files", httpsFullAPIChain.ThenFunc(endpoints.GetImage))
-	httpsRouter.Handle("GET /api/client/live_image", httpsFullAPIChain.ThenFunc(endpoints.DownloadLiveImage))
 	httpsRouter.Handle("GET /api/client/hardware", httpsFullAPIChain.ThenFunc(endpoints.FetchClientHardwareData))
 	httpsRouter.Handle("GET /api/checkout", httpsFullAPIChain.ThenFunc(endpoints.FetchCheckoutData))
 
@@ -89,6 +85,9 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/client/job_name", httpsFullAPIChain.ThenFunc(endpoints.FetchClientJobName))
 	httpsRouter.Handle("GET /api/client/job_name_formatted", httpsFullAPIChain.ThenFunc(endpoints.FetchFormattedJobName))
 	httpsRouter.Handle("GET /api/client/job_queue_position", httpsFullAPIChain.ThenFunc(endpoints.FetchClientJobQueuePosition))
+	httpsRouter.Handle("POST /api/client/job_queue/update_job", httpsFullAPIChain.ThenFunc(endpoints.SetClientJob))
+	httpsRouter.Handle("POST /api/client/job_queued_at", httpsFullAPIChain.ThenFunc(endpoints.SetJobQueuedAt))
+	httpsRouter.Handle("POST /api/client/last_heard", httpsFullAPIChain.ThenFunc(endpoints.SetClientLastHeard))
 
 	// Web and auth
 	httpsRouter.Handle("GET /api/check_auth", httpsFullAPIChain.ThenFunc(endpoints.RejectRequest))
@@ -96,14 +95,13 @@ func StartWebServer(ctx context.Context) error {
 	// Misc
 	httpsRouter.Handle("GET /api/server_time", httpsFullAPIChain.ThenFunc(endpoints.GetServerTime))
 
-	// API POST endpoints //
 	// Overviews
-	httpsRouter.Handle("POST /api/overview/note", httpsFullAPIChain.ThenFunc(endpoints.InsertNewNote))
 	httpsRouter.Handle("POST /api/job_queue/all_clients/update_job", httpsFullAPIChain.ThenFunc(endpoints.SetAllJobs))
 
 	// Client hardware
-	httpsRouter.Handle("POST /api/client/hardware", httpsFullAPIChain.ThenFunc(endpoints.SetClientHardwareData))
 	httpsRouter.Handle("POST /api/client/init", httpsFullAPIChain.ThenFunc(endpoints.InitClient))
+	httpsRouter.Handle("POST /api/client/uptime", httpsFullAPIChain.ThenFunc(endpoints.SetClientUptime))
+	httpsRouter.Handle("POST /api/client/hardware", httpsFullAPIChain.ThenFunc(endpoints.SetClientHardwareData))
 	httpsRouter.Handle("POST /api/client/hardware/battery", httpsFullAPIChain.ThenFunc(endpoints.UpdateClientBatteryChargePcnt))
 	httpsRouter.Handle("POST /api/client/health", httpsFullAPIChain.ThenFunc(endpoints.UpdateClientHealthCheck))
 	httpsRouter.Handle("POST /api/windows-client-info", httpsFullAPIChain.ThenFunc(endpoints.ReceiveWindowsClientInfo))
@@ -113,22 +111,20 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("POST /api/client/cpu/mhz", httpsFullAPIChain.ThenFunc(endpoints.SetClientCPUMHz))
 	httpsRouter.Handle("POST /api/client/cpu/temp", httpsFullAPIChain.ThenFunc(endpoints.SetClientCPUTemperature))
 	httpsRouter.Handle("POST /api/client/network/usage", httpsFullAPIChain.ThenFunc(endpoints.SetClientNetworkUsage))
-	httpsRouter.Handle("POST /api/client/uptime", httpsFullAPIChain.ThenFunc(endpoints.SetClientUptime))
 
-	// Job queue
-	httpsRouter.Handle("POST /api/client/job_queue/update_job", httpsFullAPIChain.ThenFunc(endpoints.SetClientJob))
-	httpsRouter.Handle("POST /api/client/job_queued_at", httpsFullAPIChain.ThenFunc(endpoints.SetJobQueuedAt))
-	httpsRouter.Handle("POST /api/client/last_heard", httpsFullAPIChain.ThenFunc(endpoints.SetClientLastHeard))
+	// Inventory
+	httpsRouter.Handle("GET /api/client/lookup_ids", httpsFullAPIChain.ThenFunc(endpoints.GetClientIDs))
+	httpsRouter.Handle("GET /api/client/location_form_data", httpsFullAPIChain.ThenFunc(endpoints.GetLocationFormData))
 
-	// Inventory updates
-	httpsRouter.Handle("POST /api/inventory/update", httpsFullAPIChain.ThenFunc(endpoints.InsertInventoryUpdate))
+	httpsRouter.Handle("POST /api/inventory/update_client_data", httpsFullAPIChain.ThenFunc(endpoints.InsertInventoryUpdate))
 	httpsRouter.Handle("POST /api/inventory/bulk_update_location", httpsFullAPIChain.ThenFunc(endpoints.BulkUpdateInventoryLocation))
 
 	// Files
+	httpsRouter.Handle("GET /api/client/files/manifest", httpsFullAPIChain.ThenFunc(endpoints.GetClientImagesManifest))
+	httpsRouter.Handle("GET /api/client/files", httpsFullAPIChain.ThenFunc(endpoints.GetImage))
+	httpsRouter.Handle("GET /api/client/live_screenshot", httpsFullAPIChain.ThenFunc(endpoints.DownloadLiveImage))
 	httpsRouter.Handle("POST /api/files/toggle_pin", httpsFullAPIChain.ThenFunc(endpoints.TogglePinImage))
-	httpsRouter.Handle("POST /api/client/live_image", httpsFullAPIChain.ThenFunc(endpoints.UploadLiveImage))
-
-	// API DELETE endpoints //
+	httpsRouter.Handle("POST /api/client/live_screenshot", httpsFullAPIChain.ThenFunc(endpoints.UploadLiveImage))
 	httpsRouter.Handle("DELETE /api/client/files", httpsFullAPIChain.ThenFunc(endpoints.DeleteImage))
 
 	// Static files //

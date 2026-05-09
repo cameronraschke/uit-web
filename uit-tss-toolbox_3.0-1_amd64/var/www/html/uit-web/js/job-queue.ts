@@ -205,7 +205,7 @@ document.addEventListener('visibilitychange', async () => {
 
 async function fetchJobQueueData() : Promise<JobQueueTableRowView[] | []> {
 	try {
-		const data: JobQueueTableRowView[] = await fetchData('/api/overview/job_queue', false);
+		const data: JobQueueTableRowView[] = await fetchData('/api/overview/job_queue_table', false);
 		if (Array.isArray(data) && data.length > 0) {
 			return data;
 		} else {
@@ -419,10 +419,10 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 			liveViewScreenshotContainer.classList.add('image-container');
 			liveViewScreenshotContainer.classList.remove('offline');
 			const liveViewImage = document.createElement('img');
-			liveViewImage.src = `/api/client/live_image?tagnumber=${entry.tagnumber}`;
+			liveViewImage.src = `/api/client/live_screenshot?tagnumber=${entry.tagnumber}`;
 			liveViewImage.loading = "lazy";
 			const liveViewAnchor = document.createElement('a');
-			liveViewAnchor.href = `/api/client/live_image?tagnumber=${entry.tagnumber}`;
+			liveViewAnchor.href = `/api/client/live_screenshot?tagnumber=${entry.tagnumber}`;
 			liveViewAnchor.target = "_blank";
 			liveViewAnchor.appendChild(liveViewImage);
 			liveViewScreenshotContainer.appendChild(liveViewAnchor);

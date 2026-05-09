@@ -1,9 +1,9 @@
 {
 	"/api/check_auth": {},
 	"/api/server_time": {},
-	"/api/client/lookup": {},
-	"/api/overview/global_lookup": {},
-	"/api/overview/job_queue": {},
+	"/api/client/lookup_ids": {},
+	"/api/overview/all_client_ids": {},
+	"/api/overview/job_queue_table": {},
 	"/api/client/job_queue/queued_job": {},
 	"/api/client/job_queue/job_available": {},
 	"/api/client/location_form_data": {},
@@ -15,7 +15,7 @@
 		"allowed_methods": ["GET", "DELETE"]
 	},
 	"/api/overview/inventory_table": {},
-	"/api/inventory/update": {
+	"/api/inventory/update_client_data": {
 		"allowed_methods": ["POST"]
 	},
 	"/api/files/toggle_pin": {
@@ -72,7 +72,7 @@
 	"/api/client/job_queued_at": {
 		"allowed_methods": ["POST"]
 	},
-	"/api/client/live_image": {
+	"/api/client/live_screenshot": {
 		"allowed_methods": ["GET", "POST"],
 		"content_type": "image/jpeg"
 	},

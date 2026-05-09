@@ -67,9 +67,9 @@ async function lookupTagOrSerial(tagnumber: number | null, serial: string | null
 		} else if (serial !== null) {
 			query.append("system_serial", serial);
 		}
-    const data = await fetchData(`/api/client/lookup?${query.toString()}`);
+    const data = await fetchData(`/api/client/lookup_ids?${query.toString()}`);
     if (!data) {
-      console.log("No data returned from /api/client/lookup");
+      console.log("No data returned from /api/client/lookup_ids");
 			return null;
     }
 		const jsonResponse: ClientLookupResult = data as ClientLookupResult;
@@ -1015,7 +1015,7 @@ if (updateForm) {
 				}
 			}
 
-			const response = await fetch("/api/inventory/update", {
+			const response = await fetch("/api/inventory/update_client_data", {
 				method: "POST",
 				headers: {
 					"credentials": "include"
