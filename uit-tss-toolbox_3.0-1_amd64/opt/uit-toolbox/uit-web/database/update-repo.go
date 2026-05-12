@@ -90,10 +90,7 @@ func UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, cl
 		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
 	}
 	if clientHealthData == nil {
-		return fmt.Errorf("%w: %s", types.InvalidFieldError, "ClientHealthDTO")
-	}
-	if err := types.IsTagnumberInt64Valid(&clientHealthData.Tagnumber); err != nil {
-		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
+		return fmt.Errorf("%w: %s", types.InvalidStructureError, "clientHealthData")
 	}
 
 	dbConn, err := config.GetDatabaseConn()
@@ -2337,17 +2334,10 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 	return nil
 }
 
-func InitClient(ctx context.Context, request types.ClientInitDTO) (clientUUID *string, err error) {
-	if request.Tagnumber == nil || types.IsTagnumberInt64Valid(request.Tagnumber) != nil {
-		return nil, fmt.Errorf("%w: %s", types.MissingFieldError, "tagnumber")
+func InitClient(ctx context.Context, dto *types.ClientInitDTO) (clientUUID *string, err error) {
+	if dto == nil {
+		return nil, fmt.Errorf("%w: %s", types.InvalidStructureError, "ClientInitDTO")
 	}
-	if request.SystemSerial == nil || strings.TrimSpace(*request.SystemSerial) == "" {
-		return nil, fmt.Errorf("%w: %s", types.MissingFieldError, "system serial")
-	}
-	if request.TransactionUUID == nil || strings.TrimSpace(*request.TransactionUUID) == "" {
-		return nil, fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
-	}
-
 	dbConn, err := config.GetDatabaseConn()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
@@ -2380,14 +2370,14 @@ func InitClient(ctx context.Context, request types.ClientInitDTO) (clientUUID *s
 	`
 	var idResult sql.NullString
 	err = tx.QueryRowContext(ctx, sqlCode,
-		ptrToNullInt64(request.Tagnumber),
-		ptrToNullString(request.SystemSerial),
+		toNullInt64(dto.Tagnumber),
+		toNullString(dto.SystemSerial),
 	).Scan(&idResult)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 	if !idResult.Valid {
-		return nil, fmt.Errorf("%w: no client UUID returned for tag '%d' and serial '%s'", types.DatabaseQueryError, *request.Tagnumber, *request.SystemSerial)
+		return nil, fmt.Errorf("%w: no client UUID returned for tag '%d' and serial '%s'", types.DatabaseQueryError, dto.Tagnumber, dto.SystemSerial)
 	}
 	return &idResult.String, nil
 }

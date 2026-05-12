@@ -97,7 +97,7 @@ type InventoryCheckoutWriteModel struct {
 	CheckoutBool    *bool
 }
 
-func CreateInventoryUpdateDTO(updateRequest *InventoryUpdateRequest, htmlFormConstraints *HTMLFormConstraints) (*InventoryUpdateDTO, error) {
+func (updateRequest *InventoryUpdateRequest) ToDTO(htmlFormConstraints *HTMLFormConstraints) (*InventoryUpdateDTO, error) {
 	if updateRequest == nil {
 		return nil, fmt.Errorf("inventory update request is nil")
 	}
@@ -309,55 +309,55 @@ func CreateInventoryUpdateDTO(updateRequest *InventoryUpdateRequest, htmlFormCon
 	return domain, nil
 }
 
-func MapInventoryUpdateDomainToLocationWriteModel(transactionUUID uuid.UUID, domain *InventoryUpdateDTO) *InventoryLocationWriteModel {
-	if domain == nil {
+func (dto *InventoryUpdateDTO) ToLocationWriteModel(transactionUUID uuid.UUID) *InventoryLocationWriteModel {
+	if dto == nil {
 		return nil
 	}
 	return &InventoryLocationWriteModel{
 		TransactionUUID:   transactionUUID,
-		Tagnumber:         domain.Tagnumber,
-		SystemSerial:      domain.SystemSerial,
-		Location:          domain.Location,
-		Building:          copyStringPtr(domain.Building),
-		Room:              copyStringPtr(domain.Room),
-		Department:        domain.Department,
-		ADDomain:          domain.ADDomain,
-		PropertyCustodian: copyStringPtr(domain.PropertyCustodian),
-		AcquiredDate:      copyTimePtr(domain.AcquiredDate),
-		RetiredDate:       copyTimePtr(domain.RetiredDate),
-		IsBroken:          copyBoolPtr(domain.IsBroken),
-		DiskRemoved:       copyBoolPtr(domain.DiskRemoved),
-		ClientStatus:      domain.ClientStatus,
-		Note:              copyStringPtr(domain.Note),
+		Tagnumber:         dto.Tagnumber,
+		SystemSerial:      dto.SystemSerial,
+		Location:          dto.Location,
+		Building:          copyStringPtr(dto.Building),
+		Room:              copyStringPtr(dto.Room),
+		Department:        dto.Department,
+		ADDomain:          dto.ADDomain,
+		PropertyCustodian: copyStringPtr(dto.PropertyCustodian),
+		AcquiredDate:      copyTimePtr(dto.AcquiredDate),
+		RetiredDate:       copyTimePtr(dto.RetiredDate),
+		IsBroken:          copyBoolPtr(dto.IsBroken),
+		DiskRemoved:       copyBoolPtr(dto.DiskRemoved),
+		ClientStatus:      dto.ClientStatus,
+		Note:              copyStringPtr(dto.Note),
 	}
 }
 
-func MapInventoryUpdateDomainToHardwareWriteModel(transactionUUID uuid.UUID, domain *InventoryUpdateDTO) *InventoryHardwareWriteModel {
-	if domain == nil {
+func (dto *InventoryUpdateDTO) ToHardwareWriteModel(transactionUUID uuid.UUID) *InventoryHardwareWriteModel {
+	if dto == nil {
 		return nil
 	}
 	return &InventoryHardwareWriteModel{
 		TransactionUUID:    transactionUUID,
-		Tagnumber:          domain.Tagnumber,
-		SystemManufacturer: copyStringPtr(domain.SystemManufacturer),
-		SystemModel:        copyStringPtr(domain.SystemModel),
-		DeviceType:         copyStringPtr(domain.DeviceType),
+		Tagnumber:          dto.Tagnumber,
+		SystemManufacturer: copyStringPtr(dto.SystemManufacturer),
+		SystemModel:        copyStringPtr(dto.SystemModel),
+		DeviceType:         copyStringPtr(dto.DeviceType),
 	}
 }
 
-func MapInventoryUpdateDomainToClientHealthDTO(transactionUUID uuid.UUID, domain *InventoryUpdateDTO) *ClientHealthDTO {
-	if domain == nil {
+func (dto *InventoryUpdateDTO) ToClientHealthWriteModel(transactionUUID uuid.UUID) *ClientHealthDTO {
+	if dto == nil {
 		return nil
 	}
 	return &ClientHealthDTO{
 		TransactionUUID:   transactionUUID.String(),
-		Tagnumber:         domain.Tagnumber,
-		LastHardwareCheck: copyTimePtr(domain.LastHardwareCheck),
+		Tagnumber:         dto.Tagnumber,
+		LastHardwareCheck: copyTimePtr(dto.LastHardwareCheck),
 	}
 }
 
-func MapInventoryUpdateDomainToCheckoutWriteModel(transactionUUID uuid.UUID, domain *InventoryUpdateDTO) *InventoryCheckoutWriteModel {
-	if domain == nil {
+func (dto *InventoryUpdateDTO) ToCheckoutWriteModel(transactionUUID uuid.UUID) *InventoryCheckoutWriteModel {
+	if dto == nil {
 		return nil
 	}
 	// if err := IsTagnumberInt64Valid(&domain.Tagnumber); err != nil {
@@ -366,11 +366,11 @@ func MapInventoryUpdateDomainToCheckoutWriteModel(transactionUUID uuid.UUID, dom
 
 	return &InventoryCheckoutWriteModel{
 		TransactionUUID: transactionUUID,
-		Tagnumber:       domain.Tagnumber,
-		CheckoutBool:    copyBoolPtr(domain.CheckoutBool),
-		CheckoutDate:    copyTimePtr(domain.CheckoutDate),
-		ReturnDate:      copyTimePtr(domain.ReturnDate),
-		CustomerName:    copyStringPtr(domain.CustomerName),
+		Tagnumber:       dto.Tagnumber,
+		CheckoutBool:    copyBoolPtr(dto.CheckoutBool),
+		CheckoutDate:    copyTimePtr(dto.CheckoutDate),
+		ReturnDate:      copyTimePtr(dto.ReturnDate),
+		CustomerName:    copyStringPtr(dto.CustomerName),
 	}
 }
 

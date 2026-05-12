@@ -326,7 +326,7 @@ func SetClientHealth(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	partialDTO, err := types.CreatePartialClientHealthUpdateRequestDTO(&clientHealth)
+	partialDTO, err := clientHealth.ToDTO()
 	if err != nil {
 		log.Warn("Unable to map client health update: %w" + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -740,7 +740,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	inventoryDomain, err := types.CreateInventoryUpdateDTO(&inventoryUpdateReq, htmlFormConstraints)
+	inventoryDomain, err := inventoryUpdateReq.ToDTO(htmlFormConstraints)
 	if err != nil {
 		log.Warn("Invalid inventory request payload: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -1029,25 +1029,25 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Update db
-	inventoryData := types.MapInventoryUpdateDomainToLocationWriteModel(transactionUUID, inventoryDomain)
+	inventoryData := inventoryDomain.ToLocationWriteModel(transactionUUID)
 	if err := database.InsertInventoryUpdate(ctx, transactionUUID, inventoryData); err != nil {
 		log.Error("Failed to update inventory data: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	clientHardwareData := types.MapInventoryUpdateDomainToHardwareWriteModel(transactionUUID, inventoryDomain)
+	clientHardwareData := inventoryDomain.ToHardwareWriteModel(transactionUUID)
 	if err := database.UpdateInventoryHardwareData(ctx, transactionUUID, clientHardwareData); err != nil {
 		log.Error("Failed to update inventory hardware info: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	clientHealthData := types.MapInventoryUpdateDomainToClientHealthDTO(transactionUUID, inventoryDomain)
+	clientHealthData := inventoryDomain.ToClientHealthWriteModel(transactionUUID)
 	if err := database.UpdateClientHealthUpdate(ctx, transactionUUID, clientHealthData); err != nil {
 		log.Error("Failed to update inventory health info: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	checkoutData := types.MapInventoryUpdateDomainToCheckoutWriteModel(transactionUUID, inventoryDomain)
+	checkoutData := inventoryDomain.ToCheckoutWriteModel(transactionUUID)
 	if checkoutData != nil {
 		if err := database.InsertClientCheckoutsUpdate(ctx, transactionUUID, checkoutData); err != nil {
 			log.Error("Failed to update inventory checkout info: " + err.Error())
@@ -1488,7 +1488,7 @@ func ReceiveWindowsClientInfo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	dto, err := types.NewWindowsUpdateDTO(requestData)
+	dto, err := requestData.ToDTO()
 	if err != nil {
 		log.Warn("Error creating Windows update DTO: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)

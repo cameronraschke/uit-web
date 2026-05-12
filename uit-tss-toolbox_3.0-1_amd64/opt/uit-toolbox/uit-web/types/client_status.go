@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+type ClientHealth interface {
+	ToWriteModel(*ClientHealthUpdateRequest) (*ClientHealthDTO, error)
+}
+
 type ClientStatusView struct {
 	Tagnumber         *int64     `json:"tagnumber"`
 	ClientStatus      *string    `json:"client_status"`
@@ -76,7 +80,7 @@ type ClientHealthDTO struct {
 	LastHardwareCheck  *time.Time
 }
 
-func CreatePartialClientHealthUpdateRequestDTO(request *ClientHealthUpdateRequest) (*ClientHealthDTO, error) {
+func (request *ClientHealthUpdateRequest) ToDTO() (*ClientHealthDTO, error) {
 	// Some of this mapping will have to be done in the database itself (aggregated, specific data)
 	if request == nil {
 		return nil, fmt.Errorf("nil input")

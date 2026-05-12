@@ -8,7 +8,7 @@ import (
 
 type WindowsUpdateRequest struct {
 	LastHardwareCheck         *time.Time `json:"last_hardware_check"`
-	Tagnumber                 *int64     `json:"tagnumber"` // Converted later
+	Tagnumber                 *int64     `json:"tagnumber"`
 	SystemSerial              *string    `json:"system_serial"`
 	SystemManufacturer        *string    `json:"system_manufacturer"`
 	SystemModel               *string    `json:"system_model"`
@@ -105,7 +105,7 @@ type WindowsUpdateResponse struct {
 	Message string `json:"message,omitempty"`
 }
 
-func NewWindowsUpdateDTO(request WindowsUpdateRequest) (*WindowsUpdateDTO, error) {
+func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 	if request.Tagnumber == nil {
 		return nil, fmt.Errorf("tagnumber is required")
 	}
@@ -195,6 +195,10 @@ func NewWindowsUpdateDTO(request WindowsUpdateRequest) (*WindowsUpdateDTO, error
 	}, nil
 }
 
+type ClientInit interface {
+	ToDTO(*ClientInitRequest) (*ClientInitDTO, error)
+}
+
 type ClientInitRequest struct {
 	Tagnumber       *int64  `json:"tagnumber"`
 	SystemSerial    *string `json:"system_serial"`
@@ -211,6 +215,26 @@ type ClientInitResponse struct {
 	ClientUUID string `json:"client_uuid"`
 }
 
-// type ClientInitRequest 
+func (req *ClientInitRequest) ToDTO() (*ClientInitDTO, error) {
+	if req == nil {
+		return nil, fmt.Errorf("request cannot be nil")
+	}
+	if req.Tagnumber == nil {
+		return nil, fmt.Errorf("tagnumber is required")
+	}
+	if err := IsTagnumberInt64Valid(req.Tagnumber); err != nil {
+		return nil, fmt.Errorf("invalid tagnumber: %w", err)
+	}
+	if req.SystemSerial == nil || strings.TrimSpace(*req.SystemSerial) == "" {
+		return nil, fmt.Errorf("system serial is required")
+	}
+	if req.TransactionUUID == nil || strings.TrimSpace(*req.TransactionUUID) == "" {
+		return nil, fmt.Errorf("transaction UUID is required")
+	}
 
-
+	return &ClientInitDTO{
+		Tagnumber:       *req.Tagnumber,
+		SystemSerial:    *req.SystemSerial,
+		TransactionUUID: *req.TransactionUUID,
+	}, nil
+}

@@ -1116,23 +1116,15 @@ func InitClient(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if requestData.Tagnumber == nil || types.IsTagnumberInt64Valid(requestData.Tagnumber) != nil {
-		log.Warn("Invalid or missing tagnumber in request body")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if requestData.SystemSerial == nil || strings.TrimSpace(*requestData.SystemSerial) == "" {
-		log.Warn("Invalid or missing system serial in request body")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	if requestData.TransactionUUID == nil || strings.TrimSpace(*requestData.TransactionUUID) == "" {
-		log.Warn("Invalid or missing transaction UUID in request body")
+
+	dto, err := requestData.ToDTO()
+	if err != nil {
+		log.Warn("Error converting request data to DTO: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	clientUUID, err := database.InitClient(ctx, requestData)
+	clientUUID, err := database.InitClient(ctx, dto)
 	if err != nil || clientUUID == nil {
 		log.Warn("Error initializing client: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
