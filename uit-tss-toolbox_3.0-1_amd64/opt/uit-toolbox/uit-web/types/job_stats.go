@@ -7,20 +7,20 @@ import (
 )
 
 type UpdateJobStatsRequest struct {
-	TransactionUUID string  `json:"transaction_uuid"`
-	Tagnumber       *int64  `json:"tagnumber"`
-	SystemSerial    *string `json:"system_serial"`
-	JobStartTime    *string `json:"job_start_time"`
-	DiskName        *string `json:"disk_name"`
-	JobCancelled    *bool   `json:"job_cancelled"`
-	EraseCompleted  *bool   `json:"erase_completed"`
-	EraseMode       *string `json:"erase_mode"`
-	EraseDiskPcnt   *int64  `json:"erase_disk_pcnt"`
-	EraseDuration   *int64  `json:"erase_job_duration"`
-	CloneCompleted  *bool   `json:"clone_completed"`
-	CloneMaster     *string `json:"clone_master"`
-	CloneImageName  *string `json:"clone_image_name"`
-	CloneDuration   *int64  `json:"clone_job_duration"`
+	TransactionUUID string     `json:"transaction_uuid"`
+	Tagnumber       *int64     `json:"tagnumber"`
+	SystemSerial    *string    `json:"system_serial"`
+	JobStartTime    *time.Time `json:"job_start_time"`
+	DiskName        *string    `json:"disk_name"`
+	JobCancelled    *bool      `json:"job_cancelled"`
+	EraseCompleted  *bool      `json:"erase_completed"`
+	EraseMode       *string    `json:"erase_mode"`
+	EraseDiskPcnt   *int64     `json:"erase_disk_pcnt"`
+	EraseDuration   *int64     `json:"erase_job_duration"`
+	CloneCompleted  *bool      `json:"clone_completed"`
+	CloneMaster     *string    `json:"clone_master"`
+	CloneImageName  *string    `json:"clone_image_name"`
+	CloneDuration   *int64     `json:"clone_job_duration"`
 }
 
 func (req *UpdateJobStatsRequest) ToDTO() (*JobStatsDTO, error) {
@@ -49,13 +49,13 @@ func (req *UpdateJobStatsRequest) ToDTO() (*JobStatsDTO, error) {
 
 	// job start time
 	if req.JobStartTime != nil {
-		if strings.TrimSpace(*req.JobStartTime) == "" {
+		if req.JobStartTime.IsZero() {
 			return nil, fmt.Errorf("job start time is required")
 		}
-		parsedTime, err := time.Parse(time.RFC3339, *req.JobStartTime)
-		if err != nil {
-			return nil, fmt.Errorf("invalid job start time format: %w", err)
-		}
+		dto.JobStartTime = *req.JobStartTime
+	} else {
+		// If job start time is not provided, use current time as default
+		parsedTime := time.Now().UTC()
 		dto.JobStartTime = parsedTime
 	}
 
