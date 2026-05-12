@@ -594,7 +594,7 @@ func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*type
 		most_recent_checkout.checkout_date,
 		most_recent_checkout.return_date,
 		most_recent_checkout.customer_name,
-		(CASE WHEN most_recent_checkout.checkout_bool = TRUE AND DATE(CURRENT_TIMESTAMP) > most_recent_checkout.checkout_date AND DATE(CURRENT_TIMESTAMP) < COALESCE(most_recent_checkout.return_date, DATE '9999-12-31') THEN TRUE ELSE FALSE END) AS "checkout_bool",
+		(CASE WHEN most_recent_checkout.checkout_bool = TRUE AND DATE(CURRENT_TIMESTAMP) >= most_recent_checkout.checkout_date AND DATE(CURRENT_TIMESTAMP) <= COALESCE(most_recent_checkout.return_date, DATE '9999-12-31') THEN TRUE ELSE FALSE END) AS "checkout_bool",
 		locations.note,
 		COALESCE(files.file_count, 0) AS "file_count"
 	FROM locations
