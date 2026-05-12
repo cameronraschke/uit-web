@@ -2437,19 +2437,19 @@ func UpsertJobStats(ctx context.Context, JobStatsDTO *types.JobStatsDTO) (err er
 		$14
 	) ON CONFLICT (uuid) DO UPDATE SET
 		client_uuid = EXCLUDED.client_uuid,
-		tagnumber = COALESCE(EXCLUDED.tagnumber, job_stats.tagnumber),
-		system_serial = COALESCE(EXCLUDED.system_serial, job_stats.system_serial),
-		time = COALESCE(EXCLUDED.time, job_stats.time),
-		disk = COALESCE(EXCLUDED.disk, job_stats.disk),
-		job_cancelled = COALESCE(EXCLUDED.job_cancelled, job_stats.job_cancelled),
-		erase_completed = COALESCE(EXCLUDED.erase_completed, job_stats.erase_completed),
-		erase_mode = COALESCE(EXCLUDED.erase_mode, job_stats.erase_mode),
-		erase_diskpercent = COALESCE(EXCLUDED.erase_diskpercent, job_stats.erase_diskpercent),
-		erase_time = COALESCE(EXCLUDED.erase_time, job_stats.erase_time),
-		clone_completed = COALESCE(EXCLUDED.clone_completed, job_stats.clone_completed),
-		clone_master = COALESCE(EXCLUDED.clone_master, job_stats.clone_master),
-		clone_image = COALESCE(EXCLUDED.clone_image, job_stats.clone_image),
-		clone_time = COALESCE(EXCLUDED.clone_time, job_stats.clone_time)
+		tagnumber = COALESCE(EXCLUDED.tagnumber, jobstats.tagnumber),
+		system_serial = COALESCE(EXCLUDED.system_serial, jobstats.system_serial),
+		time = COALESCE(EXCLUDED.time, jobstats.time),
+		disk = COALESCE(EXCLUDED.disk, jobstats.disk),
+		job_cancelled = COALESCE(EXCLUDED.job_cancelled, jobstats.job_cancelled),
+		erase_completed = COALESCE(EXCLUDED.erase_completed, jobstats.erase_completed),
+		erase_mode = COALESCE(EXCLUDED.erase_mode, jobstats.erase_mode),
+		erase_diskpercent = COALESCE(EXCLUDED.erase_diskpercent, jobstats.erase_diskpercent),
+		erase_time = COALESCE(EXCLUDED.erase_time, jobstats.erase_time),
+		clone_completed = COALESCE(EXCLUDED.clone_completed, jobstats.clone_completed),
+		clone_master = COALESCE(EXCLUDED.clone_master, jobstats.clone_master),
+		clone_image = COALESCE(EXCLUDED.clone_image, jobstats.clone_image),
+		clone_time = COALESCE(EXCLUDED.clone_time, jobstats.clone_time)
 	;`
 
 	sqlResult, err := tx.ExecContext(ctx, sqlCode,
