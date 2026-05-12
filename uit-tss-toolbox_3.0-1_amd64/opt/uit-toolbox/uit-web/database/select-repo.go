@@ -1304,7 +1304,9 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		ORDER BY historical_hardware_data.client_uuid, historical_hardware_data.time DESC NULLS LAST
 	),
 	latest_job AS (
-			SELECT
+			SELECT * FROM 
+			(SELECT
+			ROW_NUMBER() OVER (PARTITION BY jobstats.client_uuid ORDER BY jobstats.time DESC NULLS LAST) AS "row_num",
 			jobstats.client_uuid,
 			jobstats.tagnumber,
 			jobstats.time, 
@@ -1318,8 +1320,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			jobstats.job_cancelled
 		FROM jobstats
 		WHERE 
-			jobstats.erase_completed = TRUE 
-			OR jobstats.clone_completed = TRUE
+			(jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
 		GROUP BY
 			jobstats.client_uuid,
 			jobstats.tagnumber,
@@ -1332,9 +1333,11 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			jobstats.clone_master,
 			jobstats.clone_time,
 			jobstats.job_cancelled
+) t1 
+ WHERE t1.row_num = 1
 		ORDER BY 
-			jobstats.time DESC NULLS LAST, 
-			jobstats.tagnumber ASC NULLS LAST
+			t1.time DESC NULLS LAST, 
+			t1.tagnumber ASC NULLS LAST
 	),
 	newest_image AS (
 		SELECT * FROM (
@@ -1456,7 +1459,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN latest_historical_hardware_data ON locations.client_uuid = latest_historical_hardware_data.client_uuid
 	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
 	LEFT JOIN current_battery_health ON locations.client_uuid = current_battery_health.client_uuid
-	LEFT JOIN latest_job ON locations.tagnumber = latest_job.tagnumber
+	LEFT JOIN latest_job ON locations.client_uuid = latest_job.client_uuid
 	LEFT JOIN static_image_names ON latest_job.clone_image = static_image_names.image_name
 	LEFT JOIN static_job_names ON job_queue.job_name = static_job_names.job_name
 	LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model

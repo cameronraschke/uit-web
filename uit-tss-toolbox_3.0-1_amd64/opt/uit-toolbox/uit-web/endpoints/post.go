@@ -1521,3 +1521,37 @@ func ReceiveWindowsClientInfo(w http.ResponseWriter, req *http.Request) {
 		Serial: *requestData.SystemSerial,
 	})
 }
+
+func UpdateJobStats(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "UpdateJobStats"))
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Error reading request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	var reqBody types.UpdateJobStatsRequest
+	if err := json.Unmarshal(body, &reqBody); err != nil {
+		log.Warn("Error unmarshaling request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	dto, err := reqBody.ToDTO()
+	if err != nil {
+		log.Warn("Error converting request body to DTO: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	if err := database.UpsertJobStats(req.Context(), dto); err != nil {
+		log.Error("Failed to update job stats: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, struct {
+		Status string `json:"status"`
+	}{
+		Status: "success",
+	})
+}

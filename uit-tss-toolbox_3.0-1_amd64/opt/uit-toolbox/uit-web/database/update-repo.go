@@ -2381,3 +2381,98 @@ func InitClient(ctx context.Context, dto *types.ClientInitDTO) (clientUUID *stri
 	}
 	return &idResult.String, nil
 }
+
+func UpsertJobStats(ctx context.Context, JobStatsDTO *types.JobStatsDTO) (err error) {
+	if JobStatsDTO == nil {
+		return fmt.Errorf("%w: %s", types.InvalidStructureError, "JobStatsDTO")
+	}
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	tx, err := dbConn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+	const sqlCode = `
+	INSERT INTO jobstats (
+		uuid,
+		client_uuid,
+		tagnumber,
+		system_serial,
+		time,
+		disk,
+		job_cancelled,
+		erase_completed,
+		erase_mode,
+		erase_diskpercent,
+		erase_time,
+		clone_completed,
+		clone_master,
+		clone_image,
+		clone_time
+	) VALUES (
+		$1,
+		(SELECT uuid FROM ids WHERE tagnumber = $2 AND system_serial = $3 ORDER BY time DESC LIMIT 1),
+		$2,
+		$3,
+		$4,
+		$5,
+		$6,
+		$7,
+		$8,
+		$9,
+		$10,
+		$11,
+		$12,
+		$13,
+		$14
+	) ON CONFLICT (uuid) DO UPDATE SET
+		client_uuid = EXCLUDED.client_uuid,
+		tagnumber = COALESCE(EXCLUDED.tagnumber, job_stats.tagnumber),
+		system_serial = COALESCE(EXCLUDED.system_serial, job_stats.system_serial),
+		time = COALESCE(EXCLUDED.time, job_stats.time),
+		disk = COALESCE(EXCLUDED.disk, job_stats.disk),
+		job_cancelled = COALESCE(EXCLUDED.job_cancelled, job_stats.job_cancelled),
+		erase_completed = COALESCE(EXCLUDED.erase_completed, job_stats.erase_completed),
+		erase_mode = COALESCE(EXCLUDED.erase_mode, job_stats.erase_mode),
+		erase_diskpercent = COALESCE(EXCLUDED.erase_diskpercent, job_stats.erase_diskpercent),
+		erase_time = COALESCE(EXCLUDED.erase_time, job_stats.erase_time),
+		clone_completed = COALESCE(EXCLUDED.clone_completed, job_stats.clone_completed),
+		clone_master = COALESCE(EXCLUDED.clone_master, job_stats.clone_master),
+		clone_image = COALESCE(EXCLUDED.clone_image, job_stats.clone_image),
+		clone_time = COALESCE(EXCLUDED.clone_time, job_stats.clone_time)
+	;`
+
+	sqlResult, err := tx.ExecContext(ctx, sqlCode,
+		toNullString(JobStatsDTO.TransactionUUID),
+		toNullInt64(JobStatsDTO.Tagnumber),
+		toNullString(JobStatsDTO.SystemSerial),
+		toNullTime(JobStatsDTO.JobStartTime),
+		toNullString(JobStatsDTO.DiskName),
+		ptrToNullBool(JobStatsDTO.JobCancelled),
+		ptrToNullBool(JobStatsDTO.EraseCompleted),
+		toNullString(JobStatsDTO.EraseMode),
+		toNullInt64(JobStatsDTO.EraseDiskPcnt),
+		toNullInt64(JobStatsDTO.EraseDuration),
+		ptrToNullBool(JobStatsDTO.CloneCompleted),
+		toNullString(JobStatsDTO.CloneMaster),
+		toNullString(JobStatsDTO.CloneImageName),
+		toNullInt64(JobStatsDTO.CloneDuration),
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return err
+	}
+	return nil
+}
