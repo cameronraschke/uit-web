@@ -351,8 +351,8 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 	;`
 
 	_, err = tx.ExecContext(ctx, idsSql,
-		inventoryUpdate.Tagnumber,
-		inventoryUpdate.SystemSerial,
+		toNullInt64(inventoryUpdate.Tagnumber),
+		toNullString(inventoryUpdate.SystemSerial),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -403,19 +403,19 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 	var locationsLogResult sql.Result
 	locationsLogResult, err = tx.ExecContext(ctx, locationsLogSql,
 		transactionUUID,
-		inventoryUpdate.Tagnumber,
-		inventoryUpdate.SystemSerial,
-		inventoryUpdate.Location,
+		toNullInt64(inventoryUpdate.Tagnumber),
+		toNullString(inventoryUpdate.SystemSerial),
+		toNullString(inventoryUpdate.Location),
 		ptrToNullString(inventoryUpdate.Building),
 		ptrToNullString(inventoryUpdate.Room),
-		inventoryUpdate.Department,
-		inventoryUpdate.ADDomain,
+		toNullString(inventoryUpdate.Department),
+		toNullString(inventoryUpdate.ADDomain),
 		ptrToNullString(inventoryUpdate.PropertyCustodian),
 		ptrToNullTime(inventoryUpdate.AcquiredDate),
 		ptrToNullTime(inventoryUpdate.RetiredDate),
 		ptrToNullBool(inventoryUpdate.IsBroken),
 		ptrToNullBool(inventoryUpdate.DiskRemoved),
-		inventoryUpdate.ClientStatus,
+		toNullString(inventoryUpdate.ClientStatus),
 		ptrToNullString(inventoryUpdate.Note),
 	)
 	if err != nil {
@@ -490,14 +490,14 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 		inventoryUpdate.Location,
 		ptrToNullString(inventoryUpdate.Building),
 		ptrToNullString(inventoryUpdate.Room),
-		inventoryUpdate.Department,
-		inventoryUpdate.ADDomain,
+		toNullString(inventoryUpdate.Department),
+		toNullString(inventoryUpdate.ADDomain),
 		ptrToNullString(inventoryUpdate.PropertyCustodian),
 		ptrToNullTime(inventoryUpdate.AcquiredDate),
 		ptrToNullTime(inventoryUpdate.RetiredDate),
 		ptrToNullBool(inventoryUpdate.IsBroken),
 		ptrToNullBool(inventoryUpdate.DiskRemoved),
-		inventoryUpdate.ClientStatus,
+		toNullString(inventoryUpdate.ClientStatus),
 		ptrToNullString(inventoryUpdate.Note),
 	)
 	if err != nil {
@@ -2337,7 +2337,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 	return nil
 }
 
-func InitClient(ctx context.Context, request types.ClientInitRequest) (clientUUID *string, err error) {
+func InitClient(ctx context.Context, request types.ClientInitDTO) (clientUUID *string, err error) {
 	if request.Tagnumber == nil || types.IsTagnumberInt64Valid(request.Tagnumber) != nil {
 		return nil, fmt.Errorf("%w: %s", types.MissingFieldError, "tagnumber")
 	}
@@ -2364,18 +2364,30 @@ func InitClient(ctx context.Context, request types.ClientInitRequest) (clientUUI
 		}
 	}()
 	const sqlCode = `
-	INSERT INTO ids (uuid, time, tagnumber, system_serial)
-	VALUES (gen_random_uuid(), CURRENT_TIMESTAMP, $1, $2)
+	INSERT INTO ids (
+		uuid, 
+		time, 
+		tagnumber, 
+		system_serial
+	) VALUES (
+		uuidv7(), 
+		CURRENT_TIMESTAMP, 
+		$1, 
+		$2
+	)
 	ON CONFLICT (system_serial) DO NOTHING
 	RETURNING client_uuid;
 	`
 	var idResult sql.NullString
-	err = tx.QueryRowContext(ctx, sqlCode, ptrToNullInt64(request.Tagnumber), ptrToNullString(request.SystemSerial)).Scan(&idResult)
+	err = tx.QueryRowContext(ctx, sqlCode,
+		ptrToNullInt64(request.Tagnumber),
+		ptrToNullString(request.SystemSerial),
+	).Scan(&idResult)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 	if !idResult.Valid {
-		return nil, fmt.Errorf("%w: no client UUID returned for serial %s", types.DatabaseQueryError, *request.SystemSerial)
+		return nil, fmt.Errorf("%w: no client UUID returned for tag '%d' and serial '%s'", types.DatabaseQueryError, *request.Tagnumber, *request.SystemSerial)
 	}
 	return &idResult.String, nil
 }

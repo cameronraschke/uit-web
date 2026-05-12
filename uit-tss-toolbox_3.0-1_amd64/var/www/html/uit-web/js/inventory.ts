@@ -205,7 +205,8 @@ function resetInventoryLookupAndUpdateForm() {
 		}
 	}
 	if (clientViewPhotosButton) clientViewPhotosButton.textContent = "View Photos";
-	if (clientAddPhotosButton) clientAddPhotosButton.textContent = "Add Photos";
+	fileInputUpdate.value = "";
+	syncFileInputToButton();
 	clientLookupTagInput.placeholder = "Enter Tag Number";
 	clientLookupSerial.placeholder = "Enter System Serial";
 
@@ -463,6 +464,9 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 			}
 		
 			if (locationFormData.file_count !== null) clientViewPhotosButton.textContent = `View Photos (${locationFormData.file_count})`;
+
+			fileInputUpdate.value = "";
+			syncFileInputToButton();
 
 			if (locationFormData.tagnumber) {
 				clientLookupTagInput.value = locationFormData.tagnumber.toString();
@@ -1108,18 +1112,23 @@ if (clientAddPhotosButton) {
 
 if (fileInputUpdate) {
 	fileInputUpdate.addEventListener("change", () => {
-		if (fileInputUpdate.files && fileInputUpdate.files.length > 0) {
-			if (clientAddPhotosButton) {
-				clientAddPhotosButton.textContent = `Add Photos (${fileInputUpdate.files.length})`;
-				clientAddPhotosButton.classList.add("changed-input");
-			}
-		} else {
-			if (clientAddPhotosButton) {
-				clientAddPhotosButton.textContent = "Add Photos";
-				clientAddPhotosButton.classList.remove("changed-input");
-			}
-		}
+		syncFileInputToButton();
 	});
+}
+
+function syncFileInputToButton () {
+	if (fileInputUpdate.files && fileInputUpdate.files.length > 0) {
+		if (clientAddPhotosButton) {
+			clientAddPhotosButton.textContent = `Add Photos (${fileInputUpdate.files.length})`;
+			clientAddPhotosButton.classList.add("changed-input");
+		}
+	} else {
+		fileInputUpdate.value = "";
+		if (clientAddPhotosButton) {
+			clientAddPhotosButton.textContent = "Add Photos";
+			clientAddPhotosButton.classList.remove("changed-input");
+		}
+	}
 }
 
 async function uploadJSONFile(jsonFile: File): Promise<any> {

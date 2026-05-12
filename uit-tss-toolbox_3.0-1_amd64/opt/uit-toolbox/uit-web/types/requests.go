@@ -200,3 +200,17 @@ type ClientInitRequest struct {
 	SystemSerial    *string `json:"system_serial"`
 	TransactionUUID *string `json:"transaction_uuid,omitempty"`
 }
+
+type ClientInitDTO struct {
+	Tagnumber       int64  `json:"tagnumber"`
+	SystemSerial    string `json:"system_serial"`
+	TransactionUUID string `json:"transaction_uuid,omitempty"`
+}
+
+type ClientInitResponse struct {
+	ClientUUID string `json:"client_uuid"`
+}
+
+// type ClientInitRequest 
+
+
