@@ -1304,13 +1304,37 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		ORDER BY historical_hardware_data.client_uuid, historical_hardware_data.time DESC NULLS LAST
 	),
 	latest_job AS (
-		SELECT DISTINCT ON (jobstats.tagnumber) jobstats.time, jobstats.tagnumber,
-			jobstats.erase_completed, jobstats.erase_mode, jobstats.erase_time, 
-			jobstats.clone_completed, jobstats.clone_image, jobstats.clone_master, jobstats.clone_time, 
+			SELECT
+			jobstats.client_uuid,
+			jobstats.tagnumber,
+			jobstats.time, 
+			jobstats.erase_completed, 
+			jobstats.erase_mode, 
+			jobstats.erase_time, 
+			jobstats.clone_completed, 
+			jobstats.clone_image, 
+			jobstats.clone_master, 
+			jobstats.clone_time, 
 			jobstats.job_cancelled
 		FROM jobstats
-		WHERE jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE
-		ORDER BY jobstats.tagnumber, jobstats.time DESC NULLS LAST
+		WHERE 
+			jobstats.erase_completed = TRUE 
+			OR jobstats.clone_completed = TRUE
+		GROUP BY
+			jobstats.client_uuid,
+			jobstats.tagnumber,
+			jobstats.time,
+			jobstats.erase_completed,
+			jobstats.erase_mode,
+			jobstats.erase_time,
+			jobstats.clone_completed,
+			jobstats.clone_image,
+			jobstats.clone_master,
+			jobstats.clone_time,
+			jobstats.job_cancelled
+		ORDER BY 
+			jobstats.time DESC NULLS LAST, 
+			jobstats.tagnumber ASC NULLS LAST
 	),
 	newest_image AS (
 		SELECT * FROM (
