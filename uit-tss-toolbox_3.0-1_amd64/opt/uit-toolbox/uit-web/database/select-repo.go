@@ -570,7 +570,7 @@ func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*type
 			LIMIT 1
 	),
 	most_recent_checkout AS (
-		SELECT client_uuid, checkout_date, return_date, customer_name FROM checkout_log WHERE client_uuid = (SELECT uuid FROM ids WHERE (tagnumber = $1 OR system_serial = $2)) ORDER BY time DESC NULLS LAST LIMIT 1
+		SELECT client_uuid, checkout_date, return_date, customer_name, checkout_bool FROM checkout_log WHERE client_uuid = (SELECT uuid FROM ids WHERE (tagnumber = $1 OR system_serial = $2)) ORDER BY time DESC NULLS LAST LIMIT 1
 	)
 	SELECT 
 		locations.time, 
@@ -594,7 +594,7 @@ func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*type
 		most_recent_checkout.checkout_date,
 		most_recent_checkout.return_date,
 		most_recent_checkout.customer_name,
-		(CASE WHEN DATE(CURRENT_TIMESTAMP) < most_recent_checkout.return_date THEN TRUE ELSE FALSE END) AS "checkout_bool",
+		(CASE WHEN most_recent_checkout.checkout_bool = TRUE AND DATE(CURRENT_TIMESTAMP) > most_recent_checkout.checkout_date AND DATE(CURRENT_TIMESTAMP) < most_recent_checkout.return_date THEN TRUE ELSE FALSE END) AS "checkout_bool",
 		locations.note,
 		COALESCE(files.file_count, 0) AS "file_count"
 	FROM locations
@@ -629,7 +629,8 @@ func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*type
 		most_recent_checkout.checkout_date,
 		most_recent_checkout.return_date,
 		most_recent_checkout.customer_name,
-		most_recent_checkout.return_date,
+		most_recent_checkout.checkout_date,
+		most_recent_checkout.checkout_bool,
 		locations.note,
 		files.file_count,
 		files.client_uuid,

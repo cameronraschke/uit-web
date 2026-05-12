@@ -981,9 +981,15 @@ if (updateForm) {
 			formObj.disk_removed = getElementBooleanValue(diskRemovedUpdate); // select values already represent disk_removed: "false" = Yes present, "true" = No removed
 			formObj.last_hardware_check = lastHardwareCheckUpdate.value ? parseDateTimeLocalToUTC(lastHardwareCheckUpdate.value) : null;
 			formObj.status = getElementStringValue(clientStatusUpdate);
-			formObj.checkout_bool = formObj.status && statusesThatIndicateCheckout.includes(formObj.status) ? true : false;
+			formObj.checkout_bool = false;
+			
 			formObj.checkout_date = getElementDateValue(checkoutDateUpdate, true);
 			formObj.customer_name = getElementStringValue(customerNameUpdate);
+			formObj.checkout_bool =
+    		formObj.checkout_date !== null &&
+    		formObj.checkout_date.getTime() < Date.now() &&
+    		formObj.customer_name !== null &&
+    		formObj.customer_name.trim() !== "";
 			formObj.return_date = getElementDateValue(returnDateUpdate, true);
 			formObj.note = getElementStringValue(noteUpdate);
 			// const jsonBase64 = jsonToBase64(JSON.stringify(formObj));
