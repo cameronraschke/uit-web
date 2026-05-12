@@ -85,5 +85,8 @@
 	"/api/client/health": {
 		"allowed_methods": ["POST"]
 	},
-	"/api/checkout": {}
+	"/api/checkout": {},
+	"/api/client/job_stats": {
+		"allowed_methods": ["GET", "POST"]
+	}
 }
