@@ -1292,16 +1292,27 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			ORDER BY historical_hardware_data.client_uuid DESC NULLS LAST
 	),
 	latest_historical_hardware_data AS (
-		SELECT DISTINCT ON (historical_hardware_data.client_uuid) historical_hardware_data.time, historical_hardware_data.client_uuid, 
-			historical_hardware_data.disk_type, historical_hardware_data.disk_size_kb AS "disk_capacity",
-			historical_firmware_data.bios_version, historical_hardware_data.disk_model,
-			historical_hardware_data.battery_design_capacity, historical_hardware_data.battery_current_max_capacity
-		FROM historical_hardware_data
-		LEFT JOIN historical_firmware_data ON historical_hardware_data.client_uuid = historical_firmware_data.client_uuid
-		WHERE historical_firmware_data.time IN (
-			SELECT MAX(time) FROM historical_firmware_data GROUP BY client_uuid
-		)
-		ORDER BY historical_hardware_data.client_uuid, historical_hardware_data.time DESC NULLS LAST
+		SELECT * FROM (
+			SELECT 
+				ROW_NUMBER() OVER (PARTITION BY historical_hardware_data.client_uuid ORDER BY historical_hardware_data.time DESC NULLS LAST) AS "row_num", historical_hardware_data.time, 
+				historical_hardware_data.client_uuid, 
+				historical_hardware_data.disk_type, 
+				historical_hardware_data.disk_size_kb AS "disk_capacity",
+				historical_hardware_data.disk_model,
+				historical_hardware_data.battery_design_capacity, 
+				historical_hardware_data.battery_current_max_capacity
+			FROM historical_hardware_data
+		) t1 WHERE t1.row_num = 1
+	),
+	latest_firmware_data AS (
+		SELECT * FROM (
+			SELECT 
+				ROW_NUMBER() OVER (PARTITION BY historical_firmware_data.client_uuid ORDER BY historical_firmware_data.time DESC NULLS LAST) AS "row_num", 
+				historical_firmware_data.client_uuid, 
+				historical_firmware_data.bios_version
+			FROM historical_firmware_data
+			WHERE historical_firmware_data.bios_version IS NOT NULL
+		) t1 WHERE t1.row_num = 1
 	),
 	latest_completed_job AS (
 			SELECT * FROM 
@@ -1335,11 +1346,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			jobstats.clone_time,
 			jobstats.job_cancelled
 			ORDER BY jobstats.tagnumber, "row_num"
-) t1 
- WHERE t1.row_num = 1
-		ORDER BY 
-			t1.time DESC NULLS LAST, 
-			t1.tagnumber ASC NULLS LAST
+		) t1 WHERE t1.row_num = 1
 	),
 	newest_image AS (
 		SELECT * FROM (
@@ -1425,10 +1432,10 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		static_ad_domains.domain_name,
 		static_ad_domains.domain_name_formatted AS "ad_domain_formatted",
 		(CASE 
-			WHEN latest_historical_hardware_data.bios_version = static_bios_stats.bios_version THEN TRUE
+			WHEN latest_firmware_data.bios_version = static_bios_stats.bios_version THEN TRUE
 			ELSE FALSE
 		END) AS "bios_updated",
-		latest_historical_hardware_data.bios_version,
+		latest_firmware_data.bios_version,
 		job_queue.cpu_usage,
 		job_queue.cpu_mhz,
 		job_queue.cpu_temp,
@@ -1460,6 +1467,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN job_queue ON locations.client_uuid = job_queue.client_uuid
 	LEFT JOIN hardware_data ON locations.client_uuid = hardware_data.client_uuid
 	LEFT JOIN latest_historical_hardware_data ON locations.client_uuid = latest_historical_hardware_data.client_uuid
+	LEFT JOIN latest_firmware_data ON locations.client_uuid = latest_firmware_data.client_uuid
 	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
 	LEFT JOIN current_battery_health ON locations.client_uuid = current_battery_health.client_uuid
 	LEFT JOIN latest_completed_job ON locations.client_uuid = latest_completed_job.client_uuid
