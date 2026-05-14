@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS jobstats (
 CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	transaction_uuid UUID PRIMARY KEY,
 	time TIMESTAMP WITH TIME ZONE DEFAULT NULL,
-	client_uuid UUID DEFAULT NOT NULL,
+	client_uuid UUID NOT NULL,
 	ethernet_mac VARCHAR(17) DEFAULT NULL,
 	wifi_mac VARCHAR(17) DEFAULT NULL,
 	disk_model VARCHAR(36) DEFAULT NULL,
