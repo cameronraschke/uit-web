@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS serverstats (
 
 
 CREATE TABLE IF NOT EXISTS jobstats (
-	uuid VARCHAR(64) PRIMARY KEY,
+	uuid UUID PRIMARY KEY,
 	client_uuid UUID NOT NULL,
 	tagnumber INTEGER DEFAULT NULL,
 	-- etheraddress VARCHAR(17) DEFAULT NULL, -- unused, moved to hardware_data
