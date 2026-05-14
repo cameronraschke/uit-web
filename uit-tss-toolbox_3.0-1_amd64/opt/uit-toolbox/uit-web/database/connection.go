@@ -26,6 +26,7 @@ func NewDBConnection(dbConnection *types.DBConnection) (*sql.DB, error) {
 	}
 	dbConnQuery := dbConnURL.Query()
 	dbConnQuery.Set("sslmode", "disable")
+	// dbConnQuery.Set("default_query_exec_mode", "exec")
 	dbConnURL.RawQuery = dbConnQuery.Encode()
 
 	// Open the database connection
@@ -64,6 +65,7 @@ func NewPGXPool(dbConnection *types.DBConnection) (*pgxpool.Pool, error) {
 	}
 	dbConnQuery := dbConnURL.Query()
 	dbConnQuery.Set("sslmode", "disable")
+	// dbConnQuery.Set("default_query_exec_mode", "exec")
 	dbConnURL.RawQuery = dbConnQuery.Encode()
 
 	poolConfig, err := pgxpool.ParseConfig(dbConnURL.String())
