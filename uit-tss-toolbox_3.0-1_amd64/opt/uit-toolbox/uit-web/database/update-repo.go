@@ -1363,23 +1363,27 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 				time, 
 				transaction_uuid,
 				client_uuid, 
-				bios_version
+				bios_version,
+				bios_release_date
 			) 
 		VALUES (
 			CURRENT_TIMESTAMP,
 			$1,
 			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
-			$3
+			$3,
+			$4
 		) ON CONFLICT (transaction_uuid) DO UPDATE SET
 		 	time = CURRENT_TIMESTAMP,
 			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_firmware_data.client_uuid),
-			bios_version = COALESCE(EXCLUDED.bios_version, historical_firmware_data.bios_version)
+			bios_version = COALESCE(EXCLUDED.bios_version, historical_firmware_data.bios_version),
+			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_firmware_data.bios_release_date)
 	;`
 
 	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckHistorySQL,
 		toNullString(healthCheck.TransactionUUID),
 		toNullInt64(healthCheck.Tagnumber),
 		ptrToNullString(healthCheck.BIOSVersion),
+		ptrToNullString(healthCheck.BIOSReleaseDate),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)

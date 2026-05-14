@@ -1303,7 +1303,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		)
 		ORDER BY historical_hardware_data.client_uuid, historical_hardware_data.time DESC NULLS LAST
 	),
-	latest_job AS (
+	latest_completed_job AS (
 			SELECT * FROM 
 			(SELECT
 			ROW_NUMBER() OVER (PARTITION BY jobstats.client_uuid ORDER BY jobstats.time DESC NULLS LAST) AS "row_num",
@@ -1320,7 +1320,8 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			jobstats.job_cancelled
 		FROM jobstats
 		WHERE 
-			(jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
+			(jobstats.job_cancelled IS NULL OR jobstats.job_cancelled = FALSE)
+			AND (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
 		GROUP BY
 			jobstats.client_uuid,
 			jobstats.tagnumber,
@@ -1333,6 +1334,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			jobstats.clone_master,
 			jobstats.clone_time,
 			jobstats.job_cancelled
+			ORDER BY jobstats.tagnumber, "row_num"
 ) t1 
  WHERE t1.row_num = 1
 		ORDER BY 
@@ -1402,17 +1404,18 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		END) AS "job_erase_mode",
 		job_queue.job_status,
 		(CASE
-			WHEN latest_job.erase_completed = TRUE THEN latest_job.time
-			WHEN latest_job.clone_completed = TRUE THEN latest_job.time
+			WHEN latest_completed_job.erase_completed IS NOT NULL AND latest_completed_job.erase_completed = TRUE THEN latest_completed_job.time
+			WHEN latest_completed_job.clone_completed IS NOT NULL AND latest_completed_job.clone_completed = TRUE THEN latest_completed_job.time
 			ELSE NULL
 		END) AS "last_job_time",
 		(CASE 
-			WHEN latest_job.erase_completed = TRUE AND NOT latest_job.clone_completed = TRUE THEN FALSE
+			WHEN latest_completed_job.clone_completed IS NOT NULL AND latest_completed_job.clone_completed = TRUE THEN TRUE
+			WHEN latest_completed_job.erase_completed IS NOT NULL AND latest_completed_job.erase_completed = TRUE THEN FALSE
 			ELSE TRUE
 		END) AS "os_installed",
 		COALESCE(os_info.os_name, static_image_names.image_name_readable) AS "os_name",
 		(CASE
-			WHEN latest_job.clone_completed = TRUE AND newest_image.time <= latest_job.time THEN TRUE
+			WHEN latest_completed_job.clone_completed IS NOT NULL AND latest_completed_job.clone_completed = TRUE AND newest_image.time <= latest_completed_job.time THEN TRUE
 			ELSE FALSE
 		END) AS "latest_image_installed",
 		(CASE 
@@ -1459,8 +1462,8 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN latest_historical_hardware_data ON locations.client_uuid = latest_historical_hardware_data.client_uuid
 	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
 	LEFT JOIN current_battery_health ON locations.client_uuid = current_battery_health.client_uuid
-	LEFT JOIN latest_job ON locations.client_uuid = latest_job.client_uuid
-	LEFT JOIN static_image_names ON latest_job.clone_image = static_image_names.image_name
+	LEFT JOIN latest_completed_job ON locations.client_uuid = latest_completed_job.client_uuid
+	LEFT JOIN static_image_names ON latest_completed_job.clone_image = static_image_names.image_name
 	LEFT JOIN static_job_names ON job_queue.job_name = static_job_names.job_name
 	LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
 	LEFT JOIN static_disk_stats ON latest_historical_hardware_data.disk_model = static_disk_stats.disk_model

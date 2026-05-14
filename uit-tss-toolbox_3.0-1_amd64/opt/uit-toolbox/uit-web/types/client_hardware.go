@@ -57,6 +57,7 @@ type ClientHealthCheck struct {
 	Tagnumber         int64      `json:"tagnumber"`
 	SystemSerial      *string    `json:"health_system_serial"`
 	BIOSVersion       *string    `json:"bios_version"`
+	BIOSReleaseDate   *string    `json:"bios_release_date"`
 	TPMVersion        *string    `json:"health_tpm_version"`
 	LastHardwareCheck *time.Time `json:"last_hardware_check"`
 }
