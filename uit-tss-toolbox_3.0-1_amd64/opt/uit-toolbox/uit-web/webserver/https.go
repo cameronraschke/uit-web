@@ -95,6 +95,7 @@ func StartWebServer(ctx context.Context) error {
 
 	// Misc
 	httpsRouter.Handle("GET /api/server_time", httpsFullAPIChain.ThenFunc(endpoints.GetServerTime))
+	httpsRouter.Handle("GET /api/new_transaction_uuid", httpsFullAPIChain.ThenFunc(endpoints.GetNewTransactionUUID))
 
 	// Overviews
 	httpsRouter.Handle("POST /api/job_queue/all_clients/update_job", httpsFullAPIChain.ThenFunc(endpoints.SetAllJobs))

@@ -22,6 +22,8 @@ import (
 	"uit-toolbox/database"
 	"uit-toolbox/middleware"
 	"uit-toolbox/types"
+
+	"github.com/google/uuid"
 )
 
 func decodeMaybeBase64URLJSON(raw string) ([]byte, error) {
@@ -1154,4 +1156,20 @@ func FetchCheckoutData(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	middleware.WriteJson(w, http.StatusOK, checkoutData)
+}
+
+func GetNewTransactionUUID(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "GetNewTransactionUUID"))
+	uuid, err := uuid.NewV7()
+	if err != nil {
+		log.Warn("Error generating new transaction UUID: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	returnedJson := struct {
+		TransactionUUID string `json:"transaction_uuid"`
+	}{
+		TransactionUUID: uuid.String(),
+	}
+	middleware.WriteJson(w, http.StatusOK, returnedJson)
 }
