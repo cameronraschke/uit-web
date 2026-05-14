@@ -10,6 +10,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -32,6 +33,44 @@ type Update interface {
 
 type UpdateRepo struct {
 	DB *sql.DB
+}
+
+func lockClientUUIDByTagnumber(ctx context.Context, tx *sql.Tx, tagnumber int64) (clientUUID uuid.UUID, err error) {
+	const sqlCode = `
+		SELECT uuid
+		FROM ids
+		WHERE tagnumber = $1
+		FOR UPDATE
+	;`
+
+	err = tx.QueryRowContext(ctx, sqlCode, toNullInt64(tagnumber)).Scan(&clientUUID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return uuid.Nil, fmt.Errorf("%w: no client found for tagnumber '%d'", types.DatabaseQueryError, tagnumber)
+		}
+		return uuid.Nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+
+	return clientUUID, nil
+}
+
+func lockClientUUIDBySystemSerial(ctx context.Context, tx *sql.Tx, systemSerial string) (clientUUID uuid.UUID, err error) {
+	const sqlCode = `
+		SELECT uuid
+		FROM ids
+		WHERE system_serial = $1
+		FOR UPDATE
+	;`
+
+	err = tx.QueryRowContext(ctx, sqlCode, toNullString(systemSerial)).Scan(&clientUUID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return uuid.Nil, fmt.Errorf("%w: no client found for system serial '%s'", types.DatabaseQueryError, systemSerial)
+		}
+		return uuid.Nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+
+	return clientUUID, nil
 }
 
 func NewUpdateRepo() (Update, error) {
@@ -1325,6 +1364,11 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 			err = tx.Commit()
 		}
 	}()
+
+	clientUUID, err := lockClientUUIDByTagnumber(ctx, tx, healthCheck.Tagnumber)
+	if err != nil {
+		return err
+	}
 	const clientHealthCheckSQL = `
 		INSERT INTO 
 			client_health (
@@ -1336,7 +1380,7 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 		VALUES (
 			CURRENT_TIMESTAMP, 
 			$1,
-			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
+			$2,
 			COALESCE($3, CURRENT_TIMESTAMP)
 		)
 		ON CONFLICT (client_uuid) DO UPDATE SET 
@@ -1347,8 +1391,37 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckSQL,
 		toNullString(healthCheck.TransactionUUID),
-		toNullInt64(healthCheck.Tagnumber),
+			clientUUID,
 		ptrToNullTime(healthCheck.LastHardwareCheck),
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+		return err
+	}
+
+	const clientHardwareSQL = `
+		INSERT INTO hardware_data
+		(
+			time,
+			transaction_uuid,
+			client_uuid,
+			tpm_version
+		) VALUES (
+			CURRENT_TIMESTAMP,
+			$1,
+			$2,
+			$3
+		) ON CONFLICT (client_uuid) DO UPDATE SET
+			time = CURRENT_TIMESTAMP,
+		 	transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, hardware_data.transaction_uuid),
+			tpm_version = COALESCE(EXCLUDED.tpm_version, hardware_data.tpm_version)
+	;`
+	sqlResult, err = tx.ExecContext(ctx, clientHardwareSQL,
+		toNullString(healthCheck.TransactionUUID),
+		clientUUID,
+		ptrToNullString(healthCheck.TPMVersion),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -1369,7 +1442,7 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 		VALUES (
 			CURRENT_TIMESTAMP,
 			$1,
-			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
+			$2,
 			$3,
 			$4
 		) ON CONFLICT (transaction_uuid) DO UPDATE SET
@@ -1381,38 +1454,9 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 
 	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckHistorySQL,
 		toNullString(healthCheck.TransactionUUID),
-		toNullInt64(healthCheck.Tagnumber),
+		clientUUID,
 		ptrToNullString(healthCheck.BIOSVersion),
 		ptrToNullString(healthCheck.BIOSReleaseDate),
-	)
-	if err != nil {
-		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
-	}
-	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return err
-	}
-
-	const clientHardwareSQL = `
-		INSERT INTO hardware_data
-		(
-			time,
-			transaction_uuid,
-			client_uuid,
-			tpm_version
-		) VALUES (
-			CURRENT_TIMESTAMP,
-			$1,
-			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
-			$3
-		) ON CONFLICT (client_uuid) DO UPDATE SET
-			time = CURRENT_TIMESTAMP,
-		 	transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, hardware_data.transaction_uuid),
-			tpm_version = COALESCE(EXCLUDED.tpm_version, hardware_data.tpm_version)
-	;`
-	sqlResult, err = tx.ExecContext(ctx, clientHardwareSQL,
-		toNullString(healthCheck.TransactionUUID),
-		toNullInt64(healthCheck.Tagnumber),
-		ptrToNullString(healthCheck.TPMVersion),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -1443,6 +1487,11 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		}
 	}()
 
+	clientUUID, err := lockClientUUIDBySystemSerial(ctx, tx, *hardwareData.SystemSerial)
+	if err != nil {
+		return err
+	}
+
 	const hardwareDataTable = `INSERT INTO hardware_data
 		(
 			transaction_uuid,
@@ -1468,7 +1517,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		) VALUES (
 			$1,
 			CURRENT_TIMESTAMP,
-			(SELECT uuid FROM ids WHERE system_serial = $2 ORDER BY time DESC LIMIT 1),
+			$2,
 			$2,
 			$3,
 			$4,
@@ -1512,6 +1561,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 	var hardwareResult sql.Result
 	hardwareResult, err = tx.ExecContext(ctx, hardwareDataTable,
 		ptrToNullString(&hardwareData.TransactionUUID),
+		clientUUID,
 		ptrToNullString(hardwareData.SystemSerial),
 		ptrToNullString(hardwareData.SystemUUID),
 		ptrToNullString(hardwareData.SystemManufacturer),
@@ -1567,7 +1617,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		) VALUES (
 			$1,
 			CURRENT_TIMESTAMP,
-			(SELECT uuid FROM ids WHERE system_serial = $2 ORDER BY time DESC LIMIT 1),
+			$2,
 			$3,
 			$4,
 			$5,
@@ -1621,7 +1671,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 	var hardwareHistoryResult sql.Result
 	hardwareHistoryResult, err = tx.ExecContext(ctx, historicalHardwareDataTable,
 		ptrToNullString(&hardwareData.TransactionUUID),
-		ptrToNullString(hardwareData.SystemSerial),
+		clientUUID,
 		ptrToNullString(hardwareData.EthernetMAC),
 		ptrToNullString(hardwareData.WiFiMAC),
 		ptrToNullString(hardwareData.DiskModel),
@@ -1665,7 +1715,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		VALUES (
 			CURRENT_TIMESTAMP,
 			$1,
-			(SELECT uuid FROM ids WHERE system_serial = $2 ORDER BY time DESC LIMIT 1),
+			$2,
 			$3,
 			$4,
 			$5
@@ -1679,7 +1729,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 
 	firmwareSQLResult, err := tx.ExecContext(ctx, clientHealthCheckHistorySQL,
 		toNullString(hardwareData.TransactionUUID),
-		ptrToNullString(hardwareData.SystemSerial),
+		clientUUID,
 		ptrToNullString(hardwareData.BiosVersion),
 		ptrToNullString(hardwareData.BiosFirmware),
 		ptrToNullDate(hardwareData.BiosReleaseDate),
