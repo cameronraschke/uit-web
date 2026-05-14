@@ -1150,7 +1150,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		// 	results[i].ClientErrors = append(results[i].ClientErrors, missingImages)
 		// }
 		// If client is retired, only pay attention to if disk removed or not
-		if results[i].Status != nil && *results[i].Status == "retired" {
+		if results[i].Status != nil && (*results[i].Status == "retired" || *results[i].Status == "pre-property") {
 			if results[i].DiskRemoved != nil && !*results[i].DiskRemoved {
 				diskNotRemoved := types.DiskNotRemoved.String()
 				results[i].ClientErrors = append(results[i].ClientErrors, diskNotRemoved)
