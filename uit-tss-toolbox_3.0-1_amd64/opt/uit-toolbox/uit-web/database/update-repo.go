@@ -1518,7 +1518,6 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			$1,
 			CURRENT_TIMESTAMP,
 			$2,
-			$2,
 			$3,
 			$4,
 			$5,
@@ -1534,7 +1533,8 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			$15,
 			$16,
 			$17,
-			$18
+			$18,
+			$19
 		) ON CONFLICT (client_uuid)
 		 DO UPDATE SET
 		 	transaction_uuid = COALESCE(EXCLUDED.transaction_uuid, hardware_data.transaction_uuid),
