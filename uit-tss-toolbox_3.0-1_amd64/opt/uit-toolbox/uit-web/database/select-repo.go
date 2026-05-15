@@ -2100,7 +2100,10 @@ func SelectCheckoutData(ctx context.Context, tag *int64) (*types.CheckoutData, e
 	return &checkoutData, nil
 }
 
-func SelectClientInfo(ctx context.Context, clientInfo *types.ClientInfoResponse) (*types.ClientInfoResponse, error) {
+func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse, error) {
+	if tag == 0 {
+		return nil, fmt.Errorf("tagnumber cannot be nil")
+	}
 	const sqlCode = `
 	WITH os_installed_table AS (
 			SELECT * FROM (
@@ -2293,8 +2296,8 @@ func SelectClientInfo(ctx context.Context, clientInfo *types.ClientInfoResponse)
 	if err := sqlResult.Scan(
 		&clientInfoResult.Tagnumber,
 		&clientInfoResult.SystemSerial,
-		&clientInfoResult.UUID,
-		&clientInfoResult.LocationsTime,
+		&clientInfoResult.ClientUUID,
+		&clientInfoResult.LocationEntryTime,
 		&clientInfoResult.Location,
 		&clientInfoResult.Building,
 		&clientInfoResult.Room,
@@ -2306,27 +2309,27 @@ func SelectClientInfo(ctx context.Context, clientInfo *types.ClientInfoResponse)
 		&clientInfoResult.ClientStatus,
 		&clientInfoResult.IsBroken,
 		&clientInfoResult.DiskRemoved,
-		&clientInfoResult.Note,
-		&clientInfoResult.JobstatsTime,
+		&clientInfoResult.ClientNote,
+		&clientInfoResult.JobStartTime,
 		&clientInfoResult.CloneCompleted,
-		&clientInfoResult.CloneTime,
-		&clientInfoResult.CloneImage,
+		&clientInfoResult.CloneJobDuration,
+		&clientInfoResult.CloneImageName,
 		&clientInfoResult.EraseCompleted,
-		&clientInfoResult.EraseTime,
+		&clientInfoResult.EraseJobDuration,
 		&clientInfoResult.EraseMode,
-		&clientInfoResult.CheckoutBool,
+		&clientInfoResult.IsCheckedOut,
 		&clientInfoResult.CheckoutDate,
 		&clientInfoResult.ReturnDate,
 		&clientInfoResult.CustomerName,
-		&clientInfoResult.ClientImageCount,
-		&clientInfoResult.OSInfoTime,
+		&clientInfoResult.FileCount,
+		&clientInfoResult.LastOSEntryTime,
 		&clientInfoResult.OSInstalled,
 		&clientInfoResult.OSName,
 		&clientInfoResult.OSVersion,
 		&clientInfoResult.ComputerName,
 		&clientInfoResult.ADAdminUsers,
 		&clientInfoResult.IsIntuneJoined,
-		&clientInfoResult.WindowsBitlockerEnabled,
+		&clientInfoResult.IsBitlockerEnabled,
 		&clientInfoResult.BIOSVersion,
 		&clientInfoResult.BIOSReleaseDate,
 		&clientInfoResult.DeviceType,
@@ -2338,10 +2341,10 @@ func SelectClientInfo(ctx context.Context, clientInfo *types.ClientInfoResponse)
 		&clientInfoResult.SystemSKU,
 		&clientInfoResult.CPUManufacturer,
 		&clientInfoResult.CPUModel,
-		&clientInfoResult.CPUMaxSpeedMHz,
+		&clientInfoResult.CPUMaxSpeedMhz,
 		&clientInfoResult.CPUCoreCount,
 		&clientInfoResult.CPUThreadCount,
-		&clientInfoResult.HistoricalHardwareDataTime,
+		&clientInfoResult.LastHardwareCheck,
 		&clientInfoResult.DiskType,
 		&clientInfoResult.DiskHealthPcnt,
 		&clientInfoResult.BatteryHealthPcnt,

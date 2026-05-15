@@ -19,7 +19,7 @@ type ClientInfoResponse struct {
 	DiskRemoved               *bool                  `json:"disk_removed"`
 	ClientNote                *string                `json:"client_note"`
 	LocationLog               *[]LocationLogResponse `json:"location_log"`
-	JobTime                   *time.Time             `json:"job_time"`
+	JobStartTime                   *time.Time             `json:"job_time"`
 	CloneCompleted            *bool                  `json:"clone_completed"`
 	CloneJobDuration          *float64               `json:"clone_job_duration"`
 	CloneImageName            *string                `json:"clone_image_name"`
