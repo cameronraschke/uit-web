@@ -1184,7 +1184,7 @@ func GetClientInfo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	clientInfo, err := database.SelectClientInfo(ctx, *tagnumber)
-	if err != nil {
+	if err != nil || clientInfo == nil {
 		log.Warn("Error fetching client info: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return

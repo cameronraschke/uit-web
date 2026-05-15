@@ -2374,6 +2374,5 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 	}
 
-	response := new(types.ClientInfoResponse)
-	return response, nil
+	return &clientInfoResult, nil
 }

@@ -17,7 +17,7 @@ type ClientInfoResponse = {
 	DiskRemoved:               boolean | null
 	ClientNote:                string | null
 	LocationLog:              any[] | null
-	JobTime:                   Date | null
+	JobStartTime:                   Date | null
 	CloneCompleted:            boolean | null
 	CloneJobDuration:          number | null
 	CloneImageName:            string | null
@@ -97,51 +97,54 @@ async function fetchClientData(): Promise<any> {
 		return data;
 	} catch (error) {
 		console.error('Fetch client data failed:', error);
-		return [];
+		return null;
 	}
 }
 
-function renderClientData(data: ClientInfoResponse[]) {
+function renderClientData(data: ClientInfoResponse | null): void {
 	if (!batteryContainer) {
 		console.error('Battery container element not found');
 		return;
 	}
 
-	const fragment = document.createDocumentFragment();
-	for (const client of data) {
-		const clientInfoEl = document.createElement('div');
-
-		// Tag
-		const tagEl = document.createElement('p');
-		tagEl.textContent = `Tag: ${client.Tagnumber ?? 'N/A'}`;
-		clientInfoEl.appendChild(tagEl);
-
-		// System Serial
-		const serialEl = document.createElement('p');
-		serialEl.textContent = `System Serial: ${client.SystemSerial ?? 'N/A'}`;
-		clientInfoEl.appendChild(serialEl);
-
-		// Location
-		const locationEl = document.createElement('p');
-		locationEl.textContent = `Location: ${client.Location ?? 'N/A'}`;
-		clientInfoEl.appendChild(locationEl);
-
-		// Department
-		const departmentEl = document.createElement('p');
-		departmentEl.textContent = `Department: ${client.DepartmentName ?? 'N/A'}`;
-		clientInfoEl.appendChild(departmentEl);
-
-		// Client Status
-		const statusEl = document.createElement('p');
-		statusEl.textContent = `Status: ${client.ClientStatus ?? 'N/A'}`;
-		clientInfoEl.appendChild(statusEl);
-
-		fragment.appendChild(clientInfoEl);
+	if (!data) {
+		console.error('No client data available');
+		return;
 	}
+
+	const fragment = document.createDocumentFragment();
+	const clientInfoEl = document.createElement('div');
+
+	// Tag
+	const tagEl = document.createElement('p');
+	tagEl.textContent = `Tag: ${data.Tagnumber ?? 'N/A'}`;
+	clientInfoEl.appendChild(tagEl);
+
+	// System Serial
+	const serialEl = document.createElement('p');
+	serialEl.textContent = `System Serial: ${data.SystemSerial ?? 'N/A'}`;
+	clientInfoEl.appendChild(serialEl);
+
+	// Location
+	const locationEl = document.createElement('p');
+	locationEl.textContent = `Location: ${data.Location ?? 'N/A'}`;
+	clientInfoEl.appendChild(locationEl);
+
+	// Department
+	const departmentEl = document.createElement('p');
+	departmentEl.textContent = `Department: ${data.DepartmentName ?? 'N/A'}`;
+	clientInfoEl.appendChild(departmentEl);
+
+	// Client Status
+	const statusEl = document.createElement('p');
+	statusEl.textContent = `Status: ${data.ClientStatus ?? 'N/A'}`;
+	clientInfoEl.appendChild(statusEl);
+
+	fragment.appendChild(clientInfoEl);
 	batteryContainer.appendChild(fragment);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-	const clientData: ClientInfoResponse[] = await fetchClientData();
+	const clientData: ClientInfoResponse = await fetchClientData();
 	renderClientData(clientData);
 });
