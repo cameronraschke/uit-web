@@ -2128,12 +2128,12 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		locations.location,
 		locations.building,
 		locations.room,
-		static_department_info.department_name,
-		locations.ad_domain AS "ou_name",
+		static_department_info.department_name_formatted,
+		static_ad_domains.domain_name_formatted AS "ou_name",
 		locations.property_custodian,
 		locations.acquired_date,
 		locations.retired_date,
-		locations.client_status,
+		static_client_statuses.status_formatted,
 		locations.is_broken,
 		locations.disk_removed,
 		locations.note,
@@ -2205,6 +2205,8 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 	FROM ids
 		LEFT JOIN locations ON ids.uuid = locations.client_uuid AND locations.time IN (SELECT MAX(time) FROM locations GROUP BY client_uuid)
 		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
+		LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
+		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
 		LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
 		LEFT JOIN historical_hardware_data ON ids.uuid = historical_hardware_data.client_uuid AND historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY client_uuid)
 		LEFT JOIN historical_firmware_data ON ids.uuid = historical_firmware_data.client_uuid AND historical_firmware_data.time IN (SELECT MAX(time) FROM historical_firmware_data GROUP BY client_uuid)
@@ -2225,12 +2227,14 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		locations.building,
 		locations.room,
 		locations.department_name,
-		static_department_info.department_name,
+		static_department_info.department_name_formatted,
 		locations.ad_domain,
+		static_ad_domains.domain_name_formatted,
 		locations.property_custodian,
 		locations.acquired_date,
 		locations.retired_date,
 		locations.client_status,
+		static_client_statuses.status_formatted,
 		locations.is_broken,
 		locations.disk_removed,
 		locations.note,
