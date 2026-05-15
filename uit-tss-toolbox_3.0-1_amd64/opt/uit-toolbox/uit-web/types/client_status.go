@@ -10,13 +10,6 @@ type ClientHealth interface {
 	ToWriteModel(*ClientHealthUpdateRequest) (*ClientHealthDTO, error)
 }
 
-type ClientStatusView struct {
-	Tagnumber         *int64     `json:"tagnumber"`
-	ClientStatus      *string    `json:"client_status"`
-	BatteryHealthPcnt *string    `json:"battery_health_pcnt"`
-	LastHardwareCheck *time.Time `json:"last_hardware_check"`
-}
-
 type ClientUptime struct {
 	Tagnumber       int64  `json:"tagnumber"`
 	ClientAppUptime *int64 `json:"client_app_uptime"`

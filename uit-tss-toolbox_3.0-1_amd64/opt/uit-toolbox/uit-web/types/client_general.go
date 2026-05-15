@@ -23,7 +23,7 @@ type ClientInfoResponse struct {
 	EraseJobDuration          *float64               `json:"EraseJobDuration"`
 	EraseMode                 *string                `json:"EraseMode"`
 	FileCount                 *int64                 `json:"FileCount"`
-	IsDiskEncrypted        *bool                  `json:"IsDiskEncrypted"`
+	IsDiskEncrypted           *bool                  `json:"IsDiskEncrypted"`
 	IsBroken                  *bool                  `json:"IsBroken"`
 	IsCheckedOut              *bool                  `json:"IsCheckedOut"`
 	IsIntuneJoined            *bool                  `json:"IsIntuneJoined"`
@@ -44,8 +44,8 @@ type ClientInfoResponse struct {
 	SystemSerial              *string                `json:"SystemSerial"`
 	Tagnumber                 *int64                 `json:"Tagnumber"`
 	LastHardwareCheck         *time.Time             `json:"LastHardwareCheck"`
-	DiskHealthPcnt            *int64                 `json:"DiskHealthPcnt"`
-	BatteryHealthPcnt         *int64                 `json:"BatteryHealthPcnt"`
+	DiskHealthPcnt            *float64               `json:"DiskHealthPcnt"`
+	BatteryHealthPcnt         *float64               `json:"BatteryHealthPcnt"`
 	DeviceType                *string                `json:"DeviceType"`
 	BIOSVersion               *string                `json:"BIOSVersion"`
 	BIOSReleaseDate           *string                `json:"BIOSReleaseDate"`

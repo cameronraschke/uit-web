@@ -2173,9 +2173,17 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		hardware_data.cpu_thread_count,
 		historical_hardware_data.time AS "historical_hardware_data_time",
 		static_disk_stats.disk_type,
-		(historical_hardware_data.disk_writes_kb / (static_disk_stats.max_kbw) * 100)::decimal AS "disk_health_pcnt",
-		(historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100)::decimal AS "battery_health_pcnt",
-		historical_hardware_data.disk_model,
+		(
+			historical_hardware_data.disk_writes_kb::double precision
+			/ NULLIF(static_disk_stats.max_kbw, 0)::double precision
+			* 100
+		) AS "disk_health_pcnt",
+		(
+			historical_hardware_data.battery_current_max_capacity::double precision
+			/ NULLIF(historical_hardware_data.battery_design_capacity, 0)::double precision
+			* 100
+		) AS "battery_health_pcnt", 
+ 		historical_hardware_data.disk_model,
 		historical_hardware_data.disk_size_kb,
 		historical_hardware_data.disk_serial,
 		historical_hardware_data.disk_writes_kb,
