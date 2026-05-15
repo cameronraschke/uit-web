@@ -1,4 +1,5 @@
-const batteryContainer = document.getElementById('client-info-container');
+const clientInfoContainer = document.getElementById('client-info-container') as HTMLDivElement | null;
+const pageTitle = document.getElementById('page-title') as HTMLHeadingElement | null;
 
 type ClientInfoResponse = {
 	Tagnumber:                 number | null
@@ -80,7 +81,7 @@ type ClientInfoResponse = {
 	CPUThreadCount:            number | null
 }
 
-async function fetchClientData(): Promise<any> {
+async function fetchClientData(): Promise<ClientInfoResponse | null> {
 	const path = '/api/client';
 	const params = new URLSearchParams(window.location.search);
 	const tagnumber = params.get('tagnumber');
@@ -93,7 +94,7 @@ async function fetchClientData(): Promise<any> {
 		if (!response.ok) {
 			throw new Error(`Error fetching client data: ${response.statusText}`);
 		}
-		const data: any = await response.json();
+		const data: ClientInfoResponse = await response.json();
 		return data;
 	} catch (error) {
 		console.error('Fetch client data failed:', error);
@@ -102,11 +103,14 @@ async function fetchClientData(): Promise<any> {
 }
 
 function renderClientData(data: ClientInfoResponse | null): void {
-	if (!batteryContainer) {
-		console.error('Battery container element not found');
+	if (!clientInfoContainer || !pageTitle) {
+		console.error('Client info container or page title element not found');
 		return;
 	}
 
+	const tag = new URLSearchParams(window.location.search).get('tagnumber');
+	document.title = `${tag} - Client Details - UIT Toolbox`;
+	pageTitle.textContent = `Client Details - ${tag ?? 'N/A'}`;
 	if (!data) {
 		console.error('No client data available');
 		return;
@@ -141,10 +145,15 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	clientInfoEl.appendChild(statusEl);
 
 	fragment.appendChild(clientInfoEl);
-	batteryContainer.appendChild(fragment);
+	clientInfoContainer.appendChild(fragment);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-	const clientData: ClientInfoResponse = await fetchClientData();
+	const clientData: ClientInfoResponse | null = await fetchClientData();
+	if (!clientData) {
+		console.error('No client data available');
+		return;
+	}
+
 	renderClientData(clientData);
 });
