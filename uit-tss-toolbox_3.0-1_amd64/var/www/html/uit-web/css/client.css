@@ -1,3 +1,8 @@
 #client-info-container {
-	margin-top: 2dvw;
+	margin-top: 3rem;
+}
+
+#client-info-container > div {
+	margin: 2rem;
+	width: 500px;
 }

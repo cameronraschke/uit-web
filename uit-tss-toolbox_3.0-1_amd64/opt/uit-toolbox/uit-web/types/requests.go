@@ -26,7 +26,7 @@ type WindowsUpdateRequest struct {
 	WindowsDisplayVersion     *string    `json:"windows_display_version"`
 	WindowsBuildNumber        *int64     `json:"windows_build_number"`
 	WindowsUBR                *int64     `json:"windows_ubr"`
-	WindowsBitlockerEnabled   *bool      `json:"windows_bitlocker_enabled"`
+	IsDiskEncrypted           *bool      `json:"windows_bitlocker_enabled"`
 	ComputerName              *string    `json:"computer_name"`
 	AdminUsers                *string    `json:"ad_admin_users"`
 	ADDomain                  *string    `json:"ad_domain"`
@@ -73,7 +73,7 @@ type WindowsUpdateDTO struct {
 	WindowsDisplayVersion     *string
 	WindowsBuildNumber        *int64
 	WindowsUBR                *int64
-	WindowsBitlockerEnabled   *bool
+	IsDiskEncrypted           *bool
 	ComputerName              *string
 	AdminUsers                []string
 	ADDomain                  *string
@@ -167,7 +167,7 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 		WindowsDisplayVersion:     request.WindowsDisplayVersion,
 		WindowsBuildNumber:        request.WindowsBuildNumber,
 		WindowsUBR:                request.WindowsUBR,
-		WindowsBitlockerEnabled:   request.WindowsBitlockerEnabled,
+		IsDiskEncrypted:           request.IsDiskEncrypted,
 		ComputerName:              request.ComputerName,
 		AdminUsers:                adAdminUsersArr,
 		ADDomain:                  request.ADDomain,

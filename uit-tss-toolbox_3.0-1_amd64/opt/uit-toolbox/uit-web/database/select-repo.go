@@ -991,7 +991,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			(CASE WHEN locations.disk_removed = TRUE THEN NULL WHEN os_info.windows_build_number IS NOT NULL AND os_info.windows_ubr IS NOT NULL THEN CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) ELSE NULL END) AS "os_version",
 			latest_os_versions.latest_os_version,
 			os_info.admin_users,
-			os_info.windows_bitlocker_enabled,
+			os_info.is_disk_encrypted,
 			client_health.last_hardware_check,
 			(CASE 
 				WHEN latest_historical_firmware_data.bios_version = static_bios_stats.bios_version THEN TRUE
@@ -1046,7 +1046,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			os_info.windows_ubr,
 			latest_os_versions.latest_os_version,
 			os_info.admin_users,
-			os_info.windows_bitlocker_enabled,
+			os_info.is_disk_encrypted,
 			client_health.last_hardware_check,
 			static_bios_stats.bios_version,
 			latest_historical_firmware_data.bios_version,
@@ -1102,7 +1102,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&row.OsVersion,
 			&row.LatestOsVersion,
 			&adminUsers,
-			&row.BitlockerEnabled,
+			&row.IsDiskEncrypted,
 			&row.LastHardwareCheck,
 			&row.BIOSUpdated,
 			&row.BIOSVersion,
@@ -1213,9 +1213,9 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			// If OS is windows
 			if results[i].OsName != nil && strings.Contains(strings.ToLower(*results[i].OsName), "windows") {
 				// If OS is windows but Bitlocker is not enabled
-				if results[i].BitlockerEnabled != nil && !*results[i].BitlockerEnabled {
-					bitlockerNotCompleted := types.BitlockerNotCompleted.String()
-					results[i].ClientErrors = append(results[i].ClientErrors, bitlockerNotCompleted)
+				if results[i].IsDiskEncrypted != nil && !*results[i].IsDiskEncrypted {
+					diskNotEncryptedErr := types.DiskNotEncrypted.String()
+					results[i].ClientErrors = append(results[i].ClientErrors, diskNotEncryptedErr)
 				}
 				// If OS is windows and AD domain is nil/empty/default (WORKGROUP)
 				if results[i].ADDomain == nil || (results[i].ADDomain != nil && (strings.TrimSpace(*results[i].ADDomain) == "" || *results[i].ADDomain == "none" || strings.ToLower(*results[i].ADDomain) == "workgroup")) {
@@ -2128,7 +2128,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		locations.location,
 		locations.building,
 		locations.room,
-		locations.department_name,
+		static_department_info.department_name,
 		locations.ad_domain AS "ou_name",
 		locations.property_custodian,
 		locations.acquired_date,
@@ -2156,7 +2156,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		COALESCE(os_info.ad_computer_name, os_info.computer_name) AS "computer_name",
 		os_info.ad_admin_users,
 		os_info.is_intune_joined,
-		os_info.windows_bitlocker_enabled,
+		os_info.is_disk_encrypted,
 		historical_firmware_data.bios_version,
 		historical_firmware_data.bios_release_date,
 		hardware_data.device_type,
@@ -2173,7 +2173,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		hardware_data.cpu_thread_count,
 		historical_hardware_data.time AS "historical_hardware_data_time",
 		static_disk_stats.disk_type,
-		(historical_hardware_data.disk_writes_kb / static_disk_stats.disk_tbw * 100)::decimal AS "disk_health_pcnt",
+		(historical_hardware_data.disk_writes_kb / (static_disk_stats.max_kbw) * 100)::decimal AS "disk_health_pcnt",
 		(historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100)::decimal AS "battery_health_pcnt",
 		historical_hardware_data.disk_model,
 		historical_hardware_data.disk_size_kb,
@@ -2196,6 +2196,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		historical_hardware_data.memory_speed_mhz
 	FROM ids
 		LEFT JOIN locations ON ids.uuid = locations.client_uuid AND locations.time IN (SELECT MAX(time) FROM locations GROUP BY client_uuid)
+		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 		LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
 		LEFT JOIN historical_hardware_data ON ids.uuid = historical_hardware_data.client_uuid AND historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY client_uuid)
 		LEFT JOIN historical_firmware_data ON ids.uuid = historical_firmware_data.client_uuid AND historical_firmware_data.time IN (SELECT MAX(time) FROM historical_firmware_data GROUP BY client_uuid)
@@ -2216,6 +2217,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		locations.building,
 		locations.room,
 		locations.department_name,
+		static_department_info.department_name,
 		locations.ad_domain,
 		locations.property_custodian,
 		locations.acquired_date,
@@ -2244,11 +2246,11 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		os_info.computer_name,
 		os_info.ad_admin_users,
 		os_info.is_intune_joined,
-		os_info.windows_bitlocker_enabled,
+		os_info.is_disk_encrypted,
 		historical_firmware_data.bios_version,
 		historical_firmware_data.bios_release_date,
 		static_disk_stats.disk_type,
-		static_disk_stats.disk_tbw,
+		static_disk_stats.max_kbw,
 		hardware_data.device_type,
 		hardware_data.ethernet_mac,
 		hardware_data.wifi_mac,
@@ -2329,7 +2331,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		&clientInfoResult.ComputerName,
 		&clientInfoResult.ADAdminUsers,
 		&clientInfoResult.IsIntuneJoined,
-		&clientInfoResult.IsBitlockerEnabled,
+		&clientInfoResult.IsDiskEncrypted,
 		&clientInfoResult.BIOSVersion,
 		&clientInfoResult.BIOSReleaseDate,
 		&clientInfoResult.DeviceType,

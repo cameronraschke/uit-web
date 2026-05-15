@@ -3,49 +3,49 @@ package types
 import "time"
 
 type ClientInfoResponse struct {
-	Tagnumber                 *int64                 `json:"Tagnumber"`
-	SystemSerial              *string                `json:"SystemSerial"`
-	ClientUUID                *string                `json:"ClientUUID"`
-	LocationEntryTime         *time.Time             `json:"LocationEntryTime"`
-	Location                  *string                `json:"Location"`
-	Building                  *string                `json:"Building"`
-	Room                      *string                `json:"Room"`
-	DepartmentName            *string                `json:"DepartmentName"`
-	PropertyCustodian         *string                `json:"PropertyCustodian"`
 	AcquiredDate              *time.Time             `json:"AcquiredDate"`
-	RetiredDate               *time.Time             `json:"RetiredDate"`
-	ClientStatus              *string                `json:"ClientStatus"`
-	IsBroken                  *bool                  `json:"IsBroken"`
-	DiskRemoved               *bool                  `json:"DiskRemoved"`
+	ADAdminUsers              *[]string              `json:"ADAdminUsers"`
+	Building                  *string                `json:"Building"`
+	CheckoutDate              *time.Time             `json:"CheckoutDate"`
+	CheckoutLog               *[]CheckoutLogResponse `json:"CheckoutLog"`
+	ClientImages              *[]ImageManifestView   `json:"ClientImages"`
 	ClientNote                *string                `json:"ClientNote"`
-	LocationLog               *[]LocationLogResponse `json:"LocationLog"`
-	JobStartTime              *time.Time             `json:"JobStartTime"`
+	ClientStatus              *string                `json:"ClientStatus"`
+	ClientUUID                *string                `json:"ClientUUID"`
 	CloneCompleted            *bool                  `json:"CloneCompleted"`
-	CloneJobDuration          *float64               `json:"CloneJobDuration"`
 	CloneImageName            *string                `json:"CloneImageName"`
+	CloneJobDuration          *float64               `json:"CloneJobDuration"`
+	ComputerName              *string                `json:"ComputerName"`
+	CustomerName              *string                `json:"CustomerName"`
+	DepartmentName            *string                `json:"DepartmentName"`
+	DiskRemoved               *bool                  `json:"DiskRemoved"`
 	EraseCompleted            *bool                  `json:"EraseCompleted"`
 	EraseJobDuration          *float64               `json:"EraseJobDuration"`
 	EraseMode                 *string                `json:"EraseMode"`
-	JobLog                    *[]JobLogResponse      `json:"JobLog"`
-	IsCheckedOut              *bool                  `json:"IsCheckedOut"`
-	CheckoutDate              *time.Time             `json:"CheckoutDate"`
-	ReturnDate                *time.Time             `json:"ReturnDate"`
-	CustomerName              *string                `json:"CustomerName"`
-	CheckoutLog               *[]CheckoutLogResponse `json:"CheckoutLog"`
 	FileCount                 *int64                 `json:"FileCount"`
-	ClientImages              *[]ImageManifestView   `json:"ClientImages"`
+	IsDiskEncrypted        *bool                  `json:"IsDiskEncrypted"`
+	IsBroken                  *bool                  `json:"IsBroken"`
+	IsCheckedOut              *bool                  `json:"IsCheckedOut"`
+	IsIntuneJoined            *bool                  `json:"IsIntuneJoined"`
+	JobLog                    *[]JobLogResponse      `json:"JobLog"`
+	JobStartTime              *time.Time             `json:"JobStartTime"`
 	LastOSEntryTime           *time.Time             `json:"LastOSEntryTime"`
+	Location                  *string                `json:"Location"`
+	LocationEntryTime         *time.Time             `json:"LocationEntryTime"`
+	LocationLog               *[]LocationLogResponse `json:"LocationLog"`
 	OSInstalled               *bool                  `json:"OSInstalled"`
 	OSName                    *string                `json:"OSName"`
 	OSVersion                 *string                `json:"OSVersion"`
-	ComputerName              *string                `json:"ComputerName"`
 	OUName                    *string                `json:"OUName"`
-	ADAdminUsers              *[]string              `json:"ADAdminUsers"`
-	IsIntuneJoined            *bool                  `json:"IsIntuneJoined"`
-	IsBitlockerEnabled        *bool                  `json:"IsBitlockerEnabled"`
+	PropertyCustodian         *string                `json:"PropertyCustodian"`
+	RetiredDate               *time.Time             `json:"RetiredDate"`
+	ReturnDate                *time.Time             `json:"ReturnDate"`
+	Room                      *string                `json:"Room"`
+	SystemSerial              *string                `json:"SystemSerial"`
+	Tagnumber                 *int64                 `json:"Tagnumber"`
 	LastHardwareCheck         *time.Time             `json:"LastHardwareCheck"`
-	DiskHealthPcnt            *string                `json:"DiskHealthPcnt"`
-	BatteryHealthPcnt         *string                `json:"BatteryHealthPcnt"`
+	DiskHealthPcnt            *int64                 `json:"DiskHealthPcnt"`
+	BatteryHealthPcnt         *int64                 `json:"BatteryHealthPcnt"`
 	DeviceType                *string                `json:"DeviceType"`
 	BIOSVersion               *string                `json:"BIOSVersion"`
 	BIOSReleaseDate           *string                `json:"BIOSReleaseDate"`

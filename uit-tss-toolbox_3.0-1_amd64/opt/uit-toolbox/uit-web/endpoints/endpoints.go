@@ -172,7 +172,7 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Accept-Ranges", "bytes")
 	w.Header().Set("Last-Modified", metadata.ModTime().UTC().Format(http.TimeFormat))
 	w.Header().Set("ETag", fmt.Sprintf(`"%x-%x"`, metadata.ModTime().Unix(), metadata.Size()))
-	w.Header().Set("Cache-Control", "private, max-age=300")
+	// w.Header().Set("Cache-Control", "private, max-age=300")
 
 	if ctx.Err() != nil {
 		log.Warn("Context error while serving file (FileServerHandler): '" + resolvedPath + "': " + ctx.Err().Error())
@@ -262,7 +262,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Disposition", "inline; filename=\""+metadata.Name()+"\"")
 	w.Header().Set("Last-Modified", metadata.ModTime().UTC().Format(http.TimeFormat))
 	w.Header().Set("ETag", fmt.Sprintf(`"%x-%x"`, metadata.ModTime().Unix(), metadata.Size()))
-	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	// w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 
 	if ctx.Err() != nil {
 		log.Warn("Context cancelled while serving path: " + requestedPath + ": " + ctx.Err().Error())

@@ -129,7 +129,7 @@ func WriteJsonErrorCustomMessage(w http.ResponseWriter, httpStatusCode int, cust
 		_ = responseController.SetWriteDeadline(time.Now().Add(10 * time.Second))
 	}
 
-	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(httpStatusCode)
 	jsonStruct := &JsonError{
@@ -150,7 +150,7 @@ func WritePlainTextResponse(w http.ResponseWriter, message string) {
 	if responseController != nil {
 		_ = responseController.SetWriteDeadline(time.Now().Add(10 * time.Second))
 	}
-	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 
