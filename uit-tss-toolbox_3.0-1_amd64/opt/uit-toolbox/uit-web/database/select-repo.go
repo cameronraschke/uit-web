@@ -953,7 +953,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 				ROW_NUMBER() OVER (PARTITION BY jobstats.client_uuid ORDER BY jobstats.time DESC NULLS LAST) AS "row_num",
 				jobstats.client_uuid,
 				static_image_names.image_version,
-				(CASE WHEN jobstats.erase_completed IS TRUE AND NOT jobstats.clone_completed IS DISTINCT FROM TRUE THEN FALSE ELSE TRUE END) AS "os_installed"
+				(CASE WHEN jobstats.erase_completed IS TRUE AND jobstats.clone_completed IS DISTINCT FROM TRUE THEN FALSE ELSE TRUE END) AS "os_installed"
 			FROM jobstats
 			LEFT JOIN hardware_data ON jobstats.client_uuid = hardware_data.client_uuid
 			LEFT JOIN static_image_names ON hardware_data.system_model = static_image_names.image_platform_model
@@ -2112,11 +2112,11 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 				jobstats.time,
 				jobstats.client_uuid,
 				static_image_names.image_version,
-				(CASE WHEN jobstats.erase_completed IS TRUE AND NOT jobstats.clone_completed IS DISTINCT FROM TRUE THEN FALSE ELSE TRUE END) AS "os_installed"
+				(CASE WHEN jobstats.erase_completed IS TRUE AND jobstats.clone_completed IS DISTINCT FROM TRUE THEN FALSE ELSE TRUE END) AS "os_installed"
 			FROM jobstats
 			LEFT JOIN hardware_data ON jobstats.client_uuid = hardware_data.client_uuid
 			LEFT JOIN static_image_names ON hardware_data.system_model = static_image_names.image_platform_model
-			WHERE (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
+			WHERE (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE) and jobstats.client_uuid = (SELECT uuid FROM ids WHERE tagnumber = '625906')
 			GROUP BY jobstats.time, jobstats.client_uuid, static_image_names.image_version, jobstats.erase_completed, jobstats.clone_completed
 			ORDER BY jobstats.client_uuid, jobstats.time DESC NULLS LAST) t1 WHERE t1.row_num = 1
 	)

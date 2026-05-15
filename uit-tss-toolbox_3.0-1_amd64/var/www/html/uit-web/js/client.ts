@@ -1,5 +1,6 @@
 const clientInfoContainer = document.getElementById('client-info-container') as HTMLDivElement | null;
 const pageTitle = document.getElementById('page-title') as HTMLHeadingElement | null;
+const clientImagesContainer = document.getElementById('client-images-container') as HTMLDivElement | null;
 
 type ClientInfoResponse = {
 	Tagnumber:                 number | null
@@ -103,8 +104,8 @@ async function fetchClientData(): Promise<ClientInfoResponse | null> {
 }
 
 function renderClientData(data: ClientInfoResponse | null): void {
-	if (!clientInfoContainer || !pageTitle) {
-		console.error('Client info container or page title element not found');
+	if (!clientInfoContainer || !pageTitle || !clientImagesContainer) {
+		console.error('Client info container, page title, or client images container element not found');
 		return;
 	}
 
@@ -115,6 +116,16 @@ function renderClientData(data: ClientInfoResponse | null): void {
 		console.error('No client data available');
 		return;
 	}
+
+	const imageViewButton = document.createElement('button');
+	imageViewButton.textContent = 'View Client Images';
+	if (data.ClientImages && data.ClientImages.length > 0) imageViewButton.textContent += ` (${data.ClientImages.length})`;
+	imageViewButton.classList.add('svg-button', 'photo-album');
+	const imageViewLink = document.createElement('a');
+	imageViewLink.href = `client_images?tagnumber=${encodeURIComponent(data.Tagnumber?.toString() ?? '')}`;
+	imageViewLink.target = '_blank';
+	imageViewLink.appendChild(imageViewButton);
+	clientImagesContainer.appendChild(imageViewLink);
 
 	const fragment = document.createDocumentFragment();
 	const clientIDsDiv = document.createElement('div');
@@ -208,41 +219,69 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	// OS Info
 	const osInfoDiv = document.createElement('div');
 
-	// Last OS Entry Time
-	const lastOsEntryEl = document.createElement('p');
-	lastOsEntryEl.textContent = `Last OS Entry Time: ${data.LastOSEntryTime ? new Date(data.LastOSEntryTime).toLocaleDateString() : 'N/A'}`;
-	osInfoDiv.appendChild(lastOsEntryEl);
-
-	// OS Name
-	const osNameEl = document.createElement('p');
-	osNameEl.textContent = `OS Name: ${data.OSName ?? 'N/A'}`;
-	osInfoDiv.appendChild(osNameEl);
-
-	// OS Version
-	const osVersionEl = document.createElement('p');
-	osVersionEl.textContent = `OS Version: ${data.OSVersion ?? 'N/A'}`;
-	osInfoDiv.appendChild(osVersionEl);
-
-	// AD Domain / OU
-	const ouEl = document.createElement('p');
-	ouEl.textContent = `AD OU: ${data.OUName ?? 'N/A'}`;
-	osInfoDiv.appendChild(ouEl);
-
 	// Computer Name
 	const computerNameEl = document.createElement('p');
 	computerNameEl.textContent = `Computer Name: ${data.ComputerName ?? 'N/A'}`;
 	osInfoDiv.appendChild(computerNameEl);
+
+	if (data.OSInstalled === true && data.DiskRemoved === false) {
+		// OS Name
+		const osNameEl = document.createElement('p');
+		osNameEl.textContent = `OS Name: ${data.OSName ?? 'N/A'}`;
+		osInfoDiv.appendChild(osNameEl);
+
+		// OS Version
+		const osVersionEl = document.createElement('p');
+		osVersionEl.textContent = `OS Version: ${data.OSVersion ?? 'N/A'}`;
+		osInfoDiv.appendChild(osVersionEl);
+
+		// AD Domain / OU
+		const ouEl = document.createElement('p');
+		const ouSpan = document.createElement('span');
+		ouSpan.appendChild(document.createTextNode(`AD OU: ${data.OUName ?? 'N/A'}`));
+		ouEl.appendChild(ouSpan);
+		if (data.IsIntuneJoined === true) {
+			const intuneSpan = document.createElement('span');
+			intuneSpan.appendChild(document.createTextNode(' (Intune Joined)'));
+			intuneSpan.style.fontStyle = 'italic';
+			ouEl.appendChild(intuneSpan);
+		} else {
+			const notIntuneSpan = document.createElement('span');
+			notIntuneSpan.appendChild(document.createTextNode(' (Not Intune Joined)'));
+			notIntuneSpan.style.fontStyle = 'italic';
+			notIntuneSpan.style.color = 'red';
+			ouEl.appendChild(notIntuneSpan);
+		}
+		osInfoDiv.appendChild(ouEl);
+
+		// Disk Encryption
+		const encryptionEl = document.createElement('p');
+		encryptionEl.textContent = `Disk Encryption: ${data.IsDiskEncrypted !== null ? (data.IsDiskEncrypted ? 'Yes' : 'No') : 'N/A'}`;
+		osInfoDiv.appendChild(encryptionEl);
+
+	} else {
+		const osNotInstalledEl = document.createElement('p');
+		osNotInstalledEl.appendChild(document.createTextNode('OS Not Installed'));
+		if (data.DiskRemoved === true) {
+			const osNotInstalledSpanWarn = document.createElement('span');
+			osNotInstalledSpanWarn.appendChild(document.createTextNode(' (Disk Removed)'));
+			osNotInstalledSpanWarn.style.fontStyle = 'italic';
+			osNotInstalledSpanWarn.style.color = 'red';
+			osNotInstalledEl.appendChild(osNotInstalledSpanWarn);
+		}
+		osInfoDiv.appendChild(osNotInstalledEl);
+	}
+
+	// Last OS Entry Time
+	const lastOsEntryEl = document.createElement('p');
+	lastOsEntryEl.textContent = `OS Info Last Updated: ${data.LastOSEntryTime ? new Date(data.LastOSEntryTime).toLocaleDateString() : 'N/A'}`;
+	osInfoDiv.appendChild(lastOsEntryEl);
 
 	fragment.appendChild(osInfoDiv);
 
 
 	// Client Health
 	const healthInfoDiv = document.createElement('div');
-
-	// Last Hardware Check
-	const lastHardwareCheckEl = document.createElement('p');
-	lastHardwareCheckEl.textContent = `Last Hardware Check: ${data.LastHardwareCheck ? new Date(data.LastHardwareCheck).toLocaleDateString() : 'N/A'}`;
-	healthInfoDiv.appendChild(lastHardwareCheckEl);
 
 	// Is Broken
 	const isBrokenEl = document.createElement('p');
@@ -251,13 +290,33 @@ function renderClientData(data: ClientInfoResponse | null): void {
 
 	// Disk health
 	const diskHealthEl = document.createElement('p');
-	diskHealthEl.textContent = `Disk Health: ${data.DiskHealthPcnt ?? 'N/A'}`;
+	const diskHealthSpan = document.createElement('span');
+	if (data.DiskHealthPcnt !== null && data.DiskRemoved === false) {
+		diskHealthSpan.appendChild(document.createTextNode(`Disk Health: ${data.DiskHealthPcnt.toFixed(2)}%`));
+	} else if (data.DiskRemoved === true) {
+		diskHealthSpan.appendChild(document.createTextNode(`Disk Health: N/A (Disk Removed)`));
+	} else {
+		diskHealthSpan.appendChild(document.createTextNode('Disk Health: N/A (Missing Data)'));
+	}
+	diskHealthEl.appendChild(diskHealthSpan);
 	healthInfoDiv.appendChild(diskHealthEl);
 
 	// Battery health
 	const batteryHealthEl = document.createElement('p');
-	batteryHealthEl.textContent = `Battery Health: ${data.BatteryHealthPcnt !== null ? `${Math.round(data.BatteryHealthPcnt)}%` : 'N/A'}`;
+	const batteryHealthSpan = document.createElement('span');
+	if (data.BatteryHealthPcnt !== null) {
+		batteryHealthSpan.appendChild(document.createTextNode(`Battery Health: ${data.BatteryHealthPcnt.toFixed(2)}%`));
+	} else {
+		batteryHealthSpan.appendChild(document.createTextNode('Battery Health: N/A'));
+	}
+	batteryHealthEl.appendChild(batteryHealthSpan);
 	healthInfoDiv.appendChild(batteryHealthEl);
+
+	// Last Hardware Check
+	const lastHardwareCheckEl = document.createElement('p');
+	lastHardwareCheckEl.textContent = `Last Hardware Check: ${data.LastHardwareCheck ? new Date(data.LastHardwareCheck).toLocaleString() : 'N/A'}`;
+	healthInfoDiv.appendChild(lastHardwareCheckEl);
+
 
 	fragment.appendChild(healthInfoDiv);
 
