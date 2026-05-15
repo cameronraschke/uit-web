@@ -2206,7 +2206,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		LEFT JOIN client_images ON ids.uuid = client_images.client_uuid
 		LEFT JOIN os_info ON ids.uuid = os_info.client_uuid
 		LEFT JOIN os_installed_table ON ids.uuid = os_installed_table.client_uuid
-	WHERE ids.tagnumber = 625992
+	WHERE ids.tagnumber = $1
 	GROUP BY
 		ids.tagnumber,
 		ids.system_serial,
@@ -2291,7 +2291,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
-	sqlResult := dbConn.QueryRowContext(ctx, sqlCode)
+	sqlResult := dbConn.QueryRowContext(ctx, sqlCode, tag)
 	var clientInfoResult types.ClientInfoResponse
 	if err := sqlResult.Scan(
 		&clientInfoResult.Tagnumber,
