@@ -2116,7 +2116,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 			FROM jobstats
 			LEFT JOIN hardware_data ON jobstats.client_uuid = hardware_data.client_uuid
 			LEFT JOIN static_image_names ON hardware_data.system_model = static_image_names.image_platform_model
-			WHERE (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE) and jobstats.client_uuid = (SELECT uuid FROM ids WHERE tagnumber = '625906')
+			WHERE (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE) and jobstats.client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1)
 			GROUP BY jobstats.time, jobstats.client_uuid, static_image_names.image_version, jobstats.erase_completed, jobstats.clone_completed
 			ORDER BY jobstats.client_uuid, jobstats.time DESC NULLS LAST) t1 WHERE t1.row_num = 1
 	)
