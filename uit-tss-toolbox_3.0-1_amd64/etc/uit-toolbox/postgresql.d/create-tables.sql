@@ -246,6 +246,10 @@ INSERT INTO static_disk_stats
 		('PM991a NVMe Samsung 512GB', 512, 1200, 2200, 1500000, NULL, NULL, 0, 70, 'm.2', 'nvme', FALSE, NULL, NULL, 3, 4)
 	;
 
+UPDATE static_disk_stats 
+SET max_kbw = max_kbw << 30 
+WHERE max_kbw IS NOT NULL;
+
 
 CREATE TABLE IF NOT EXISTS static_battery_stats (
 	battery_model VARCHAR(24) PRIMARY KEY,
