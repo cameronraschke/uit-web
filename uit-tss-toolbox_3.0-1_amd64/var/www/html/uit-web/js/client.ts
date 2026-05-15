@@ -65,7 +65,7 @@ type ClientInfoResponse = {
 	BatteryManufacturer:       string | null
 	BatteryModel:              string | null
 	BatterySerial:             string | null
-	BatteryManufactureDate:    string | null
+	BatteryManufactureDate:    Date | null
 	BatteryDesignCapacity:     number | null
 	BatteryCurrentMaxCapacity: number | null
 	BatteryChargeCycles:       number | null

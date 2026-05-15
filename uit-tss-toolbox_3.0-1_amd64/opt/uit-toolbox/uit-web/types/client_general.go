@@ -65,7 +65,7 @@ type ClientInfoResponse struct {
 	BatteryManufacturer       *string                `json:"BatteryManufacturer"`
 	BatteryModel              *string                `json:"BatteryModel"`
 	BatterySerial             *string                `json:"BatterySerial"`
-	BatteryManufactureDate    *string                `json:"BatteryManufactureDate"`
+	BatteryManufactureDate    *time.Time             `json:"BatteryManufactureDate"`
 	BatteryDesignCapacity     *float64               `json:"BatteryDesignCapacity"`
 	BatteryCurrentMaxCapacity *float64               `json:"BatteryCurrentMaxCapacity"`
 	BatteryChargeCycles       *int64                 `json:"BatteryChargeCycles"`

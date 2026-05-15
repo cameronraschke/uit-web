@@ -2302,92 +2302,104 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		historical_hardware_data.memory_speed_mhz
 	;`
 
-	dbConn, err := config.GetDatabaseConn()
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
-	sqlResult := dbConn.QueryRowContext(ctx, sqlCode, tag)
+	var adminUsers []string
+	rows, err := pgxPool.Query(ctx, sqlCode, tag)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+	defer rows.Close()
+
 	var clientInfoResult types.ClientInfoResponse
-	if err := sqlResult.Scan(
-		&clientInfoResult.Tagnumber,
-		&clientInfoResult.SystemSerial,
-		&clientInfoResult.ClientUUID,
-		&clientInfoResult.LocationEntryTime,
-		&clientInfoResult.Location,
-		&clientInfoResult.Building,
-		&clientInfoResult.Room,
-		&clientInfoResult.DepartmentName,
-		&clientInfoResult.OUName,
-		&clientInfoResult.PropertyCustodian,
-		&clientInfoResult.AcquiredDate,
-		&clientInfoResult.RetiredDate,
-		&clientInfoResult.ClientStatus,
-		&clientInfoResult.IsBroken,
-		&clientInfoResult.DiskRemoved,
-		&clientInfoResult.ClientNote,
-		&clientInfoResult.JobStartTime,
-		&clientInfoResult.CloneCompleted,
-		&clientInfoResult.CloneJobDuration,
-		&clientInfoResult.CloneImageName,
-		&clientInfoResult.EraseCompleted,
-		&clientInfoResult.EraseJobDuration,
-		&clientInfoResult.EraseMode,
-		&clientInfoResult.IsCheckedOut,
-		&clientInfoResult.CheckoutDate,
-		&clientInfoResult.ReturnDate,
-		&clientInfoResult.CustomerName,
-		&clientInfoResult.FileCount,
-		&clientInfoResult.LastOSEntryTime,
-		&clientInfoResult.OSInstalled,
-		&clientInfoResult.OSName,
-		&clientInfoResult.OSVersion,
-		&clientInfoResult.ComputerName,
-		&clientInfoResult.AdminUsers,
-		&clientInfoResult.IsIntuneJoined,
-		&clientInfoResult.IsDiskEncrypted,
-		&clientInfoResult.BIOSVersion,
-		&clientInfoResult.BIOSReleaseDate,
-		&clientInfoResult.DeviceType,
-		&clientInfoResult.EthernetMAC,
-		&clientInfoResult.WiFiMAC,
-		&clientInfoResult.TPMVersion,
-		&clientInfoResult.SystemManufacturer,
-		&clientInfoResult.SystemModel,
-		&clientInfoResult.SystemSKU,
-		&clientInfoResult.CPUManufacturer,
-		&clientInfoResult.CPUModel,
-		&clientInfoResult.CPUMaxSpeedMhz,
-		&clientInfoResult.CPUCoreCount,
-		&clientInfoResult.CPUThreadCount,
-		&clientInfoResult.LastHardwareCheck,
-		&clientInfoResult.DiskType,
-		&clientInfoResult.DiskHealthPcnt,
-		&clientInfoResult.BatteryHealthPcnt,
-		&clientInfoResult.DiskModel,
-		&clientInfoResult.DiskSizeKB,
-		&clientInfoResult.DiskSerial,
-		&clientInfoResult.DiskWritesKB,
-		&clientInfoResult.DiskReadsKB,
-		&clientInfoResult.DiskPowerOnHours,
-		&clientInfoResult.DiskErrors,
-		&clientInfoResult.DiskPowerCycles,
-		&clientInfoResult.DiskFirmware,
-		&clientInfoResult.BatteryManufacturer,
-		&clientInfoResult.BatteryModel,
-		&clientInfoResult.BatterySerial,
-		&clientInfoResult.BatteryManufactureDate,
-		&clientInfoResult.BatteryDesignCapacity,
-		&clientInfoResult.BatteryCurrentMaxCapacity,
-		&clientInfoResult.BatteryChargeCycles,
-		&clientInfoResult.MemorySerial,
-		&clientInfoResult.MemoryCapacityKB,
-		&clientInfoResult.MemorySpeedMHz,
-	); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
+	for rows.Next() {
+		if err := rows.Scan(
+			&clientInfoResult.Tagnumber,
+			&clientInfoResult.SystemSerial,
+			&clientInfoResult.ClientUUID,
+			&clientInfoResult.LocationEntryTime,
+			&clientInfoResult.Location,
+			&clientInfoResult.Building,
+			&clientInfoResult.Room,
+			&clientInfoResult.DepartmentName,
+			&clientInfoResult.OUName,
+			&clientInfoResult.PropertyCustodian,
+			&clientInfoResult.AcquiredDate,
+			&clientInfoResult.RetiredDate,
+			&clientInfoResult.ClientStatus,
+			&clientInfoResult.IsBroken,
+			&clientInfoResult.DiskRemoved,
+			&clientInfoResult.ClientNote,
+			&clientInfoResult.JobStartTime,
+			&clientInfoResult.CloneCompleted,
+			&clientInfoResult.CloneJobDuration,
+			&clientInfoResult.CloneImageName,
+			&clientInfoResult.EraseCompleted,
+			&clientInfoResult.EraseJobDuration,
+			&clientInfoResult.EraseMode,
+			&clientInfoResult.IsCheckedOut,
+			&clientInfoResult.CheckoutDate,
+			&clientInfoResult.ReturnDate,
+			&clientInfoResult.CustomerName,
+			&clientInfoResult.FileCount,
+			&clientInfoResult.LastOSEntryTime,
+			&clientInfoResult.OSInstalled,
+			&clientInfoResult.OSName,
+			&clientInfoResult.OSVersion,
+			&clientInfoResult.ComputerName,
+			&adminUsers,
+			&clientInfoResult.IsIntuneJoined,
+			&clientInfoResult.IsDiskEncrypted,
+			&clientInfoResult.BIOSVersion,
+			&clientInfoResult.BIOSReleaseDate,
+			&clientInfoResult.DeviceType,
+			&clientInfoResult.EthernetMAC,
+			&clientInfoResult.WiFiMAC,
+			&clientInfoResult.TPMVersion,
+			&clientInfoResult.SystemManufacturer,
+			&clientInfoResult.SystemModel,
+			&clientInfoResult.SystemSKU,
+			&clientInfoResult.CPUManufacturer,
+			&clientInfoResult.CPUModel,
+			&clientInfoResult.CPUMaxSpeedMhz,
+			&clientInfoResult.CPUCoreCount,
+			&clientInfoResult.CPUThreadCount,
+			&clientInfoResult.LastHardwareCheck,
+			&clientInfoResult.DiskType,
+			&clientInfoResult.DiskHealthPcnt,
+			&clientInfoResult.BatteryHealthPcnt,
+			&clientInfoResult.DiskModel,
+			&clientInfoResult.DiskSizeKB,
+			&clientInfoResult.DiskSerial,
+			&clientInfoResult.DiskWritesKB,
+			&clientInfoResult.DiskReadsKB,
+			&clientInfoResult.DiskPowerOnHours,
+			&clientInfoResult.DiskErrors,
+			&clientInfoResult.DiskPowerCycles,
+			&clientInfoResult.DiskFirmware,
+			&clientInfoResult.BatteryManufacturer,
+			&clientInfoResult.BatteryModel,
+			&clientInfoResult.BatterySerial,
+			&clientInfoResult.BatteryManufactureDate,
+			&clientInfoResult.BatteryDesignCapacity,
+			&clientInfoResult.BatteryCurrentMaxCapacity,
+			&clientInfoResult.BatteryChargeCycles,
+			&clientInfoResult.MemorySerial,
+			&clientInfoResult.MemoryCapacityKB,
+			&clientInfoResult.MemorySpeedMHz,
+		); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, nil
+			}
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
-		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
+	}
+
+	if adminUsers != nil {
+		clientInfoResult.AdminUsers = &adminUsers
 	}
 
 	return &clientInfoResult, nil
