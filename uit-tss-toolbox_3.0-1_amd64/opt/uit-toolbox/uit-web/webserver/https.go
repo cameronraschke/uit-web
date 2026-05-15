@@ -98,6 +98,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/new_transaction_uuid", httpsFullAPIChain.ThenFunc(endpoints.GetNewTransactionUUID))
 
 	// Overviews
+	httpsRouter.Handle("GET /api/client", httpsFullAPIChain.ThenFunc(endpoints.GetClientInfo))
 	httpsRouter.Handle("POST /api/job_queue/all_clients/update_job", httpsFullAPIChain.ThenFunc(endpoints.SetAllJobs))
 
 	// Client hardware

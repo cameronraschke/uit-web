@@ -89,5 +89,6 @@
 	"/api/client/job_stats": {
 		"allowed_methods": ["GET", "POST"]
 	},
-	"/api/new_transaction_uuid": {}
+	"/api/new_transaction_uuid": {},
+	"/api/client": {}
 }

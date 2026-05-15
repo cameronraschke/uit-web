@@ -1173,3 +1173,21 @@ func GetNewTransactionUUID(w http.ResponseWriter, req *http.Request) {
 	}
 	middleware.WriteJson(w, http.StatusOK, returnedJson)
 }
+
+func GetClientInfo(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetClientInfo"))
+	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
+	if err != nil {
+		log.Warn("Invalid tagnumber provided: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	clientInfo, err := database.GetClientInfo(ctx, *tagnumber)
+	if err != nil {
+		log.Warn("Error fetching client info: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	middleware.WriteJson(w, http.StatusOK, clientInfo)
+}

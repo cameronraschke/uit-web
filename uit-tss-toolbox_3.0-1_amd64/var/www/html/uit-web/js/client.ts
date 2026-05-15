@@ -1,82 +1,147 @@
-const batteryContainer = document.getElementById('battery-container');
+const batteryContainer = document.getElementById('client-info-container');
 
-type BatteryHealth = {
-	time: string | null;
-	tagnumber: number | null;
-	jobstatsHealthPcnt: number | null;
-	clientHealthPcnt: number | null;
-	chargeCycles: number | null;
-};
+type ClientInfoResponse = {
+	Tagnumber:                 number | null
+	SystemSerial:              string | null
+	ClientUUID:                string | null
+	LocationEntryTime:         Date | null
+	Location:                  string | null
+	Building:                  string | null
+	Room:                      string | null
+	DepartmentName:            string | null
+	PropertyCustodian:         string | null
+	AcquiredDate:              Date | null
+	RetiredDate:               Date | null
+	ClientStatus:              string | null
+	IsBroken:                  boolean | null
+	DiskRemoved:               boolean | null
+	ClientNote:                string | null
+	LocationLog:              any[] | null
+	JobTime:                   Date | null
+	CloneCompleted:            boolean | null
+	CloneJobDuration:          number | null
+	CloneImageName:            string | null
+	EraseCompleted:            boolean | null
+	EraseJobDuration:          number | null
+	EraseMode:                 string | null
+	JobLog:                    any[] | null
+	IsCheckedOut:              boolean | null
+	CheckoutDate:              Date | null
+	ReturnDate:                Date | null
+	CustomerName:              string | null
+	CheckoutLog:               any[] | null
+	FileCount:                 number | null
+	ClientImages:              any[] | null
+	LastOSEntryTime:           Date | null
+	OSInstalled:               boolean | null
+	OSName:                    string | null
+	OSVersion:                 string | null
+	ComputerName:              string | null
+	OUName:                    string | null
+	ADAdminUsers:              string[] | null
+	IsIntuneJoined:            boolean | null
+	IsBitlockerEnabled:        boolean | null
+	LastHardwareCheck:         Date | null
+	DiskHealthPcnt:            string | null
+	BatteryHealthPcnt:         string | null
+	DeviceType:                string | null
+	BIOSVersion:               string | null
+	BIOSReleaseDate:           string | null
+	EthernetMAC:               string | null
+	WiFiMAC:                   string | null
+	TPMVersion:                string | null
+	DiskModel:                 string | null
+	DiskType:                  string | null
+	DiskSizeKB:                number | null
+	DiskSerial:                string | null
+	DiskWritesKB:              number | null
+	DiskReadsKB:               number | null
+	DiskPowerOnHours:          number | null
+	DiskErrors:                number | null
+	DiskPowerCycles:           number | null
+	DiskFirmware:              string | null
+	BatteryManufacturer:       string | null
+	BatteryModel:              string | null
+	BatterySerial:             string | null
+	BatteryManufactureDate:    string | null
+	BatteryDesignCapacity:     number | null
+	BatteryCurrentMaxCapacity: number | null
+	BatteryChargeCycles:       number | null
+	MemorySerial:              string | null
+	MemoryCapacityKB:          number | null
+	MemorySpeedMHz:            number | null
+	SystemManufacturer:        string | null
+	SystemModel:               string | null
+	SystemSKU:                 string | null
+	CPUManufacturer:           string | null
+	CPUModel:                  string | null
+	CPUMaxSpeedMhz:            number | null
+	CPUCoreCount:              number | null
+	CPUThreadCount:            number | null
+}
 
-async function fetchClientData(): Promise<BatteryHealth[]> {
-	let url = '';
-	const path = '/api/client/hardware';
+async function fetchClientData(): Promise<any> {
+	const path = '/api/client';
 	const params = new URLSearchParams(window.location.search);
 	const tagnumber = params.get('tagnumber');
 	if (!tagnumber) {
 		throw new Error('tagnumber parameter is missing or empty in URL');
 	}
-	url = path + '?' + params.toString();
+	const url = `${path}?tagnumber=${encodeURIComponent(tagnumber)}`;
 	try {
 		const response = await fetch(url);
 		if (!response.ok) {
 			throw new Error(`Error fetching client data: ${response.statusText}`);
 		}
-		const data: BatteryHealth = await response.json();
-		// Wrap single object in array to match render function expectations
-		return data ? [data] : [];
+		const data: any = await response.json();
+		return data;
 	} catch (error) {
 		console.error('Fetch client data failed:', error);
 		return [];
 	}
 }
 
-function renderClientData(data: BatteryHealth[]) {
-	if (!batteryContainer) return;
-	batteryContainer.innerHTML = '';
-
-	if (data.length === 0) {
-		const message = document.createElement('p');
-		message.textContent = 'No client data available.';
-		batteryContainer.appendChild(message);
+function renderClientData(data: ClientInfoResponse[]) {
+	if (!batteryContainer) {
+		console.error('Battery container element not found');
 		return;
 	}
-	const batteryTable = document.createElement('table');
-	const thead = document.createElement('thead');
-	const headerRow = document.createElement('tr');
-	const headers = ['Last Updated', 'Tag Number', 'Jobstats Health (%)', 'Client Health (%)', 'Charge Cycles'];
-	for (const headerText of headers) {
-		const th = document.createElement('th');
-		th.textContent = headerText;
-		headerRow.appendChild(th);
+
+	const fragment = document.createDocumentFragment();
+	for (const client of data) {
+		const clientInfoEl = document.createElement('div');
+
+		// Tag
+		const tagEl = document.createElement('p');
+		tagEl.textContent = `Tag: ${client.Tagnumber ?? 'N/A'}`;
+		clientInfoEl.appendChild(tagEl);
+
+		// System Serial
+		const serialEl = document.createElement('p');
+		serialEl.textContent = `System Serial: ${client.SystemSerial ?? 'N/A'}`;
+		clientInfoEl.appendChild(serialEl);
+
+		// Location
+		const locationEl = document.createElement('p');
+		locationEl.textContent = `Location: ${client.Location ?? 'N/A'}`;
+		clientInfoEl.appendChild(locationEl);
+
+		// Department
+		const departmentEl = document.createElement('p');
+		departmentEl.textContent = `Department: ${client.DepartmentName ?? 'N/A'}`;
+		clientInfoEl.appendChild(departmentEl);
+
+		// Client Status
+		const statusEl = document.createElement('p');
+		statusEl.textContent = `Status: ${client.ClientStatus ?? 'N/A'}`;
+		clientInfoEl.appendChild(statusEl);
+
+		fragment.appendChild(clientInfoEl);
 	}
-	thead.appendChild(headerRow);
-	batteryTable.appendChild(thead);
-	const batteryTbody = document.createElement('tbody');
-	for (const row of data) {
-		const tr = document.createElement('tr');
-		const timeCell = document.createElement('td');
-		timeCell.textContent = row.time !== null ? new Date(row.time).toLocaleString() : 'N/A';
-		tr.appendChild(timeCell);
-		batteryTbody.appendChild(tr);
-		const tagCell = document.createElement('td');
-		tagCell.textContent = row.tagnumber !== null ? row.tagnumber.toString() : 'N/A';
-		tr.appendChild(tagCell);
-		const jobstatsHealthCell = document.createElement('td');
-		jobstatsHealthCell.textContent = row.jobstatsHealthPcnt !== null ? row.jobstatsHealthPcnt.toString() + '%' : 'N/A';
-		tr.appendChild(jobstatsHealthCell);
-		const clientHealthCell = document.createElement('td');
-		clientHealthCell.textContent = row.clientHealthPcnt !== null ? row.clientHealthPcnt.toString() + '%' : 'N/A';
-		tr.appendChild(clientHealthCell);
-		const chargeCyclesCell = document.createElement('td');
-		chargeCyclesCell.textContent = row.chargeCycles !== null ? row.chargeCycles.toString() : 'N/A';
-		tr.appendChild(chargeCyclesCell);
-	}
-	batteryTable.appendChild(batteryTbody);
-	batteryContainer.appendChild(batteryTable);
+	batteryContainer.appendChild(fragment);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-	const clientData = await fetchClientData();
+	const clientData: ClientInfoResponse[] = await fetchClientData();
 	renderClientData(clientData);
 });
