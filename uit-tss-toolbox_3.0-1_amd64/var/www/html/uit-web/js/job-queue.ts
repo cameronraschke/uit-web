@@ -327,10 +327,8 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 
 		const tagSerialContainer = document.createElement('p');
 		// const tagURL = new URL(`/client`, window.location.origin);
-		const tagURL = new URL(`/inventory`, window.location.origin);
+		const tagURL = new URL(`/client`, window.location.origin);
 		tagURL.searchParams.append('tagnumber', entry.tagnumber.toString());
-		tagURL.searchParams.append('system_serial', entry.system_serial || '');
-		tagURL.searchParams.append('update', 'true');
 		const editClientAnchor = document.createElement('a');
 		editClientAnchor.title = `Edit Client ${entry.tagnumber !== null ? entry.tagnumber.toString() : 'N/A'}`;
 		editClientAnchor.textContent = `${entry.tagnumber !== null ? entry.tagnumber.toString() : 'N/A'}`;

@@ -1,6 +1,6 @@
 const clientInfoContainer = document.getElementById('client-info-container') as HTMLDivElement | null;
 const pageTitle = document.getElementById('page-title') as HTMLHeadingElement | null;
-const clientImagesContainer = document.getElementById('client-images-container') as HTMLDivElement | null;
+const clientActionsContainer = document.getElementById('client-actions-container') as HTMLDivElement | null;
 
 type ClientInfoResponse = {
 	Tagnumber:                 number | null
@@ -104,8 +104,8 @@ async function fetchClientData(): Promise<ClientInfoResponse | null> {
 }
 
 function renderClientData(data: ClientInfoResponse | null): void {
-	if (!clientInfoContainer || !pageTitle || !clientImagesContainer) {
-		console.error('Client info container, page title, or client images container element not found');
+	if (!clientInfoContainer || !pageTitle || !clientActionsContainer) {
+		console.error('Client info container, page title, or client actions container element not found');
 		return;
 	}
 
@@ -117,15 +117,31 @@ function renderClientData(data: ClientInfoResponse | null): void {
 		return;
 	}
 
+	// Inventory button link
+	const updateInventoryButton = document.createElement('button');
+	updateInventoryButton.textContent = 'Update Inventory';
+	updateInventoryButton.classList.add('svg-button', 'edit');
+	const updateInventoryLink = document.createElement('a');
+	const updateInventoryURL = new URL('inventory', window.location.origin);
+	updateInventoryURL.searchParams.set('tagnumber', data.Tagnumber?.toString() ?? '');
+	updateInventoryURL.searchParams.set('update', 'true');
+	updateInventoryLink.href = updateInventoryURL.toString();
+	updateInventoryLink.target = '_blank';
+	updateInventoryLink.appendChild(updateInventoryButton);
+	clientActionsContainer.appendChild(updateInventoryLink);
+
+	// View images link
 	const imageViewButton = document.createElement('button');
 	imageViewButton.textContent = 'View Client Images';
 	if (data.ClientImages && data.ClientImages.length > 0) imageViewButton.textContent += ` (${data.ClientImages.length})`;
 	imageViewButton.classList.add('svg-button', 'photo-album');
 	const imageViewLink = document.createElement('a');
-	imageViewLink.href = `client_images?tagnumber=${encodeURIComponent(data.Tagnumber?.toString() ?? '')}`;
+	const imageViewURL = new URL('client_images', window.location.origin);
+	imageViewURL.searchParams.set('tagnumber', data.Tagnumber?.toString() ?? '');
+	imageViewLink.href = imageViewURL.toString();
 	imageViewLink.target = '_blank';
 	imageViewLink.appendChild(imageViewButton);
-	clientImagesContainer.appendChild(imageViewLink);
+	clientActionsContainer.appendChild(imageViewLink);
 
 	const fragment = document.createDocumentFragment();
 	const clientIDsDiv = document.createElement('div');
@@ -256,7 +272,7 @@ function renderClientData(data: ClientInfoResponse | null): void {
 
 		// Disk Encryption
 		const encryptionEl = document.createElement('p');
-		encryptionEl.textContent = `Disk Encryption: ${data.IsDiskEncrypted !== null ? (data.IsDiskEncrypted ? 'Yes' : 'No') : 'N/A'}`;
+		encryptionEl.textContent = `Disk Encrypted: ${data.IsDiskEncrypted !== null ? (data.IsDiskEncrypted ? 'Yes' : 'No') : 'N/A'}`;
 		osInfoDiv.appendChild(encryptionEl);
 
 	} else {
@@ -274,7 +290,7 @@ function renderClientData(data: ClientInfoResponse | null): void {
 
 	// Last OS Entry Time
 	const lastOsEntryEl = document.createElement('p');
-	lastOsEntryEl.textContent = `OS Info Last Updated: ${data.LastOSEntryTime ? new Date(data.LastOSEntryTime).toLocaleDateString() : 'N/A'}`;
+	lastOsEntryEl.textContent = `OS Info Last Updated: ${data.LastOSEntryTime ? new Date(data.LastOSEntryTime).toLocaleString() : 'N/A'}`;
 	osInfoDiv.appendChild(lastOsEntryEl);
 
 	fragment.appendChild(osInfoDiv);
