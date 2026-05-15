@@ -4,7 +4,7 @@ import "time"
 
 type ClientInfoResponse struct {
 	AcquiredDate              *time.Time             `json:"AcquiredDate"`
-	ADAdminUsers              *[]string              `json:"ADAdminUsers"`
+	AdminUsers                *[]string              `json:"AdminUsers"`
 	Building                  *string                `json:"Building"`
 	CheckoutDate              *time.Time             `json:"CheckoutDate"`
 	CheckoutLog               *[]CheckoutLogResponse `json:"CheckoutLog"`

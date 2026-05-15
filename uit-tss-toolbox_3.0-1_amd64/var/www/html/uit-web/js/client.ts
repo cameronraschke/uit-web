@@ -40,7 +40,7 @@ type ClientInfoResponse = {
 	OSVersion:                 string | null
 	ComputerName:              string | null
 	OUName:                    string | null
-	ADAdminUsers:              string[] | null
+	AdminUsers:                string[] | null
 	IsIntuneJoined:            boolean | null
 	IsDiskEncrypted:        boolean | null
 	LastHardwareCheck:         Date | null
@@ -274,6 +274,11 @@ function renderClientData(data: ClientInfoResponse | null): void {
 		const encryptionEl = document.createElement('p');
 		encryptionEl.textContent = `Disk Encrypted: ${data.IsDiskEncrypted !== null ? (data.IsDiskEncrypted ? 'Yes' : 'No') : 'N/A'}`;
 		osInfoDiv.appendChild(encryptionEl);
+
+		// Admin Users
+		const adminUsersEl = document.createElement('p');
+		adminUsersEl.textContent = `Admin Users: ${data.AdminUsers && data.AdminUsers.length > 0 ? data.AdminUsers.join(', ') : 'N/A'}`;
+		osInfoDiv.appendChild(adminUsersEl);
 
 	} else {
 		const osNotInstalledEl = document.createElement('p');
