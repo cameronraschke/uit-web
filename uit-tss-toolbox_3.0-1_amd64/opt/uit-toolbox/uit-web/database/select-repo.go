@@ -948,7 +948,9 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			ORDER BY historical_firmware_data.client_uuid, historical_firmware_data.time DESC NULLS LAST
 		),
 		os_installed_table AS (
-			SELECT DISTINCT ON (jobstats.client_uuid)
+			SELECT * FROM (
+			SELECT
+				ROW_NUMBER() OVER (PARTITION BY jobstats.client_uuid ORDER BY jobstats.time DESC NULLS LAST) AS "row_num",
 				jobstats.client_uuid,
 				static_image_names.image_version,
 				(CASE WHEN jobstats.erase_completed IS TRUE AND NOT jobstats.clone_completed IS DISTINCT FROM TRUE THEN FALSE ELSE TRUE END) AS "os_installed"
@@ -956,7 +958,8 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			LEFT JOIN hardware_data ON jobstats.client_uuid = hardware_data.client_uuid
 			LEFT JOIN static_image_names ON hardware_data.system_model = static_image_names.image_platform_model
 			WHERE (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
-			ORDER BY jobstats.client_uuid, jobstats.time DESC NULLS LAST
+			GROUP BY jobstats.time, jobstats.client_uuid, static_image_names.image_version, jobstats.erase_completed, jobstats.clone_completed
+			ORDER BY jobstats.client_uuid, jobstats.time DESC NULLS LAST) t1 WHERE t1.row_num = 1
 		),
 		most_recent_checkout AS (
 			SELECT DISTINCT ON (client_uuid)
@@ -2095,4 +2098,104 @@ func SelectCheckoutData(ctx context.Context, tag *int64) (*types.CheckoutData, e
 	}
 
 	return &checkoutData, nil
+}
+
+func SelectClientInfo(ctx context.Context, clientInfo *types.ClientInfoResponse) (*types.ClientInfoResponse, error) {
+	const sqlCode = `
+	WITH os_installed_table AS (
+			SELECT * FROM (
+			SELECT
+				ROW_NUMBER() OVER (PARTITION BY jobstats.client_uuid ORDER BY jobstats.time DESC NULLS LAST) AS "row_num",
+				jobstats.time,
+				jobstats.client_uuid,
+				static_image_names.image_version,
+				(CASE WHEN jobstats.erase_completed IS TRUE AND NOT jobstats.clone_completed IS DISTINCT FROM TRUE THEN FALSE ELSE TRUE END) AS "os_installed"
+			FROM jobstats
+			LEFT JOIN hardware_data ON jobstats.client_uuid = hardware_data.client_uuid
+			LEFT JOIN static_image_names ON hardware_data.system_model = static_image_names.image_platform_model
+			WHERE (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
+			GROUP BY jobstats.time, jobstats.client_uuid, static_image_names.image_version, jobstats.erase_completed, jobstats.clone_completed
+			ORDER BY jobstats.client_uuid, jobstats.time DESC NULLS LAST) t1 WHERE t1.row_num = 1
+	)
+	SELECT 
+		ids.tagnumber,
+		ids.system_serial,
+		ids.uuid,
+		locations.time AS "locations_time",
+		locations.location,
+		locations.building,
+		locations.room,
+		locations.department_name,
+		locations.property_custodian,
+		locations.acquired_date,
+		locations.retired_date,
+		locations.client_status,
+		locations.is_broken,
+		locations.disk_removed,
+		locations.note,
+		jobstats.time AS "jobstats_time",
+		jobstats.clone_completed,
+		jobstats.clone_time,
+		jobstats.clone_image_name,
+		jobstats.erase_completed,
+		jobstats.erase_time
+		jobstats.erase_mode,
+		checkout_log.checkout_bool,
+		checkout_log.checkout_date,
+		checkout_log.return_date,
+		checkout_log.customer_name,
+		COUNT(client_images.file_name),
+		os_info.time AS "os_info_time",
+		os_installed_table.os_installed,
+		COALESCE(os_info.os_name, os_installed_table.image_version) AS "os_name",
+		os_info.os_version,
+		COALESCE(os_info.ad_computer_name, os_info.computer_name) AS "computer_name",
+		locations.ad_domain AS "ou_name",
+		os_info.ad_admin_users,
+		os_info.is_intune_joined,
+		os_info.is_bitlocker_enabled,
+		historical_hardware_data.time AS "historical_hardware_data_time",
+		(historical_hardware_data.disk_writes_kb / static_disk_stats.disk_tbw * 100)::decimal AS "disk_health_pcnt",
+		(historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100)::decimal AS "battery_health_pcnt",
+		hardware_data.device_type,
+		historical_firmware_data.bios_version,
+		historical_firmware_data.bios_release_date,
+		hardware_data.ethernet_mac,
+		hardware_data.wifi_mac,
+		hardware_data.tpm_version,
+		historical_hardware_data.disk_model,
+		static_disk_stats.disk_type,
+		historical_hardware_data.disk_size_kb,
+		historical_hardware_data.disk_serial,
+		historical_hardware_data.disk_writes_kb,
+		historical_hardware_data.disk_reads_kb,
+		historical_hardware_data.disk_power_on_hours,
+		historical_hardware_data.disk_errors,
+		historical_hardware_data.disk_power_cycle_count,
+		historical_hardware_data.disk_firmware,
+		historical_hardware_data.battery_manufacturer,
+		historical_hardware_data.battery_model,
+		historical_hardware_data.battery_serial,
+		historical_hardware_data.battery_manufacture_date,
+		historical_hardware_data.battery_design_capacity,
+		historical_hardware_data.battery_current_max_capacity,
+		historical_hardware_data.battery_charge_cycles,
+		historical_hardware_data.memory_serial,
+		historical_hardware_data.memory_capacity_kb,
+		historical_hardware_data.memory_speed_mhz,
+		hardware_data.system_manufacturer,
+		hardware_data.system_model,
+		hardware_data.system_sku,
+		hardware_data.cpu_manufacturer,
+		hardware_data.cpu_model,
+		hardware_data.cpu_max_speed_mhz,
+		hardware_data.cpu_core_count,
+		hardware_data.cpu_thread_count
+	FROM ids
+
+	
+	;`
+
+	response := new(types.ClientInfoResponse)
+	return response, nil
 }
