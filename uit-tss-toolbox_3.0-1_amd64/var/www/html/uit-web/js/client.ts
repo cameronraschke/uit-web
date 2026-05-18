@@ -126,7 +126,6 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	updateInventoryURL.searchParams.set('tagnumber', data.Tagnumber?.toString() ?? '');
 	updateInventoryURL.searchParams.set('update', 'true');
 	updateInventoryLink.href = updateInventoryURL.toString();
-	updateInventoryLink.target = '_blank';
 	updateInventoryLink.appendChild(updateInventoryButton);
 	clientActionsContainer.appendChild(updateInventoryLink);
 

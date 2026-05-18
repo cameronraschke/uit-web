@@ -142,7 +142,7 @@ async function submitInventoryLookup() {
 			}
 
 			if (validateTagInput(lookupResult.tagnumber) && validateSerialInput(lookupResult.system_serial)) {
-				await populateLocationForm(lookupResult.tagnumber ? lookupResult.tagnumber : undefined, lookupResult.system_serial ? lookupResult.system_serial : undefined);
+				await populateLocationForm(lookupResult.tagnumber ?? undefined, lookupResult.system_serial ?? undefined);
 			}
 		} else {
 			clientLookupWarningMessage.style.display = "block";
@@ -1051,7 +1051,9 @@ if (updateForm) {
 				await uploadJSONFile(jsonFile);
 			}
 			resetJSONUpload();
-			await populateLocationForm(returnedJson.tagnumber, undefined);
+			clientLookupTagInput.value = returnedJson.tagnumber ? String(returnedJson.tagnumber) : '';
+			clientLookupSerial.value = returnedJson.system_serial || '';
+			await submitInventoryLookup();
 			await renderInventoryTable();
 		} catch (error) {
 			console.error("Error updating inventory:", error);
