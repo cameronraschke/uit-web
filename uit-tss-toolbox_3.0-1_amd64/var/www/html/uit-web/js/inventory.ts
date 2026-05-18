@@ -160,7 +160,7 @@ async function submitInventoryLookup() {
 		}
 		// Set 'update' parameter in URL
 		searchParams.set('update', 'true');
-		history.replaceState(null, '', window.location.pathname + '?' + searchParams.toString());
+		history.pushState(null, '', window.location.pathname + '?' + searchParams.toString());
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		console.error("Error during inventory lookup: " + errorMessage);
@@ -231,10 +231,10 @@ function resetInventoryLookupAndUpdateForm() {
 
 function resetInventorySearchQuery() {
 	const url = new URL(window.location.pathname, window.location.origin);
-	url.searchParams.delete('tagnumber');
-	url.searchParams.delete('system_serial');
-	url.searchParams.delete('update');
-	history.replaceState(null, '', url.toString());
+	setURLParameter('tagnumber', null);
+	setURLParameter('system_serial', null);
+	setURLParameter('update', null);
+	history.pushState(null, '', url.toString());
 }
 
 async function getLocationFormData(tag?: number, serial?: string): Promise<InventoryFormPrefill | null> {

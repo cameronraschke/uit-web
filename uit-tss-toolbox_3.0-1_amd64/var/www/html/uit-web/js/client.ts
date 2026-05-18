@@ -138,7 +138,6 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	const imageViewURL = new URL('client_images', window.location.origin);
 	imageViewURL.searchParams.set('tagnumber', data.Tagnumber?.toString() ?? '');
 	imageViewLink.href = imageViewURL.toString();
-	imageViewLink.target = '_blank';
 	imageViewLink.appendChild(imageViewButton);
 	clientActionsContainer.appendChild(imageViewLink);
 
