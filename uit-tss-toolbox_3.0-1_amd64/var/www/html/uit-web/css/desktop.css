@@ -766,3 +766,14 @@ td > div.flex-container {
 	border-right: var(--border-width) solid var(--default-border-color);
 	border-top-right-radius: var(--border-radius);
 }
+
+.hover-link {
+	color: var(--text-color);
+	text-decoration: underline;
+	transition: color 0.1s ease, text-decoration 0.1s ease;
+}
+
+.hover-link:hover {
+	color: var(--accent-color);
+	text-decoration: underline;
+}

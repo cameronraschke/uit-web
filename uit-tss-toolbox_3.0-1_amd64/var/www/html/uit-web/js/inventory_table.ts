@@ -164,21 +164,21 @@ async function renderInventoryTable() {
 			const actionsCell = document.createElement('td');
 			actionsCell.classList.add('flex-container', 'horizontal', 'centered');
 			const actionsContainer = document.createElement('div');
-			const tagAnchor = document.createElement('a');
+			const editAnchor = document.createElement('a');
 			const editButton = document.createElement('button');
 			const imagesAnchor = document.createElement('a');
 			const viewImagesButton = document.createElement('button');
 
 			actionsContainer.classList.add('flex-container', 'vertical', 'centered');
-			tagAnchor.classList.add('smaller-text');
+			editAnchor.classList.add('smaller-text');
 			editButton.classList.add('svg-button', 'edit');
 			viewImagesButton.classList.add('svg-button', 'photo-album');
 
-			const tagURL = new URL(window.location.href);
-			tagURL.searchParams.set('tagnumber', tagnumber);
-			tagURL.searchParams.set('system_serial', systemSerial);
-			tagURL.searchParams.set('update', 'true');
-			tagAnchor.href = tagURL.toString();
+			const editURL = new URL(window.location.href);
+			editURL.searchParams.set('tagnumber', tagnumber);
+			editURL.searchParams.set('system_serial', systemSerial);
+			editURL.searchParams.set('update', 'true');
+			editAnchor.href = editURL.toString();
 
 			const imagesURL = new URL(`client_images?tagnumber=${tagnumber}`, window.location.origin);
 			imagesAnchor.target = '_blank';
@@ -193,9 +193,9 @@ async function renderInventoryTable() {
 				viewImagesButton.style.backgroundColor = "var(--transparent-accent-color)";
 			}
 
-			tagAnchor.appendChild(editButton);
+			editAnchor.appendChild(editButton);
 			imagesAnchor.appendChild(viewImagesButton);
-			actionsContainer.appendChild(tagAnchor);
+			actionsContainer.appendChild(editAnchor);
 			actionsContainer.appendChild(imagesAnchor);
 
 			if (inventoryRow.checkout_bool === true) {
@@ -221,7 +221,13 @@ async function renderInventoryTable() {
 			
 			// Tag number
 			const tagSpan = document.createElement('span');
-			tagSpan.appendChild(document.createTextNode(tagnumber));
+			const tagAnchor = document.createElement('a');
+			tagAnchor.classList.add('hover-link');
+			const tagURL = new URL(`client?tagnumber=${tagnumber}`, window.location.origin);
+			tagAnchor.href = tagURL.toString();
+			tagAnchor.target = '_blank';
+			tagAnchor.appendChild(document.createTextNode(tagnumber));
+			tagSpan.appendChild(tagAnchor);
 			// Tooltip to show errors
 			if (inventoryRow.client_configuration_errors && inventoryRow.client_configuration_errors.length > 0) {
 				const tooltipIndicator = document.createElement('img');
