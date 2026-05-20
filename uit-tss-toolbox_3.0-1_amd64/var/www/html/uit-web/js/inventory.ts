@@ -50,23 +50,23 @@ function searchAndSortLocations(inputElement: HTMLInputElement | null, data: Arr
 		})
 		.map(entry => ({
 			location: entry.location!,
-			location_formatted: entry.location_formatted ? entry.location_formatted : entry.location!,
+			location_formatted: entry.location_formatted && typeof entry.location_formatted === 'string' ? entry.location_formatted : entry.location!,
 		}))
 		.slice(0, 10);
 }
 
-async function fetchIDLookup(tagnumber: number | null, serial: string | null): Promise<ClientLookupResult | null> {
-   if (!validateTagInput(tagnumber) && !validateSerialInput(serial)) {
+async function fetchIDLookup(tag: number | null, serial: string | null): Promise<ClientLookupResult | null> {
+   if (tag !== null && !validateTagInput(tag) && !validateSerialInput(serial)) {
     console.log("No tag or serial provided");
     return null;
   }
+	const tagnumber = tag;
+	
   try {
 		const query = new URLSearchParams();
-		if (tagnumber !== null && validateTagInput(tagnumber)) {
-			query.append('tagnumber', tagnumber.toString());
-		} else if (serial !== null && validateSerialInput(serial)) {
-			query.append('system_serial', serial);
-		}
+		query.append('tagnumber', tagnumber.toString());
+		query.append('system_serial', serial);
+
     const data = await fetchData(`/api/client/lookup_ids?${query.toString()}`);
     if (!data) {
       console.log('No data returned from /api/client/lookup_ids');
