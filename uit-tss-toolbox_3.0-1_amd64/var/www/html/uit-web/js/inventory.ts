@@ -56,16 +56,15 @@ function searchAndSortLocations(inputElement: HTMLInputElement | null, data: Arr
 }
 
 async function fetchIDLookup(tag: number | null, serial: string | null): Promise<ClientLookupResult | null> {
-   if (tag !== null && !validateTagInput(tag) && !validateSerialInput(serial)) {
+   if (!validateTagInput(tag) && !validateSerialInput(serial)) {
     console.log("No tag or serial provided");
     return null;
   }
-	const tagnumber = tag;
-	
+
   try {
 		const query = new URLSearchParams();
-		query.append('tagnumber', tagnumber.toString());
-		query.append('system_serial', serial);
+		query.append('tagnumber', tag !== null ? tag.toString() : '');
+		query.append('system_serial', serial !== null ? serial : '');
 
     const data = await fetchData(`/api/client/lookup_ids?${query.toString()}`);
     if (!data) {
