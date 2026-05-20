@@ -56,31 +56,31 @@ function getSortedLocations(inputElement: HTMLInputElement, data: Array<AllLocat
 }
 
 async function lookupTagOrSerial(tagnumber: number | null, serial: string | null): Promise<ClientLookupResult | null> {
-   if (tagnumber === null && (serial === null || serial.trim() === "")) {
+   if (!validateTagInput(tagnumber) && !validateSerialInput(serial)) {
     console.log("No tag or serial provided");
     return null;
   }
   try {
 		const query = new URLSearchParams();
 		if (tagnumber !== null && validateTagInput(tagnumber)) {
-			query.append("tagnumber", tagnumber.toString());
-		} else if (serial !== null) {
-			query.append("system_serial", serial);
+			query.append('tagnumber', tagnumber.toString());
+		} else if (serial !== null && validateSerialInput(serial)) {
+			query.append('system_serial', serial);
 		}
     const data = await fetchData(`/api/client/lookup_ids?${query.toString()}`);
     if (!data) {
-      console.log("No data returned from /api/client/lookup_ids");
+      console.log('No data returned from /api/client/lookup_ids');
 			return null;
     }
 		const jsonResponse: ClientLookupResult = data as ClientLookupResult;
-		if (!jsonResponse || (jsonResponse.tagnumber === null && jsonResponse.system_serial === null)) {
-			console.log("No data found for provided tag or serial");
+		if (!validateTagInput(jsonResponse.tagnumber) && !validateSerialInput(jsonResponse.system_serial)) {
+			console.log("Invalid data returned for provided tag or serial");
 			return null;
 		}
     return jsonResponse;
   } catch(error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.log("Error getting tag/serial: " + errorMessage);
+    console.log("Error looking up tag or serial: " + errorMessage);
 		return null;
   }
 }
