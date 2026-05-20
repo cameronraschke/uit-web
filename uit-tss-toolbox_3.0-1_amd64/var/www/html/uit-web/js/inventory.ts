@@ -22,8 +22,8 @@ async function fetchAllLocations(purgeCache: boolean = false): Promise<AllLocati
 	}
 }
 
-function getSortedLocations(inputElement: HTMLInputElement, data: Array<AllLocations>): Array<{ location: string, location_formatted: string | null }> {
-	if (!inputElement || !data || data.length === 0) {
+function searchAndSortLocations(inputElement: HTMLInputElement | null, data: Array<AllLocations>): Array<{ location: string, location_formatted: string}> {
+	if (inputElement === null || data.length === 0) {
 		return [];
 	}
 
@@ -50,7 +50,7 @@ function getSortedLocations(inputElement: HTMLInputElement, data: Array<AllLocat
 		})
 		.map(entry => ({
 			location: entry.location!,
-			location_formatted: entry.location_formatted
+			location_formatted: entry.location_formatted ? entry.location_formatted : entry.location!,
 		}))
 		.slice(0, 10);
 }
@@ -1327,7 +1327,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 if (locationEl) {
 	locationEl.addEventListener("keyup", async () => {
 		const allLocations = await fetchAllLocations();
-		const searchResults = getSortedLocations(locationEl, allLocations);
+		const searchResults = searchAndSortLocations(locationEl, allLocations);
 		const dataListElement = document.getElementById('location-suggestions') as HTMLDataListElement;
 		dataListElement.innerHTML = '';
 		searchResults.forEach(item => {
