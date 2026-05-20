@@ -422,7 +422,7 @@ function base64ToJson(inputStr: string) {
 }
 
 async function fetchData(url: string, returnText = false, fetchOptions: RequestInit = {}): Promise<any> {
-	if (!url || url.trim().length === 0) {
+	if (url.trim().length === 0) {
 		throw new Error("No URL specified for fetchData");
 	}
 
@@ -430,16 +430,6 @@ async function fetchData(url: string, returnText = false, fetchOptions: RequestI
 	headers.append('Content-Type', 'application/x-www-form-urlencoded');
 
   try {
-		// Try to add bearer token, but do not fail the request if not found.
-		// try {
-		// 	const bearerToken = await getKeyFromIndexDB("bearerToken");
-		// 	if (bearerToken) {
-		// 		headers.append('Authorization', 'Bearer ' + bearerToken);
-		// 	}
-		// } catch (tokenErr) {
-		// 	console.warn("Bearer token not available; proceeding with cookies only", tokenErr);
-		// }
-
     const response = await fetch(url, {
       method: 'GET',
       headers: headers,
@@ -453,15 +443,12 @@ async function fetchData(url: string, returnText = false, fetchOptions: RequestI
     }
     if (!response.ok) {
 			if (response.status === 401 || response.status === 403) {
-				console.warn("Unauthorized response from server, redirecting to logout");
-				window.location.href = "/logout";
+				console.warn('Unauthorized response from server, redirecting to logout');
+				window.location.href = '/logout';
 				return;
 			}
       throw new Error(`Error fetching data: ${url} ${response.status}`);
     }
-    // if (!response.headers || !response.headers.get('Content-Type') || !response.headers.get('Content-Type').includes('application/json')) {
-    //   throw new Error('Response is undefined or not JSON');
-    // }
 
     const textData = await response.text();
     

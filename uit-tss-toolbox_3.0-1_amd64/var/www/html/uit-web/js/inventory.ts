@@ -1,16 +1,16 @@
-async function fetchAllLocations(purgeCache: boolean = false): Promise<AllLocations[] | []> {
-	const cached = sessionStorage.getItem("uit_all_locations");
+async function fetchAllLocations(purgeCache: boolean = false): Promise<AllLocations[]> {
+	const cachedLocationData = sessionStorage.getItem("uit_all_locations");
 
 	try {
-		if (cached && !purgeCache) {
-			const cacheEntry: AllLocationsCache = JSON.parse(cached);
-			if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.locations)) {
-				console.log("Loaded all locations from cache");
+		if (cachedLocationData !== null && !purgeCache) {
+			const cacheEntry: AllLocationsCache = JSON.parse(cachedLocationData);
+			if (Date.now() - cacheEntry.timestamp < 30000 && Array.isArray(cacheEntry.locations)) {
+				// console.log("Loaded all locations from cache");
 				return cacheEntry.locations;
 			}
 		}
 		const data: AllLocations[] = await fetchData('/api/overview/all_locations', false);
-		if (!data || !Array.isArray(data)) {
+		if (!data || !Array.isArray(data) || data.length === 0) {
 			throw new Error("No data returned from /api/overview/all_locations");
 		}
 		sessionStorage.setItem("uit_all_locations", JSON.stringify({ timestamp: Date.now(), locations: data }));
@@ -55,7 +55,7 @@ function getSortedLocations(inputElement: HTMLInputElement, data: Array<AllLocat
 		.slice(0, 10);
 }
 
-async function lookupTagOrSerial(tagnumber: number | null, serial: string | null): Promise<ClientLookupResult | null> {
+async function fetchIDLookup(tagnumber: number | null, serial: string | null): Promise<ClientLookupResult | null> {
    if (!validateTagInput(tagnumber) && !validateSerialInput(serial)) {
     console.log("No tag or serial provided");
     return null;
@@ -109,7 +109,7 @@ async function submitInventoryLookup() {
 	}
 
 	try {
-		const lookupResult: ClientLookupResult | null = await lookupTagOrSerial(lookupTag, lookupSerial);
+		const lookupResult: ClientLookupResult | null = await fetchIDLookup(lookupTag, lookupSerial);
 
 		if (lookupResult !== null && (lookupResult.tagnumber !== null || (lookupResult.system_serial && lookupResult.system_serial.trim() !== ""))) {
 			if (lookupResult.tagnumber && !isNaN(Number(lookupResult.tagnumber))) {
@@ -839,21 +839,18 @@ async function initializeInventoryPage() {
 		initializeAdvSearchListeners([param]);
 		const rawParamValue = urlParams.get(paramName);
 		if (!rawParamValue) {
-			param.inputElement.dataset.initialValue = "";
+			param.inputElement.dataset.initialValue = '';
 			if (param.negationElement) param.negationElement.checked = false;
 			continue;
 		}
 
 		const decodedParam = base64ToJson(rawParamValue);
-		if (decodedParam && typeof decodedParam === "object" && Object.prototype.hasOwnProperty.call(decodedParam, "param_value")) {
-			param.inputElement.dataset.initialValue = decodedParam.param_value !== null && decodedParam.param_value !== undefined ? String(decodedParam.param_value) : "";
+		if (decodedParam && typeof decodedParam === 'object' && Object.prototype.hasOwnProperty.call(decodedParam, 'param_value')) {
+			param.inputElement.dataset.initialValue = decodedParam.param_value !== null && decodedParam.param_value !== undefined ? String(decodedParam.param_value) : '';
 			if (param.negationElement) param.negationElement.checked = decodedParam.not === true;
 			continue;
 		}
-
-		// Fallback for legacy plain query values.
 		param.inputElement.dataset.initialValue = rawParamValue;
-		if (param.negationElement) param.negationElement.checked = false;
 	}
 	if (filterManufacturer) {
 		syncModelFilterAvailability();

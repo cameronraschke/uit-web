@@ -57,15 +57,20 @@ function handleAdvSearchInputChange(filterEls: AdvSearchFilterElement[]) {
 }
 
 function syncModelFilterAvailability(): void {
-	if (!filterModel || !filterModelNegation || !filterManufacturer) return;
+	if (!filterModel || !filterModelNegation || !filterManufacturer || !filterManufacturerNegation) {
+		console.warn("One or more filter elements not found, cannot sync model filter availability");
+		return;
+	}
 
-	const hasManufacturer = filterManufacturer.value.trim().length > 0;
-	filterModel.disabled = !hasManufacturer;
-	filterModel.classList.toggle('disabled', !hasManufacturer);
-	filterModelNegation.disabled = !hasManufacturer;
-
-	if (!hasManufacturer) {
+	// if manufacture filter has a value, enable model filter
+	if (filterManufacturer.value.trim().length > 0) {
+		filterModel.disabled = false;
+		filterModel.classList.remove('disabled');
+	} else {
+		filterModel.disabled = true;
+		filterModel.classList.add('disabled');
 		filterModelNegation.checked = false;
+		filterModelNegation.disabled = true;
 	}
 }
 
@@ -515,10 +520,11 @@ async function populateLocationSelect(el: HTMLSelectElement, purgeCache: boolean
 		}
 
 		el.value = (initialValue && locationData.some(item => initialValue === item.location || initialValue === item.location_formatted)) ? initialValue : '';
-
-		el.disabled = false;
+		
 	}	catch (error) {
 		console.error('Error fetching locations:', error);
+	} finally {
+		el.disabled = false;
 	}
 }
 
