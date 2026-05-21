@@ -1,10 +1,10 @@
-async function fetchAllLocations(purgeCache: boolean = false): Promise<AllLocations[]> {
+async function fetchAllLocations(purgeCache: boolean = false): Promise<AllLocations[] | null> {
 	const cachedLocationData = sessionStorage.getItem("uit_all_locations");
 
 	try {
 		if (cachedLocationData !== null && !purgeCache) {
 			const cacheEntry: AllLocationsCache = JSON.parse(cachedLocationData);
-			if (Date.now() - cacheEntry.timestamp < 30000 && Array.isArray(cacheEntry.locations)) {
+			if (Date.now() - cacheEntry.timestamp < thirtySeconds && Array.isArray(cacheEntry.locations)) {
 				// console.log("Loaded all locations from cache");
 				return cacheEntry.locations;
 			}
@@ -18,12 +18,12 @@ async function fetchAllLocations(purgeCache: boolean = false): Promise<AllLocati
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		console.error("Error fetching all locations:", errorMessage);
-		return [];
+		return null;
 	}
 }
 
 function searchAndSortLocations(inputElement: HTMLInputElement | null, data: Array<AllLocations>): Array<{ location: string, location_formatted: string}> {
-	if (inputElement === null || data.length === 0) {
+	if (inputElement === null || !data || !Array.isArray(data) || data.length === 0) {
 		return [];
 	}
 
@@ -1326,6 +1326,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 if (locationEl) {
 	locationEl.addEventListener("keyup", async () => {
 		const allLocations = await fetchAllLocations();
+		if (!allLocations || !Array.isArray(allLocations)) {
+			console.error("Invalid locations data");
+			return;
+		}
 		const searchResults = searchAndSortLocations(locationEl, allLocations);
 		const dataListElement = document.getElementById('location-suggestions') as HTMLDataListElement;
 		dataListElement.innerHTML = '';

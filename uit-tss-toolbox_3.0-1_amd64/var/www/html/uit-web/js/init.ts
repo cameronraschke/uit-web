@@ -32,6 +32,9 @@ type DeviceTypeCache = {
 };
 
 const inputCSSClasses = ["empty-input", "empty-required-input", "changed-input", "readonly-input"];
+const thirtySeconds = 30 * 1000; // 30 seconds in milliseconds
+const oneMinute = 60 * 1000; // 1 minute in milliseconds
+const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 function truncateString(inputStr: string, maxLength: number): { truncatedString: string, isTruncated: boolean } {
 	const str = inputStr ? inputStr.trim() : "";
