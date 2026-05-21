@@ -499,8 +499,8 @@ async function populateLocationSelect(el: HTMLSelectElement, purgeCache: boolean
 
 	el.disabled = true;
 	try {
-		const locationData: Array<AllLocations> = await fetchAllLocations(purgeCache);
-		if (!locationData || !Array.isArray(locationData) || locationData.length === 0) {
+		const locationData = await fetchAllLocations(purgeCache);
+		if (locationData === null || !Array.isArray(locationData) || locationData.length === 0) {
 			throw new Error('No data returned from /api/overview/all_locations (populateLocationSelect)');
 		}
 		locationData.sort((a, b) => { // alpahbetical here, not by timestamp
