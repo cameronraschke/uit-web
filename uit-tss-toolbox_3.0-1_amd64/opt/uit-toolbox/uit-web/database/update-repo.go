@@ -2495,13 +2495,13 @@ func UpsertJobStats(ctx context.Context, JobStatsDTO *types.JobStatsDTO) (err er
 		system_serial = COALESCE(EXCLUDED.system_serial, jobstats.system_serial),
 		time = COALESCE(EXCLUDED.time, jobstats.time),
 		disk = COALESCE(EXCLUDED.disk, jobstats.disk),
-		job_cancelled = COALESCE(EXCLUDED.job_cancelled, jobstats.job_cancelled),
-		erase_completed = COALESCE(EXCLUDED.erase_completed, jobstats.erase_completed),
+		job_cancelled = COALESCE(EXCLUDED.job_cancelled, jobstats.job_cancelled, FALSE),
+		erase_completed = COALESCE(EXCLUDED.erase_completed, jobstats.erase_completed, FALSE),
 		erase_mode = COALESCE(EXCLUDED.erase_mode, jobstats.erase_mode),
 		erase_diskpercent = COALESCE(EXCLUDED.erase_diskpercent, jobstats.erase_diskpercent),
 		erase_time = COALESCE(EXCLUDED.erase_time, jobstats.erase_time),
-		clone_completed = COALESCE(EXCLUDED.clone_completed, jobstats.clone_completed),
-		clone_master = COALESCE(EXCLUDED.clone_master, jobstats.clone_master),
+		clone_completed = COALESCE(EXCLUDED.clone_completed, jobstats.clone_completed, FALSE),
+		clone_master = COALESCE(EXCLUDED.clone_master, jobstats.clone_master, FALSE),
 		clone_image = COALESCE(EXCLUDED.clone_image, jobstats.clone_image),
 		clone_time = COALESCE(EXCLUDED.clone_time, jobstats.clone_time)
 	;`
