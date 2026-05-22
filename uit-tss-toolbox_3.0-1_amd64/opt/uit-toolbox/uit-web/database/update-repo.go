@@ -817,7 +817,7 @@ func SetAllOnlineClientJobs(ctx context.Context, clientJob string) (err error) {
 		SET 
 			job_name = $1 
 		WHERE 
-			CURRENT_TIMESTAMP - last_heard < INTERVAL '30 SECONDS' 
+			CURRENT_TIMESTAMP - last_heard < INTERVAL '10 SECONDS' 
 			AND job_active = FALSE 
 			AND job_queued = FALSE
 	;`
@@ -1391,7 +1391,7 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckSQL,
 		toNullString(healthCheck.TransactionUUID),
-			clientUUID,
+		clientUUID,
 		ptrToNullTime(healthCheck.LastHardwareCheck),
 	)
 	if err != nil {

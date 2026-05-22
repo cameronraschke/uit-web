@@ -481,8 +481,8 @@ func (repo *SelectRepo) GetJobQueueOverview(ctx context.Context) (*types.JobQueu
 
 	const sqlQuery = `SELECT t1.total_queued_jobs, t2.total_active_jobs, t3.total_active_blocking_jobs
 	FROM 
-	(SELECT COUNT(*) AS total_queued_jobs FROM job_queue WHERE job_queued = TRUE AND job_name IS NOT NULL AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_heard)) < 30) AS t1,
-	(SELECT COUNT(*) AS total_active_jobs FROM job_queue WHERE job_queued = TRUE AND job_name IS NOT NULL AND job_active = TRUE AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_heard)) < 30) AS t2,
+	(SELECT COUNT(*) AS total_queued_jobs FROM job_queue WHERE job_queued = TRUE AND job_name IS NOT NULL AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_heard)) < 10) AS t1,
+	(SELECT COUNT(*) AS total_active_jobs FROM job_queue WHERE job_queued = TRUE AND job_name IS NOT NULL AND job_active = TRUE AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_heard)) < 10) AS t2,
 	(SELECT COUNT(*) AS total_active_blocking_jobs FROM job_queue WHERE job_queued = TRUE AND job_active = FALSE AND job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')) AS t3;`
 
 	var jobQueueOverview types.JobQueueOverview
@@ -1375,7 +1375,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		WHERE 
 			(job_queued = TRUE OR job_name IS NOT NULL)
 			AND job_queue.last_heard IS NOT NULL
-			AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.last_heard)) < 30
+			AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.last_heard)) < 10
 	)
 	SELECT
 		locations.tagnumber,
@@ -1393,7 +1393,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		job_queue.last_heard,
 		job_queue.system_uptime,
 		job_queue.client_app_uptime,
-		(CASE WHEN EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.last_heard)) < 30 THEN TRUE ELSE FALSE END) AS "online",
+		(CASE WHEN EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.last_heard)) < 10 THEN TRUE ELSE FALSE END) AS "online",
 		job_queue.job_active,
 		job_queue.job_queued,
 		job_queue.job_queued_at,
