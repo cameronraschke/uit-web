@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS jobstats (
 	clone_master BOOLEAN DEFAULT FALSE,
 	clone_time SMALLINT DEFAULT NULL,
 	job_cancelled BOOLEAN DEFAULT FALSE,
-	host_connected BOOLEAN DEFAULT FALSE,
+	host_connected BOOLEAN DEFAULT FALSE, -- unused
 
 	CONSTRAINT jobstats_valid_tag
 		CHECK (tagnumber > 100000 AND tagnumber < 999999),
