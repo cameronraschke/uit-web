@@ -14,6 +14,7 @@ ROOT_CRT=/usr/local/share/ca-certificates/uit-ca.crt
 INT_CFG=/etc/uit-toolbox/certs.d/uit-intermediate.cfg
 INT_KEY=/usr/local/share/ca-certificates/uit-ca-intermediate.key
 INT_CRT=/usr/local/share/ca-certificates/uit-ca-intermediate.crt
+INT_CSR=/etc/uit-toolbox/ca-certificates/uit-intermediate.csr
 WWW_CFG=/etc/uit-toolbox/certs.d/uit-web.cfg
 WWW_KEY=/usr/local/share/ca-certificates/uit-web.key
 WWW_CRT=/usr/local/share/ca-certificates/uit-web.crt
@@ -39,9 +40,10 @@ if [[ $1 == "--update-intermediate" ]]; then
 		exit 1
 	fi
 	echo "Creating/replacing intermediate CA..."
-	rm -f "${INT_KEY}" "${INT_CRT}"
+	rm -f "${INT_KEY}" "${INT_CRT}" "${INT_CSR}"
 	certtool --generate-privkey --sec-param High --key-type=ecdsa --outfile "${INT_KEY}"
-	certtool --generate-certificate --load-privkey "${INT_KEY}" --template "${INT_CFG}" --load-ca-certificate "${ROOT_CRT}" --load-ca-privkey "${ROOT_KEY}" --outfile "${INT_CRT}"
+	certtool --generate-request --load-privkey "${INT_KEY}" --template "${INT_CFG}" --outfile "${INT_CSR}"
+	certtool --generate-certificate --load-privkey "${INT_KEY}" --template "${INT_CFG}" --load-ca-certificate "${ROOT_CRT}" --load-ca-privkey "${ROOT_KEY}" --load-request "${INT_CSR}" --outfile "${INT_CRT}"
 	chown root:root "${INT_KEY}"
 	chmod 600 "${INT_KEY}"
 	chown root:root "${INT_CRT}"
