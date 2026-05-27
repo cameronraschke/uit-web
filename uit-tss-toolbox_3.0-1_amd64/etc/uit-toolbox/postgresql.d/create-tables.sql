@@ -292,7 +292,7 @@ VALUES
 	('HP ProBook 450 G6', 'R71 Ver. 01.33.00'),
 	('Dell Pro Slim Plus QBS1250', '1.6.2'),
 	('Latitude 7400', '1.43.0'),
-	('OptiPlex 7000', '1.39.0'),
+	('OptiPlex 7000', '1.39.1'),
 	('Latitude 7420', '1.48.0'),
 	('Latitude 3500', '1.36.0'),
 	('Latitude 3560', 'A19'),
