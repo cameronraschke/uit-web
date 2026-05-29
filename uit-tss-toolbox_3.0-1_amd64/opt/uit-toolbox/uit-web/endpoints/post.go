@@ -999,7 +999,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		fullFilePath := filepath.Join(imageDirectoryPath, fileName)
-		if err := os.WriteFile(fullFilePath, fileBytes, 0640); err != nil {
+		if err := os.WriteFile(fullFilePath, fileBytes, 0644); err != nil {
 			log.Error("Failed to save uploaded file '" + fullFilePath + "': " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
