@@ -983,9 +983,9 @@ if (updateForm) {
 			formObj.customer_name = getElementStringValue(customerNameUpdate);
 			formObj.checkout_bool =
     		formObj.checkout_date !== null &&
-    		formObj.checkout_date.getTime() < Date.now() &&
+    		formObj.return_date !== null &&
     		formObj.customer_name !== null &&
-    		formObj.customer_name.trim() !== "";
+				formObj.customer_name.trim() !== "";
 			formObj.return_date = getElementDateValue(returnDateUpdate, true);
 			formObj.note = getElementStringValue(noteUpdate);
 			// const jsonBase64 = jsonToBase64(JSON.stringify(formObj));
