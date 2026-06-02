@@ -134,10 +134,16 @@ type InventoryTableRow = {
 	note: string | "";
 	last_updated: string | "";
 	file_count: number | null;
-	client_configuration_errors: string[] | null;
 	disk_removed: boolean | null;
 	checkout_bool: boolean | null;
+	client_configuration_errors: ClientConfigErrorMessageResponse[] | null;
 };
+
+type ClientConfigErrorMessageResponse = {
+	error_level: string | null;
+	error_type: string | null;
+	error_message: string | null;
+}
 
 type AllBuildingsAndRooms = {
 	building_name: string | null;

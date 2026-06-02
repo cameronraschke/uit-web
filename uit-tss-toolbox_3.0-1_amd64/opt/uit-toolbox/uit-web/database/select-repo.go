@@ -1144,7 +1144,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			results[i].DeviceType == nil ||
 			results[i].Department == nil ||
 			results[i].Status == nil {
-			missingRequiredInfo := types.MissingRequiredInfo.String()
+			missingRequiredInfo := types.MissingRequiredHardwareInfo.ToConfigErrorResponse()
 			results[i].ClientErrors = append(results[i].ClientErrors, missingRequiredInfo)
 		}
 		// // If client is missing images of itself
@@ -1155,35 +1155,35 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		// If client is retired, only pay attention to if disk removed or not
 		if results[i].Status != nil && (*results[i].Status == "retired" || *results[i].Status == "pre-property") {
 			if results[i].DiskRemoved != nil && !*results[i].DiskRemoved {
-				diskNotRemoved := types.DiskNotRemoved.String()
+				diskNotRemoved := types.DiskNotRemoved.ToConfigErrorResponse()
 				results[i].ClientErrors = append(results[i].ClientErrors, diskNotRemoved)
 			}
 			continue
 		}
 		// If client is broken
 		if results[i].IsBroken != nil && *results[i].IsBroken {
-			isBroken := types.IsBroken.String()
+			isBroken := types.IsBroken.ToConfigErrorResponse()
 			results[i].ClientErrors = append(results[i].ClientErrors, isBroken)
 		}
 		// If no hardware check in over 3 months
 		if results[i].LastHardwareCheck == nil || (results[i].LastHardwareCheck != nil && time.Since(*results[i].LastHardwareCheck) > 90*24*time.Hour) {
-			needsHardwareCheck := types.NeedsHardwareCheck.String()
+			needsHardwareCheck := types.NeedsHardwareCheck.ToConfigErrorResponse()
 			results[i].ClientErrors = append(results[i].ClientErrors, needsHardwareCheck)
 		}
 		// If disk is removed but OS is still marked as installed (need to update OS info in DB)
 		if (results[i].DiskRemoved != nil && *results[i].DiskRemoved) && (results[i].OsInstalled == nil || (results[i].OsInstalled != nil && *results[i].OsInstalled)) {
-			osInvalidData := types.OSInvalidData.String()
+			osInvalidData := types.OSInvalidData.ToConfigErrorResponse()
 			results[i].ClientErrors = append(results[i].ClientErrors, osInvalidData)
 		}
 		// If client has status pre-property or retired status, it need to be erased
 		if results[i].Status != nil && (*results[i].Status == "pre-property" || *results[i].Status == "retired") {
 			if results[i].OsInstalled != nil && *results[i].OsInstalled {
-				needsErasing := types.NeedsErasing.String()
+				needsErasing := types.NeedsErasing.ToConfigErrorResponse()
 				results[i].ClientErrors = append(results[i].ClientErrors, needsErasing)
 			}
 			// If client has status pre-property or retired but disk is not removed
 			if results[i].DiskRemoved != nil && !*results[i].DiskRemoved {
-				diskNotRemoved := types.DiskNotRemoved.String()
+				diskNotRemoved := types.DiskNotRemoved.ToConfigErrorResponse()
 				results[i].ClientErrors = append(results[i].ClientErrors, diskNotRemoved)
 			}
 			continue
@@ -1193,12 +1193,12 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		if results[i].OsInstalled != nil && *results[i].OsInstalled {
 			// if OS name is missing (need to update OS info)
 			if results[i].OsName == nil || strings.TrimSpace(*results[i].OsName) == "" {
-				osMissing := types.OSMissingInfo.String()
+				osMissing := types.MissingRequiredSoftwareInfo.ToConfigErrorResponse()
 				results[i].ClientErrors = append(results[i].ClientErrors, osMissing)
 			}
 			// If OS version is missing (need to update OS info)
 			if results[i].OsVersion == nil || strings.TrimSpace(*results[i].OsVersion) == "" {
-				osMissingInfo := types.OSMissingInfo.String()
+				osMissingInfo := types.MissingRequiredSoftwareInfo.ToConfigErrorResponse()
 				results[i].ClientErrors = append(results[i].ClientErrors, osMissingInfo)
 			}
 			// If OS version is not the latest (need to update OS info and/or update OS)
@@ -1206,7 +1206,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 				currentVersion := strings.TrimSpace(*results[i].OsVersion)
 				latestVersion := strings.TrimSpace(*results[i].LatestOsVersion)
 				if currentVersion != "" && latestVersion != "" && currentVersion != latestVersion {
-					osOutdated := types.OSOutdated.String()
+					osOutdated := types.OSOutdated.ToConfigErrorResponse()
 					results[i].ClientErrors = append(results[i].ClientErrors, osOutdated)
 				}
 			}
@@ -1214,38 +1214,39 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			if results[i].OsName != nil && strings.Contains(strings.ToLower(*results[i].OsName), "windows") {
 				// If OS is windows but Bitlocker is not enabled
 				if results[i].IsDiskEncrypted != nil && !*results[i].IsDiskEncrypted {
-					diskNotEncryptedErr := types.DiskNotEncrypted.String()
+					diskNotEncryptedErr := types.DiskNotEncrypted.ToConfigErrorResponse()
 					results[i].ClientErrors = append(results[i].ClientErrors, diskNotEncryptedErr)
 				}
 				// If OS is windows and AD domain is nil/empty/default (WORKGROUP)
 				if results[i].ADDomain == nil || (results[i].ADDomain != nil && (strings.TrimSpace(*results[i].ADDomain) == "" || *results[i].ADDomain == "none" || strings.ToLower(*results[i].ADDomain) == "workgroup")) {
-					domainNotJoined := types.DomainNotJoined.String()
+					domainNotJoined := types.DomainNotJoined.ToConfigErrorResponse()
 					results[i].ClientErrors = append(results[i].ClientErrors, domainNotJoined)
 				} else { // If OS is windows and AD domain is valid
 					// If OS is windows and AD domain is valid but not Intune joined
 					if results[i].IsIntuneJoined != nil && !*results[i].IsIntuneJoined {
-						intuneNotEnrolled := types.InttuneNotEnrolled.String()
+						intuneNotEnrolled := types.IntuneNotEnrolled.ToConfigErrorResponse()
 						results[i].ClientErrors = append(results[i].ClientErrors, intuneNotEnrolled)
 					}
 					if results[i].AdminUsers == nil || len(*results[i].AdminUsers) < 2 {
-						adminUsersMissing := types.AdminUsersMissing.String()
+						adminUsersMissing := types.AdminUsersMissing.ToConfigErrorResponse()
 						results[i].ClientErrors = append(results[i].ClientErrors, adminUsersMissing)
 					}
 				}
 			}
 		} else { // If OS is not installed
-			osNotInstalled := types.OSNotInstalled.String()
+			osNotInstalled := types.OSNotInstalled.ToConfigErrorResponse()
 			results[i].ClientErrors = append(results[i].ClientErrors, osNotInstalled)
 			// if results[i].DiskRemoved != nil && !*results[i].DiskRemoved {
-			// 	osNotInstalled := types.OSNotInstalled.String()
+			// 	osNotInstalled := types.OSNotInstalled.ToConfigErrorResponse()
 			// 	results[i].ClientErrors = append(results[i].ClientErrors, osNotInstalled)
 			// }
 		}
 		// If BIOS out of date
 		if results[i].BIOSVersion != nil && (results[i].BIOSUpdated != nil && !*results[i].BIOSUpdated) {
-			biosOutdated := types.BIOSOutdated.String()
+			biosOutdated := types.BIOSOutdated.ToConfigErrorResponse()
 			if results[i].BIOSVersion != nil {
-				results[i].ClientErrors = append(results[i].ClientErrors, biosOutdated+": "+*results[i].BIOSVersion)
+				biosOutdated.ErrorMessage = biosOutdated.ErrorMessage + ": " + *results[i].BIOSVersion
+				results[i].ClientErrors = append(results[i].ClientErrors, biosOutdated)
 			} else {
 				results[i].ClientErrors = append(results[i].ClientErrors, biosOutdated)
 			}
