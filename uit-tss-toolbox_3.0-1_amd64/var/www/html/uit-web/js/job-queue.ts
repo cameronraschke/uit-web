@@ -626,7 +626,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		softwareInfoContainer.classList.add('grid-item');
 		const osInfo = document.createElement('p');
 		osInfo.appendChild(document.createTextNode('OS: '));
-		if (entry.os_name) {
+		if (entry.os_installed && entry.os_name !== null && entry.os_name.trim() !== '') {
 			const osNameSpan = document.createElement('span');
 			osNameSpan.appendChild(document.createTextNode(entry.os_name));
 			osInfo.appendChild(osNameSpan);
