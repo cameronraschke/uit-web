@@ -862,7 +862,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 
 		fileName := fileTimeStampFormatted + "-" + fileUUIDStr + ext
 		manifest.FileName = fileName
-		manifest.UUID = fileUUIDStr
+		manifest.FileUUID = fileUUIDStr
 
 		// Compute SHA256 hash of file
 		fileHash := crypto.SHA256.New()

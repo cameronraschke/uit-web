@@ -556,7 +556,7 @@ func UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest
 	}
 
 	if manifest == nil ||
-		strings.TrimSpace(manifest.UUID) == "" ||
+		strings.TrimSpace(manifest.FileUUID) == "" ||
 		manifest.Time.IsZero() ||
 		strings.TrimSpace(manifest.FileName) == "" ||
 		strings.TrimSpace(manifest.FilePath) == "" ||
@@ -626,7 +626,7 @@ func UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest
 	;`
 
 	sqlResult, err := tx.ExecContext(ctx, sqlCode,
-		manifest.UUID,
+		manifest.FileUUID,
 		manifest.Time,
 		manifest.Tagnumber,
 		manifest.FileName,

@@ -248,12 +248,12 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 	for _, imageManifest := range imageManifests {
 		var responseManifest = new(types.ImageManifestResponse)
 		// UUID of file
-		if imageManifest.UUID == nil || strings.TrimSpace(*imageManifest.UUID) == "" {
-			log.Warn("Image manifest UUID is nil or empty in GetClientImagesManifest")
+		if imageManifest.FileUUID == nil || strings.TrimSpace(*imageManifest.FileUUID) == "" {
+			log.Warn("Image manifest FileUUID is nil or empty in GetClientImagesManifest")
 			continue
 		}
-		fileUUID := strings.TrimSpace(*imageManifest.UUID)
-		responseManifest.UUID = &fileUUID
+		fileUUID := strings.TrimSpace(*imageManifest.FileUUID)
+		responseManifest.FileUUID = &fileUUID
 
 		// Check if marked as hidden
 		if imageManifest.Hidden != nil && *imageManifest.Hidden {
@@ -303,7 +303,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 			log.Warn("Error joining URL paths in GetClientImagesManifest: " + err.Error())
 			continue
 		}
-		imageManifest.URL = &urlStr.RawQuery
+		responseManifest.URL = &urlStr.RawQuery
 
 		// Check if pinned
 		if imageManifest.Pinned != nil && *imageManifest.Pinned {
@@ -386,7 +386,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 					log.Warn("Image '" + fileUUID + "' has invalid file type in GetClientImagesManifest: Image type: " + "image/" + imageType + ", Accepted matched type: " + fileConstraints.ImageConstraints.AcceptedImageExtensionsAndMimeTypes[fileExtension] + ", File extension: " + fileExtension)
 					return false
 				}
-				imageManifest.MimeType = &mimeType
+				responseManifest.MimeType = &mimeType
 
 				// If image has zero width or height, continue
 				if imageConfig.Width == 0 || imageConfig.Height == 0 {

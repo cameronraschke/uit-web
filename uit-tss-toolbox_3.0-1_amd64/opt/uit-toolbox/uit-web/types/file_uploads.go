@@ -5,7 +5,7 @@ import "time"
 type ImageManifestDTO struct {
 	Time              time.Time  `json:"time"`
 	Tagnumber         int64      `json:"tagnumber"`
-	UUID              string     `json:"uuid"`
+	FileUUID          string     `json:"file_uuid"`
 	SHA256Hash        []uint8    `json:"sha256_hash"`
 	FileName          string     `json:"filename"`
 	FilePath          string     `json:"filepath"`
@@ -26,7 +26,7 @@ type ImageManifestResponse struct {
 	Time              *time.Time `json:"time"`
 	ClientUUID        *string    `json:"client_uuid"`
 	Tagnumber         *int64     `json:"tagnumber"`
-	UUID              *string    `json:"uuid"`
+	FileUUID          *string    `json:"file_uuid"`
 	SHA256Hash        *[]uint8   `json:"sha256_hash"`
 	FileName          *string    `json:"filename"`
 	FilePath          *string    `json:"filepath"`
