@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -466,7 +467,7 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetImage"))
 	appState, err := config.GetAppState()
 	if err != nil {
-		log.Warn("Error getting app state (GetImage): " + err.Error())
+		log.Warn("Error getting app state: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -497,7 +498,7 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	if imageUUID == "" {
-		log.Warn("No uuid provided in request (GetImage)")
+		log.Warn("No uuid provided in request")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -506,41 +507,47 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 	imageManifest, err := database.GetClientImageFilePathFromUUID(ctx, &imageUUID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			log.Info("Image not found from UUID lookup (GetImage): " + imageUUID + " " + err.Error())
+			log.Info("Image not found from UUID lookup: " + imageUUID + " " + err.Error())
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		log.Info("Client image query error (GetImage): " + imageUUID + " " + err.Error())
+		log.Info("Client image query error: " + imageUUID + " " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	if imageManifest == nil {
-		log.Info("No image manifest data found for UUID (GetImage): " + imageUUID)
+		log.Info("No image manifest data found for UUID: " + imageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 
 	if imageManifest.Hidden != nil && *imageManifest.Hidden {
-		log.Warn("Attempt to access hidden image (GetImage): " + imageUUID)
+		log.Warn("Attempt to access hidden image: " + imageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 
-	if imageManifest.FilePath == nil || strings.TrimSpace(*imageManifest.FilePath) == "" {
-		log.Warn("File path for image is nil or empty (GetImage): " + imageUUID)
+	if imageManifest.ClientUUID == nil || strings.TrimSpace(*imageManifest.ClientUUID) == "" {
+		log.Warn("Client UUID for image is nil or empty: " + imageUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
+	if imageManifest.FileName == nil || strings.TrimSpace(*imageManifest.FileName) == "" {
+		log.Warn("File name for image is nil or empty: " + imageUUID)
+		middleware.WriteJsonError(w, http.StatusNotFound)
+		return
+	}
+	filePath := path.Join("/opt/inventory_images", *imageManifest.ClientUUID, *imageManifest.FileName)
 
-	imageFile, err := os.Open(*imageManifest.FilePath)
+	imageFile, err := os.Open(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Warn("Image not found on disk (GetImage): " + imageUUID + " " + err.Error())
+			log.Warn("Image not found on disk: " + imageUUID + " " + err.Error())
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		log.Warn("Image cannot be opened (GetImage): " + imageUUID + " " + err.Error())
+		log.Warn("Image cannot be opened: " + imageUUID + " " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
