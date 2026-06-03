@@ -66,7 +66,11 @@ func SelectAllIDs(ctx context.Context) ([]types.ClientLookupRow, error) {
 		FROM 
 			ids
 		INNER JOIN locations ON ids.uuid = locations.client_uuid
-		GROUP BY ids.tagnumber, ids.system_serial, locations.time
+		GROUP BY 
+			ids.uuid,
+			ids.tagnumber, 
+			ids.system_serial, 
+			locations.time
 		ORDER BY 
 			locations.time DESC NULLS LAST, 
 			ids.tagnumber ASC NULLS LAST, 
