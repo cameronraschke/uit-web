@@ -400,11 +400,8 @@ async function renderInventoryTable() {
 
 			// Tooltip to show errors
 			if (inventoryRow.client_configuration_errors && inventoryRow.client_configuration_errors.length > 0) {
-				const requiredInfoTooltip = document.createElement('img');
-				const optionalInfoTooltip = document.createElement('img');
-				const hardwareTooltip = document.createElement('img');
-				const softwareTooltip = document.createElement('img');
-				const firmwareTooltip = document.createElement('img');
+				const firstTooltip: HTMLImageElement = document.createElement('img');
+				const secondTooltip: HTMLImageElement = document.createElement('img');
 
 				const missingRequiredInfoArr: Array<string> = [];
 				const missingOptionalInfoArr: Array<string> = [];
@@ -412,7 +409,7 @@ async function renderInventoryTable() {
 				const softwareErrArr: Array<string> = [];
 				const firmwareErrArr: Array<string> = [];
 
-				const tooltipArr = [requiredInfoTooltip, optionalInfoTooltip, hardwareTooltip, softwareTooltip, firmwareTooltip];
+				const tooltipArr = [firstTooltip, secondTooltip];
 				for (const tooltip of tooltipArr) {
 					tooltip.title = 'Configuration Error(s)';
 					tooltip.alt = 'Configuration Error(s)';
@@ -445,53 +442,53 @@ async function renderInventoryTable() {
 
 				if (missingRequiredInfoArr.length > 0) {
 					attachPortalTooltip(
-						requiredInfoTooltip,
+						firstTooltip,
 						`Configuration Error(s): ${missingRequiredInfoArr.join(', ')}`,
 					);
 				}
 
 				if (missingOptionalInfoArr.length > 0) {
 					attachPortalTooltip(
-						optionalInfoTooltip,
+						firstTooltip,
 						`Configuration Warning(s): ${missingOptionalInfoArr.join(', ')}`,
 					);
 				}
 
 				if (hardwareErrArr.length > 0) {
 					attachPortalTooltip(
-						hardwareTooltip,
+						firstTooltip,
 						`Hardware Configuration Error(s): ${hardwareErrArr.join(', ')}`,
 					);
 				}
 
 				if (softwareErrArr.length > 0) {
 					attachPortalTooltip(
-						softwareTooltip,
+						secondTooltip,
 						`Software Configuration Error(s): ${softwareErrArr.join(', ')}`,
 					);
 				}
 
 				if (firmwareErrArr.length > 0) {
 					attachPortalTooltip(
-						firmwareTooltip,
+						secondTooltip,
 						`Firmware Configuration Error(s): ${firmwareErrArr.join(', ')}`,
 					);
 				}
 				
 				if (missingRequiredInfoArr.length > 0) {
-					tagSpan.appendChild(requiredInfoTooltip);
+					tagSpan.appendChild(firstTooltip);
 				}
 				if (missingOptionalInfoArr.length > 0) {
-					tagSpan.appendChild(optionalInfoTooltip);
+					tagSpan.appendChild(firstTooltip);
 				}
 				if (hardwareErrArr.length > 0) {
-					manufacturerModelSpan.appendChild(hardwareTooltip);
+					tagSpan.appendChild(firstTooltip);
 				}
 				if (softwareErrArr.length > 0) {
-					osSpan.appendChild(softwareTooltip);
+					osSpan.appendChild(secondTooltip);
 				}
 				if (firmwareErrArr.length > 0) {
-					manufacturerModelSpan.appendChild(firmwareTooltip);
+					osSpan.appendChild(secondTooltip);
 				}
 			}
 

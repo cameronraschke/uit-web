@@ -4,8 +4,8 @@
 	--font-size-smaller: 0.875rem;
 	--text-color: oklch(0 0 0);
 	--info-color: oklch(0.78 0 0);
-	--warning-color: oklch(73.723% 0.12698 67.024);
-	--error-color: oklch(63.167% 0.15668 22.614);
+	--warning-color: oklch(0.86 0.2 87.1);
+	--error-color: oklch(61.41% 0.20101 25.352);
 	--bg-color-darker: oklch(0.92 0 0);
 	--bg-color: oklch(0.96 0 0);
 	--fg-color: oklch(0.99 0 0);
