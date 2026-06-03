@@ -504,7 +504,7 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 	}
 
 	log.Debug("Serving image request for: " + imageUUID)
-	imageManifest, err := database.GetClientImageFilePathFromUUID(ctx, &imageUUID)
+	imageManifest, err := database.GetClientImageManifestByFileUUID(ctx, imageUUID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			log.Info("Image not found from UUID lookup: " + imageUUID + " " + err.Error())
