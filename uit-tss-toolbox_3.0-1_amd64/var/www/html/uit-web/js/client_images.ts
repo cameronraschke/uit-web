@@ -72,7 +72,7 @@ async function fetchManifestData(clientUUID: number) : Promise<ImageManifest[]> 
 	}
 }
 
-function renderFiles(manifestArr: ImageManifest[], clientUUID: string) {
+function renderFiles(manifestArr: ImageManifest[], tag: number) {
 	let imageIndex = 1;
 	for (const file of manifestArr) {
 		const fileEntry = document.createElement('div');
@@ -114,7 +114,7 @@ function renderFiles(manifestArr: ImageManifest[], clientUUID: string) {
 		deleteIcon.title = 'Delete Image';
 		iconContainer.appendChild(deleteIcon);
 		
-		initListeners(unpinIcon, deleteIcon, clientUUID);
+		initListeners(unpinIcon, deleteIcon);
 
 		const timestampContainer = document.createElement('div');
 		timestampContainer.classList.add('file-caption', 'timestamp');
@@ -148,7 +148,7 @@ function renderFiles(manifestArr: ImageManifest[], clientUUID: string) {
 			// Videos do not get an imgLink
 			filePreview = document.createElement('img');
 			filePreview.loading = 'lazy';
-			filePreview.alt = `Images for ${clientUUID}`;
+			filePreview.alt = `Images for ${tag}`;
 			const imgLink = document.createElement('a');
 			imgLink.href = imgURL.toString();
 			imgLink.target = '_blank';
@@ -206,7 +206,7 @@ function renderFiles(manifestArr: ImageManifest[], clientUUID: string) {
 	}
 }
 
-function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, clientUUID: string) {
+function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement) {
 	unpinEl.addEventListener('click', async (event) => {
 		if (!(unpinEl instanceof HTMLElement)) return;
 		const el = event.currentTarget as HTMLButtonElement;
@@ -241,7 +241,7 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 			}
 			await fetchManifestData(Number(tag)).then(updatedManifest => {
 				container.innerHTML = '';
-				renderFiles(updatedManifest, tag as string);
+				renderFiles(updatedManifest, Number(tag));
 			});
 		} catch (unpinError) {
 			if (unpinError instanceof Error) {
@@ -257,6 +257,12 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 		const deleteEl = event.currentTarget as HTMLButtonElement;
 		if (!(deleteEl instanceof HTMLElement)) return;
 		deleteEl.disabled = true;
+		const clientUUID = deleteEl.dataset.client_uuid || "";
+		if (!clientUUID) {
+			alert('Error: No client UUID found for this image.');
+			deleteEl.disabled = false;
+			return;
+		}
 		const fileUUID = deleteEl.dataset.file_uuid || "";
 		if (!fileUUID) {
 			alert('Error: No UUID found for this image.');
@@ -317,20 +323,21 @@ async function initClientImages() {
 		container.appendChild(errorParagraph);
 		return;
 	}
-	if (!tagnumber) {
-		console.warn(`Invalid tagnumber: ${tagnumber}`);
+	const tag = Number(tagnumber);
+	if (!validateTagInput(tag)) {
+		console.warn(`Invalid tagnumber: ${tag}`);
 		return;
 	}
 	try {
-		const manifestData = await fetchManifestData(Number(tagnumber));
+		const manifestData = await fetchManifestData(tag);
 		if (manifestData.length === 0) {
-			console.warn(`No images found for tagnumber: ${tagnumber}`);
+			console.warn(`No images found for tagnumber: ${tag}`);
 			const errorParagraph = document.createElement('p');
-			errorParagraph.textContent = `No images found for tagnumber: ${tagnumber}`;
+			errorParagraph.textContent = `No images found for tagnumber: ${tag}`;
 			container.appendChild(errorParagraph);
 			return;
 		}
-		renderFiles(manifestData, tagnumber as string);
+		renderFiles(manifestData, tag);
 	} catch (err) {
 		container.innerHTML = '';
 		const errorParagraph = document.createElement('p');

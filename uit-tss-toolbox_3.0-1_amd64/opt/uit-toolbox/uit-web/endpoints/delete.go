@@ -75,7 +75,20 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	filePath := filepath.Join("/opt/inventory_images", clientUUIDFromManifest, fileUUID)
+	// file name
+	if imageManifest.FileName == nil || strings.TrimSpace(*imageManifest.FileName) == "" {
+		log.Warn("No file name found in image manifest for provided file uuid: " + fileUUID)
+		middleware.WriteJsonError(w, http.StatusNotFound)
+		return
+	}
+	fileNameFromManifest := strings.TrimSpace(*imageManifest.FileName)
+	if fileNameFromManifest == "" {
+		log.Warn("File name is empty in image manifest for provided file uuid: " + fileUUID)
+		middleware.WriteJsonError(w, http.StatusNotFound)
+		return
+	}
+
+	filePath := filepath.Join("/opt/inventory_images", clientUUIDFromManifest, fileNameFromManifest)
 	filePath = filepath.Clean(filePath)
 
 	imageFile, err := os.Open(filePath)
