@@ -228,7 +228,7 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'same-origin',
-				body: JSON.stringify({file_uuid: uuidToUnpin, tagnumber: tag})
+				body: JSON.stringify({file_uuid: uuidToUnpin, tagnumber: Number(tag)})
 			});
 			if (!unpinRequest.ok) {
 				throw new Error (`Failed to unpin image: ${unpinRequest.status} ${unpinRequest.statusText}`);
