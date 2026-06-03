@@ -472,13 +472,13 @@ func GetImage(w http.ResponseWriter, req *http.Request) {
 
 	// local filepath example: inventory-images/{tag}/{date --iso}-{uuid}.{file extension}
 	// incoming request url: /api/client/files/{tag}/{uuid}.{file extension}
-	uuidInURLQuery := middleware.GetStrQuery(req.URL.Query(), "uuid")
-	if uuidInURLQuery == nil || strings.TrimSpace(*uuidInURLQuery) == "" {
+	fileUUID := middleware.GetStrQuery(req.URL.Query(), "file_uuid")
+	if fileUUID == nil || strings.TrimSpace(*fileUUID) == "" {
 		log.Warn("No image UUID provided in request to GetImage")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	imageUUID := strings.TrimSpace(strings.ToLower(*uuidInURLQuery))
+	imageUUID := strings.TrimSpace(strings.ToLower(*fileUUID))
 	for ext := range fileConstraints.ImageConstraints.AcceptedImageExtensionsAndMimeTypes {
 		if filepath.Ext(imageUUID) == ext {
 			imageUUID = strings.TrimSuffix(imageUUID, ext)
