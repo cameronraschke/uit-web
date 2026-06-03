@@ -400,104 +400,107 @@ async function renderInventoryTable() {
 
 			// Tooltip to show errors
 			if (inventoryRow.client_configuration_errors && inventoryRow.client_configuration_errors.length > 0) {
-				const firstTooltip: HTMLImageElement = document.createElement('img');
-				const secondTooltip: HTMLImageElement = document.createElement('img');
+				const generalTooltip: HTMLImageElement = document.createElement('img');
+				const softwareTooltip: HTMLImageElement = document.createElement('img');
 
-				const missingRequiredInfoArr: Array<string> = [];
-				const missingOptionalInfoArr: Array<string> = [];
 				const hardwareErrArr: Array<string> = [];
-				const softwareErrArr: Array<string> = [];
 				const firmwareErrArr: Array<string> = [];
+				const softwareErrArr: Array<string> = [];
+				const otherSoftwareErrArr: Array<string> = [];
 
-				const tooltipArr = [firstTooltip, secondTooltip];
+				const tooltipArr = [generalTooltip, softwareTooltip];
 				for (const tooltip of tooltipArr) {
 					tooltip.title = 'Configuration Error(s)';
 					tooltip.alt = 'Configuration Error(s)';
 					tooltip.src = '/icons/general/info.svg';
 					tooltip.tabIndex = 0;
 
-					let highestSeverity = 'info';
+					let highestGeneralTooltipSeverity = 'info';
+					let highestSoftwareTooltipSeverity = 'info';
 					for (const err of inventoryRow.client_configuration_errors) {
-						if (err.error_type === 'error') {
-							highestSeverity = 'error';
-							tooltip.classList.add('tooltip-image', 'error');
-							break;
-						} else if (err.error_level === 'warning') {
-							if (highestSeverity !== 'error') {
-								highestSeverity = 'warning';
-								tooltip.classList.add('tooltip-image', 'warning');
+						// separate tooltips by error type
+						if (err.error_type == 'software' || err.error_type == 'firmware') {
+							if (err.error_level === 'error') {
+								highestSoftwareTooltipSeverity = 'error';
+								tooltip.classList.add('tooltip-image', 'error');
+								continue;
+							} else if (err.error_level === 'warning') {
+								if (highestSoftwareTooltipSeverity !== 'error') {
+									highestSoftwareTooltipSeverity = 'warning';
+									tooltip.classList.add('tooltip-image', 'warning');
+								}
+							} else if (err.error_level === 'info') {
+								if (highestSoftwareTooltipSeverity !== 'error' && highestSoftwareTooltipSeverity !== 'warning') {
+									highestSoftwareTooltipSeverity = 'info';
+									tooltip.classList.add('tooltip-image', 'info');
+								}
 							}
-						} else if (err.error_level === 'info') {
-							if (highestSeverity !== 'error' && highestSeverity !== 'warning') {
-								highestSeverity = 'info';
-								tooltip.classList.add('tooltip-image', 'info');
+							continue;
+						} else {
+							if (err.error_level === 'error') {
+								highestGeneralTooltipSeverity = 'error';
+								tooltip.classList.add('tooltip-image', 'error');
+								continue;
+							} else if (err.error_level === 'warning') {
+								if (highestGeneralTooltipSeverity !== 'error') {
+									highestGeneralTooltipSeverity = 'warning';
+									tooltip.classList.add('tooltip-image', 'warning');
+								}
+							} else if (err.error_level === 'info') {
+								if (highestGeneralTooltipSeverity !== 'error' && highestGeneralTooltipSeverity !== 'warning') {
+									highestGeneralTooltipSeverity = 'info';
+									tooltip.classList.add('tooltip-image', 'info');
+								}
 							}
 						}
 					}
 				}
 				for (const err of inventoryRow.client_configuration_errors) {
-					if (err.error_type === 'required-info') {
-						missingRequiredInfoArr.push(err.error_message);
-					} else if (err.error_type === 'optional-info') {
-						missingOptionalInfoArr.push(err.error_message);
-					} else if (err.error_type === 'hardware') {
+					if (err.error_type === 'hardware') {
 						hardwareErrArr.push(err.error_message);
-					} else if (err.error_type === 'software') {
-						softwareErrArr.push(err.error_message);
 					} else if (err.error_type === 'firmware') {
 						firmwareErrArr.push(err.error_message);
+					} else if (err.error_type === 'software') {
+						softwareErrArr.push(err.error_message);
+					} else if (err.error_type === 'other') {
+						otherSoftwareErrArr.push(err.error_message);
 					}
-				}
-
-				if (missingRequiredInfoArr.length > 0) {
-					attachPortalTooltip(
-						firstTooltip,
-						`Configuration Error(s): ${missingRequiredInfoArr.join(', ')}`,
-					);
-				}
-
-				if (missingOptionalInfoArr.length > 0) {
-					attachPortalTooltip(
-						firstTooltip,
-						`Configuration Warning(s): ${missingOptionalInfoArr.join(', ')}`,
-					);
 				}
 
 				if (hardwareErrArr.length > 0) {
 					attachPortalTooltip(
-						firstTooltip,
+						generalTooltip,
 						`Hardware Configuration Error(s): ${hardwareErrArr.join(', ')}`,
 					);
 				}
 
+				if (firmwareErrArr.length > 0) {
+					attachPortalTooltip(
+						softwareTooltip,
+						`Firmware Configuration Error(s): ${firmwareErrArr.join(', ')}`,
+					);
+				}
+
 				if (softwareErrArr.length > 0) {
 					attachPortalTooltip(
-						secondTooltip,
+						softwareTooltip,
 						`Software Configuration Error(s): ${softwareErrArr.join(', ')}`,
 					);
 				}
 
-				if (firmwareErrArr.length > 0) {
+				if (otherSoftwareErrArr.length > 0) {
 					attachPortalTooltip(
-						secondTooltip,
-						`Firmware Configuration Error(s): ${firmwareErrArr.join(', ')}`,
+						generalTooltip,
+						`Other Configuration Error(s): ${otherSoftwareErrArr.join(', ')}`,
 					);
 				}
-				
-				if (missingRequiredInfoArr.length > 0) {
-					tagSpan.appendChild(firstTooltip);
-				}
-				if (missingOptionalInfoArr.length > 0) {
-					tagSpan.appendChild(firstTooltip);
-				}
+
+
 				if (hardwareErrArr.length > 0) {
-					tagSpan.appendChild(firstTooltip);
+					tagSpan.appendChild(generalTooltip);
 				}
-				if (softwareErrArr.length > 0) {
-					osSpan.appendChild(secondTooltip);
-				}
-				if (firmwareErrArr.length > 0) {
-					osSpan.appendChild(secondTooltip);
+				if (softwareErrArr.length > 0 || firmwareErrArr.length > 0) {
+					osSpan.appendChild(softwareTooltip);
 				}
 			}
 

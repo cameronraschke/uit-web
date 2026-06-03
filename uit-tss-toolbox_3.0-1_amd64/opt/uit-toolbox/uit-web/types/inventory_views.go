@@ -30,19 +30,17 @@ func (cel ConfigurationErrorLevel) String() string {
 type ConfigurationErrorType int
 
 const (
-	MissingRequiredInfoType ConfigurationErrorType = iota
-	MissingOptionalInfoType
-	HardwareIssueType
-	SoftwareIssueType
+	HardwareIssueType ConfigurationErrorType = iota
 	FirmwareIssueType
+	SoftwareIssueType
+	OtherIssueType
 )
 
 var ClientConfigurationErrorTypes = map[ConfigurationErrorType]string{
-	MissingRequiredInfoType: "required-info",
-	MissingOptionalInfoType: "optional-info",
-	HardwareIssueType:       "hardware",
-	SoftwareIssueType:       "software",
-	FirmwareIssueType:       "firmware",
+	HardwareIssueType: "hardware",
+	SoftwareIssueType: "software",
+	FirmwareIssueType: "firmware",
+	OtherIssueType:    "other",
 }
 
 func (t ConfigurationErrorType) String() string {
@@ -126,7 +124,7 @@ var ClientConfigurationErrors = map[ClientConfigurationError]ClientConfigErrorMe
 	NeedsErasing:                {ErrorLevel: Warning.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: NeedsErasing.String()},
 	MissingRequiredHardwareInfo: {ErrorLevel: Error.String(), ErrorType: HardwareIssueType.String(), ErrorMessage: MissingRequiredHardwareInfo.String()},
 	MissingRequiredSoftwareInfo: {ErrorLevel: Error.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: MissingRequiredSoftwareInfo.String()},
-	MissingImages:               {ErrorLevel: Info.String(), ErrorType: MissingOptionalInfoType.String(), ErrorMessage: MissingImages.String()},
+	MissingImages:               {ErrorLevel: Info.String(), ErrorType: OtherIssueType.String(), ErrorMessage: MissingImages.String()},
 }
 
 type InventoryTableRow struct {
