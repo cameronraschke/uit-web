@@ -228,20 +228,6 @@ async function renderInventoryTable() {
 			tagAnchor.target = '_blank';
 			tagAnchor.appendChild(document.createTextNode(tagnumber));
 			tagSpan.appendChild(tagAnchor);
-			// Tooltip to show errors
-			if (inventoryRow.client_configuration_errors && inventoryRow.client_configuration_errors.length > 0) {
-				const tooltipIndicator = document.createElement('img');
-				tooltipIndicator.title = 'Configuration Error(s)';
-				tooltipIndicator.alt = 'Configuration Error(s)';
-				tooltipIndicator.src = '/icons/general/info.svg';
-				tooltipIndicator.classList.add('tooltip-image', 'error');
-				tooltipIndicator.tabIndex = 0;
-				attachPortalTooltip(
-					tooltipIndicator,
-					'Configuration Error(s): ' + inventoryRow.client_configuration_errors.join(', '),
-				);
-				tagSpan.appendChild(tooltipIndicator);
-			}
 			idContainer.appendChild(tagSpan);
 
 			// System Serial
@@ -411,6 +397,103 @@ async function renderInventoryTable() {
 			lastUpdatedDiv.appendChild(timeFormattedDiv);
 			lastUpdatedCell.appendChild(lastUpdatedDiv);
 			tr.appendChild(lastUpdatedCell);
+
+			// Tooltip to show errors
+			if (inventoryRow.client_configuration_errors && inventoryRow.client_configuration_errors.length > 0) {
+				const requiredInfoTooltip = document.createElement('img');
+				const optionalInfoTooltip = document.createElement('img');
+				const hardwareTooltip = document.createElement('img');
+				const softwareTooltip = document.createElement('img');
+				const firmwareTooltip = document.createElement('img');
+
+				const missingRequiredInfoArr: Array<string> = [];
+				const missingOptionalInfoArr: Array<string> = [];
+				const hardwareErrArr: Array<string> = [];
+				const softwareErrArr: Array<string> = [];
+				const firmwareErrArr: Array<string> = [];
+
+				const tooltipArr = [requiredInfoTooltip, optionalInfoTooltip, hardwareTooltip, softwareTooltip, firmwareTooltip];
+				for (const tooltip of tooltipArr) {
+					tooltip.title = 'Configuration Error(s)';
+					tooltip.alt = 'Configuration Error(s)';
+					tooltip.src = '/icons/general/info.svg';
+					tooltip.tabIndex = 0;
+
+					for (const err of inventoryRow.client_configuration_errors) {
+						if (err.error_type === 'error') {
+							tooltip.classList.add('tooltip-image', 'error');
+						} else if (err.error_level === 'warning') {
+							tooltip.classList.add('tooltip-image', 'warning');
+						} else if (err.error_level === 'info') {
+							tooltip.classList.add('tooltip-image', 'info');
+						}
+					}
+				}
+				for (const err of inventoryRow.client_configuration_errors) {
+					if (err.error_type === 'required-info') {
+						missingRequiredInfoArr.push(err.error_message);
+					} else if (err.error_type === 'optional-info') {
+						missingOptionalInfoArr.push(err.error_message);
+					} else if (err.error_type === 'hardware') {
+						hardwareErrArr.push(err.error_message);
+					} else if (err.error_type === 'software') {
+						softwareErrArr.push(err.error_message);
+					} else if (err.error_type === 'firmware') {
+						firmwareErrArr.push(err.error_message);
+					}
+				}
+
+				if (missingRequiredInfoArr.length > 0) {
+					attachPortalTooltip(
+						requiredInfoTooltip,
+						`Configuration Error(s): ${missingRequiredInfoArr.join(', ')}`,
+					);
+				}
+
+				if (missingOptionalInfoArr.length > 0) {
+					attachPortalTooltip(
+						optionalInfoTooltip,
+						`Configuration Warning(s): ${missingOptionalInfoArr.join(', ')}`,
+					);
+				}
+
+				if (hardwareErrArr.length > 0) {
+					attachPortalTooltip(
+						hardwareTooltip,
+						`Hardware Configuration Error(s): ${hardwareErrArr.join(', ')}`,
+					);
+				}
+
+				if (softwareErrArr.length > 0) {
+					attachPortalTooltip(
+						softwareTooltip,
+						`Software Configuration Error(s): ${softwareErrArr.join(', ')}`,
+					);
+				}
+
+				if (firmwareErrArr.length > 0) {
+					attachPortalTooltip(
+						firmwareTooltip,
+						`Firmware Configuration Error(s): ${firmwareErrArr.join(', ')}`,
+					);
+				}
+				
+				if (missingRequiredInfoArr.length > 0) {
+					tagSpan.appendChild(requiredInfoTooltip);
+				}
+				if (missingOptionalInfoArr.length > 0) {
+					tagSpan.appendChild(optionalInfoTooltip);
+				}
+				if (hardwareErrArr.length > 0) {
+					manufacturerModelSpan.appendChild(hardwareTooltip);
+				}
+				if (softwareErrArr.length > 0) {
+					osSpan.appendChild(softwareTooltip);
+				}
+				if (firmwareErrArr.length > 0) {
+					manufacturerModelSpan.appendChild(firmwareTooltip);
+				}
+			}
 
 			fragment.appendChild(tr);
 		}

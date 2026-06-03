@@ -68,10 +68,13 @@
 	user-select: none;
 }
 .tooltip-image.info {
-	filter: brightness(0) saturate(100%) invert(78%) sepia(2%) saturate(56%) hue-rotate(14deg) brightness(95%) contrast(90%); /* --tooltip-info-color */
+	color: var(--info-color);
+}
+.tooltip-image.warning {
+	color: var(--warning-color);
 }
 .tooltip-image.error {
-	filter: invert(31%) sepia(40%) saturate(3320%) hue-rotate(333deg) brightness(86%) contrast(100%); /* --light-accent-color */
+	color: var(--error-color);
 }
 
 .tooltip-textbox {

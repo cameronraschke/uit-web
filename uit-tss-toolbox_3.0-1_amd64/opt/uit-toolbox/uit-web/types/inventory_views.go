@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// Error levels
 type ConfigurationErrorLevel int
 
 const (
@@ -25,6 +26,7 @@ func (cel ConfigurationErrorLevel) String() string {
 	return ""
 }
 
+// Error types
 type ConfigurationErrorType int
 
 const (
@@ -50,6 +52,7 @@ func (t ConfigurationErrorType) String() string {
 	return ""
 }
 
+// Error strings
 type ClientConfigurationError int
 
 const (
@@ -121,8 +124,8 @@ var ClientConfigurationErrors = map[ClientConfigurationError]ClientConfigErrorMe
 	DiskNotEncrypted:            {ErrorLevel: Warning.String(), ErrorType: FirmwareIssueType.String(), ErrorMessage: DiskNotEncrypted.String()},
 	NeedsHardwareCheck:          {ErrorLevel: Warning.String(), ErrorType: HardwareIssueType.String(), ErrorMessage: NeedsHardwareCheck.String()},
 	NeedsErasing:                {ErrorLevel: Warning.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: NeedsErasing.String()},
-	MissingRequiredHardwareInfo: {ErrorLevel: Error.String(), ErrorType: HardwareIssueType.String(), ErrorMessage: NeedsHardwareCheck.String()},
-	MissingRequiredSoftwareInfo: {ErrorLevel: Error.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: MissingRequiredHardwareInfo.String()},
+	MissingRequiredHardwareInfo: {ErrorLevel: Error.String(), ErrorType: HardwareIssueType.String(), ErrorMessage: MissingRequiredHardwareInfo.String()},
+	MissingRequiredSoftwareInfo: {ErrorLevel: Error.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: MissingRequiredSoftwareInfo.String()},
 	MissingImages:               {ErrorLevel: Info.String(), ErrorType: MissingOptionalInfoType.String(), ErrorMessage: MissingImages.String()},
 }
 
