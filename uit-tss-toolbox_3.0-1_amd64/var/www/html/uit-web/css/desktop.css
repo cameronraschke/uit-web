@@ -3,9 +3,9 @@
 	--font-size: 1rem;
 	--font-size-smaller: 0.875rem;
 	--text-color: oklch(0 0 0);
-	--info-color: oklch(0.78 0 0);
-	--warning-color: oklch(0.86 0.2 87.1);
-	--error-color: oklch(61.41% 0.20101 25.352);
+	--info-color: #8f8f8f;
+	--warning-color: #ffae00;
+	--error-color: #e44040;
 	--bg-color-darker: oklch(0.92 0 0);
 	--bg-color: oklch(0.96 0 0);
 	--fg-color: oklch(0.99 0 0);
@@ -778,4 +778,42 @@ td > div.flex-container {
 .hover-link:hover {
 	color: var(--accent-color);
 	text-decoration: underline;
+}
+
+.tooltip-image {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 1.1rem;
+	margin-left: 0.25rem;
+	padding-right: 0.4rem;
+	cursor: help;
+	user-select: none;
+}
+.tooltip-image.info {
+	/* color: var(--info-color); */
+	filter: invert(60%) sepia(1%) saturate(1070%) hue-rotate(100deg) brightness(95%) contrast(88%);
+}
+.tooltip-image.warning {
+	/* color: var(--warning-color); */
+	filter: invert(68%) sepia(43%) saturate(3507%) hue-rotate(3deg) brightness(106%) contrast(107%);
+}
+.tooltip-image.error {
+	/* color: var(--error-color); */
+	filter: invert(35%) sepia(37%) saturate(2588%) hue-rotate(333deg) brightness(96%) contrast(89%);
+}
+
+.tooltip-textbox {
+	position: absolute;
+	max-width: 30rem;
+	padding: 0.5rem 0.5rem;
+	border-radius: var(--border-radius);
+	background-color: black;
+	color: var(--fg-color);
+	font-size: 0.85rem;
+	line-height: 1.3;
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+	z-index: 99999;
+	pointer-events: none;
+	white-space: normal;
 }

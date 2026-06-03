@@ -416,13 +416,22 @@ async function renderInventoryTable() {
 					tooltip.src = '/icons/general/info.svg';
 					tooltip.tabIndex = 0;
 
+					let highestSeverity = 'info';
 					for (const err of inventoryRow.client_configuration_errors) {
 						if (err.error_type === 'error') {
+							highestSeverity = 'error';
 							tooltip.classList.add('tooltip-image', 'error');
+							break;
 						} else if (err.error_level === 'warning') {
-							tooltip.classList.add('tooltip-image', 'warning');
+							if (highestSeverity !== 'error') {
+								highestSeverity = 'warning';
+								tooltip.classList.add('tooltip-image', 'warning');
+							}
 						} else if (err.error_level === 'info') {
-							tooltip.classList.add('tooltip-image', 'info');
+							if (highestSeverity !== 'error' && highestSeverity !== 'warning') {
+								highestSeverity = 'info';
+								tooltip.classList.add('tooltip-image', 'info');
+							}
 						}
 					}
 				}
