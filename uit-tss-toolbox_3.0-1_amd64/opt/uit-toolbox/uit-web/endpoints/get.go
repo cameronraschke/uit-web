@@ -277,11 +277,11 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		responseManifest.ClientUUID = &clientUUID
 
 		// SHA-256 hash
-		if imageManifest.SHA256Hash == nil || len(*imageManifest.SHA256Hash) == 0 {
-			log.Warn("Image manifest SHA256Hash is nil or empty in GetClientImagesManifest for file: " + fileUUID)
-			continue
-		}
-		responseManifest.SHA256Hash = imageManifest.SHA256Hash
+		// if imageManifest.SHA256Hash == nil || len(*imageManifest.SHA256Hash) == 0 {
+		// 	log.Warn("Image manifest SHA256Hash is nil or empty in GetClientImagesManifest for file: " + fileUUID)
+		// 	continue
+		// }
+		// responseManifest.SHA256Hash = imageManifest.SHA256Hash
 
 		// File path
 		filePath := filepath.Join("/opt/inventory_images", clientUUID, fileName)
