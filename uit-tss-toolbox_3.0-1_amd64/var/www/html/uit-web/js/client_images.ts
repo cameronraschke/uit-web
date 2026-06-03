@@ -16,21 +16,21 @@ type ImageManifest = {
 
 const container = document.getElementById('image-container') as HTMLElement;
 
-async function fetchManifestData(clientTag: number) : Promise<ImageManifest[]> {
+async function fetchManifestData(clientUUID: string) : Promise<ImageManifest[]> {
 	if (!container) {
 		console.error('Image container not found in DOM.');
 		return [];
 	}
 
 	container.innerHTML = '';
-	if (!validateTagInput(clientTag)) {
+	if (!clientUUID) {
 		const invalidTagParagraph = document.createElement('p');
-		invalidTagParagraph.textContent = 'Invalid client tag provided.';
+		invalidTagParagraph.textContent = 'Invalid client UUID provided.';
 		container.appendChild(invalidTagParagraph);
 		return [];
 	}
 	const manifestURL = new URL(`/api/client/files/manifest`, window.location.origin);
-	manifestURL.searchParams.set('tagnumber', clientTag.toString());
+	manifestURL.searchParams.set('tagnumber', clientUUID.toString());
 
 	try {
 		const response = await fetch(manifestURL.toString());
@@ -72,7 +72,7 @@ async function fetchManifestData(clientTag: number) : Promise<ImageManifest[]> {
 	}
 }
 
-function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
+function renderFiles(manifestArr: ImageManifest[], clientUUID: string) {
 	let imageIndex = 1;
 	for (const file of manifestArr) {
 		const fileEntry = document.createElement('div');
@@ -112,7 +112,7 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 		deleteIcon.title = 'Delete Image';
 		iconContainer.appendChild(deleteIcon);
 		
-		initListeners(unpinIcon, deleteIcon, clientTag);
+		initListeners(unpinIcon, deleteIcon, clientUUID);
 
 		const timestampContainer = document.createElement('div');
 		timestampContainer.classList.add('file-caption', 'timestamp');
@@ -146,7 +146,7 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 			// Videos do not get an imgLink
 			filePreview = document.createElement('img');
 			filePreview.loading = 'lazy';
-			filePreview.alt = `Images for ${clientTag}`;
+			filePreview.alt = `Images for ${clientUUID}`;
 			const imgLink = document.createElement('a');
 			imgLink.href = imgURL.toString();
 			imgLink.target = '_blank';
@@ -204,7 +204,7 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 	}
 }
 
-function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, clientTag: number) {
+function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, clientUUID: string) {
 	unpinEl.addEventListener('click', async (event) => {
 		if (!(unpinEl instanceof HTMLElement)) return;
 		const el = event.currentTarget as HTMLButtonElement;
@@ -216,21 +216,21 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 			return;
 		}
 		const currentURL = new URL(window.location.href);
-		const clientTag = currentURL.searchParams.get("client_uuid") ?? null;
+		const clientUUID = currentURL.searchParams.get("client_uuid") ?? null;
 		const unpinURL = new URL(`/api/files/toggle_pin`, window.location.origin);
 		try {
 			const unpinRequest = await fetch(unpinURL, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'same-origin',
-				body: JSON.stringify({uuid: uuidToUnpin, client_uuid: clientTag})
+				body: JSON.stringify({uuid: uuidToUnpin, client_uuid: clientUUID})
 			});
 			if (!unpinRequest.ok) {
 				throw new Error (`Failed to unpin image: ${unpinRequest.status} ${unpinRequest.statusText}`);
 			}
-			await fetchManifestData(clientTag as number).then(updatedManifest => {
+			await fetchManifestData(clientUUID as string).then(updatedManifest => {
 				container.innerHTML = '';
-				renderFiles(updatedManifest, clientTag as number);
+				renderFiles(updatedManifest, clientUUID as string);
 			});
 		} catch (unpinError) {
 			if (unpinError instanceof Error) {
@@ -270,7 +270,7 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 
 		try {
 			const deleteURL = new URL(`/api/client/files`, window.location.origin);
-			deleteURL.searchParams.set('client_uuid', clientTag.toString());
+			deleteURL.searchParams.set('client_uuid', clientUUID);
 			deleteURL.searchParams.set('file_uuid', uuidToDelete);
 			const deleteResponse = await fetch(deleteURL, {
 				method: 'DELETE',
@@ -298,36 +298,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function initClientImages() {
 	container.innerHTML = '<p>Loading images...</p>';
 	const urlParams = new URLSearchParams(window.location.search);
-	const tag = urlParams.get('tagnumber');
-	if (!tag) {
-		console.warn('No tagnumber parameter found in URL.');
+	const clientUUID = urlParams.get('client_uuid');
+	if (!clientUUID) {
+		console.warn('No client UUID parameter found in URL.');
 		const errorParagraph = document.createElement('p');
-		errorParagraph.textContent = `No images found for tag: ${tag}`;
+		errorParagraph.textContent = `No images found for client UUID: ${clientUUID}`;
 		container.appendChild(errorParagraph);
 		return;
 	}
-	const clientTag = parseInt(tag, 10);
-	if (!validateTagInput(clientTag)) {
-		console.warn(`Invalid tag: ${clientTag}`);
+	if (!clientUUID) {
+		console.warn(`Invalid client UUID: ${clientUUID}`);
 		return;
 	}
 	try {
-		const manifestData = await fetchManifestData(clientTag);
+		const manifestData = await fetchManifestData(clientUUID);
 		if (manifestData.length === 0) {
-			console.warn(`No images found for tag: ${clientTag}`);
+			console.warn(`No images found for client UUID: ${clientUUID}`);
 			const errorParagraph = document.createElement('p');
-			errorParagraph.textContent = `No images found for tag: ${clientTag}`;
+			errorParagraph.textContent = `No images found for client UUID: ${clientUUID}`;
 			container.appendChild(errorParagraph);
 			return;
 		}
-		renderFiles(manifestData, clientTag);
+		renderFiles(manifestData, clientUUID as string);
 	} catch (err) {
 		container.innerHTML = '';
 		const errorParagraph = document.createElement('p');
 		if (err instanceof Error) {
 			errorParagraph.textContent = `Error fetching images: ${err.message}`;
 			container.appendChild(errorParagraph);
-			console.warn(`Error fetching images for tag ${clientTag}: ${err.message}`);
+			console.warn(`Error fetching images for client UUID ${clientUUID}: ${err.message}`);
 		}
 	}
 }
