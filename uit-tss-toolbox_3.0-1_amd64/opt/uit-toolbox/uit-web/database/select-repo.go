@@ -139,7 +139,7 @@ func ClientIDLookup(ctx context.Context, tag *int64, serial *string) (*types.Cli
 		SELECT 
 			tagnumber, 
 			system_serial,
-			client_uuid
+			uuid
 		FROM 
 			ids 
 		%s

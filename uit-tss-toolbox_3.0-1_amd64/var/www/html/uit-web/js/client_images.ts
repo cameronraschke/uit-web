@@ -16,7 +16,7 @@ type ImageManifest = {
 
 const container = document.getElementById('image-container') as HTMLElement;
 
-async function fetchManifestData(clientUUID: string) : Promise<ImageManifest[]> {
+async function fetchManifestData(clientUUID: number) : Promise<ImageManifest[]> {
 	if (!container) {
 		console.error('Image container not found in DOM.');
 		return [];
@@ -25,7 +25,7 @@ async function fetchManifestData(clientUUID: string) : Promise<ImageManifest[]> 
 	container.innerHTML = '';
 	if (!clientUUID) {
 		const invalidTagParagraph = document.createElement('p');
-		invalidTagParagraph.textContent = 'Invalid client UUID provided.';
+		invalidTagParagraph.textContent = 'Invalid tagnumber provided.';
 		container.appendChild(invalidTagParagraph);
 		return [];
 	}
@@ -216,21 +216,26 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 			return;
 		}
 		const currentURL = new URL(window.location.href);
-		const clientUUID = currentURL.searchParams.get("client_uuid") ?? null;
+		const tagnumber = currentURL.searchParams.get("tagnumber") ?? null;
+		if (!tagnumber || isNaN(Number(tagnumber))) {
+			alert('Error: No tagnumber found in URL.');
+			el.disabled = false;
+			return;
+		}
 		const unpinURL = new URL(`/api/files/toggle_pin`, window.location.origin);
 		try {
 			const unpinRequest = await fetch(unpinURL, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'same-origin',
-				body: JSON.stringify({uuid: uuidToUnpin, client_uuid: clientUUID})
+				body: JSON.stringify({uuid: uuidToUnpin, client_uuid: tagnumber})
 			});
 			if (!unpinRequest.ok) {
 				throw new Error (`Failed to unpin image: ${unpinRequest.status} ${unpinRequest.statusText}`);
 			}
-			await fetchManifestData(clientUUID as string).then(updatedManifest => {
+			await fetchManifestData(Number(tagnumber)).then(updatedManifest => {
 				container.innerHTML = '';
-				renderFiles(updatedManifest, clientUUID as string);
+				renderFiles(updatedManifest, tagnumber as string);
 			});
 		} catch (unpinError) {
 			if (unpinError instanceof Error) {
@@ -298,35 +303,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function initClientImages() {
 	container.innerHTML = '<p>Loading images...</p>';
 	const urlParams = new URLSearchParams(window.location.search);
-	const clientUUID = urlParams.get('client_uuid');
-	if (!clientUUID) {
-		console.warn('No client UUID parameter found in URL.');
+	const tagnumber = urlParams.get('tagnumber');
+	if (!tagnumber) {
+		console.warn('No tagnumber parameter found in URL.');
 		const errorParagraph = document.createElement('p');
-		errorParagraph.textContent = `No images found for client UUID: ${clientUUID}`;
+		errorParagraph.textContent = `No images found for tagnumber: ${tagnumber}`;
 		container.appendChild(errorParagraph);
 		return;
 	}
-	if (!clientUUID) {
-		console.warn(`Invalid client UUID: ${clientUUID}`);
+	if (!tagnumber) {
+		console.warn(`Invalid tagnumber: ${tagnumber}`);
 		return;
 	}
 	try {
-		const manifestData = await fetchManifestData(clientUUID);
+		const manifestData = await fetchManifestData(Number(tagnumber));
 		if (manifestData.length === 0) {
-			console.warn(`No images found for client UUID: ${clientUUID}`);
+			console.warn(`No images found for tagnumber: ${tagnumber}`);
 			const errorParagraph = document.createElement('p');
-			errorParagraph.textContent = `No images found for client UUID: ${clientUUID}`;
+			errorParagraph.textContent = `No images found for tagnumber: ${tagnumber}`;
 			container.appendChild(errorParagraph);
 			return;
 		}
-		renderFiles(manifestData, clientUUID as string);
+		renderFiles(manifestData, tagnumber as string);
 	} catch (err) {
 		container.innerHTML = '';
 		const errorParagraph = document.createElement('p');
 		if (err instanceof Error) {
 			errorParagraph.textContent = `Error fetching images: ${err.message}`;
 			container.appendChild(errorParagraph);
-			console.warn(`Error fetching images for client UUID ${clientUUID}: ${err.message}`);
+			console.warn(`Error fetching images for client UUID ${tagnumber}: ${err.message}`);
 		}
 	}
 }
