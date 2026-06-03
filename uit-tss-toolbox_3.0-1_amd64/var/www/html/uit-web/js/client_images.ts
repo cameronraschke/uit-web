@@ -109,7 +109,7 @@ function renderFiles(manifestArr: ImageManifest[], tag: number) {
 		const deleteIcon = document.createElement('button');
 		deleteIcon.dataset.client_uuid = file.client_uuid;
 		deleteIcon.dataset.file_uuid = file.file_uuid;
-		deleteIcon.dataset.imageCount = imageIndex + "/" + manifestArr.length;
+		deleteIcon.dataset.imageCount = imageCount.textContent || '';
 		deleteIcon.classList.add('svg-button', 'delete');
 		deleteIcon.title = 'Delete Image';
 		iconContainer.appendChild(deleteIcon);
