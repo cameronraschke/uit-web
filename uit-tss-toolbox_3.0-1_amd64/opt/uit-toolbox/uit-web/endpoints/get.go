@@ -247,6 +247,13 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 	var filteredImageManifests []types.ImageManifestResponse
 	for _, imageManifest := range imageManifests {
 		var responseManifest = new(types.ImageManifestResponse)
+		if imageManifest.Time.IsZero() {
+			log.Warn("Image manifest has zero time for file with tagnumber: " + fmt.Sprintf("%d", *tagnumber))
+			continue
+		}
+		manifestTime := imageManifest.Time.UTC()
+		responseManifest.Time = &manifestTime
+
 		// UUID of file
 		if imageManifest.FileUUID == nil || strings.TrimSpace(*imageManifest.FileUUID) == "" {
 			log.Warn("Image manifest FileUUID is nil or empty in GetClientImagesManifest")
