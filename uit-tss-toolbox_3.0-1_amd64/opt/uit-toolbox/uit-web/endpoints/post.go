@@ -1084,7 +1084,7 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 
 	// Decode JSON body
 	var body struct {
-		UUID      string `json:"uuid"`
+		FileUUID  string `json:"file_uuid"`
 		Tagnumber int64  `json:"tagnumber"`
 	}
 	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
@@ -1093,13 +1093,13 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	uuid := strings.TrimSpace(body.UUID)
-	if uuid == "" {
+	fileUUID := strings.TrimSpace(body.FileUUID)
+	if fileUUID == "" {
 		log.Warn("No image UUID provided in TogglePinImage body")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if uuid == "" {
+	if fileUUID == "" {
 		log.Warn("No image path provided for TogglePinImage body")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -1112,7 +1112,7 @@ func TogglePinImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := database.TogglePinImage(ctx, &tagnumber, &uuid); err != nil {
+	if err := database.TogglePinImage(ctx, &tagnumber, &fileUUID); err != nil {
 		log.Error("Failed to toggle pin image: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
