@@ -747,6 +747,13 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	clientLookupResult, err := database.ClientIDLookup(ctx, &inventoryDomain.Tagnumber, &inventoryDomain.SystemSerial)
+	if err != nil {
+		log.Warn("Error looking up client ID: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
 	// File upload part of form:
 	if req.MultipartForm == nil || req.MultipartForm.File == nil {
 		log.Info("File upload part of inventory update is nil, continuing")
@@ -785,9 +792,13 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		fileHeader.Filename = filepath.Join(fileHeader.Filename)
 		fileHeader.Filename = filepath.Clean(fileHeader.Filename)
 
-		createNecessaryDirs := func(tagnumber int64) (string, error) {
+		createNecessaryDirs := func(clientUUID *string) (string, error) {
+			// Check client UUID
+			if clientUUID == nil || strings.TrimSpace(*clientUUID) == "" {
+				return "", fmt.Errorf("client UUID is nil for tagnumber: %d", clientUUID)
+			}
 			// Create directories if not existing
-			imageDirectoryPath := filepath.Join("./inventory-images", fmt.Sprintf("%06d", tagnumber))
+			imageDirectoryPath := filepath.Join("/opt/inventory_images", *clientUUID)
 			if err := os.MkdirAll(imageDirectoryPath, 0755); err != nil {
 				return "", fmt.Errorf("cannot create parent directories for '"+imageDirectoryPath+"': %w", err)
 			}
@@ -938,7 +949,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			manifest.ResolutionY = &resY
 
 			// Generate jpeg thumbnail
-			imageDirectoryPath, err := createNecessaryDirs(inventoryDomain.Tagnumber)
+			imageDirectoryPath, err := createNecessaryDirs(clientLookupResult.ClientUUID)
 			if err != nil {
 				log.Error("Failed to create necessary directories for thumbnail of '" + fileHeader.Filename + "': " + err.Error())
 				middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -992,7 +1003,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		imageDirectoryPath, err := createNecessaryDirs(inventoryDomain.Tagnumber)
+		imageDirectoryPath, err := createNecessaryDirs(clientLookupResult.ClientUUID)
 		if err != nil {
 			log.Error("Failed to create necessary directories for '" + fileHeader.Filename + "': " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)

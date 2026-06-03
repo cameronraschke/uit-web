@@ -18,6 +18,7 @@ type DashboardInventorySummary struct {
 type ClientLookupRow struct {
 	Tagnumber          *int64     `json:"tagnumber"`
 	SystemSerial       *string    `json:"system_serial"`
+	ClientUUID         *string    `json:"client_uuid"`
 	LastInventoryEntry *time.Time `json:"last_inventory_entry,omitempty"`
 }
 

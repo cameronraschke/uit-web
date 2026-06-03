@@ -1,21 +1,16 @@
 type ImageManifest = {
 	time: Date
-	tagnumber: number
-	uuid: string
+	client_uuid: string
+	file_uuid: string
 	sha256_hash: string
-	filename: string
-	filepath: string
-	thumbnail_filepath: string
 	file_size: number
 	mime_type: string
-	exif_timestamp: Date
 	resolution_x: number
 	resolution_y: number
 	url: string
 	hidden: boolean
 	pinned: boolean
 	caption: string
-	file_type: string
 };
 
 
@@ -82,7 +77,7 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 	for (const file of manifestArr) {
 		const fileEntry = document.createElement('div');
 		fileEntry.className = 'file-entry';
-		fileEntry.setAttribute('id', `${file.uuid}`);
+		fileEntry.setAttribute('id', `${file.file_uuid}`);
 		if (file.pinned) {
 			fileEntry.classList.add('file-entry', 'primary');
 			const pinnedMessage = document.createElement('p');
@@ -100,7 +95,7 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 		iconContainer.appendChild(imageCount);
 
 		const unpinIcon = document.createElement('button');
-		unpinIcon.dataset.uuid = file.uuid;
+		unpinIcon.dataset.uuid = file.file_uuid;
 		if (file.pinned) {
 			unpinIcon.classList.add('svg-button', 'pinned');
 			unpinIcon.textContent = 'Unpin Image';
@@ -111,7 +106,7 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 		iconContainer.appendChild(unpinIcon);
 
 		const deleteIcon = document.createElement('button');
-		deleteIcon.dataset.uuid = file.uuid;
+		deleteIcon.dataset.uuid = file.file_uuid;
 		deleteIcon.dataset.imageCount = imageIndex + "/" + manifestArr.length;
 		deleteIcon.classList.add('svg-button', 'delete');
 		deleteIcon.title = 'Delete Image';
@@ -138,8 +133,8 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 
 		// Source URL
 		const imgURL = new URL(`/api/client/files`, window.location.origin);
-		imgURL.searchParams.set('tagnumber', clientTag.toString());
-		imgURL.searchParams.set('uuid', file.uuid);
+		imgURL.searchParams.set('client_uuid', file.client_uuid);
+		imgURL.searchParams.set('file_uuid', file.file_uuid);
 
 		let filePreview = null as HTMLImageElement | HTMLVideoElement | null;
 		if (file.mime_type && file.mime_type.startsWith('video/')) {
@@ -159,11 +154,11 @@ function renderFiles(manifestArr: ImageManifest[], clientTag: number) {
 			imgLink.appendChild(filePreview);
 			filePreviewContainer.appendChild(imgLink);
 		} else {
-			console.warn(`Unsupported media type: ${file.mime_type} for image UUID: ${file.uuid}`);
+			console.warn(`Unsupported media type: ${file.mime_type} for image UUID: ${file.file_uuid}`);
 			continue;
 		}
 		if (!filePreview) {
-			console.warn(`Failed to create media element for image UUID: ${file.uuid}`);
+			console.warn(`Failed to create media element for image UUID: ${file.file_uuid}`);
 			continue;
 		}
 		filePreview.src = imgURL.toString();
@@ -221,14 +216,14 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 			return;
 		}
 		const currentURL = new URL(window.location.href);
-		const clientTag = currentURL.searchParams.get("tagnumber") ? parseInt(currentURL.searchParams.get("tagnumber") as string) : null;
+		const clientTag = currentURL.searchParams.get("client_uuid") ?? null;
 		const unpinURL = new URL(`/api/files/toggle_pin`, window.location.origin);
 		try {
 			const unpinRequest = await fetch(unpinURL, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'same-origin',
-				body: JSON.stringify({uuid: uuidToUnpin, tagnumber: clientTag})
+				body: JSON.stringify({uuid: uuidToUnpin, client_uuid: clientTag})
 			});
 			if (!unpinRequest.ok) {
 				throw new Error (`Failed to unpin image: ${unpinRequest.status} ${unpinRequest.statusText}`);
@@ -275,8 +270,8 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 
 		try {
 			const deleteURL = new URL(`/api/client/files`, window.location.origin);
-			deleteURL.searchParams.set('tagnumber', clientTag.toString());
-			deleteURL.searchParams.set('uuid', uuidToDelete);
+			deleteURL.searchParams.set('client_uuid', clientTag.toString());
+			deleteURL.searchParams.set('file_uuid', uuidToDelete);
 			const deleteResponse = await fetch(deleteURL, {
 				method: 'DELETE',
 				credentials: 'same-origin'

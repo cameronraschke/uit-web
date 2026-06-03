@@ -8,7 +8,7 @@ type ClientInfoResponse struct {
 	Building                  *string                `json:"Building"`
 	CheckoutDate              *time.Time             `json:"CheckoutDate"`
 	CheckoutLog               *[]CheckoutLogResponse `json:"CheckoutLog"`
-	ClientImages              *[]ImageManifestView   `json:"ClientImages"`
+	ClientImages              *[]ImageManifestResponse   `json:"ClientImages"`
 	ClientNote                *string                `json:"ClientNote"`
 	ClientStatus              *string                `json:"ClientStatus"`
 	ClientUUID                *string                `json:"ClientUUID"`

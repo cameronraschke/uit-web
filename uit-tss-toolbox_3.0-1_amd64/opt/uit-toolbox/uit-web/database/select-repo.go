@@ -26,7 +26,6 @@ type Select interface {
 	GetJobQueueOverview(ctx context.Context) (*types.JobQueueOverview, error)
 	GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteRow, error)
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
-	GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifestView, error)
 	GetClientBatteryReport(ctx context.Context) ([]types.ClientReportRow, error)
 	GetAllJobs(ctx context.Context) ([]types.AllJobsRow, error)
 	GetAllLocations(ctx context.Context) ([]types.AllLocationsRow, error)
@@ -139,7 +138,8 @@ func ClientIDLookup(ctx context.Context, tag *int64, serial *string) (*types.Cli
 	sqlQuery := fmt.Sprintf(`
 		SELECT 
 			tagnumber, 
-			system_serial 
+			system_serial,
+			client_uuid
 		FROM 
 			ids 
 		%s
@@ -153,6 +153,7 @@ func ClientIDLookup(ctx context.Context, tag *int64, serial *string) (*types.Cli
 	if err := row.Scan(
 		&clientLookup.Tagnumber,
 		&clientLookup.SystemSerial,
+		&clientLookup.ClientUUID,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -677,7 +678,7 @@ func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*type
 	return inventoryUpdate, nil
 }
 
-func GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifestView, error) {
+func GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifestResponse, error) {
 	if uuid == nil || strings.TrimSpace(*uuid) == "" {
 		return nil, fmt.Errorf("%w: %s", types.MissingFieldError, "uuid")
 	}
@@ -703,7 +704,7 @@ func GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.I
 	row := dbConn.QueryRowContext(ctx, sqlQuery,
 		ptrToNullString(uuid),
 	)
-	var imageManifest types.ImageManifestView
+	var imageManifest types.ImageManifestResponse
 	if err := row.Scan(
 		&imageManifest.Tagnumber,
 		&imageManifest.FileName,
@@ -757,15 +758,35 @@ func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([
 	return hashes, nil
 }
 
-func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifestView, error) {
-	if tagnumber == nil {
+func GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types.ImageManifestResponse, error) {
+	if err := types.IsTagnumberInt64Valid(tagnumber); err != nil {
 		return nil, fmt.Errorf("tagnumber is nil")
 	}
 
-	const sqlQuery = `SELECT time, tagnumber, uuid, filename, filepath, thumbnail_filepath, mime_type, hidden, pinned, note FROM client_images WHERE tagnumber = $1;`
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
 
-	imageManifests := make([]types.ImageManifestView, 0, 10)
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery, tagnumber)
+	const sqlQuery = `
+		SELECT 
+			time, 
+			client_uuid, 
+			tagnumber, 
+			uuid, 
+			filename, 
+			filepath, 
+			thumbnail_filepath, 
+			mime_type, 
+			hidden, 
+			pinned, 
+			note 
+		FROM client_images 
+		WHERE 
+			client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1);`
+
+	imageManifests := make([]types.ImageManifestResponse, 0, 10)
+	rows, err := dbConn.QueryContext(ctx, sqlQuery, tagnumber)
 	if err != nil {
 		return nil, fmt.Errorf("error during query execution: %w", err)
 	}
@@ -775,9 +796,10 @@ func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumb
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var imageManifest types.ImageManifestView
+		var imageManifest types.ImageManifestResponse
 		if err := rows.Scan(
 			&imageManifest.Time,
+			&imageManifest.ClientUUID,
 			&imageManifest.Tagnumber,
 			&imageManifest.UUID,
 			&imageManifest.FileName,
@@ -799,6 +821,56 @@ func (repo *SelectRepo) GetClientImageManifestByTag(ctx context.Context, tagnumb
 		return nil, nil
 	}
 	return imageManifests, nil
+}
+
+func GetClientImageManifestByFileUUID(ctx context.Context, fileUUID string) (*types.ImageManifestResponse, error) {
+	if strings.TrimSpace(fileUUID) == "" {
+		return nil, fmt.Errorf("file UUID is nil")
+	}
+
+	dbConn, err := config.GetDatabaseConn()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	const sqlQuery = `
+		SELECT 
+			time, 
+			client_uuid, 
+			tagnumber, 
+			uuid, 
+			filename, 
+			filepath, 
+			thumbnail_filepath, 
+			mime_type, 
+			hidden, 
+			pinned, 
+			note 
+		FROM client_images 
+		WHERE 
+			uuid = $1;`
+
+	var imageManifest types.ImageManifestResponse
+	row := dbConn.QueryRowContext(ctx, sqlQuery, fileUUID)
+	if err := row.Scan(
+		&imageManifest.Time,
+		&imageManifest.ClientUUID,
+		&imageManifest.Tagnumber,
+		&imageManifest.UUID,
+		&imageManifest.FileName,
+		&imageManifest.FilePath,
+		&imageManifest.ThumbnailFilePath,
+		&imageManifest.MimeType,
+		&imageManifest.Hidden,
+		&imageManifest.Pinned,
+		&imageManifest.Caption,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error during row scan: %w", err)
+	}
+	return &imageManifest, nil
 }
 
 func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAdvSearchOptions) ([]types.InventoryTableRow, error) {
@@ -1173,7 +1245,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			osInvalidData := types.OSInvalidData.ToConfigErrorResponse()
 			results[i].ClientErrors = append(results[i].ClientErrors, osInvalidData)
 		}
-		
+
 		// If client has status pre-property or retired status, it need to be erased
 		if results[i].Status != nil && (*results[i].Status == "pre-property" || *results[i].Status == "retired") {
 			if results[i].OsInstalled != nil && *results[i].OsInstalled {

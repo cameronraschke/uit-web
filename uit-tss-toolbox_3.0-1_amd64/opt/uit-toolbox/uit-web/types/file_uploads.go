@@ -22,8 +22,9 @@ type ImageManifestDTO struct {
 	FileType          string     `json:"file_type"`
 }
 
-type ImageManifestView struct {
+type ImageManifestResponse struct {
 	Time              *time.Time `json:"time"`
+	ClientUUID        *string    `json:"client_uuid"`
 	Tagnumber         *int64     `json:"tagnumber"`
 	UUID              *string    `json:"uuid"`
 	SHA256Hash        *[]uint8   `json:"sha256_hash"`

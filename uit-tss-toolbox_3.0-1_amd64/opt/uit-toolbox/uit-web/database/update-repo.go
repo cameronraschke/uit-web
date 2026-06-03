@@ -651,12 +651,9 @@ func UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest
 	return nil
 }
 
-func HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) (err error) {
-	if err := types.IsTagnumberInt64Valid(tagnumber); err != nil {
-		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
-	}
-	if uuid == nil || strings.TrimSpace(*uuid) == "" {
-		return fmt.Errorf("%w: %s", types.MissingFieldError, "image UUID")
+func HideClientImageByUUID(ctx context.Context, fileUUID *string) (err error) {
+	if fileUUID == nil || strings.TrimSpace(*fileUUID) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "file UUID")
 	}
 
 	dbConn, err := config.GetDatabaseConn()
@@ -683,13 +680,11 @@ func HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) 
 		SET 
 			hidden = TRUE 
 		WHERE 
-			client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1)
-			AND uuid = $2
+			uuid = $1
 	;`
 
 	sqlResult, err := tx.ExecContext(ctx, sqlQuery,
-		ptrToNullInt64(tagnumber),
-		ptrToNullString(uuid),
+		ptrToNullString(fileUUID),
 	)
 	if err != nil {
 		return err
@@ -700,12 +695,12 @@ func HideClientImageByUUID(ctx context.Context, tagnumber *int64, uuid *string) 
 	return nil
 }
 
-func DeleteClientImageByUUID(ctx context.Context, tag *int64, imageUUID *string) (err error) {
+func DeleteClientImageByUUID(ctx context.Context, tag *int64, fileUUID *string) (err error) {
 	if err := types.IsTagnumberInt64Valid(tag); err != nil {
 		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
-	if imageUUID == nil || strings.TrimSpace(*imageUUID) == "" {
-		return fmt.Errorf("%w: %s", types.MissingFieldError, "image UUID")
+	if fileUUID == nil || strings.TrimSpace(*fileUUID) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "file UUID")
 	}
 
 	dbConn, err := config.GetDatabaseConn()
@@ -735,7 +730,7 @@ func DeleteClientImageByUUID(ctx context.Context, tag *int64, imageUUID *string)
 	;`
 	sqlResult, err := tx.ExecContext(ctx, sqlQuery,
 		ptrToNullInt64(tag),
-		ptrToNullString(imageUUID),
+		ptrToNullString(fileUUID),
 	)
 	if err != nil {
 		return err
@@ -746,15 +741,15 @@ func DeleteClientImageByUUID(ctx context.Context, tag *int64, imageUUID *string)
 	return nil
 }
 
-func TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err error) {
+func TogglePinImage(ctx context.Context, tagnumber *int64, fileUUID *string) (err error) {
 	if tagnumber == nil {
 		return fmt.Errorf("%w: %s", types.MissingFieldError, "tagnumber")
 	}
 	if err := types.IsTagnumberInt64Valid(tagnumber); err != nil {
 		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
-	if uuid == nil || strings.TrimSpace(*uuid) == "" {
-		return fmt.Errorf("%w: %s", types.MissingFieldError, "image UUID")
+	if fileUUID == nil || strings.TrimSpace(*fileUUID) == "" {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "file UUID")
 	}
 
 	dbConn, err := config.GetDatabaseConn()
@@ -776,7 +771,7 @@ func TogglePinImage(ctx context.Context, tagnumber *int64, uuid *string) (err er
 
 	const sqlQuery = `UPDATE client_images SET pinned = NOT COALESCE(pinned, FALSE) WHERE uuid = $1 AND client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1);`
 	sqlResult, err := tx.ExecContext(ctx, sqlQuery,
-		ptrToNullString(uuid),
+		ptrToNullString(fileUUID),
 		ptrToNullInt64(tagnumber),
 	)
 	if err != nil {

@@ -232,14 +232,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository in GetClientImagesManifest: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	imageManifests, err := db.GetClientImageManifestByTag(ctx, tagnumber)
+	imageManifests, err := database.GetClientImageManifestByTag(ctx, tagnumber)
 	if err != nil && err != sql.ErrNoRows {
 		log.Warn("Query error in GetClientImagesManifest: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -251,40 +244,81 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var filteredImageManifests []types.ImageManifestView
+	var filteredImageManifests []types.ImageManifestResponse
 	for _, imageManifest := range imageManifests {
+		var responseManifest = new(types.ImageManifestResponse)
 		// UUID of file
 		if imageManifest.UUID == nil || strings.TrimSpace(*imageManifest.UUID) == "" {
 			log.Warn("Image manifest UUID is nil or empty in GetClientImagesManifest")
 			continue
 		}
-		fileUUID := *imageManifest.UUID
+		fileUUID := strings.TrimSpace(*imageManifest.UUID)
+		responseManifest.UUID = &fileUUID
 
-		// File path
-		if imageManifest.FilePath == nil || strings.TrimSpace(*imageManifest.FilePath) == "" {
-			log.Info("File path provided to GetClientImagesManifest is nil")
+		// Check if marked as hidden
+		if imageManifest.Hidden != nil && *imageManifest.Hidden {
+			log.Info("Hidden file requested, but not sent: " + fileUUID)
 			continue
 		}
-		filePath := strings.ToLower(strings.TrimSpace(*imageManifest.FilePath))
+
+		// File Name
+		if imageManifest.FileName == nil || strings.TrimSpace(*imageManifest.FileName) == "" {
+			log.Warn("Image manifest FileName is nil or empty in GetClientImagesManifest")
+			continue
+		}
+		fileName := strings.TrimSpace(*imageManifest.FileName)
+
+		// Client UUID
+		if imageManifest.ClientUUID == nil || strings.TrimSpace(*imageManifest.ClientUUID) == "" {
+			log.Warn("Image manifest ClientUUID is nil or empty in GetClientImagesManifest")
+			continue
+		}
+		clientUUID := strings.TrimSpace(*imageManifest.ClientUUID)
+		responseManifest.ClientUUID = &clientUUID
+
+		// SHA-256 hash
+		if imageManifest.SHA256Hash == nil || len(*imageManifest.SHA256Hash) == 0 {
+			log.Warn("Image manifest SHA256Hash is nil or empty in GetClientImagesManifest for file: " + fileUUID)
+			continue
+		}
+		responseManifest.SHA256Hash = imageManifest.SHA256Hash
+
+		// File path
+		filePath := filepath.Join("/opt/inventory_images", clientUUID, fileName)
+		filePath = filepath.Clean(filePath)
 
 		// URL to send to client
 		imageManifest.FilePath = nil // Hide actual file path from client
-		urlStr, err := url.JoinPath("/api/client/files", fmt.Sprintf("%d", *imageManifest.Tagnumber), fileUUID)
+		urlStr := url.URL{
+			Scheme: "https",
+			Host:   req.Host,
+			Path:   filepath.Join("/api/client/files"),
+		}
+		q := urlStr.Query()
+		q.Set("file_uuid", fileUUID)
+		q.Set("client_uuid", clientUUID)
+		urlStr.RawQuery = q.Encode()
+
 		if err != nil {
 			log.Warn("Error joining URL paths in GetClientImagesManifest: " + err.Error())
 			continue
 		}
-		imageManifest.URL = &urlStr
+		imageManifest.URL = &urlStr.RawQuery
 
-		// Check if marked as hidden
-		if imageManifest.Hidden != nil && *imageManifest.Hidden {
-			log.Info("Hidden file requested, but not sent: " + filePath)
-			continue
+		// Check if pinned
+		if imageManifest.Pinned != nil && *imageManifest.Pinned {
+			responseManifest.Pinned = imageManifest.Pinned
+		}
+
+		// Copy caption
+		if imageManifest.Caption != nil && strings.TrimSpace(*imageManifest.Caption) != "" {
+			caption := strings.TrimSpace(*imageManifest.Caption)
+			responseManifest.Caption = &caption
 		}
 
 		// Check MIME type from DB
 		if imageManifest.MimeType == nil {
-			log.Warn("File '" + fileUUID + "' has a nil MIME type in DB (GetClientImagesManifest)")
+			log.Warn("File '" + fileUUID + "' has a nil MIME type in DB")
 			continue
 		}
 		mimeType := strings.TrimSpace(*imageManifest.MimeType)
@@ -295,7 +329,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		// Open file and read metadata
 		file, err := os.Open(filePath)
 		if err != nil {
-			log.Warn("Cannot open file '" + fileUUID + "' (GetClientImagesManifest): " + err.Error())
+			log.Warn("Cannot open file '" + fileUUID + "': " + err.Error())
 			continue
 		}
 		isValidFile := func() bool {
@@ -305,13 +339,13 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 
 			imageStat, err := file.Stat()
 			if err != nil {
-				log.Warn("Cannot stat file '" + fileUUID + "' (GetClientImagesManifest): " + err.Error())
+				log.Warn("Cannot stat file '" + fileUUID + "': " + err.Error())
 				return false
 			}
 
 			// Get file size
 			metadataFileSize := imageStat.Size()
-			imageManifest.FileSize = &metadataFileSize
+			responseManifest.FileSize = &metadataFileSize
 
 			// If an image
 			if _, ok := fileConstraints.ImageConstraints.AcceptedImageExtensionsAndMimeTypes[fileExtension]; ok {
@@ -331,6 +365,9 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 					return false
 				}
 
+				// File size
+				responseManifest.FileSize = &metadataFileSize
+
 				// Get image metadata
 				imageConfig, imageType, err := image.DecodeConfig(bytes.NewReader(imageBytes))
 				if err != nil {
@@ -341,7 +378,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 				// Check if MIME type matches file content
 				mt := http.DetectContentType(imageBytes)
 				if mt != mimeType {
-					log.Warn("MIME in type in DB does not match file content for file '" + fileUUID + "' (GetClientImagesManifest): Detected MIME type: " + mt + ", MIME type in DB: " + mimeType)
+					log.Warn("MIME in type in DB does not match file content for file '" + fileUUID + "': Detected MIME type: " + mt + ", MIME type in DB: " + mimeType)
 					return false
 				}
 				// Check http's library MIME type against image library's detected type
@@ -358,8 +395,8 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 				}
 				resX := int64(imageConfig.Width)
 				resY := int64(imageConfig.Height)
-				imageManifest.ResolutionX = &resX
-				imageManifest.ResolutionY = &resY
+				responseManifest.ResolutionX = &resX
+				responseManifest.ResolutionY = &resY
 				return true
 			}
 
@@ -383,7 +420,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 				// Check if MIME type matches file content
 				mt := http.DetectContentType(videoBytes)
 				if mt != mimeType {
-					log.Warn("MIME in type in DB does not match file content for file '" + fileUUID + "' (GetClientImagesManifest): Detected MIME type: " + mt + ", MIME type in DB: " + mimeType)
+					log.Warn("MIME in type in DB does not match file content for file '" + fileUUID + "': Detected MIME type: " + mt + ", MIME type in DB: " + mimeType)
 					return false
 				}
 				// Check MIME type matches expected MIME type for video extension
@@ -391,7 +428,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 					log.Warn("Video manifest has mismatched MIME type in GetClientImagesManifest: " + filePath + " -> Detected MIME type: " + mimeType + ", Expected MIME type: " + fileConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[fileExtension])
 					return false
 				}
-				imageManifest.MimeType = &mimeType
+				responseManifest.MimeType = &mimeType
 				return true
 			}
 
@@ -403,7 +440,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 			continue
 		}
 
-		filteredImageManifests = append(filteredImageManifests, imageManifest)
+		filteredImageManifests = append(filteredImageManifests, *responseManifest)
 	}
 
 	// If all manifests were filtered out

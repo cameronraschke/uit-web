@@ -1,7 +1,6 @@
 package endpoints
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -9,89 +8,61 @@ import (
 	"strings"
 	"uit-toolbox/database"
 	"uit-toolbox/middleware"
-	"uit-toolbox/types"
 )
 
 func DeleteImage(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "DeleteImage"))
 
 	// Check if required query parameters are set
-	if !req.URL.Query().Has("tagnumber") {
-		log.Warn("No tagnumber query key provided")
+	if !req.URL.Query().Has("client_uuid") {
+		log.Warn("No client_uuid query key provided")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !req.URL.Query().Has("uuid") {
-		log.Warn("No uuid query key provided")
+	if !req.URL.Query().Has("file_uuid") {
+		log.Warn("No file_uuid query key provided")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	tag, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
-	if err != nil {
-		log.Warn("Error parsing/converting tagnumber query value: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
+	clientUUID := strings.TrimSpace(req.URL.Query().Get("client_uuid"))
+	fileUUID := strings.TrimSpace(req.URL.Query().Get("file_uuid"))
 
 	// Check if uuid is empty after trimming
-	requestedImageUUID := strings.TrimSpace(req.URL.Query().Get("uuid"))
-	if requestedImageUUID == "" {
+	if clientUUID == "" || fileUUID == "" {
 		log.Warn("Invalid/empty uuid query parameter provided")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	// Get filepath from uuid
-	imageManifest, err := database.GetClientImageFilePathFromUUID(req.Context(), &requestedImageUUID)
+	imageManifest, err := database.GetClientImageManifestByFileUUID(req.Context(), fileUUID)
 	if err != nil {
 		log.Error("Error retrieving image manifest: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	// Check for a return value
+	// Check for a non-nil response from DB
 	if imageManifest == nil {
-		log.Warn("No image manifest found for provided uuid: " + requestedImageUUID)
+		log.Warn("No image manifest found for provided uuid: " + fileUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
-	// Check for tagnumber
-	if imageManifest.Tagnumber == nil {
-		log.Warn("Missing tagnumber in image manifest for provided uuid: " + requestedImageUUID)
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	if err := types.IsTagnumberInt64Valid(imageManifest.Tagnumber); err != nil {
-		log.Warn("Invalid tagnumber in image manifest for provided uuid: " + requestedImageUUID + ". Error: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	// Check that tagnumber in manifest matches query tagnumber
-	if *imageManifest.Tagnumber != *tag {
-		log.Warn("Tagnumber mismatch for provided uuid. Expected tagnumber: " + fmt.Sprintf("%d", *imageManifest.Tagnumber) + ", got: " + fmt.Sprintf("%d", *tag))
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-	// Check returned file path
+
 	if imageManifest.FilePath == nil || strings.TrimSpace(*imageManifest.FilePath) == "" {
-		log.Warn("No file path found for provided uuid: " + requestedImageUUID)
+		log.Warn("No file path found in image manifest for provided uuid: " + fileUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 
-	joinedFilePath := filepath.Join(*imageManifest.FilePath)
-	cleanedFilePath := filepath.Clean(joinedFilePath)
-	resolvedFilePath, err := filepath.EvalSymlinks(cleanedFilePath)
-	if err != nil {
-		log.Error("Error resolving file path: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+	// Create file path
+	filePath := filepath.Join("/opt/inventory_images", clientUUID, *imageManifest.FileName)
+	filePath = filepath.Clean(filePath)
 
-	imageFile, err := os.Open(resolvedFilePath)
+	imageFile, err := os.Open(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Warn("No image file found for provided uuid and tagnumber: " + requestedImageUUID)
+			log.Warn("No image file found for provided uuid and tagnumber: " + fileUUID)
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
@@ -100,7 +71,7 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if imageFile == nil {
-		log.Warn("No image found for provided uuid and tagnumber: " + requestedImageUUID)
+		log.Warn("No image found for provided uuid and tagnumber: " + fileUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
@@ -113,22 +84,22 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if fileMetadata.IsDir() {
-		log.Warn("Resolved image file path is a directory for provided uuid and tagnumber: " + requestedImageUUID)
+		log.Warn("Resolved image file path is a directory for provided uuid and tagnumber: " + fileUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 	if fileMetadata.Size() == 0 {
-		log.Warn("Resolved image file is empty for provided uuid and tagnumber: " + requestedImageUUID)
+		log.Warn("Resolved image file is empty for provided uuid and tagnumber: " + fileUUID)
 		// middleware.WriteJsonError(w, http.StatusNotFound)
 		// return
 	}
 	if !fileMetadata.Mode().IsRegular() {
-		log.Warn("Resolved image file is not a regular file for provided uuid and tagnumber: " + requestedImageUUID)
+		log.Warn("Resolved image file is not a regular file for provided uuid and tagnumber: " + fileUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 
-	if err := os.Remove(resolvedFilePath); err != nil {
+	if err := os.Remove(filePath); err != nil {
 		log.Error("Error deleting image file: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
@@ -157,12 +128,12 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	if err := database.HideClientImageByUUID(req.Context(), tag, &requestedImageUUID); err != nil {
-		log.Error("DB error while deleting client image with UUID '" + requestedImageUUID + "' and tagnumber '" + fmt.Sprintf("%d", *tag) + "': " + err.Error())
+	if err := database.HideClientImageByUUID(req.Context(), &fileUUID); err != nil {
+		log.Error("DB error while deleting client image with UUID '" + fileUUID + "': " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
-	log.Info("Successfully deleted client image with UUID '" + requestedImageUUID + "' and tagnumber '" + fmt.Sprintf("%d", *tag) + "'")
+	log.Info("Successfully deleted client image with UUID '" + fileUUID + "'")
 	middleware.WriteJson(w, http.StatusOK, map[string]string{"message": "Image deleted successfully"})
 }
