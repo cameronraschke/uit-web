@@ -49,20 +49,39 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if imageManifest.FilePath == nil || strings.TrimSpace(*imageManifest.FilePath) == "" {
-		log.Warn("No file path found in image manifest for provided uuid: " + fileUUID)
+	// client UUID
+	if imageManifest.ClientUUID == nil || strings.TrimSpace(*imageManifest.ClientUUID) == "" {
+		log.Warn("No client UUID found in image manifest for provided file uuid: " + fileUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
+	clientUUIDFromManifest := strings.TrimSpace(*imageManifest.ClientUUID)
+	if clientUUIDFromManifest != clientUUID {
+		log.Warn("Client UUID from manifest does not match client_uuid query parameter for provided file uuid: " + fileUUID)
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
 
-	// Create file path
-	filePath := filepath.Join("/opt/inventory_images", clientUUID, *imageManifest.FileName)
+	// file uuid
+	if imageManifest.FileUUID == nil || strings.TrimSpace(*imageManifest.FileUUID) == "" {
+		log.Warn("No file found in image manifest for provided file uuid: " + fileUUID)
+		middleware.WriteJsonError(w, http.StatusNotFound)
+		return
+	}
+	fileUUIDFromManifest := strings.TrimSpace(*imageManifest.FileUUID)
+	if fileUUIDFromManifest != fileUUID {
+		log.Warn("File UUID from manifest does not match file_uuid query parameter for provided file uuid: " + fileUUID)
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	filePath := filepath.Join("/opt/inventory_images", clientUUIDFromManifest, fileUUID)
 	filePath = filepath.Clean(filePath)
 
 	imageFile, err := os.Open(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Warn("No image file found for provided uuid and tagnumber: " + fileUUID)
+			log.Warn("No image file found for provided file uuid: " + fileUUID)
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
@@ -71,7 +90,7 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if imageFile == nil {
-		log.Warn("No image found for provided uuid and tagnumber: " + fileUUID)
+		log.Warn("No image found for provided uuid and file name: " + fileUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
@@ -84,17 +103,17 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if fileMetadata.IsDir() {
-		log.Warn("Resolved image file path is a directory for provided uuid and tagnumber: " + fileUUID)
+		log.Warn("Resolved image file path is a directory for provided uuid and file name: " + fileUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
 	if fileMetadata.Size() == 0 {
-		log.Warn("Resolved image file is empty for provided uuid and tagnumber: " + fileUUID)
+		log.Warn("Resolved image file is empty for provided uuid and file name: " + fileUUID)
 		// middleware.WriteJsonError(w, http.StatusNotFound)
 		// return
 	}
 	if !fileMetadata.Mode().IsRegular() {
-		log.Warn("Resolved image file is not a regular file for provided uuid and tagnumber: " + fileUUID)
+		log.Warn("Resolved image file is not a regular file for provided uuid and file name: " + fileUUID)
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}

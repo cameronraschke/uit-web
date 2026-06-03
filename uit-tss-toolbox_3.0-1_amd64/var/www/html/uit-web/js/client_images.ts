@@ -95,7 +95,8 @@ function renderFiles(manifestArr: ImageManifest[], clientUUID: string) {
 		iconContainer.appendChild(imageCount);
 
 		const unpinIcon = document.createElement('button');
-		unpinIcon.dataset.uuid = file.file_uuid;
+		unpinIcon.dataset.client_uuid = file.client_uuid;
+		unpinIcon.dataset.file_uuid = file.file_uuid;
 		if (file.pinned) {
 			unpinIcon.classList.add('svg-button', 'pinned');
 			unpinIcon.textContent = 'Unpin Image';
@@ -106,7 +107,8 @@ function renderFiles(manifestArr: ImageManifest[], clientUUID: string) {
 		iconContainer.appendChild(unpinIcon);
 
 		const deleteIcon = document.createElement('button');
-		deleteIcon.dataset.uuid = file.file_uuid;
+		deleteIcon.dataset.client_uuid = file.client_uuid;
+		deleteIcon.dataset.file_uuid = file.file_uuid;
 		deleteIcon.dataset.imageCount = imageIndex + "/" + manifestArr.length;
 		deleteIcon.classList.add('svg-button', 'delete');
 		deleteIcon.title = 'Delete Image';
@@ -209,7 +211,7 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 		if (!(unpinEl instanceof HTMLElement)) return;
 		const el = event.currentTarget as HTMLButtonElement;
 		el.disabled = true;
-		const uuidToUnpin = el.dataset.uuid || "";
+		const uuidToUnpin = el.dataset.file_uuid || "";
 		if (!uuidToUnpin) {
 			alert('Error: No UUID found for this image.');
 			el.disabled = false;
@@ -223,12 +225,16 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 			return;
 		}
 		const unpinURL = new URL(`/api/files/toggle_pin`, window.location.origin);
+		const clientUUID = el.dataset.client_uuid || "";
+		const fileUUID = el.dataset.file_uuid || "";
+		unpinURL.searchParams.set('client_uuid', clientUUID);
+		unpinURL.searchParams.set('file_uuid', fileUUID);
 		try {
 			const unpinRequest = await fetch(unpinURL, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'same-origin',
-				body: JSON.stringify({file_uuid: uuidToUnpin, tagnumber: Number(tag)})
+				body: JSON.stringify({file_uuid: fileUUID, tagnumber: Number(tag)})
 			});
 			if (!unpinRequest.ok) {
 				throw new Error (`Failed to unpin image: ${unpinRequest.status} ${unpinRequest.statusText}`);
@@ -251,15 +257,15 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 		const deleteEl = event.currentTarget as HTMLButtonElement;
 		if (!(deleteEl instanceof HTMLElement)) return;
 		deleteEl.disabled = true;
-		const uuidToDelete = deleteEl.dataset.uuid;
-		if (!uuidToDelete) {
+		const fileUUID = deleteEl.dataset.file_uuid || "";
+		if (!fileUUID) {
 			alert('Error: No UUID found for this image.');
 			deleteEl.disabled = false;
 			return;
 		}
 		const imageCount = deleteEl.dataset.imageCount || '';
 
-		const entry = document.getElementById(uuidToDelete);
+		const entry = document.getElementById(fileUUID);
 		if (entry) {
 			entry.style.transition = entry.style.transition || 'opacity 150ms ease';
 			entry.style.opacity = '0.5';
@@ -276,7 +282,7 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 		try {
 			const deleteURL = new URL(`/api/client/files`, window.location.origin);
 			deleteURL.searchParams.set('client_uuid', clientUUID);
-			deleteURL.searchParams.set('file_uuid', uuidToDelete);
+			deleteURL.searchParams.set('file_uuid', fileUUID);
 			const deleteResponse = await fetch(deleteURL, {
 				method: 'DELETE',
 				credentials: 'same-origin'
