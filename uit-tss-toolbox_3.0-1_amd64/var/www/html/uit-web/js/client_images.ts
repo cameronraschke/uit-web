@@ -216,8 +216,8 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 			return;
 		}
 		const currentURL = new URL(window.location.href);
-		const tagnumber = currentURL.searchParams.get("tagnumber") ?? null;
-		if (!tagnumber || isNaN(Number(tagnumber))) {
+		const tag = currentURL.searchParams.get("tagnumber") ?? null;
+		if (!tag || isNaN(Number(tag))) {
 			alert('Error: No tagnumber found in URL.');
 			el.disabled = false;
 			return;
@@ -228,14 +228,14 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement, 
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'same-origin',
-				body: JSON.stringify({file_uuid: uuidToUnpin, tagnumber: tagnumber})
+				body: JSON.stringify({file_uuid: uuidToUnpin, tagnumber: tag})
 			});
 			if (!unpinRequest.ok) {
 				throw new Error (`Failed to unpin image: ${unpinRequest.status} ${unpinRequest.statusText}`);
 			}
-			await fetchManifestData(Number(tagnumber)).then(updatedManifest => {
+			await fetchManifestData(Number(tag)).then(updatedManifest => {
 				container.innerHTML = '';
-				renderFiles(updatedManifest, tagnumber as string);
+				renderFiles(updatedManifest, tag as string);
 			});
 		} catch (unpinError) {
 			if (unpinError instanceof Error) {
