@@ -61,6 +61,7 @@ func SelectAllIDs(ctx context.Context) ([]types.ClientLookupRow, error) {
 		SELECT 
 			ids.tagnumber,
 			ids.system_serial,
+			ids.uuid,
 			locations.time AS "last_inventory_entry"
 		FROM 
 			ids
@@ -87,6 +88,7 @@ func SelectAllIDs(ctx context.Context) ([]types.ClientLookupRow, error) {
 		if err := rows.Scan(
 			&tag.Tagnumber,
 			&tag.SystemSerial,
+			&tag.ClientUUID,
 			&tag.LastInventoryEntry,
 		); err != nil {
 			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
