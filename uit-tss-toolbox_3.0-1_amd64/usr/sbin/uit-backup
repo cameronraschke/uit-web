@@ -8,7 +8,9 @@ DTIME=$(date '+%F-%H%M%S')
 sudo -u postgres pg_dump uitdb > /opt/uit-toolbox/sql-backups/pg_backup-$(date '+%F-%H%M%S').sql
 find /opt/uit-toolbox/sql-backups/ -type f -exec chmod 440 {} \;
 find /opt/uit-toolbox/sql-backups/ -type f -exec chown root:uit {} \;
-find /opt/uit-toolbox/uit-web/inventory-images/ -type f -exec chmod 644 {} \;
-find /opt/inventory_images/ -type f -exec chmod 644 {} \;
+find /opt/uit-toolbox/uit-web/inventory-images/ -type f -exec chmod 440 {} \;
+find /opt/uit-toolbox/uit-web/inventory-images/ -type f -exec chown uitweb:uit {} \;
+find /opt/inventory_images/ -type f -exec chmod 440 {} \;
+find /opt/inventory_images/ -type f -exec chown uitweb:uit {} \;
 
 #rsync -a --delete /srv/nfs/uit-toolbox/images/ /opt/uit-toolbox/image-backups/
