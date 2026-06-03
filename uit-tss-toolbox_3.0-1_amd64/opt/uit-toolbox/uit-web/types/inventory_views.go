@@ -54,8 +54,7 @@ func (t ConfigurationErrorType) String() string {
 type ClientConfigurationError int
 
 const (
-	IsBroken ClientConfigurationError = iota
-	DiskNotRemoved
+	DiskNotRemoved ClientConfigurationError = iota
 	DomainNotJoined
 	IntuneNotEnrolled
 	AdminUsersMissing
@@ -72,7 +71,6 @@ const (
 )
 
 var ClientConfigurationErrorStrings = map[ClientConfigurationError]string{
-	IsBroken:                    "Client hardware is broken",
 	DiskNotRemoved:              "Disk needs to be removed",
 	DomainNotJoined:             "Not joined to domain",
 	IntuneNotEnrolled:           "Not enrolled in Intune",
@@ -110,14 +108,13 @@ type ClientConfigErrorMessageResponse struct {
 }
 
 var ClientConfigurationErrors = map[ClientConfigurationError]ClientConfigErrorMessageResponse{
-	IsBroken:                    {ErrorLevel: Warning.String(), ErrorType: HardwareIssueType.String(), ErrorMessage: IsBroken.String()},
 	DiskNotRemoved:              {ErrorLevel: Error.String(), ErrorType: HardwareIssueType.String(), ErrorMessage: DiskNotRemoved.String()},
 	DomainNotJoined:             {ErrorLevel: Error.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: DomainNotJoined.String()},
 	IntuneNotEnrolled:           {ErrorLevel: Warning.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: IntuneNotEnrolled.String()},
 	AdminUsersMissing:           {ErrorLevel: Warning.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: AdminUsersMissing.String()},
 	BIOSOutdated:                {ErrorLevel: Warning.String(), ErrorType: FirmwareIssueType.String(), ErrorMessage: BIOSOutdated.String()},
 	OSNotInstalled:              {ErrorLevel: Info.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: OSNotInstalled.String()},
-	OSOutdated:                  {ErrorLevel: Warning.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: OSOutdated.String()},
+	OSOutdated:                  {ErrorLevel: Info.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: OSOutdated.String()},
 	OSInvalidData:               {ErrorLevel: Error.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: OSInvalidData.String()},
 	DiskNotEncrypted:            {ErrorLevel: Warning.String(), ErrorType: FirmwareIssueType.String(), ErrorMessage: DiskNotEncrypted.String()},
 	NeedsHardwareCheck:          {ErrorLevel: Warning.String(), ErrorType: HardwareIssueType.String(), ErrorMessage: NeedsHardwareCheck.String()},

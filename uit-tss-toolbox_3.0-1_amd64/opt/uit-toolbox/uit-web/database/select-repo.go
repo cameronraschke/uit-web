@@ -1152,6 +1152,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		// 	missingImages := types.MissingImages.String()
 		// 	results[i].ClientErrors = append(results[i].ClientErrors, missingImages)
 		// }
+
 		// If client is retired, only pay attention to if disk removed or not
 		if results[i].Status != nil && (*results[i].Status == "retired" || *results[i].Status == "pre-property") {
 			if results[i].DiskRemoved != nil && !*results[i].DiskRemoved {
@@ -1160,21 +1161,19 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			}
 			continue
 		}
-		// If client is broken
-		if results[i].IsBroken != nil && *results[i].IsBroken {
-			isBroken := types.IsBroken.ToConfigErrorResponse()
-			results[i].ClientErrors = append(results[i].ClientErrors, isBroken)
-		}
+
 		// If no hardware check in over 3 months
 		if results[i].LastHardwareCheck == nil || (results[i].LastHardwareCheck != nil && time.Since(*results[i].LastHardwareCheck) > 90*24*time.Hour) {
 			needsHardwareCheck := types.NeedsHardwareCheck.ToConfigErrorResponse()
 			results[i].ClientErrors = append(results[i].ClientErrors, needsHardwareCheck)
 		}
+
 		// If disk is removed but OS is still marked as installed (need to update OS info in DB)
 		if (results[i].DiskRemoved != nil && *results[i].DiskRemoved) && (results[i].OsInstalled == nil || (results[i].OsInstalled != nil && *results[i].OsInstalled)) {
 			osInvalidData := types.OSInvalidData.ToConfigErrorResponse()
 			results[i].ClientErrors = append(results[i].ClientErrors, osInvalidData)
 		}
+		
 		// If client has status pre-property or retired status, it need to be erased
 		if results[i].Status != nil && (*results[i].Status == "pre-property" || *results[i].Status == "retired") {
 			if results[i].OsInstalled != nil && *results[i].OsInstalled {

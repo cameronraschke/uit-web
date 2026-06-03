@@ -419,40 +419,41 @@ async function renderInventoryTable() {
 					let highestSoftwareTooltipSeverity = 'info';
 					for (const err of inventoryRow.client_configuration_errors) {
 						// separate tooltips by error type
-						if (err.error_type == 'software' || err.error_type == 'firmware') {
-							if (err.error_level === 'error') {
+						if (err.error_type === 'firmware' || err.error_type === 'software') {
+							if (err.error_level === 'error' || highestSoftwareTooltipSeverity === 'error') {
 								highestSoftwareTooltipSeverity = 'error';
-								tooltip.classList.add('tooltip-image', 'error');
 								continue;
-							} else if (err.error_level === 'warning') {
-								if (highestSoftwareTooltipSeverity !== 'error') {
-									highestSoftwareTooltipSeverity = 'warning';
-									tooltip.classList.add('tooltip-image', 'warning');
-								}
-							} else if (err.error_level === 'info') {
-								if (highestSoftwareTooltipSeverity !== 'error' && highestSoftwareTooltipSeverity !== 'warning') {
-									highestSoftwareTooltipSeverity = 'info';
-									tooltip.classList.add('tooltip-image', 'info');
-								}
+							} else if (err.error_level === 'warning' && highestSoftwareTooltipSeverity !== 'error') {
+								highestSoftwareTooltipSeverity = 'warning';
+							} else if (err.error_level === 'info' && highestSoftwareTooltipSeverity !== 'error' && highestSoftwareTooltipSeverity !== 'warning') {
+								highestSoftwareTooltipSeverity = 'info';
 							}
 							continue;
 						} else {
-							if (err.error_level === 'error') {
+							if (err.error_level === 'error' || highestGeneralTooltipSeverity === 'error') {
 								highestGeneralTooltipSeverity = 'error';
-								tooltip.classList.add('tooltip-image', 'error');
 								continue;
-							} else if (err.error_level === 'warning') {
-								if (highestGeneralTooltipSeverity !== 'error') {
-									highestGeneralTooltipSeverity = 'warning';
-									tooltip.classList.add('tooltip-image', 'warning');
-								}
-							} else if (err.error_level === 'info') {
-								if (highestGeneralTooltipSeverity !== 'error' && highestGeneralTooltipSeverity !== 'warning') {
-									highestGeneralTooltipSeverity = 'info';
-									tooltip.classList.add('tooltip-image', 'info');
-								}
+							} else if (err.error_level === 'warning' && highestGeneralTooltipSeverity !== 'error') {
+								highestGeneralTooltipSeverity = 'warning';
+							} else if (err.error_level === 'info' && highestGeneralTooltipSeverity !== 'error' && highestGeneralTooltipSeverity !== 'warning') {
+								highestGeneralTooltipSeverity = 'info';
 							}
 						}
+					}
+					if (highestGeneralTooltipSeverity === 'error') {
+						generalTooltip.classList.add('tooltip-image', 'error');
+					} else if (highestGeneralTooltipSeverity === 'warning') {
+						generalTooltip.classList.add('tooltip-image', 'warning');
+					} else if (highestGeneralTooltipSeverity === 'info') {
+						generalTooltip.classList.add('tooltip-image', 'info');
+					}
+
+					if (highestSoftwareTooltipSeverity === 'error') {
+						softwareTooltip.classList.add('tooltip-image', 'error');
+					} else if (highestSoftwareTooltipSeverity === 'warning') {
+						softwareTooltip.classList.add('tooltip-image', 'warning');
+					}	else if (highestSoftwareTooltipSeverity === 'info') {
+						softwareTooltip.classList.add('tooltip-image', 'info');
 					}
 				}
 				for (const err of inventoryRow.client_configuration_errors) {
@@ -467,39 +468,19 @@ async function renderInventoryTable() {
 					}
 				}
 
-				if (hardwareErrArr.length > 0) {
+
+				if (hardwareErrArr.length > 0 || otherSoftwareErrArr.length > 0) {
 					attachPortalTooltip(
 						generalTooltip,
 						`Hardware Configuration Error(s): ${hardwareErrArr.join(', ')}`,
 					);
+					tagSpan.appendChild(generalTooltip);
 				}
-
-				if (firmwareErrArr.length > 0) {
-					attachPortalTooltip(
-						softwareTooltip,
-						`Firmware Configuration Error(s): ${firmwareErrArr.join(', ')}`,
-					);
-				}
-
-				if (softwareErrArr.length > 0) {
+				if (softwareErrArr.length > 0 || firmwareErrArr.length > 0) {
 					attachPortalTooltip(
 						softwareTooltip,
 						`Software Configuration Error(s): ${softwareErrArr.join(', ')}`,
 					);
-				}
-
-				if (otherSoftwareErrArr.length > 0) {
-					attachPortalTooltip(
-						generalTooltip,
-						`Other Configuration Error(s): ${otherSoftwareErrArr.join(', ')}`,
-					);
-				}
-
-
-				if (hardwareErrArr.length > 0) {
-					tagSpan.appendChild(generalTooltip);
-				}
-				if (softwareErrArr.length > 0 || firmwareErrArr.length > 0) {
 					osSpan.appendChild(softwareTooltip);
 				}
 			}
