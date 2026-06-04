@@ -10,7 +10,7 @@
 		"noImplicitAny": true,
 		"noImplicitReturns": true,
 		"noImplicitThis": true,
-		"noPropertyAccessFromIndexSignature": true,
+		"noPropertyAccessFromIndexSignature": false,
 		"noUncheckedIndexedAccess": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
@@ -22,12 +22,9 @@
 		"strictFunctionTypes": true,
 		"strictNullChecks": true,
 		"strictPropertyInitialization": true,
-		"target": "es2025",
+		"target": "es2025"
 	},
-	"rules": {
-    "@typescript-eslint/no-explicit-any": "error"
-  },
-	"include": ["./*.ts"],
-	"rootDir": "/var/www/html/uit-web/js/",
-	"outDir": "/var/www/html/uit-web/js/"
+	"include": ["**/*.ts"],
+	"rootDir": "/var/www/html/uit-web/ts",
+	"outDir": "/var/www/html/uit-web/js"
 }

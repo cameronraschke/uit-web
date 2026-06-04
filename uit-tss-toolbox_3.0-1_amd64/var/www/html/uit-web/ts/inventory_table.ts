@@ -287,7 +287,8 @@ async function renderInventoryTable() {
 			}
 			if (manufacturerModelSpan.textContent.length > 30) {
 				const arr = manufacturerModelSpan.textContent.split('/');
-				const truncated = `${arr[0].substring(0, 11)}.../${arr[1].substring(0, 17)}...`;
+				
+				const truncated = (arr[0] !== undefined && arr[1] !== undefined) ? `${arr[0].substring(0, 11)}.../${arr[1].substring(0, 17)}...` : manufacturerModelSpan.textContent;
 				manufacturerModelSpan.title = manufacturerModelSpan.textContent;
 				manufacturerModelSpan.style.cursor = 'pointer';
 				manufacturerModelSpan.textContent = truncated;

@@ -24,20 +24,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 	const printCheckoutFormContainer = document.getElementById('print-checkout-form-container') as HTMLElement;
 	const customerNameEl = document.getElementById('print-customer-name') as HTMLInputElement;
 	const customerPSIDEl = document.getElementById('print-customer-psid') as HTMLInputElement;
-	const checkoutDateEl = document.getElementById('print-checkout-date') as HTMLInputElement;
-	const returnDateEl = document.getElementById('print-return-date') as HTMLInputElement;
+	const checkoutDateEl: HTMLInputElement | undefined = document.getElementById('print-checkout-date') as HTMLInputElement | undefined;
+	const returnDateEl: HTMLInputElement | undefined = document.getElementById('print-return-date') as HTMLInputElement | undefined;
 	const confirmAndPrint = document.getElementById('confirm-and-print') as HTMLElement;
 
 	const checkoutData = await fetchCheckoutData();
 	customerNameEl.value = checkoutData.customer_name ?? '';
 	customerPSIDEl.value = checkoutData.customer_psid ?? '';
 	if (checkoutData.checkout_date !== null) {
-		const checkoutDateFormatted = new Date(checkoutData.checkout_date).toISOString().split('T')[0];
-		checkoutDateEl.value = checkoutDateFormatted;
+		const checkoutDate = checkoutData.checkout_date ?? null;
+		const checkoutDateFormatted: string | undefined = new Date(checkoutDate).toISOString().split('T')[0];
+		if (checkoutDateEl && checkoutDateEl.value !== undefined) {
+			checkoutDateEl.value = checkoutDateFormatted ?? '';
+		}
 	}
 	if (checkoutData.return_date !== null) {
-		const returnDateFormatted = new Date(checkoutData.return_date).toISOString().split('T')[0];
-		returnDateEl.value = returnDateFormatted;
+		const returnDate = checkoutData.return_date ?? null;
+		const returnDateFormatted: string | undefined = new Date(returnDate).toISOString().split('T')[0];
+		if (returnDateEl && returnDateEl.value !== undefined) {
+			returnDateEl.value = returnDateFormatted ?? '';
+		}
 	}
 	
 	const options: Intl.DateTimeFormatOptions = {
@@ -52,8 +58,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 		const customerName = customerNameEl.value.trim() || '';
 		const customerPSID = customerPSIDEl.value.trim() || '';
-		const checkoutDateStr = checkoutDateEl.value.trim() || '';
-		const returnDateStr = returnDateEl.value.trim() || '';
+		const checkoutDateStr = checkoutDateEl?.value.trim() || '';
+		const returnDateStr = returnDateEl?.value.trim() || '';
 
 
 		(document.querySelector('#customer_name') as HTMLElement).textContent = customerName;

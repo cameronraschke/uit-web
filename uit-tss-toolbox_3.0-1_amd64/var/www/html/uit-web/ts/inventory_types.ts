@@ -332,7 +332,7 @@ const buttonsVisibleWhenUpdating = [
 function updateURLFromAdvFilters(): void {
 	for (const paramName in advSearchParams) {
 		const param = advSearchParams[paramName];
-		if (!param.inputElement) continue;
+		if (!param || !param.inputElement) continue;
 		if (param.inputElement.value && param.inputElement.value.trim().length > 0) {
 			const isBooleanFilter = paramName === 'filter_is_broken' || paramName === 'filter_has_images';
 			const urlValue = {

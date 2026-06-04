@@ -645,6 +645,12 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 
 			if (jsonFileUpload.files && jsonFileUpload.files.length > 0) {
 				lastHardwareCheckUpdate.classList.remove("empty-input");
+				if (jsonFileUpload.files[0] === undefined) {
+					console.warn("Uploaded file is empty/not a valid JSON file");
+					lastHardwareCheckUpdate.value = "";
+					lastHardwareCheckUpdate.classList.add("empty-input");
+					return;
+				}
 				const jsonText = await jsonFileUpload.files[0].text();
 				try {
 					const jsonData = JSON.parse(jsonText);
@@ -834,6 +840,7 @@ async function initializeInventoryPage() {
 
 	for (const paramName in advSearchParams) {
 		const param = advSearchParams[paramName];
+		if (param === undefined) continue;
 		if (!param.inputElement) continue;
 		initializeAdvSearchListeners([param]);
 		const rawParamValue = urlParams.get(paramName);
@@ -857,17 +864,18 @@ async function initializeInventoryPage() {
 
 	try {
 		await Promise.all([
-			populateLocationSelect(advSearchParams['filter_location'].inputElement, true),
-			populateBuildingRoomSelect(advSearchParams['filter_building_room'].inputElement, true),
-			populateDepartmentSelect(advSearchParams['filter_department_name'].inputElement, true),
-			populateManufacturerSelect(advSearchParams['filter_system_manufacturer'].inputElement, true).then(() => populateModelSelect(advSearchParams['filter_system_model'].inputElement, true)),
-			populateDomainSelect(advSearchParams['filter_ad_domain'].inputElement, true),
-			populateStatusSelect(advSearchParams['filter_status'].inputElement, true),
-			populateDeviceTypeSelect(advSearchParams['filter_device_type'].inputElement, true)
+			(advSearchParams['filter_location'] && advSearchParams['filter_location'].inputElement) ? populateLocationSelect(advSearchParams['filter_location'].inputElement, true) : Promise.resolve(),
+			(advSearchParams['filter_building_room'] && advSearchParams['filter_building_room'].inputElement) ? populateBuildingRoomSelect(advSearchParams['filter_building_room'].inputElement, true) : Promise.resolve(),
+			(advSearchParams['filter_department_name'] && advSearchParams['filter_department_name'].inputElement) ? populateDepartmentSelect(advSearchParams['filter_department_name'].inputElement, true) : Promise.resolve(),
+			(advSearchParams['filter_system_manufacturer'] && advSearchParams['filter_system_manufacturer'].inputElement) ? populateManufacturerSelect(advSearchParams['filter_system_manufacturer'].inputElement, true).then(() => (advSearchParams['filter_system_model'] && advSearchParams['filter_system_model'].inputElement) ? populateModelSelect(advSearchParams['filter_system_model'].inputElement, true) : Promise.resolve()) : Promise.resolve(),
+			(advSearchParams['filter_ad_domain'] && advSearchParams['filter_ad_domain'].inputElement) ? populateDomainSelect(advSearchParams['filter_ad_domain'].inputElement, true) : Promise.resolve(),
+			(advSearchParams['filter_status'] && advSearchParams['filter_status'].inputElement) ? populateStatusSelect(advSearchParams['filter_status'].inputElement, true) : Promise.resolve(),
+			(advSearchParams['filter_device_type'] && advSearchParams['filter_device_type'].inputElement) ? populateDeviceTypeSelect(advSearchParams['filter_device_type'].inputElement, true) : Promise.resolve()
 		]);
 
 		for (const paramName in advSearchParams) {
 			const param = advSearchParams[paramName];
+			if (param === undefined) continue;
 			if (!param.inputElement) continue;
 			param.inputElement.value = param.inputElement.dataset.initialValue || "";
 			handleAdvSearchInputChange([param]);
@@ -1044,7 +1052,7 @@ if (updateForm) {
 
 			if (jsonFileUpload.files && jsonFileUpload.files.length > 0) {
 				const jsonFile = jsonFileUpload.files[0];
-				await uploadJSONFile(jsonFile);
+				(jsonFile !== undefined) ? await uploadJSONFile(jsonFile) : Promise.resolve();
 			}
 			resetJSONUpload();
 			clientLookupTagInput.value = returnedJson.tagnumber ? String(returnedJson.tagnumber) : '';
@@ -1207,6 +1215,11 @@ if (jsonFileUpload && jsonFileUploadButton) {
 	jsonFileUpload.addEventListener("change", async () => {
 		if (jsonFileUpload.files && jsonFileUpload.files.length > 0) {
 			const jsonFile = jsonFileUpload.files[0];
+			if (jsonFile === undefined) {
+				console.warn("Uploaded file is empty/not a valid JSON file");
+				resetJSONUpload();
+				return;
+			}
 			jsonFileUploadButton.textContent = `JSON File: ${jsonFile.name}`;
 			jsonFileUploadButton.classList.add("changed-input");
 			const jsonData = await JSON.parse(await jsonFile.text());

@@ -1,7 +1,7 @@
 function getAdvSearchParamName(filterElement: HTMLSelectElement): string {
 	for (const paramName in advSearchParams) {
 		const param = advSearchParams[paramName];
-		if (param.inputElement === filterElement) {
+		if (param !== undefined && param.inputElement === filterElement) {
 			return paramName;
 		}
 	}
@@ -78,7 +78,9 @@ function initializeAdvSearchListeners(filterEls: AdvSearchFilterElement[]) {
 	for (const filterEl of filterEls) {
 		const syncDependentFiltersAndRender = async () => {
 			if (filterEl.inputElement === filterManufacturer) {
-				await populateModelSelect(advSearchParams['filter_system_model'].inputElement);
+				if (advSearchParams['filter_system_model'] && advSearchParams['filter_system_model'].inputElement) {
+					await populateModelSelect(advSearchParams['filter_system_model'].inputElement);
+				}
 				await renderInventoryTable();
 				return;
 			}
@@ -117,7 +119,9 @@ function initializeAdvSearchListeners(filterEls: AdvSearchFilterElement[]) {
 				filterModel.dataset.initialValue = "";
 				if (filterModelNegation) filterModelNegation.checked = false;
 				syncModelFilterAvailability();
-				handleAdvSearchInputChange([advSearchParams['filter_system_model']]);
+				if (advSearchParams['filter_system_model'] && advSearchParams['filter_system_model'].inputElement) {
+					handleAdvSearchInputChange([advSearchParams['filter_system_model']]);
+				}
 			}
 
 			handleAdvSearchInputChange([filterEl]);
@@ -233,7 +237,9 @@ async function populateManufacturerSelect(manufacturerFilterEl: HTMLSelectElemen
 
 		syncModelFilterAvailability();
 
-		handleAdvSearchInputChange([advSearchParams['filter_system_manufacturer']]);
+		if (advSearchParams['filter_system_manufacturer'] && advSearchParams['filter_system_manufacturer'].inputElement) {
+			handleAdvSearchInputChange([advSearchParams['filter_system_manufacturer']]);
+		}
 	} catch (error) {
 		console.error('Error fetching manufacturers and models:', error);
 	} finally {
@@ -256,7 +262,9 @@ async function populateModelSelect(modelSelectEl: HTMLSelectElement, purgeCache:
 		modelSelectEl.value = '';
 		modelSelectEl.dataset.initialValue = '';
 		syncModelFilterAvailability();
-		handleAdvSearchInputChange([advSearchParams['filter_system_manufacturer'], advSearchParams['filter_system_model']]);
+		if (advSearchParams['filter_system_manufacturer'] && advSearchParams['filter_system_manufacturer'].inputElement && advSearchParams['filter_system_model'] && advSearchParams['filter_system_model'].inputElement) {
+			handleAdvSearchInputChange([advSearchParams['filter_system_manufacturer'], advSearchParams['filter_system_model']]);
+		}
 		return;
 	}
 
@@ -286,12 +294,16 @@ async function populateModelSelect(modelSelectEl: HTMLSelectElement, purgeCache:
 		modelSelectEl.value = newValue || '';
 		modelSelectEl.dataset.initialValue = newValue || '';
 		syncModelFilterAvailability();
-		handleAdvSearchInputChange([advSearchParams['filter_system_manufacturer'], advSearchParams['filter_system_model']]);
+		if (advSearchParams['filter_system_manufacturer'] && advSearchParams['filter_system_manufacturer'].inputElement && advSearchParams['filter_system_model'] && advSearchParams['filter_system_model'].inputElement) {
+			handleAdvSearchInputChange([advSearchParams['filter_system_manufacturer'], advSearchParams['filter_system_model']]);
+		}
 	} catch (error) {
 		console.error('Error fetching manufacturers and models:', error);
 		return;
 	} finally {
-		handleAdvSearchInputChange([advSearchParams['filter_system_manufacturer'], advSearchParams['filter_system_model']]);
+		if (advSearchParams['filter_system_manufacturer'] && advSearchParams['filter_system_manufacturer'].inputElement && advSearchParams['filter_system_model'] && advSearchParams['filter_system_model'].inputElement) {
+			handleAdvSearchInputChange([advSearchParams['filter_system_manufacturer'], advSearchParams['filter_system_model']]);
+		}
 		syncModelFilterAvailability();
 	}
 }
@@ -463,6 +475,10 @@ async function populateStatusSelect(el: HTMLSelectElement, purgeCache: boolean =
 
 		for (const key of sortedKeys) {
 			const statuses = statusMap[key];
+			if (!statuses || !Array.isArray(statuses) || statuses.length === 0) {
+				console.warn(`No statuses found for key ${key}`);
+				continue;
+			}
 			statuses.sort((a, b) => {
 				if (a.status === 'other') return 1;
 				if (b.status === 'other') return -1;
@@ -624,19 +640,19 @@ if (advSearchFormReset) {
 		}
 
 		try {
-			if (!(filterDepartment && advSearchLocation && advSearchParams['filter_building_room'].inputElement && advSearchParams['filter_system_manufacturer'].inputElement && advSearchParams['filter_system_model'].inputElement && filterDomain && advSearchParams['filter_building_room'].inputElement)) {
+			if (!(filterDepartment && advSearchLocation && advSearchParams['filter_building_room'] && advSearchParams['filter_building_room'].inputElement && advSearchParams['filter_system_manufacturer'] && advSearchParams['filter_system_manufacturer'].inputElement && advSearchParams['filter_system_model'] && advSearchParams['filter_system_model'].inputElement && filterDomain && advSearchParams['filter_building_room'] && advSearchParams['filter_building_room'].inputElement)) {
 				console.warn("One or more filter elements not found, cannot reset filters properly");
 				await renderInventoryTable();
 				return;
 			}
 			await Promise.all([
-				populateLocationSelect(advSearchParams['filter_location'].inputElement, true),
-				populateBuildingRoomSelect(advSearchParams['filter_building_room'].inputElement, true),
-				populateDepartmentSelect(advSearchParams['filter_department_name'].inputElement, true),
-				populateManufacturerSelect(advSearchParams['filter_system_manufacturer'].inputElement, true).then(() => populateModelSelect(advSearchParams['filter_system_model'].inputElement, true)),
-				populateDomainSelect(advSearchParams['filter_ad_domain'].inputElement, true),
-				populateStatusSelect(advSearchParams['filter_status'].inputElement, true),
-				populateDeviceTypeSelect(advSearchParams['filter_device_type'].inputElement, true),
+				(advSearchParams['filter_location'] && advSearchParams['filter_location'].inputElement) ? populateLocationSelect(advSearchParams['filter_location'].inputElement, true) : Promise.resolve(),
+				(advSearchParams['filter_building_room'] && advSearchParams['filter_building_room'].inputElement) ? populateBuildingRoomSelect(advSearchParams['filter_building_room'].inputElement, true) : Promise.resolve(),
+				(advSearchParams['filter_department_name'] && advSearchParams['filter_department_name'].inputElement) ? populateDepartmentSelect(advSearchParams['filter_department_name'].inputElement, true) : Promise.resolve(),
+				(advSearchParams['filter_system_manufacturer'] && advSearchParams['filter_system_manufacturer'].inputElement) ? populateManufacturerSelect(advSearchParams['filter_system_manufacturer'].inputElement, true).then(() => (advSearchParams['filter_system_model'] && advSearchParams['filter_system_model'].inputElement) ? populateModelSelect(advSearchParams['filter_system_model'].inputElement, true) : Promise.resolve()) : Promise.resolve(),
+				(advSearchParams['filter_ad_domain'] && advSearchParams['filter_ad_domain'].inputElement) ? populateDomainSelect(advSearchParams['filter_ad_domain'].inputElement, true) : Promise.resolve(),
+				(advSearchParams['filter_status'] && advSearchParams['filter_status'].inputElement) ? populateStatusSelect(advSearchParams['filter_status'].inputElement, true) : Promise.resolve(),
+				(advSearchParams['filter_device_type'] && advSearchParams['filter_device_type'].inputElement) ? populateDeviceTypeSelect(advSearchParams['filter_device_type'].inputElement, true) : Promise.resolve(),
 				renderInventoryTable(),
 			]);
 		} catch (error) {
