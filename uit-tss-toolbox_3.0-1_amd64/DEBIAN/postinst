@@ -209,10 +209,10 @@ fi
 sudo -u cameron npx tsgo --project /var/www/html/uit-web/ts/tsconfig.json
 
 chown uitweb:uit /var/www/html/uit-web -R
-chmod 770 /var/www/html/uit-web/js/
-chmod 770 /var/www/html/uit-web/ts/
 find /var/www/html/uit-web -type d -exec chmod 750 {} \;
 find /var/www/html/uit-web -type f -exec chmod 660 {} \;
+chmod 770 /var/www/html/uit-web/js/
+chmod 770 /var/www/html/uit-web/ts/
 
 (cd /opt/uit-toolbox/uit-web/
     /usr/local/go/bin/go build .

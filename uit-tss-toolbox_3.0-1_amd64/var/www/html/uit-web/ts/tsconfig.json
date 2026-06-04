@@ -25,6 +25,6 @@
 		"target": "es2025"
 	},
 	"include": ["**/*.ts"],
-	"rootDir": "/var/www/html/uit-web/ts",
-	"outDir": "/var/www/html/uit-web/js"
+	"rootDir": "/var/www/html/uit-web/ts/",
+	"outDir": "/var/www/html/uit-web/js/"
 }
