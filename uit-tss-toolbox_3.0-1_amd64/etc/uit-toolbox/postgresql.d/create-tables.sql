@@ -573,7 +573,8 @@ VALUES
 	('TechCommons-Dell-Desktops', 'Microsoft', 'Windows 11', 'Dell', 'OptiPlex 7000', 'Windows 11'),
 	('TechCommons-Dell-HelpDesk', 'Microsoft', 'Windows 11', 'Dell', 'Latitude 7420', 'Windows 11'),
 	('SHRL-Dell-Desktops', 'Microsoft', 'Windows 11', 'Dell', NULL, 'Windows 11'),
-	('Ubuntu-Desktop', 'Canonical', '24.04.2 LTS', 'Dell', NULL, 'Ubuntu Desktop')
+	('Ubuntu-Desktop', 'Canonical', '24.04.2 LTS', 'Dell', NULL, 'Ubuntu Desktop'),
+	('CLASSTech-Dell-Desktop', 'Microsoft', 'Windows 11', 'Dell', NULL, 'Windows 11')
 	ON CONFLICT (image_name) DO UPDATE SET
 		image_os_author = EXCLUDED.image_os_author,
 		image_version = EXCLUDED.image_version,
