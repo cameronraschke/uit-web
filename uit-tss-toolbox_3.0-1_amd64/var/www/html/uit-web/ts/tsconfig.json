@@ -1,4 +1,5 @@
 {
+	"include": ["/var/www/html/uit-web/ts/**/*.ts", "**/*.ts"],
 	"compilerOptions": {
 		"allowUnreachableCode": false,
 		"allowUnusedLabels": false,
@@ -22,9 +23,8 @@
 		"strictFunctionTypes": true,
 		"strictNullChecks": true,
 		"strictPropertyInitialization": true,
-		"target": "es2025"
-	},
-	"include": ["**/*.ts"],
-	"rootDir": "/var/www/html/uit-web/ts/",
-	"outDir": "/var/www/html/uit-web/js/"
+		"target": "es2025",
+		"rootDir": "/var/www/html/uit-web/ts/",
+		"outDir": "/var/www/html/uit-web/js/"
+	}
 }

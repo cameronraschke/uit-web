@@ -472,7 +472,7 @@ async function renderInventoryTable() {
 				if (hardwareErrArr.length > 0 || otherSoftwareErrArr.length > 0) {
 					attachPortalTooltip(
 						generalTooltip,
-						`Hardware Configuration Error(s): ${hardwareErrArr.join(', ')}`,
+						`Hardware Configuration Error(s): ${(hardwareErrArr.length > 0 ? hardwareErrArr.join(', ') : '') + (otherSoftwareErrArr.length > 0 ? (hardwareErrArr.length > 0 ? ', ' : '') + otherSoftwareErrArr.join(', ') : '')}`,
 					);
 					tagSpan.appendChild(generalTooltip);
 				}
