@@ -249,6 +249,17 @@ function renderClientData(data: ClientInfoResponse | null): void {
 		osVersionEl.textContent = `OS Version: ${data.OSVersion ?? 'N/A'}`;
 		osInfoDiv.appendChild(osVersionEl);
 
+		// BIOS Version
+		const biosVersionEl = document.createElement('p');
+		if (data.BIOSVersion && data.BIOSReleaseDate) {
+			biosVersionEl.textContent = `BIOS Version: ${data.BIOSVersion} (Released: ${new Date(data.BIOSReleaseDate).toLocaleDateString()})`;
+		} if (data.BIOSVersion) {
+			biosVersionEl.textContent = `BIOS Version: ${data.BIOSVersion}`;
+		} else {
+			biosVersionEl.textContent = 'BIOS Version: N/A';
+		}
+		osInfoDiv.appendChild(biosVersionEl);
+
 		// AD Domain / OU
 		const ouEl = document.createElement('p');
 		const ouSpan = document.createElement('span');

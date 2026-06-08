@@ -24,7 +24,7 @@
 		"strictNullChecks": true,
 		"strictPropertyInitialization": true,
 		"target": "es2025",
-		"rootDir": "/var/www/html/uit-web/ts/",
+		"rootDir": ".",
 		"outDir": "/var/www/html/uit-web/js/"
 	}
 }
