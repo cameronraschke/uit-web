@@ -429,7 +429,6 @@ async function renderInventoryTable() {
 							} else if (err.error_level === 'info' && highestSoftwareTooltipSeverity !== 'error' && highestSoftwareTooltipSeverity !== 'warning') {
 								highestSoftwareTooltipSeverity = 'info';
 							}
-							continue;
 						} else {
 							if (err.error_level === 'error' || highestGeneralTooltipSeverity === 'error') {
 								highestGeneralTooltipSeverity = 'error';
@@ -480,7 +479,7 @@ async function renderInventoryTable() {
 				if (softwareErrArr.length > 0 || firmwareErrArr.length > 0) {
 					attachPortalTooltip(
 						softwareTooltip,
-						`Software Configuration Error(s): ${softwareErrArr.join(', ')}`,
+						`Software Configuration Error(s): ${(softwareErrArr.length > 0 ? softwareErrArr.join(', ') : '') + (firmwareErrArr.length > 0 ? (softwareErrArr.length > 0 ? ', ' : '') + firmwareErrArr.join(', ') : '')}`,
 					);
 					osSpan.appendChild(softwareTooltip);
 				}

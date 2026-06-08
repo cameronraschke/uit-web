@@ -1016,14 +1016,18 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			ORDER BY os_info.os_name, os_info.windows_build_number DESC NULLS LAST, os_info.windows_ubr DESC NULLS LAST
 		),
 		latest_historical_firmware_data AS (
-			SELECT DISTINCT ON (historical_firmware_data.client_uuid) 
-				historical_firmware_data.client_uuid, 
-				historical_firmware_data.bios_version
-			FROM 
-				historical_firmware_data
-			WHERE 
-				historical_firmware_data.bios_version IS NOT NULL
-			ORDER BY historical_firmware_data.client_uuid, historical_firmware_data.time DESC NULLS LAST
+			SELECT * FROM (
+				SELECT
+					ROW_NUMBER() OVER (PARTITION BY historical_firmware_data.client_uuid ORDER BY historical_firmware_data.time DESC NULLS LAST) AS "row_num",
+					historical_firmware_data.client_uuid, 
+					historical_firmware_data.bios_version
+				FROM 
+					historical_firmware_data
+				WHERE 
+					historical_firmware_data.client_uuid IS NOT NULL 
+					AND historical_firmware_data.bios_version IS NOT NULL
+				ORDER BY historical_firmware_data.client_uuid, historical_firmware_data.time DESC NULLS LAST
+			) t1 WHERE t1.row_num = 1
 		),
 		os_installed_table AS (
 			SELECT * FROM (
