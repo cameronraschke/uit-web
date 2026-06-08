@@ -19,34 +19,46 @@ const pathMap : Map<string, string> = new Map([
 	["/reports", "menu-reports"]
 ]);
 
-async function drawHeader() {
-	const header = document.getElementById("uit-header");
-	if (!header) return;
+async function fetchHeader(): Promise<string | null> {
   try {
-    const headerContent = await fetchData("/header", true);
-    header.innerHTML = headerContent;
+    const headerContent: string | null = await fetchData("/header", true);
+    return headerContent;
+  } catch (error) {
+    console.error("Error fetching header:", error);
+    return null;
+  }
+}
+
+function drawHeader(headerHTMLContent: string | null = null): void {
+	const header = document.querySelector("#uit-header");
+	if (header === null) {
+		console.log("Header element not found, cannot render header");
+		return;
+	}
+  try {
+    header.innerHTML = headerHTMLContent ?? "";
   } catch (error) {
     console.error("Error fetching header:", error);
   }
 }
 
 function initHeader() {
-	const globalLookupForm = document.querySelector("#global-client-lookup-form") as HTMLFormElement;
-	const tagLookup = document.querySelector("#global-client-lookup") as HTMLInputElement;
-	const globalSearchDatalist = document.querySelector("#global-client-lookup-datalist") as HTMLDataListElement;
+	const globalLookupForm: HTMLFormElement | null = document.querySelector("#global-client-lookup-form");
+	const tagLookup: HTMLInputElement | null = document.querySelector("#global-client-lookup");
+	const globalSearchDatalist: HTMLDataListElement | null = document.querySelector("#global-client-lookup-datalist");
 	const keyupDebounceMs = 75;
 	let keyupDebounceTimer: number | undefined;
 	let cachedTagNumbers: number[] = [];
 
-	if (!globalLookupForm) {
+	if (globalLookupForm === null) {
 		console.warn("Global lookup form not found, skipping tag search initialization");
 		return;
 	}
-	if (!tagLookup) {
+	if (tagLookup === null) {
 		console.warn("Tag lookup input not found, skipping tag search initialization");
 		return;
 	}
-	if (!globalSearchDatalist) {
+	if (globalSearchDatalist === null) {
 		console.warn("Global search datalist not found, skipping tag search initialization");
 		return;
 	}
@@ -100,45 +112,47 @@ function initHeader() {
 }
 
 function initLogout() {
-	const logoutButton = document.getElementById("menu-logout-button") as HTMLAnchorElement;
-	if (!logoutButton) return;
+	const logoutButton: HTMLAnchorElement | null = document.querySelector("#menu-logout-button");
+	if (logoutButton === null) {
+		console.warn("Logout button element not found, skipping logout initialization");
+		return;
+	}
 	
 	logoutButton.addEventListener("click", (event) => {
 		event.preventDefault();
-		headerAuthChannel.postMessage({cmd: 'logout'});
 		localStorage.clear();
 		sessionStorage.clear();
+		headerAuthChannel.postMessage({cmd: 'logout'});
 
-    let logoutUrl = "/logout";
-    if (currentPath !== "/login" && currentPath !== "/logout") {
-        logoutUrl += "?redirect=" + encodeURIComponent(currentPath + window.location.search);
-    }
-    window.location.href = logoutUrl;
+    // let logoutUrl = "/logout";
+    // if (currentPath !== "/login" && currentPath !== "/logout") {
+		// 	logoutUrl += "?redirect=" + encodeURIComponent(currentPath + window.location.search);
+    // }
+		window.location.replace("/logout");
 	});
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-	drawHeader().then(() => {
-		for (const [path, elementId] of pathMap) {
-			const menuItem = document.getElementById(elementId);
-			if (!menuItem) continue;
+document.addEventListener("DOMContentLoaded", async () => {
+	initLogout();
+	for (const [relativePath, menuElementId] of pathMap) {
+		const menuItem = document.getElementById(menuElementId);
+		if (menuItem === null) {
+			console.warn(`Menu item with ID ${menuElementId} not found, skipping active state check for this item.`);
+			continue;
+		}
 
-			if (currentPath === path) {
-				menuItem.classList.add("active");
-			} else if (menuItem.classList.contains('active')) {
-				menuItem.classList.remove("active");
-			}
+		if (currentPath === relativePath) {
+			menuItem.classList.add("active");
+		} else if (menuItem.classList.contains('active')) {
+			menuItem.classList.remove("active");
 		}
-		initLogout();
-	}).catch(
-		(error) => {
-			console.error("Error in drawHeader:", error);
-		}
-	).then(() => {
-		initHeader();
-	}).catch(
-		(error) => {
-			console.error("Error in initHeader:", error);
-		}
-	);
+	}
+
+	try {
+		const headerContent = await fetchHeader();
+		drawHeader(headerContent);
+	} catch (error) {
+		console.error("Error in drawHeader:", error);
+	}
+	initHeader();
 });

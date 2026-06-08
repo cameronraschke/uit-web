@@ -2,15 +2,15 @@ interface Window {
   globalLookupResults: GlobalLookupResultCache[];
 }
 
+type GlobalLookupResultCache = {
+	entries: GlobalLookupResult[] | null;
+	timestamp: number;
+};
+
 type GlobalLookupResult = {
 	tagnumber: number | null;
 	system_serial: string | null;
 	last_inventory_entry: Date | null;
-};
-
-type GlobalLookupResultCache = {
-	entries: GlobalLookupResult[] | null;
-	timestamp: number;
 };
 
 type AuthStatusResponse = {
@@ -28,7 +28,7 @@ type DeviceType = {
 
 type DeviceTypeCache = {
 	deviceTypes: DeviceType[] | null;
-	timestamp: number;
+	timestamp: number | null;
 };
 
 const inputCSSClasses = ["empty-input", "empty-required-input", "changed-input", "readonly-input"];
@@ -424,9 +424,9 @@ function base64ToJson(inputStr: string) {
 	}
 }
 
-async function fetchData(url: string, returnText = false, fetchOptions: RequestInit = {}): Promise<any> {
-	if (url.trim().length === 0) {
-		throw new Error("No URL specified for fetchData");
+async function fetchData(url: string, returnText = false, fetchOptions: RequestInit = {}): Promise<any | null> {
+	if (typeof url !== "string" || url.trim() === "") {
+		throw new Error("URL must be a non-empty string");
 	}
 
 	const headers = new Headers();
@@ -448,7 +448,7 @@ async function fetchData(url: string, returnText = false, fetchOptions: RequestI
 			if (response.status === 401 || response.status === 403) {
 				console.warn('Unauthorized response from server, redirecting to logout');
 				window.location.href = '/logout';
-				return;
+				return null;
 			}
       throw new Error(`Error fetching data: ${url} ${response.status}`);
     }
@@ -464,6 +464,7 @@ async function fetchData(url: string, returnText = false, fetchOptions: RequestI
       }
       return jsonData;
     }
+    return null;
   } catch (error) {
 		console.error("Error fetching data: " + error);
     return null;

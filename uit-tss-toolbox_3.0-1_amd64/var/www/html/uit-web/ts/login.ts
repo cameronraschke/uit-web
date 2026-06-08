@@ -41,32 +41,40 @@ passwordInput.addEventListener("keyup", () => {
 });
 
 loginForm.addEventListener("submit", async (event) => {
+	event.preventDefault();
+
 	if (loginSubmitInProgress) return;
 	loginSubmitInProgress = true;
 
-	event.preventDefault();
 	const usernameValid = usernameInput.reportValidity();
 	const passwordValid = passwordInput.reportValidity();
 	const formData = new FormData(loginForm);
-	if ((!formData.has("username") && formData.get("username") === null) || (!formData.has("password") && formData.get("password") === null)) {
+	if ((!formData.has("username") || formData.get("username") === null) || (!formData.has("password") || formData.get("password") === null)) {
 		console.log("Username or password not provided");
 		loginSubmitInProgress = false;
 		return;
 	}
 
-	const providedUsername: string = formData.get("username") as string;
-	const providedPassword: string = formData.get("password") as string;
-	if (providedUsername === "" || providedPassword === "") {
+	const providedUsername = formData.get("username");
+	const providedPassword = formData.get("password");
+	if (typeof providedUsername !== "string" || typeof providedPassword !== "string") {
+		console.log("Username or password is not a string");
+		loginSubmitInProgress = false;
+		return;
+	}
+	if (providedUsername === null || providedUsername.toString().trim().length === 0 || providedPassword === null || providedPassword.toString().trim().length === 0) {
 		console.log("Username or password is empty");
 		loginSubmitInProgress = false;
 		return;
 	}
-	if (providedUsername.length > 20 || providedPassword.length > 64) {
+	// Max length check
+	if (providedUsername.toString().length > 20 || providedPassword.toString().length > 64) {
 		console.log("Username or password exceeds maximum length");
 		loginSubmitInProgress = false;
 		return;
 	}
-	if (providedUsername.length < 3 || providedPassword.length < 8) {
+	// Min length check
+	if (providedUsername.toString().length < 3 || providedPassword.toString().length < 8) {
 		console.log("Username or password does not meet minimum length requirements");
 		loginSubmitInProgress = false;
 		return;
@@ -78,13 +86,15 @@ loginForm.addEventListener("submit", async (event) => {
 	}
 
 	try {
-		const jsonObj = {
-			username: await generateSHA256Hash(providedUsername),
-			password: await generateSHA256Hash(providedPassword)
+		const jsonLoginFormObj = {
+			username: await generateSHA256Hash(providedUsername.toString()),
+			password: await generateSHA256Hash(providedPassword.toString())
 		};
-		if (!jsonObj || jsonObj.username.length !== 64 || jsonObj.password.length !== 64) throw new Error('Invalid hash format for username and/or password');
+		if (!jsonLoginFormObj || jsonLoginFormObj.username.length !== 64 || jsonLoginFormObj.password.length !== 64) {
+			throw new Error('Invalid SHA256 hash length for username and/or password');
+		}
 
-		const base64Payload = jsonToBase64(JSON.stringify(jsonObj));
+		const base64Payload = jsonToBase64(JSON.stringify(jsonLoginFormObj));
 		if (!base64Payload || base64Payload.length === 0) throw new Error('Failed to encode login payload json to base64');
 
 		const response = await fetch('/login', {
@@ -105,20 +115,20 @@ loginForm.addEventListener("submit", async (event) => {
 				errorMsg.innerText = "An unexpected error occurred. Please try again later.";
 			}
 		}
-		const jsonResponse: AuthStatusResponse = await response.json();
-		if (!jsonResponse || typeof jsonResponse !== "object") throw new Error("Error parsing server response JSON")
-		if (jsonResponse.status && jsonResponse.status.toLowerCase() !== "authenticated") {
+		const jsonAuthResponse: AuthStatusResponse = await response.json();
+		if (!jsonAuthResponse || typeof jsonAuthResponse !== "object") throw new Error("Error parsing server response JSON")
+		if (jsonAuthResponse.status && jsonAuthResponse.status.toLowerCase() !== "authenticated") {
 			errorMsg.style.display = "block";
 			errorMsg.innerText = "Authentication failed. Please check your credentials and try again.";
-			throw new Error("Authentication failed: " + (jsonResponse.status ?? "unknown error"));
+			throw new Error("Authentication failed: " + (jsonAuthResponse.status ?? "unknown error"));
 		}
-		if (jsonResponse.expires_at === null || jsonResponse.expires_at <= new Date()) {
+		if (jsonAuthResponse.expires_at === null || jsonAuthResponse.expires_at <= new Date()) {
 			errorMsg.style.display = "block";
 			errorMsg.innerText = "Invalid response from server. Please try again later.";
 			throw new Error("Invalid authentication response: token is already expired or expires_at field is missing/null");
 		}
 
-		if (jsonResponse.ttl === null || jsonResponse.ttl <= 0) {
+		if (jsonAuthResponse.ttl === null || jsonAuthResponse.ttl <= 0) {
 			errorMsg.style.display = "block";
 			errorMsg.innerText = "Invalid response from server. Please try again later.";
 			throw new Error("Invalid authentication response: ttl is missing or invalid");

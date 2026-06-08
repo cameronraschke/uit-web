@@ -758,9 +758,15 @@ async function fetchAllDeviceTypes(purgeCache: boolean = false): Promise<DeviceT
 	try {
 		if (cached && !purgeCache) {
 			const cacheEntry: DeviceTypeCache = JSON.parse(cached);
-			if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.deviceTypes)) {
+			if (!cacheEntry || !cacheEntry.timestamp || !Array.isArray(cacheEntry.deviceTypes)) {
+				console.warn("Invalid cache entry for device types, ignoring cache");
+				sessionStorage.removeItem("uit_device_types_cache");
+			} else if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.deviceTypes)) {
 				console.log("Loaded device types from cache");
 				return cacheEntry.deviceTypes;
+			} else {
+				console.log("Device types cache expired, fetching new data");
+				sessionStorage.removeItem("uit_device_types_cache");
 			}
 		}
 		const allDeviceTypes: DeviceType[] = await fetchData(`/api/overview/all_device_types`, false);

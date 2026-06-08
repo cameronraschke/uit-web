@@ -1,16 +1,16 @@
 type ImageManifest = {
-	time: Date
-	client_uuid: string
-	file_uuid: string
-	sha256_hash: string
-	file_size: number
-	mime_type: string
-	resolution_x: number
-	resolution_y: number
-	url: string
-	hidden: boolean
-	pinned: boolean
-	caption: string
+	time: Date | null
+	client_uuid: string | null
+	file_uuid: string | null
+	sha256_hash: string | null
+	file_size: number | null
+	mime_type: string | null
+	resolution_x: number | null
+	resolution_y: number | null
+	url: string | null
+	hidden: boolean | null
+	pinned: boolean | null
+	caption: string | null
 };
 
 
@@ -50,8 +50,8 @@ async function fetchManifestData(clientUUID: number) : Promise<ImageManifest[]> 
     }
 
 		manifestArr.sort((a, b) => {
-			const timeA = new Date(a.time).getTime();
-			const timeB = new Date(b.time).getTime();
+			const timeA = a.time ? new Date(a.time).getTime() : 0;
+			const timeB = b.time ? new Date(b.time).getTime() : 0;
 			return timeB - timeA;
 		});
 
@@ -95,8 +95,8 @@ function renderFiles(manifestArr: ImageManifest[], tag: number) {
 		iconContainer.appendChild(imageCount);
 
 		const unpinIcon = document.createElement('button');
-		unpinIcon.dataset.client_uuid = file.client_uuid;
-		unpinIcon.dataset.file_uuid = file.file_uuid;
+		unpinIcon.dataset.client_uuid = file.client_uuid ?? '';
+		unpinIcon.dataset.file_uuid = file.file_uuid ?? '';
 		if (file.pinned) {
 			unpinIcon.classList.add('svg-button', 'pinned');
 			unpinIcon.textContent = 'Unpin Image';
@@ -107,8 +107,8 @@ function renderFiles(manifestArr: ImageManifest[], tag: number) {
 		iconContainer.appendChild(unpinIcon);
 
 		const deleteIcon = document.createElement('button');
-		deleteIcon.dataset.client_uuid = file.client_uuid;
-		deleteIcon.dataset.file_uuid = file.file_uuid;
+		deleteIcon.dataset.client_uuid = file.client_uuid ?? '';
+		deleteIcon.dataset.file_uuid = file.file_uuid ?? '';
 		deleteIcon.dataset.imageCount = imageCount.textContent || '';
 		deleteIcon.classList.add('svg-button', 'delete');
 		deleteIcon.title = 'Delete Image';
@@ -120,8 +120,8 @@ function renderFiles(manifestArr: ImageManifest[], tag: number) {
 		timestampContainer.classList.add('file-caption', 'timestamp');
 
 		const timeStampCaption = document.createElement('p');
-		const timeStamp = new Date(file.time);
-		if (!isNaN(timeStamp.getTime())) {
+		const timeStamp = file.time ? new Date(file.time) : null;
+		if (timeStamp && !isNaN(timeStamp.getTime())) {
 			timeStampCaption.textContent = `Uploaded on: ${timeStamp.toLocaleDateString()} ${timeStamp.toLocaleTimeString()}`;
 			timeStampCaption.style.fontStyle = "normal";
 		} else {
@@ -135,8 +135,8 @@ function renderFiles(manifestArr: ImageManifest[], tag: number) {
 
 		// Source URL
 		const imgURL = new URL(`/api/client/files`, window.location.origin);
-		imgURL.searchParams.set('client_uuid', file.client_uuid);
-		imgURL.searchParams.set('file_uuid', file.file_uuid);
+		imgURL.searchParams.set('client_uuid', file.client_uuid ?? '');
+		imgURL.searchParams.set('file_uuid', file.file_uuid ?? '');
 
 		let filePreview = null as HTMLImageElement | HTMLVideoElement | null;
 		if (file.mime_type && file.mime_type.startsWith('video/')) {

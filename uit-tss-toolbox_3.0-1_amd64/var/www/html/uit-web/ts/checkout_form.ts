@@ -56,10 +56,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 	confirmAndPrint.addEventListener('click', () => {
 
-		const customerName = customerNameEl.value.trim() || '';
-		const customerPSID = customerPSIDEl.value.trim() || '';
-		const checkoutDateStr = checkoutDateEl?.value.trim() || '';
-		const returnDateStr = returnDateEl?.value.trim() || '';
+		const customerName = customerNameEl.value.trim() ?? '';
+		const customerPSID = customerPSIDEl.value.trim() ?? '';
+		const checkoutDateStr = checkoutDateEl?.value.trim() ?? '';
+		const returnDateStr = returnDateEl?.value.trim() ?? '';
 
 
 		(document.querySelector('#customer_name') as HTMLElement).textContent = customerName;
