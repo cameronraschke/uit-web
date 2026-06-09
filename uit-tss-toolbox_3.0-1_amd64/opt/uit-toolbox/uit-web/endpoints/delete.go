@@ -148,13 +148,15 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		}
 		thumbnailFile, err := os.Open(resolvedThumbnailPath)
 		if err != nil {
-			log.Error("Error opening thumbnail file, continuing: " + err.Error())
+			log.Error("Error opening thumbnail file " + resolvedThumbnailPath + ", continuing: " + err.Error())
 			// middleware.WriteJsonError(w, http.StatusInternalServerError)
 			// return
 		}
-		thumbnailFile.Close()
+		if thumbnailFile != nil {
+			thumbnailFile.Close()
+		}
 		if err := os.Remove(resolvedThumbnailPath); err != nil {
-			log.Error("Error deleting thumbnail file, continuing: " + err.Error())
+			log.Error("Error deleting thumbnail file " + resolvedThumbnailPath + ", continuing: " + err.Error())
 			// middleware.WriteJsonError(w, http.StatusInternalServerError)
 			// return
 		}
