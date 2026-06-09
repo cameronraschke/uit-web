@@ -581,8 +581,8 @@ func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*type
 	)
 	SELECT 
 		locations.time, 
-		locations.tagnumber, 
-		locations.system_serial, 
+		ids.tagnumber, 
+		ids.system_serial, 
 		locations.location, 
 		locations.building, 
 		locations.room, 
@@ -604,19 +604,20 @@ func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*type
 		(CASE WHEN most_recent_checkout.checkout_bool = TRUE AND DATE(CURRENT_TIMESTAMP) >= most_recent_checkout.checkout_date AND DATE(CURRENT_TIMESTAMP) <= COALESCE(most_recent_checkout.return_date, DATE '9999-12-31') THEN TRUE ELSE FALSE END) AS "checkout_bool",
 		locations.note,
 		COALESCE(files.file_count, 0) AS "file_count"
-	FROM locations
-	LEFT JOIN files ON locations.client_uuid = files.client_uuid
-	LEFT JOIN hardware_data ON locations.client_uuid = hardware_data.client_uuid
-	LEFT JOIN client_health ON locations.client_uuid = client_health.client_uuid
+	FROM ids
+	LEFT JOIN locations ON ids.uuid = locations.client_uuid
+	LEFT JOIN files ON ids.uuid = files.client_uuid
+	LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
+	LEFT JOIN client_health ON ids.uuid = client_health.client_uuid
 	LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
-	LEFT JOIN client_images ON locations.client_uuid = client_images.client_uuid
-	LEFT JOIN default_system_model ON locations.client_uuid = default_system_model.client_uuid
-	LEFT JOIN most_recent_checkout ON locations.client_uuid = most_recent_checkout.client_uuid
-	WHERE locations.client_uuid = (SELECT uuid FROM ids WHERE (tagnumber = $1 OR system_serial = $2) ORDER BY time DESC LIMIT 1)
+	LEFT JOIN client_images ON ids.uuid = client_images.client_uuid
+	LEFT JOIN default_system_model ON ids.uuid = default_system_model.client_uuid
+	LEFT JOIN most_recent_checkout ON ids.uuid = most_recent_checkout.client_uuid
+	WHERE ids.uuid = (SELECT uuid FROM ids WHERE (tagnumber = $1 OR system_serial = $2) ORDER BY time DESC LIMIT 1)
 	GROUP BY 
 		locations.time,
-		locations.tagnumber,
-		locations.system_serial,
+		ids.tagnumber,
+		ids.system_serial,
 		locations.location,
 		locations.building,
 		locations.room,
@@ -1053,8 +1054,8 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			ORDER BY client_uuid, time DESC NULLS LAST
 		)
 		SELECT
-			locations.tagnumber, 
-			locations.system_serial, 
+			ids.tagnumber, 
+			ids.system_serial, 
 			locations.location, 
 			locationFormatting(locations.location) AS "location_formatted", 
 			locations.building, 
@@ -1089,25 +1090,26 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			locations.note, 
 			locations.time AS last_updated, 
 			files.file_count
-		FROM locations
-			LEFT JOIN hardware_data ON locations.client_uuid = hardware_data.client_uuid
-			LEFT JOIN client_health ON locations.client_uuid = client_health.client_uuid
+		FROM ids
+			LEFT JOIN locations ON ids.uuid = locations.client_uuid
+			LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
+			LEFT JOIN client_health ON ids.uuid = client_health.client_uuid
 			LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 			LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
 			LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
 			LEFT JOIN static_device_types ON hardware_data.device_type = static_device_types.device_type
-			LEFT JOIN files ON locations.client_uuid = files.client_uuid
-			LEFT JOIN latest_historical_firmware_data ON locations.client_uuid = latest_historical_firmware_data.client_uuid
+			LEFT JOIN files ON ids.uuid = files.client_uuid
+			LEFT JOIN latest_historical_firmware_data ON ids.uuid = latest_historical_firmware_data.client_uuid
 			LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
-			LEFT JOIN os_info ON locations.client_uuid = os_info.client_uuid
+			LEFT JOIN os_info ON ids.uuid = os_info.client_uuid
 			LEFT JOIN latest_os_versions ON os_info.os_name = latest_os_versions.os_name
-			LEFT JOIN os_installed_table ON locations.client_uuid = os_installed_table.client_uuid
-			LEFT JOIN most_recent_checkout ON locations.client_uuid = most_recent_checkout.client_uuid
+			LEFT JOIN os_installed_table ON ids.uuid = os_installed_table.client_uuid
+			LEFT JOIN most_recent_checkout ON ids.uuid = most_recent_checkout.client_uuid
 		WHERE %s
 		GROUP BY 
 			locations.client_uuid,
-			locations.tagnumber, 
-			locations.system_serial,
+			ids.tagnumber, 
+			ids.system_serial,
 			locations.location,
 			locations.building,
 			locations.room,
@@ -1548,24 +1550,25 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		ROUND(current_battery_health.battery_health_pcnt - avg_battery_health.avg_battery_health_pcnt, 2) AS "battery_health_deviation",
 		NULL AS "plugged_in",
 		job_queue.watts_now AS "power_usage"
-	FROM locations
-	LEFT JOIN job_queue ON locations.client_uuid = job_queue.client_uuid
-	LEFT JOIN hardware_data ON locations.client_uuid = hardware_data.client_uuid
-	LEFT JOIN latest_historical_hardware_data ON locations.client_uuid = latest_historical_hardware_data.client_uuid
-	LEFT JOIN latest_firmware_data ON locations.client_uuid = latest_firmware_data.client_uuid
+	FROM ids
+	LEFT JOIN locations ON ids.uuid = locations.client_uuid
+	LEFT JOIN job_queue ON ids.uuid = job_queue.client_uuid
+	LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
+	LEFT JOIN latest_historical_hardware_data ON ids.uuid = latest_historical_hardware_data.client_uuid
+	LEFT JOIN latest_firmware_data ON ids.uuid = latest_firmware_data.client_uuid
 	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
-	LEFT JOIN current_battery_health ON locations.client_uuid = current_battery_health.client_uuid
-	LEFT JOIN latest_completed_job ON locations.client_uuid = latest_completed_job.client_uuid
+	LEFT JOIN current_battery_health ON ids.uuid = current_battery_health.client_uuid
+	LEFT JOIN latest_completed_job ON ids.uuid = latest_completed_job.client_uuid
 	LEFT JOIN static_image_names ON latest_completed_job.clone_image = static_image_names.image_name
 	LEFT JOIN static_job_names ON job_queue.job_name = static_job_names.job_name
 	LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
 	LEFT JOIN static_disk_stats ON latest_historical_hardware_data.disk_model = static_disk_stats.disk_model
 	LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
-	LEFT JOIN job_queue_position ON locations.client_uuid = job_queue_position.client_uuid
+	LEFT JOIN job_queue_position ON ids.uuid = job_queue_position.client_uuid
 	LEFT JOIN newest_image ON hardware_data.system_model = newest_image.system_model
 	LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
 	LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
-	LEFT JOIN os_info ON locations.client_uuid = os_info.client_uuid
+	LEFT JOIN os_info ON ids.uuid = os_info.client_uuid
 	ORDER BY
 		job_queue.last_heard DESC NULLS LAST
 	LIMIT 50
@@ -1934,8 +1937,8 @@ func (repo *SelectRepo) GetClientHardwareOverview(ctx context.Context, tag int64
 	}
 	const sqlQuery = `
 	SELECT 
-		locations.tagnumber, 
-		locations.system_serial, 
+		ids.tagnumber, 
+		ids.system_serial, 
 		hardware_data.ethernet_mac, 
 		hardware_data.wifi_mac,
 		hardware_data.system_manufacturer,
@@ -1950,14 +1953,14 @@ func (repo *SelectRepo) GetClientHardwareOverview(ctx context.Context, tag int64
 		hardware_data.device_type,
 		historical_hardware_data.memory_speed_mhz
 	FROM 
-		locations
-	LEFT JOIN hardware_data ON locations.client_uuid = hardware_data.client_uuid
-	LEFT JOIN historical_hardware_data ON locations.client_uuid = historical_hardware_data.client_uuid
+		ids
+	LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
+	LEFT JOIN historical_hardware_data ON ids.uuid = historical_hardware_data.client_uuid
 	WHERE 
-		locations.client_uuid = (SELECT client_uuid FROM locations WHERE tagnumber = $1 ORDER BY time DESC NULLS LAST LIMIT 1)
-		AND historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data WHERE client_uuid = locations.client_uuid AND historical_hardware_data.memory_speed_mhz IS NOT NULL GROUP BY client_uuid)
+		ids.uuid = (SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC NULLS LAST LIMIT 1)
+		AND historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data WHERE client_uuid = ids.uuid AND historical_hardware_data.memory_speed_mhz IS NOT NULL GROUP BY client_uuid)
 	ORDER BY 
-		locations.time DESC NULLS LAST LIMIT 1
+		ids.time DESC NULLS LAST LIMIT 1
 	;`
 
 	var clientHardwareData types.ClientHardwareView
@@ -2285,7 +2288,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		historical_hardware_data.memory_capacity_kb,
 		historical_hardware_data.memory_speed_mhz
 	FROM ids
-		LEFT JOIN locations ON ids.uuid = locations.client_uuid AND locations.time IN (SELECT MAX(time) FROM locations GROUP BY client_uuid)
+		LEFT JOIN locations ON ids.uuid = locations.client_uuid
 		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 		LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
 		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name

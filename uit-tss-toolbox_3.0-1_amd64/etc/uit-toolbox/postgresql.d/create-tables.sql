@@ -772,17 +772,3 @@ CREATE TABLE IF NOT EXISTS historical_firmware_data (
 		ON UPDATE CASCADE
 		ON DELETE SET NULL
 );
-
--- INSERT INTO historical_firmware_data (client_uuid, time, bios_version, bios_release_date, bios_firmware, transaction_uuid, updated_from_windows)
--- SELECT
--- 	client_uuid, 
--- 	time, 
--- 	bios_version, 
--- 	bios_release_date, 
--- 	bios_firmware, 
--- 	transaction_uuid, 
--- 	updated_from_windows 
--- FROM historical_hardware_data
--- WHERE
---  time IS NOT NULL AND bios_version IS NOT NULL
--- ORDER BY time DESC;
