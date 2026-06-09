@@ -604,8 +604,7 @@ func UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest
 			$11, 
 			$12, 
 			$13, 
-			$14, 
-			$15
+			$14
 		) ON CONFLICT (uuid) DO NOTHING
 	;`
 
