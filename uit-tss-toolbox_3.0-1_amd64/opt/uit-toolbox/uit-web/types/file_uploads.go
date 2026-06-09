@@ -8,7 +8,6 @@ type ImageManifestDTO struct {
 	FileUUID          string     `json:"file_uuid"`
 	SHA256Hash        []uint8    `json:"sha256_hash"`
 	FileName          string     `json:"filename"`
-	FilePath          string     `json:"filepath"`
 	ThumbnailFileName *string    `json:"thumbnail_filename"`
 	FileSize          int64      `json:"file_size"`
 	MimeType          string     `json:"mime_type"`
@@ -29,7 +28,6 @@ type ImageManifestResponse struct {
 	FileUUID          *string    `json:"file_uuid"`
 	SHA256Hash        *[]uint8   `json:"sha256_hash"`
 	FileName          *string    `json:"filename"`
-	FilePath          *string    `json:"filepath"`
 	ThumbnailFileName *string    `json:"thumbnail_filename"`
 	FileSize          *int64     `json:"file_size"`
 	MimeType          *string    `json:"mime_type"`

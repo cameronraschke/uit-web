@@ -296,7 +296,6 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 		filePath = filepath.Clean(filePath)
 
 		// URL to send to client
-		responseManifest.FilePath = nil // Hide actual file path from client
 		urlStr := url.URL{
 			Scheme: "https",
 			Host:   req.Host,

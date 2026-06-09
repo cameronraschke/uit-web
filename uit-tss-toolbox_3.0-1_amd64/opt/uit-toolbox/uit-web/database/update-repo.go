@@ -548,7 +548,6 @@ func UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest
 		strings.TrimSpace(manifest.FileUUID) == "" ||
 		manifest.Time.IsZero() ||
 		strings.TrimSpace(manifest.FileName) == "" ||
-		strings.TrimSpace(manifest.FilePath) == "" ||
 		manifest.FileSize <= 0 ||
 		len(manifest.SHA256Hash) == 0 ||
 		strings.TrimSpace(manifest.MimeType) == "" {
@@ -580,7 +579,6 @@ func UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest
 			client_uuid, 
 			tagnumber, 
 			filename, 
-			filepath, 
 			thumbnail_filename, 
 			filesize, 
 			sha256_hash, 
@@ -616,7 +614,6 @@ func UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest
 		toNullTime(manifest.Time),
 		toNullInt64(manifest.Tagnumber),
 		toNullString(manifest.FileName),
-		toNullString(manifest.FilePath),
 		ptrToNullString(manifest.ThumbnailFileName),
 		toNullInt64(manifest.FileSize),
 		manifest.SHA256Hash,

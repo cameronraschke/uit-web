@@ -1015,7 +1015,6 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
-		manifest.FilePath = fullFilePath
 
 		// Close the uploaded file, not needed anymore
 		_ = file.Close()
