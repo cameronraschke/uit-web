@@ -165,7 +165,7 @@ async function fetchAllManufacturersAndModels(purgeCache: boolean = false): Prom
   try {
 		if (cached && !purgeCache) {
 			const cacheEntry: ManufacturerAndModelsCache = JSON.parse(cached);
-			if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.manufacturers_and_models)) {
+			if (Date.now() - cacheEntry.timestamp < thirtySeconds && Array.isArray(cacheEntry.manufacturers_and_models)) {
 				console.log("Loaded manufacturers and models from cache");
 				return cacheEntry.manufacturers_and_models;
 			}
@@ -314,7 +314,7 @@ async function fetchDomains(purgeCache: boolean = false): Promise<Array<AllDomai
 	try {
 		if (cached && !purgeCache) {
 			const cacheEntry: DomainCache = JSON.parse(cached);
-			if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.domains)) {
+			if (Date.now() - cacheEntry.timestamp < thirtySeconds && Array.isArray(cacheEntry.domains)) {
 				console.log("Loaded domains from cache");
 				return cacheEntry.domains;
 			}
@@ -429,7 +429,7 @@ async function fetchStatuses(purgeCache: boolean = false): Promise<Record<string
 	try {
 		if (cached && !purgeCache) {
 			const cacheEntry: StatusCache = JSON.parse(cached);
-			if (Date.now() - cacheEntry.timestamp < 300000 && cacheEntry.statuses) {
+			if (Date.now() - cacheEntry.timestamp < thirtySeconds && cacheEntry.statuses) {
 				console.log("Loaded statuses from cache");
 				return cacheEntry.statuses;
 			}
@@ -549,7 +549,7 @@ async function fetchAllBuildingsAndRooms(purgeCache: boolean = false): Promise<A
 
 	if (cached && !purgeCache) {
 		const cacheEntry: BuildingsAndRoomsCache = JSON.parse(cached);
-		if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.buildings_and_rooms)) {
+		if (Date.now() - cacheEntry.timestamp < thirtySeconds && Array.isArray(cacheEntry.buildings_and_rooms)) {
 			console.log("Loaded buildings and rooms from cache");
 			return Promise.resolve(cacheEntry.buildings_and_rooms);
 		}

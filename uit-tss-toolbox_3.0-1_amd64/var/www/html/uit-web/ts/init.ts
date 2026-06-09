@@ -19,19 +19,8 @@ type AuthStatusResponse = {
 	ttl: number | null;
 };
 
-type DeviceType = {
-	device_type: string | null;
-	device_type_formatted: string | null;
-	device_meta_category: string | null;
-	device_type_count: number | null;
-};
-
-type DeviceTypeCache = {
-	deviceTypes: DeviceType[] | null;
-	timestamp: number | null;
-};
-
 const inputCSSClasses = ["empty-input", "empty-required-input", "changed-input", "readonly-input"];
+const fiveSeconds = 5 * 1000; // 5 seconds in milliseconds
 const thirtySeconds = 30 * 1000; // 30 seconds in milliseconds
 const oneMinute = 60 * 1000; // 1 minute in milliseconds
 const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
@@ -227,7 +216,7 @@ async function checkAuthStatus(): Promise<boolean> {
 			if (secondsUntilExpiry < 60) {
 				console.warn(`Auth token expiring within 1 minute (in ${secondsUntilExpiry.toFixed(1)}s)`);
 			}
-			const ttlRemainingSeconds = response.ttl / 1_000_000_000;
+			const ttlRemainingSeconds = response.ttl / 1_000_000_000; // convert nanoseconds to seconds
 			if (ttlRemainingSeconds < 10) {
 				console.warn(`Auth session TTL low (${ttlRemainingSeconds.toFixed(1)}s), reauthenticating...`);
 				return false;
@@ -244,7 +233,6 @@ async function checkAuthStatus(): Promise<boolean> {
 	}
 }
 
-const checkAuthTimeout = 5000; // 5 seconds
 let authCheckTimeout: number;
 authCheckTimeout = setInterval(async () => {
 	if (document.visibilityState !== "visible") return;
@@ -253,7 +241,7 @@ authCheckTimeout = setInterval(async () => {
 	if (isAuthenticated === false) {
 		window.location.href = "/logout";
 	}
-}, checkAuthTimeout);
+}, fiveSeconds);
 
 document.addEventListener("visibilitychange", async () => {
 	if (window.location.pathname === '/login' || window.location.pathname === '/logout') {
@@ -285,7 +273,7 @@ document.addEventListener("visibilitychange", async () => {
 			if (isStillAuthenticated === false) {
 				window.location.href = "/logout";
 			}
-		}, checkAuthTimeout);
+		}, fiveSeconds);
 	}
 });
 
@@ -540,7 +528,7 @@ async function getGlobalLookupData(purgeCache = false): Promise<GlobalLookupResu
 	const cached = sessionStorage.getItem("uit_global_lookup");
 	if (cached && !purgeCache) {
 		const cacheEntry: GlobalLookupResultCache = JSON.parse(cached);
-		if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.entries) && cacheEntry.entries.length > 0) {
+		if (Date.now() - cacheEntry.timestamp < thirtySeconds && Array.isArray(cacheEntry.entries) && cacheEntry.entries.length > 0) {
 			console.log("Loaded tags from cache");
 			return cacheEntry;
 		} else {

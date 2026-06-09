@@ -730,7 +730,7 @@ async function fetchDepartments(purgeCache: boolean = false): Promise<Array<Depa
 	try {
 		if (cached && !purgeCache) {
 			const cacheEntry: DepartmentsCache = JSON.parse(cached);
-			if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.departments)) {
+			if (Date.now() - cacheEntry.timestamp < thirtySeconds && Array.isArray(cacheEntry.departments)) {
 				console.log("Loaded departments from cache");
 				return cacheEntry.departments;
 			}
@@ -761,7 +761,7 @@ async function fetchAllDeviceTypes(purgeCache: boolean = false): Promise<DeviceT
 			if (!cacheEntry || !cacheEntry.timestamp || !Array.isArray(cacheEntry.deviceTypes)) {
 				console.warn("Invalid cache entry for device types, ignoring cache");
 				sessionStorage.removeItem("uit_device_types_cache");
-			} else if (Date.now() - cacheEntry.timestamp < 300000 && Array.isArray(cacheEntry.deviceTypes)) {
+			} else if (Date.now() - cacheEntry.timestamp < thirtySeconds && Array.isArray(cacheEntry.deviceTypes)) {
 				console.log("Loaded device types from cache");
 				return cacheEntry.deviceTypes;
 			} else {

@@ -383,7 +383,29 @@ async function renderInventoryTable() {
 			tr.appendChild(statusCell);
 
 			// Note (truncated)
-			tr.appendChild(createTextCell(undefined, 'note', inventoryRow.note, 60, ''));
+			const noteCell = document.createElement('td');
+			const noteContainer = document.createElement('div');
+			noteContainer.classList.add('flex-container', 'vertical', 'centered');
+			if (note !== '') {
+				const truncatedNote = truncateString(note, 30);
+				const noteSpan = document.createElement('span');
+				noteSpan.textContent = truncatedNote.truncatedString;
+				if (truncatedNote.isTruncated) {
+					noteSpan.style.cursor = 'pointer';
+					noteSpan.title = note;
+					noteSpan.addEventListener('click', () => {
+						const isExpanded = noteSpan.textContent === note;
+						noteSpan.textContent = isExpanded ? truncatedNote.truncatedString : note;
+						if (noteSpan.title) noteSpan.removeAttribute('title');
+						noteSpan.style.cursor = 'auto';
+					});
+				} else {
+					noteSpan.textContent = note;
+				}
+				noteContainer.appendChild(noteSpan);
+			}
+			noteCell.appendChild(noteContainer);
+			tr.appendChild(noteCell);
 
 			// Last Updated
 			const lastUpdatedCell = document.createElement('td');

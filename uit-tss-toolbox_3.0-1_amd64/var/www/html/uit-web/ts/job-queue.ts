@@ -852,7 +852,7 @@ async function startQueueInterval() {
 		const jobTable = await fetchJobQueueData();
 		if (!jobQueueInterval) return;
 		await renderJobQueueTable(jobTable);
-	}, 5000);
+	}, fiveSeconds);
 }
 
 async function initializeJobQueuePage() {

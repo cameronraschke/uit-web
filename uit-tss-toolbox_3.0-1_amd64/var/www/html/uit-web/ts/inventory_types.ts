@@ -10,6 +10,18 @@ type DomainCache = {
 	domains: AllDomainsRow[];
 };
 
+type DeviceType = {
+	device_type: string | null;
+	device_type_formatted: string | null;
+	device_meta_category: string | null;
+	device_type_count: number | null;
+};
+
+type DeviceTypeCache = {
+	deviceTypes: DeviceType[] | null;
+	timestamp: number | null;
+};
+
 type AllManufacturersAndModelsRow = {
 	system_manufacturer: string;
 	system_model: string;
