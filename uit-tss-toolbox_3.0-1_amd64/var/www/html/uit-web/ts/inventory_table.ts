@@ -367,7 +367,7 @@ async function renderInventoryTable() {
 					const tooltipIndicator = document.createElement('img');
 					tooltipIndicator.src = '/icons/general/info.svg';
 					tooltipIndicator.classList.add('tooltip-image', 'info');
-					tooltipIndicator.tabIndex = 0;
+					tooltipIndicator.setAttribute('tabindex', '0');
 					statusSpan.appendChild(tooltipIndicator);
 					attachPortalTooltip(
 						tooltipIndicator,
@@ -485,7 +485,7 @@ async function renderInventoryTable() {
 					tooltip.title = 'Configuration Error(s)';
 					tooltip.alt = 'Configuration Error(s)';
 					tooltip.src = '/icons/general/info.svg';
-					tooltip.tabIndex = 0;
+					tooltip.setAttribute('tabindex', '0');
 
 					let highestGeneralTooltipSeverity = 'info';
 					let highestSoftwareTooltipSeverity = 'info';
