@@ -1,15 +1,15 @@
 CREATE TABLE IF NOT EXISTS ids (
 	uuid UUID PRIMARY KEY DEFAULT uuidv7(),
-	tagnumber INTEGER NOT NULL,
-	system_serial VARCHAR(128) NOT NULL,
+	tagnumber INTEGER NOT NULL UNIQUE,
+	system_serial VARCHAR(128) NOT NULL UNIQUE,
 	time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
 	CONSTRAINT ids_valid_tag
 		CHECK (tagnumber > 100000 AND tagnumber < 999999),
-	CONSTRAINT ids_system_serial_unique
-		UNIQUE (system_serial),
-	CONSTRAINT ids_tagnumber_unique
-		UNIQUE (tagnumber)
+	CONSTRAINT ids_system_serial_format
+		CHECK (system_serial ~ '^[a-zA-Z0-9_-]+$'),
+	CONSTRAINT ids_system_serial_length
+		CHECK (CHAR_LENGTH(system_serial) >= 1 AND CHAR_LENGTH(system_serial) <= 128)
 );
 
 CREATE TABLE IF NOT EXISTS serverstats (
@@ -30,16 +30,14 @@ CREATE TABLE IF NOT EXISTS serverstats (
 CREATE TABLE IF NOT EXISTS jobstats (
 	uuid UUID PRIMARY KEY,
 	client_uuid UUID NOT NULL,
-	tagnumber INTEGER DEFAULT NULL,
-	-- etheraddress VARCHAR(17) DEFAULT NULL, -- unused, moved to hardware_data
-	date DATE DEFAULT NULL,
+	tagnumber INTEGER DEFAULT NULL, -- unused, moved to ids table
+	etheraddress VARCHAR(17) DEFAULT NULL, -- unused, moved to hardware_data as ethernet_mac
 	time TIMESTAMP WITH TIME ZONE DEFAULT NULL,
 	system_serial VARCHAR(128) DEFAULT NULL,
-	disk VARCHAR(8) DEFAULT NULL,
+	disk_name VARCHAR(32) DEFAULT NULL,
 	avg_cpu_temp SMALLINT DEFAULT NULL,
 	avg_cpu_usage DECIMAL(6,2) DEFAULT NULL,
 	avg_network_usage DECIMAL(5,2) DEFAULT NULL,
-	boot_time DECIMAL(5,2) DEFAULT NULL,
 	erase_completed BOOLEAN DEFAULT FALSE,
 	erase_mode VARCHAR(24) DEFAULT NULL,
 	erase_diskpercent SMALLINT DEFAULT NULL,
@@ -49,10 +47,7 @@ CREATE TABLE IF NOT EXISTS jobstats (
 	clone_master BOOLEAN DEFAULT FALSE,
 	clone_time SMALLINT DEFAULT NULL,
 	job_cancelled BOOLEAN DEFAULT FALSE,
-	host_connected BOOLEAN DEFAULT FALSE, -- unused
 
-	CONSTRAINT jobstats_valid_tag
-		CHECK (tagnumber > 100000 AND tagnumber < 999999),
 	CONSTRAINT jobstats_client_uuid_fkey
 		FOREIGN KEY (client_uuid)
 			REFERENCES ids(uuid)
@@ -98,7 +93,7 @@ CREATE TABLE IF NOT EXISTS historical_hardware_data (
 CREATE TABLE IF NOT EXISTS locations (
 	client_uuid UUID PRIMARY KEY,
 	time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	tagnumber INTEGER NOT NULL,
+	tagnumber INTEGER DEFAULT NULL, -- unused, moved to ids table
 	system_serial VARCHAR(128) DEFAULT NULL,
 	location VARCHAR(128) DEFAULT NULL,
 	is_broken BOOLEAN DEFAULT NULL,
@@ -114,9 +109,6 @@ CREATE TABLE IF NOT EXISTS locations (
 	retired_date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
 	transaction_uuid UUID DEFAULT NULL,
 	bulk_update BOOLEAN DEFAULT FALSE,
-	
-	CONSTRAINT locations_valid_tag
-		CHECK (tagnumber > 100000 AND tagnumber < 999999),
 
 	CONSTRAINT locations_client_uuid_fkey
 		FOREIGN KEY (client_uuid)
@@ -144,7 +136,7 @@ CREATE TABLE IF NOT EXISTS locations_log (
 	id SERIAL PRIMARY KEY,
 	time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	client_uuid UUID NOT NULL,
-	tagnumber INTEGER NOT NULL,
+	tagnumber INTEGER DEFAULT NULL, -- unused, moved to ids table
 	system_serial VARCHAR(128) DEFAULT NULL,
 	location VARCHAR(128) DEFAULT NULL,
 	is_broken BOOLEAN DEFAULT NULL,
@@ -160,9 +152,6 @@ CREATE TABLE IF NOT EXISTS locations_log (
 	retired_date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
 	transaction_uuid UUID DEFAULT NULL,
 	bulk_update BOOLEAN DEFAULT FALSE,
-	
-	CONSTRAINT locations_log_valid_tag
-		CHECK (tagnumber > 100000 AND tagnumber < 999999),
 
 	CONSTRAINT locations_log_client_uuid_fkey
 		FOREIGN KEY (client_uuid)
@@ -351,8 +340,8 @@ CREATE TABLE IF NOT EXISTS client_health (
 );
 
 CREATE TABLE IF NOT EXISTS job_queue (
-	client_uuid UUID UNIQUE DEFAULT NULL,
-	tagnumber INTEGER UNIQUE NOT NULL,
+	client_uuid UUID PRIMARY KEY,
+	tagnumber INTEGER DEFAULT NULL, -- should be unused, need to check
 	job_queued BOOLEAN DEFAULT FALSE,
 	job_name VARCHAR(64) DEFAULT NULL,
 	job_queued_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
@@ -379,9 +368,6 @@ CREATE TABLE IF NOT EXISTS job_queue (
 	cpu_temp DECIMAL(6, 2) DEFAULT NULL,
 	network_usage INT DEFAULT NULL,
 	link_speed INT DEFAULT NULL,
-
-	CONSTRAINT job_queue_valid_tag
-		CHECK (tagnumber > 100000 AND tagnumber < 999999),
 
 	CONSTRAINT job_queue_job_name_fkey 
 		FOREIGN KEY (job_name) 
@@ -411,8 +397,8 @@ CREATE TABLE IF NOT EXISTS logins (
 
 
 CREATE TABLE IF NOT EXISTS hardware_data (
-	client_uuid UUID UNIQUE DEFAULT NULL,
-	tagnumber INTEGER UNIQUE DEFAULT NULL,
+	client_uuid UUID PRIMARY KEY,
+	tagnumber INTEGER DEFAULT NULL, -- unused, check if queries still rely on it
 	system_serial VARCHAR(128) DEFAULT NULL,
 	system_uuid VARCHAR(64) DEFAULT NULL,
 	ethernet_mac VARCHAR(17) DEFAULT NULL,
@@ -622,9 +608,9 @@ INSERT INTO static_note_info (note_type, note_type_readable, sort_order) VALUES
 
 CREATE TABLE IF NOT EXISTS checkout_log (
 	transaction_uuid UUID PRIMARY KEY,
-	client_uuid UUID DEFAULT NULL,
+	client_uuid UUID NOT NULL,
 	time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	tagnumber INTEGER NOT NULL,
+	tagnumber INTEGER DEFAULT NULL, -- unused
 	customer_name VARCHAR(48) DEFAULT NULL,
 	checkout_bool BOOLEAN DEFAULT FALSE,
 	checkout_date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
