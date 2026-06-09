@@ -260,6 +260,11 @@ function renderClientData(data: ClientInfoResponse | null): void {
 		}
 		osInfoDiv.appendChild(biosVersionEl);
 
+		// TPM Version
+		const tpmVersionEl = document.createElement('p');
+		tpmVersionEl.textContent = `TPM Version: ${data.TPMVersion ?? 'N/A'}`;
+		osInfoDiv.appendChild(tpmVersionEl);
+
 		// AD Domain / OU
 		const ouEl = document.createElement('p');
 		const ouSpan = document.createElement('span');

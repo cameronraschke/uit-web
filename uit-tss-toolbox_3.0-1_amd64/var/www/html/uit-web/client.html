@@ -11,7 +11,6 @@
 	</head>
 	<body>
 		<div id="uit-header"></div>
-		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/header.js"></script>
 		
 		<div id="page-title" class="flex-container title pagetitle"><h2>Loading...</h2></div>
 
@@ -20,6 +19,7 @@
 		<div id="client-info-container" class="flex-container"></div>
 
 		<div id="uit-footer" class="flex-container footer"></div>
+		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/header.js"></script>
 		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/footer.js"></script>
 		<script nonce="{{ .JsNonce }}" type="text/javascript" src="/js/client.js"></script>
 	</body>

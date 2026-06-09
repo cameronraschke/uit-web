@@ -631,6 +631,9 @@ td > div.flex-container {
 		display: flex;
 		width: 8rem;
 	}
+	#global-client-lookup-button {
+		display: none;
+	}
 }
 
 .flex-container.menubar .menuitem:hover img {
