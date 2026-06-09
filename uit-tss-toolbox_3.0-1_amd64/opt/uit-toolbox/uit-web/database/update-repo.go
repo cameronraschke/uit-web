@@ -314,7 +314,7 @@ func UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID,
 			transaction_uuid = EXCLUDED.transaction_uuid, 
 			system_manufacturer = EXCLUDED.system_manufacturer, 
 			system_model = EXCLUDED.system_model, 
-			device_type = EXCLUDED.device_type, 
+			device_type = EXCLUDED.device_type 
 	;`
 
 	var hardwareDataResult sql.Result
