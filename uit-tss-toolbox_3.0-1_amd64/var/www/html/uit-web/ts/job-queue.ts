@@ -565,7 +565,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		queueJobButton.removeEventListener('click', async () => {});
 		if (entry.job_queued) {
 			queueJobButton.textContent = 'Cancel Job';
-			queueJobButton.classList.add('svg-button', 'cancel');
+			queueJobButton.classList.add('svg-button', 'text-left', 'cancel');
 			jobSelect.value = entry.job_name || '';
 			jobSelect.disabled = true;
 			jobSelect.classList.add('disabled');
@@ -589,7 +589,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 			}
 		} else {
 			queueJobButton.textContent = 'Queue Job';
-			queueJobButton.classList.remove('svg-button', 'cancel');
+			queueJobButton.classList.remove('svg-button', 'text-left', 'cancel');
 			jobSelect.disabled = false;
 			jobSelect.classList.remove('disabled');
 			queueJobButton.addEventListener('click', async () => {

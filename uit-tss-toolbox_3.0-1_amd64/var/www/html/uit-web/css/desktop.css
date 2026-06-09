@@ -238,6 +238,18 @@ td > div.flex-container {
 }
 
 .svg-button {
+	background-repeat: no-repeat;
+	background-size: 1.5rem;
+	background-position: center center;
+	transition: background-image 0.3s ease, background-color 0.3s ease;
+	user-select: none;
+}
+
+.svg-button:hover, .svg-button:focus {
+	background-color: var(--bg-color-darker);
+}
+
+.svg-button.text-left {
 	text-indent: var(--svg-padding-left);
 	background-repeat: no-repeat;
 	background-size: 1.5rem;
@@ -277,7 +289,6 @@ td > div.flex-container {
 }
 
 .svg-button.cancel.subtle:hover, .svg-button.cancel.subtle:focus {
-	background-color: var(--bg-color-darker);
 	background-image: url(/icons/general/cancel.svg);
 }
 
@@ -309,7 +320,6 @@ td > div.flex-container {
 	background-image: url(/icons/general/close_small.svg);
 }
 .svg-button.small-x:hover, .svg-button.small-x:focus {
-	background-color: var(--bg-color-darker);
 	background-image: url(/icons/general/check_small.svg);
 }
 

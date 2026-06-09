@@ -120,7 +120,7 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	// Inventory button link
 	const updateInventoryButton = document.createElement('button');
 	updateInventoryButton.textContent = 'Update Inventory';
-	updateInventoryButton.classList.add('svg-button', 'edit');
+	updateInventoryButton.classList.add('svg-button', 'text-left', 'edit');
 	const updateInventoryLink = document.createElement('a');
 	const updateInventoryURL = new URL('inventory', window.location.origin);
 	updateInventoryURL.searchParams.set('tagnumber', data.Tagnumber?.toString() ?? '');
@@ -133,7 +133,7 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	const imageViewButton = document.createElement('button');
 	imageViewButton.textContent = 'View Client Images';
 	if (data.ClientImages && data.ClientImages.length > 0) imageViewButton.textContent += ` (${data.ClientImages.length})`;
-	imageViewButton.classList.add('svg-button', 'photo-album');
+	imageViewButton.classList.add('svg-button', 'text-left', 'photo-album');
 	const imageViewLink = document.createElement('a');
 	const imageViewURL = new URL('client_images', window.location.origin);
 	imageViewURL.searchParams.set('tagnumber', data.Tagnumber?.toString() ?? '');

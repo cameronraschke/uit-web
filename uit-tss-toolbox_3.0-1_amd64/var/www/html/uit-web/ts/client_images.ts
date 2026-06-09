@@ -98,10 +98,10 @@ function renderFiles(manifestArr: ImageManifest[], tag: number) {
 		unpinIcon.dataset.client_uuid = file.client_uuid ?? '';
 		unpinIcon.dataset.file_uuid = file.file_uuid ?? '';
 		if (file.pinned) {
-			unpinIcon.classList.add('svg-button', 'pinned');
+			unpinIcon.classList.add('svg-button', 'text-left', 'pinned');
 			unpinIcon.textContent = 'Unpin Image';
 		} else {
-			unpinIcon.classList.add('svg-button', 'unpinned');
+			unpinIcon.classList.add('svg-button', 'text-left', 'unpinned');
 			unpinIcon.textContent = 'Pin Image';
 		}
 		iconContainer.appendChild(unpinIcon);
@@ -110,7 +110,7 @@ function renderFiles(manifestArr: ImageManifest[], tag: number) {
 		deleteIcon.dataset.client_uuid = file.client_uuid ?? '';
 		deleteIcon.dataset.file_uuid = file.file_uuid ?? '';
 		deleteIcon.dataset.imageCount = imageCount.textContent || '';
-		deleteIcon.classList.add('svg-button', 'delete');
+		deleteIcon.classList.add('svg-button', 'text-left', 'delete');
 		deleteIcon.title = 'Delete Image';
 		iconContainer.appendChild(deleteIcon);
 		

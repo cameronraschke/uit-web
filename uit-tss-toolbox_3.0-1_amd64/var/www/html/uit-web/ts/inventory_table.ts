@@ -171,8 +171,8 @@ async function renderInventoryTable() {
 
 			actionsContainer.classList.add('flex-container', 'vertical', 'centered');
 			editAnchor.classList.add('smaller-text');
-			editButton.classList.add('svg-button', 'edit');
-			viewImagesButton.classList.add('svg-button', 'photo-album');
+			editButton.classList.add('svg-button', 'text-left', 'edit');
+			viewImagesButton.classList.add('svg-button', 'text-left', 'photo-album');
 
 			const editURL = new URL(window.location.href);
 			editURL.searchParams.set('tagnumber', tagnumber);
@@ -204,7 +204,7 @@ async function renderInventoryTable() {
 				printAnchor.href = new URL(`checkout-form?tagnumber=${tagnumber}`, window.location.origin).toString();
 
 				const printButton = document.createElement('button');
-				printButton.classList.add('svg-button', 'print');
+				printButton.classList.add('svg-button', 'text-left', 'print');
 				printButton.textContent = 'Checkout Form';
 				printAnchor.appendChild(printButton);
 				actionsContainer.appendChild(printAnchor);
@@ -390,11 +390,7 @@ async function renderInventoryTable() {
 				const noteSpan = document.createElement('span');
 				const truncatedButtonEl = document.createElement('button');
 				const truncatedNote = truncateString(note, 50);
-				if (truncatedNote.isTruncated) {
-					noteSpan.dataset.truncated = 'true';
-				} else {
-					noteSpan.dataset.truncated = 'false';
-				}
+				
 				const updateNoteTruncation = () => {
 					const isTruncated = noteSpan.dataset.truncated === 'true';
 					if (noteContainer.contains(truncatedButtonEl)) {
@@ -403,18 +399,24 @@ async function renderInventoryTable() {
 					truncatedButtonEl.removeEventListener('click', () => {}); // remove all listeners to prevent duplicates
 					noteSpan.removeEventListener('click', () => {}); // remove all listeners to prevent duplicates
 					if (isTruncated) {
-						noteSpan.textContent = truncatedNote.truncatedString;
-						noteSpan.title = `(Click to expand) ${note}`;
-						noteSpan.style.cursor = 'pointer';
+						if (noteSpan.textContent !== truncatedNote.truncatedString) {
+							noteSpan.textContent = truncatedNote.truncatedString;
+							noteSpan.title = `(Click to expand) ${note}`;
+							noteSpan.style.cursor = 'pointer';
+						}
 						addNoteTextListener();
 					} else {
-						noteSpan.textContent = note;
+						if (noteSpan.textContent !== note) {
+							noteSpan.textContent = note;
+						}
 						noteSpan.removeAttribute('title');
 						noteSpan.style.cursor = 'auto';
-						truncatedButtonEl.classList.add('svg-button', 'cancel', 'subtle');
-						truncatedButtonEl.style.marginLeft = '8px';
-						truncatedButtonEl.title = 'Collapse note';
-						noteContainer.appendChild(truncatedButtonEl);
+						if (!noteContainer.contains(truncatedButtonEl)) {
+							truncatedButtonEl.classList.add('svg-button', 'small-x');
+							truncatedButtonEl.style.marginLeft = '8px';
+							truncatedButtonEl.title = 'Collapse note';
+							noteContainer.appendChild(truncatedButtonEl);
+						}
 						addNoteCollapseButtonListener();
 					}
 				}
@@ -423,6 +425,9 @@ async function renderInventoryTable() {
 					truncatedButtonEl.addEventListener('click', (e) => {
 						e.stopPropagation();
 						noteSpan.dataset.truncated = 'true';
+						if (e.currentTarget) {
+							e.currentTarget.removeEventListener('click', () => {}); // remove all listeners to prevent duplicates
+						}
 						updateNoteTruncation();
 					});
 				};
@@ -431,11 +436,20 @@ async function renderInventoryTable() {
 					noteSpan.addEventListener('click', (e) => {
 						e.stopPropagation();
 						noteSpan.dataset.truncated = 'false';
+						if (e.currentTarget) {
+							e.currentTarget.removeEventListener('click', () => {}); // remove all listeners to prevent duplicates
+						}
 						updateNoteTruncation();
 					});
 				};
 				
-				updateNoteTruncation();
+				if (truncatedNote.isTruncated) {
+					noteSpan.dataset.truncated = 'true';
+					updateNoteTruncation();
+				} else {
+					noteSpan.textContent = note;
+					noteSpan.dataset.truncated = 'false';
+				}
 
 				noteContainer.appendChild(noteSpan);
 			}
