@@ -36,10 +36,10 @@ h2 {
 	margin-left: 3dvw; 
 	margin-right: 3dvw;
 	border: 1px solid black;
-	border-radius: 1rem;
+	border-radius: var(--border-radius);
 }
 .client-row-grid {
-	border-radius: 1rem;
+	border-radius: var(--border-radius);
 	padding: 1rem;
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

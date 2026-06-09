@@ -7,7 +7,7 @@
 	font-size: 1.1rem;
 	padding: 0.5rem;
 	border: 1px solid #ccc;
-	border-radius: 0.25rem;
+	border-radius: 0.5rem;
 	overflow-y: auto;
 	overflow-x: clip;
 }

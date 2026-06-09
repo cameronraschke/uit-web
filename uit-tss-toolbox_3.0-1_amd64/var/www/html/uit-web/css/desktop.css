@@ -27,9 +27,9 @@
 	--focus-border-width: 0.25rem;
 	--border-width: 1px;
 	--input-border-width: 2px;
-	--border-radius: 1rem;
-	--border-radius-text: 0.5rem;
-	--border-radius-button: 0.5rem;
+	--border-radius: 0.1rem;
+	--border-radius-text-input: 0.1rem;
+	--border-radius-button: 0.1rem;
 	--svg-padding-left: 2rem;
 	--input-padding: 0.5rem;
 	--container-padding: 2rem;
@@ -131,14 +131,14 @@ input[type="file"] {
 	padding: var(--input-padding);
 	margin: 1px;
 	border: var(--border-width) solid var(--default-border-color);
-	border-radius: var(--border-radius-text);
+	border-radius: var(--border-radius-text-input);
 	user-select: none;
 }
 
 .text-search, input:not(.text-search), select, textarea, button {
   background-color: var(--fg-color);
   padding: var(--input-padding);
-  border-radius: var(--border-radius-text);
+  border-radius: var(--border-radius-text-input);
 	border: var(--border-width) solid var(--default-border-color);
 	box-shadow: 2px var(--focus-border-width) 5px lightgray;
 	transition: 
@@ -238,10 +238,11 @@ td > div.flex-container {
 }
 
 .svg-button {
+	border-radius: var(--border-radius-button);
 	background-repeat: no-repeat;
 	background-size: 1.5rem;
 	background-position: center center;
-	transition: background-image 0.3s ease, background-color 0.3s ease;
+	transition: background-image 0.175s ease, background-color 0.05s ease;
 	user-select: none;
 }
 
@@ -254,7 +255,6 @@ td > div.flex-container {
 	background-repeat: no-repeat;
 	background-size: 1.5rem;
 	background-position: 0.5rem center;
-	transition: background-image 0.3s ease, background-color 0.3s ease;
 	user-select: none;
 }
 
