@@ -685,48 +685,6 @@ func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*type
 	return inventoryUpdate, nil
 }
 
-func GetClientImageFilePathFromUUID(ctx context.Context, uuid *string) (*types.ImageManifestResponse, error) {
-	if uuid == nil || strings.TrimSpace(*uuid) == "" {
-		return nil, fmt.Errorf("%w: %s", types.MissingFieldError, "uuid")
-	}
-
-	dbConn, err := config.GetDatabaseConn()
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
-	}
-
-	const sqlQuery = `
-		SELECT 
-			tagnumber, 
-			filename, 
-			filepath, 
-			thumbnail_filepath, 
-			hidden
-		FROM 
-			client_images 
-		WHERE
-			uuid = $1
-	;`
-
-	row := dbConn.QueryRowContext(ctx, sqlQuery,
-		ptrToNullString(uuid),
-	)
-	var imageManifest types.ImageManifestResponse
-	if err := row.Scan(
-		&imageManifest.Tagnumber,
-		&imageManifest.FileName,
-		&imageManifest.FilePath,
-		&imageManifest.ThumbnailFilePath,
-		&imageManifest.Hidden,
-	); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
-	}
-	return &imageManifest, nil
-}
-
 func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error) {
 	if tag == nil {
 		return nil, fmt.Errorf("tag is nil")
@@ -783,7 +741,7 @@ func GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types
 			uuid, 
 			filename, 
 			filepath, 
-			thumbnail_filepath, 
+			thumbnail_filename, 
 			mime_type, 
 			hidden, 
 			pinned, 
@@ -811,7 +769,7 @@ func GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types
 			&imageManifest.FileUUID,
 			&imageManifest.FileName,
 			&imageManifest.FilePath,
-			&imageManifest.ThumbnailFilePath,
+			&imageManifest.ThumbnailFileName,
 			&imageManifest.MimeType,
 			&imageManifest.Hidden,
 			&imageManifest.Pinned,
@@ -848,7 +806,7 @@ func GetClientImageManifestByFileUUID(ctx context.Context, fileUUID string) (*ty
 			uuid, 
 			filename, 
 			filepath, 
-			thumbnail_filepath, 
+			thumbnail_filename, 
 			mime_type, 
 			hidden, 
 			pinned, 
@@ -866,7 +824,7 @@ func GetClientImageManifestByFileUUID(ctx context.Context, fileUUID string) (*ty
 		&imageManifest.FileUUID,
 		&imageManifest.FileName,
 		&imageManifest.FilePath,
-		&imageManifest.ThumbnailFilePath,
+		&imageManifest.ThumbnailFileName,
 		&imageManifest.MimeType,
 		&imageManifest.Hidden,
 		&imageManifest.Pinned,

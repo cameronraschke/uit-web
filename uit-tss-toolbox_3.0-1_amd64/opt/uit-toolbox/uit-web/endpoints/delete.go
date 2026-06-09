@@ -137,10 +137,10 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if imageManifest.ThumbnailFilePath != nil && strings.TrimSpace(*imageManifest.ThumbnailFilePath) != "" {
-		joinedThumbnailPath := filepath.Join(*imageManifest.ThumbnailFilePath)
-		cleanedThumbnailPath := filepath.Clean(joinedThumbnailPath)
-		resolvedThumbnailPath, err := filepath.EvalSymlinks(cleanedThumbnailPath)
+	if imageManifest.ThumbnailFileName != nil && strings.TrimSpace(*imageManifest.ThumbnailFileName) != "" {
+		thumbnailPath := filepath.Join("/opt/inventory_images", clientUUIDFromManifest, *imageManifest.ThumbnailFileName)
+		thumbnailPath = filepath.Clean(thumbnailPath)
+		resolvedThumbnailPath, err := filepath.EvalSymlinks(thumbnailPath)
 		if err != nil {
 			log.Error("Error resolving thumbnail file path, continuing: " + err.Error())
 			// middleware.WriteJsonError(w, http.StatusInternalServerError)

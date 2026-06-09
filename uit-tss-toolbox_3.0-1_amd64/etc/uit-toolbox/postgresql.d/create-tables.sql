@@ -461,10 +461,10 @@ CREATE TABLE IF NOT EXISTS client_images (
 	uuid VARCHAR(128) PRIMARY KEY,
 	time TIMESTAMP WITH TIME ZONE NOT NULL,
 	client_uuid UUID DEFAULT NULL,
-	tagnumber INTEGER NOT NULL, 
+	tagnumber INTEGER NOT NULL, -- unused, check if queries still rely on it
 	filename VARCHAR(128) DEFAULT NULL,
 	filepath TEXT DEFAULT NULL,
-	thumbnail_filepath TEXT DEFAULT NULL,
+	thumbnail_filename TEXT DEFAULT NULL,
 	filesize INTEGER DEFAULT NULL,
 	sha256_hash BYTEA DEFAULT NULL,
 	mime_type VARCHAR(24) DEFAULT NULL,
@@ -476,9 +476,6 @@ CREATE TABLE IF NOT EXISTS client_images (
 	pinned BOOLEAN DEFAULT FALSE NOT NULL,
 
 	UNIQUE (tagnumber, sha256_hash, hidden),
-
-	CONSTRAINT client_images_valid_tag
-		CHECK (tagnumber > 100000 AND tagnumber < 999999),
 
 	CONSTRAINT client_images_client_uuid_fkey
 		FOREIGN KEY (client_uuid)

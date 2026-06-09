@@ -974,7 +974,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 			_ = thumbnailFile.Close()
-			manifest.ThumbnailFilePath = &fullThumbnailPath
+			manifest.ThumbnailFileName = &fullThumbnailPath
 			totalImageUploadSize += manifest.FileSize
 			totalImageFileCount++
 		} else if fileUploadConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[ext] == mimeType { // Video file processing

@@ -9,7 +9,7 @@ type ImageManifestDTO struct {
 	SHA256Hash        []uint8    `json:"sha256_hash"`
 	FileName          string     `json:"filename"`
 	FilePath          string     `json:"filepath"`
-	ThumbnailFilePath *string    `json:"thumbnail_filepath"`
+	ThumbnailFileName *string    `json:"thumbnail_filename"`
 	FileSize          int64      `json:"file_size"`
 	MimeType          string     `json:"mime_type"`
 	ExifTimestamp     *time.Time `json:"exif_timestamp"`
@@ -30,7 +30,7 @@ type ImageManifestResponse struct {
 	SHA256Hash        *[]uint8   `json:"sha256_hash"`
 	FileName          *string    `json:"filename"`
 	FilePath          *string    `json:"filepath"`
-	ThumbnailFilePath *string    `json:"thumbnail_filepath"`
+	ThumbnailFileName *string    `json:"thumbnail_filename"`
 	FileSize          *int64     `json:"file_size"`
 	MimeType          *string    `json:"mime_type"`
 	ExifTimestamp     *time.Time `json:"exif_timestamp"`
