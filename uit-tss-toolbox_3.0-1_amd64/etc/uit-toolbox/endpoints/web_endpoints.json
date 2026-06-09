@@ -66,7 +66,7 @@
 	},
 	"/checkout-form" : {
 		"file_path": "/var/www/html/uit-web/checkout-form.html",
-		"requires": ["nonce", "customer_name", "checkout_date", "return_date", "client_tag"],
+		"requires": ["nonce", "client_tag"],
 		"endpoint_type": "web_content",
 		"content_type": "text/html; charset=utf-8"
 	},

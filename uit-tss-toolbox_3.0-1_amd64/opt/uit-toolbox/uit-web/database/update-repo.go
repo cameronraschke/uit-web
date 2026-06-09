@@ -35,7 +35,7 @@ type UpdateRepo struct {
 	DB *sql.DB
 }
 
-func lockClientUUIDByTagnumber(ctx context.Context, tx *sql.Tx, tagnumber int64) (clientUUID uuid.UUID, err error) {
+func lockClientRowByTagnumber(ctx context.Context, tx *sql.Tx, tagnumber int64) (clientUUID uuid.UUID, err error) {
 	const sqlCode = `
 		SELECT uuid
 		FROM ids
@@ -54,7 +54,7 @@ func lockClientUUIDByTagnumber(ctx context.Context, tx *sql.Tx, tagnumber int64)
 	return clientUUID, nil
 }
 
-func lockClientUUIDBySystemSerial(ctx context.Context, tx *sql.Tx, systemSerial string) (clientUUID uuid.UUID, err error) {
+func lockClientRowBySystemSerial(ctx context.Context, tx *sql.Tx, systemSerial string) (clientUUID uuid.UUID, err error) {
 	const sqlCode = `
 		SELECT uuid
 		FROM ids
@@ -129,7 +129,7 @@ func UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, cl
 		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
 	}
 	if clientHealthData == nil {
-		return fmt.Errorf("%w: %s", types.InvalidStructureError, "clientHealthData")
+		return fmt.Errorf("%w: %s", types.InvalidStructureError, "ClientHealthDTO is nil")
 	}
 
 	dbConn, err := config.GetDatabaseConn()
@@ -152,14 +152,12 @@ func UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, cl
 
 	// Insert/update client_health table
 	const clientHealthSql = `
-		INSERT INTO client_health
-			(
-				time, 
-				client_uuid,
-				last_hardware_check, 
-				transaction_uuid
-			) 
-		VALUES (
+		INSERT INTO client_health (
+			time, 
+			client_uuid,
+			last_hardware_check, 
+			transaction_uuid
+		) VALUES (
 			CURRENT_TIMESTAMP, 
 			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
 			$2, 
@@ -168,7 +166,6 @@ func UpdateClientHealthUpdate(ctx context.Context, transactionUUID uuid.UUID, cl
 		ON CONFLICT (client_uuid)
 			DO UPDATE SET
 				time = CURRENT_TIMESTAMP,
-				client_uuid = EXCLUDED.client_uuid,
 				last_hardware_check = EXCLUDED.last_hardware_check,
 				transaction_uuid = EXCLUDED.transaction_uuid
 	;`
@@ -193,7 +190,7 @@ func InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID,
 		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
 	}
 	if checkoutData == nil {
-		return fmt.Errorf("%w: %s", types.InvalidStructureError, "checkoutData")
+		return fmt.Errorf("%w: %s", types.InvalidStructureError, "InventoryCheckoutWriteModel is nil")
 	}
 	if err := types.IsTagnumberInt64Valid(&checkoutData.Tagnumber); err != nil {
 		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
@@ -223,35 +220,35 @@ func InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID,
 		}
 	}()
 
-	// Insert into checkout_log table if necessary fields are present
 	const checkoutSql = `
-		INSERT INTO checkout_log
-			(
-				time, 
-				client_uuid,
-				transaction_uuid, 
-				tagnumber, 
-				checkout_date, 
-				return_date, 
-				checkout_bool,
-				customer_name
-			)
-		VALUES 
-			(
-				CURRENT_TIMESTAMP, 
-				(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
-				$1, 
-				$2, 
-				$3, 
-				$4, 
-				$5,
-				$6
-			)
+		INSERT INTO checkout_log (
+			time, 
+			client_uuid,
+			transaction_uuid, 
+			checkout_date, 
+			return_date, 
+			checkout_bool,
+			customer_name
+		) VALUES (
+			CURRENT_TIMESTAMP, 
+			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
+			$1, 
+			$3, 
+			$4, 
+			$5, 
+			$6
+		) ON CONFLICT (transaction_uuid) DO UPDATE SET
+		 	time = EXCLUDED.time, 
+			client_uuid = EXCLUDED.client_uuid, 
+			checkout_date = EXCLUDED.checkout_date, 
+			return_date = EXCLUDED.return_date, 
+			checkout_bool = EXCLUDED.checkout_bool, 
+			customer_name = EXCLUDED.customer_name 
 	;`
 
 	checkoutLogResult, err := tx.ExecContext(ctx, checkoutSql,
 		transactionUUID,
-		checkoutData.Tagnumber,
+		toNullInt64(checkoutData.Tagnumber),
 		ptrToNullTime(checkoutData.CheckoutDate),
 		ptrToNullTime(checkoutData.ReturnDate),
 		ptrToNullBool(checkoutData.CheckoutBool),
@@ -297,34 +294,27 @@ func UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID,
 
 	// Insert/update hardware_data table
 	const hardwareDataSql = `
-		INSERT INTO hardware_data
-			(
-				time, 
-				client_uuid,
-				transaction_uuid, 
-				tagnumber, 
-				system_manufacturer, 
-				system_model, 
-				device_type
-			) 
-		VALUES
-			(
-				CURRENT_TIMESTAMP, 
-				(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
-				$1, 
-				$2, 
-				$3, 
-				$4, 
-				$5
-			)
-		ON CONFLICT (client_uuid)
-		DO UPDATE SET
-			time = CURRENT_TIMESTAMP,
-			client_uuid = EXCLUDED.client_uuid,
-			transaction_uuid = EXCLUDED.transaction_uuid,
-			system_manufacturer = EXCLUDED.system_manufacturer,
-			system_model = EXCLUDED.system_model,
-			device_type = EXCLUDED.device_type
+		INSERT INTO hardware_data (
+			time, 
+			client_uuid, 
+			transaction_uuid, 
+			system_manufacturer, 
+			system_model, 
+			device_type 
+		) VALUES (
+			CURRENT_TIMESTAMP, 
+			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1), 
+			$1, 
+			$3, 
+			$4, 
+			$5 
+		)
+		ON CONFLICT (client_uuid) DO UPDATE SET
+			time = EXCLUDED.time, 
+			transaction_uuid = EXCLUDED.transaction_uuid, 
+			system_manufacturer = EXCLUDED.system_manufacturer, 
+			system_model = EXCLUDED.system_model, 
+			device_type = EXCLUDED.device_type, 
 	;`
 
 	var hardwareDataResult sql.Result
@@ -464,8 +454,8 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 	const locationsSql = `
 	INSERT INTO locations (
 		time, 
-		transaction_uuid,
-		client_uuid,
+		transaction_uuid, 
+		client_uuid, 
 		tagnumber, 
 		system_serial, 
 		location, 
@@ -480,8 +470,7 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 		disk_removed, 
 		client_status,
 		note
-	) 
-	VALUES (
+	) VALUES (
 		CURRENT_TIMESTAMP,
 	 	$1, 
 		(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1), 
@@ -521,9 +510,9 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 	var locationsResult sql.Result
 	locationsResult, err = tx.ExecContext(ctx, locationsSql,
 		transactionUUID,
-		inventoryUpdate.Tagnumber,
-		inventoryUpdate.SystemSerial,
-		inventoryUpdate.Location,
+		toNullInt64(inventoryUpdate.Tagnumber),
+		toNullString(inventoryUpdate.SystemSerial),
+		toNullString(inventoryUpdate.Location),
 		ptrToNullString(inventoryUpdate.Building),
 		ptrToNullString(inventoryUpdate.Room),
 		toNullString(inventoryUpdate.Department),
@@ -585,56 +574,53 @@ func UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest
 	}()
 
 	const sqlCode = `
-		INSERT INTO client_images 
-			(
-				uuid, 
-				time, 
-				client_uuid,
-				tagnumber, 
-				filename, 
-				filepath, 
-				thumbnail_filepath, 
-				filesize, 
-				sha256_hash, 
-				mime_type, 
-				exif_timestamp, 
-				resolution_x, 
-				resolution_y, 
-				note, 
-				hidden, 
-				pinned
-			)
-		VALUES 
-			(
-				$1, 
-				$2, 
-				(SELECT uuid FROM ids WHERE tagnumber = $3 ORDER BY time DESC LIMIT 1),
-				$3, 
-				$4, 
-				$5, 
-				$6, 
-				$7, 
-				$8, 
-				$9, 
-				$10, 
-				$11, 
-				$12, 
-				$13, 
-				$14, 
-				$15
-			)
+		INSERT INTO client_images (
+			uuid, 
+			time, 
+			client_uuid, 
+			tagnumber, 
+			filename, 
+			filepath, 
+			thumbnail_filepath, 
+			filesize, 
+			sha256_hash, 
+			mime_type, 
+			exif_timestamp, 
+			resolution_x, 
+			resolution_y, 
+			note, 
+			hidden, 
+			pinned
+		) VALUES (
+			$1, 
+			$2, 
+			(SELECT uuid FROM ids WHERE tagnumber = $3 ORDER BY time DESC LIMIT 1),
+			$3, 
+			$4, 
+			$5, 
+			$6, 
+			$7, 
+			$8, 
+			$9, 
+			$10, 
+			$11, 
+			$12, 
+			$13, 
+			$14, 
+			$15
+		) ON CONFLICT (uuid) DO NOTHING
 	;`
 
 	sqlResult, err := tx.ExecContext(ctx, sqlCode,
-		manifest.FileUUID,
-		manifest.Time,
-		manifest.Tagnumber,
-		manifest.FileName,
-		manifest.FilePath,
+		toNullString(manifest.FileUUID),
+		toNullTime(manifest.Time),
+		toNullInt64(manifest.Tagnumber),
+		toNullString(manifest.FileName),
+		toNullString(manifest.FilePath),
 		ptrToNullString(manifest.ThumbnailFilePath),
-		manifest.FileSize,
+		toNullInt64(manifest.FileSize),
 		manifest.SHA256Hash,
-		manifest.MimeType,
+		toNullString(manifest.MimeType),
 		ptrToNullTime(manifest.ExifTimestamp),
 		ptrToNullInt64(manifest.ResolutionX),
 		ptrToNullInt64(manifest.ResolutionY),
@@ -695,8 +681,11 @@ func HideClientImageByUUID(ctx context.Context, fileUUID *string) (err error) {
 	return nil
 }
 
-func DeleteClientImageByUUID(ctx context.Context, tag *int64, fileUUID *string) (err error) {
-	if err := types.IsTagnumberInt64Valid(tag); err != nil {
+func TogglePinImage(ctx context.Context, tagnumber *int64, fileUUID *string) (err error) {
+	if tagnumber == nil {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "tagnumber")
+	}
+	if err := types.IsTagnumberInt64Valid(tagnumber); err != nil {
 		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
 	if fileUUID == nil || strings.TrimSpace(*fileUUID) == "" {
@@ -722,54 +711,14 @@ func DeleteClientImageByUUID(ctx context.Context, tag *int64, fileUUID *string) 
 	}()
 
 	const sqlQuery = `
-		DELETE FROM 
+		UPDATE 
 			client_images 
+		SET 
+			pinned = NOT COALESCE(pinned, FALSE) 
 		WHERE 
-			client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1)
-			AND uuid = $2
+			uuid = $1 
+			AND client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $2)
 	;`
-	sqlResult, err := tx.ExecContext(ctx, sqlQuery,
-		ptrToNullInt64(tag),
-		ptrToNullString(fileUUID),
-	)
-	if err != nil {
-		return err
-	}
-	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return err
-	}
-	return nil
-}
-
-func TogglePinImage(ctx context.Context, tagnumber *int64, fileUUID *string) (err error) {
-	if tagnumber == nil {
-		return fmt.Errorf("%w: %s", types.MissingFieldError, "tagnumber")
-	}
-	if err := types.IsTagnumberInt64Valid(tagnumber); err != nil {
-		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
-	}
-	if fileUUID == nil || strings.TrimSpace(*fileUUID) == "" {
-		return fmt.Errorf("%w: %s", types.MissingFieldError, "file UUID")
-	}
-
-	dbConn, err := config.GetDatabaseConn()
-	if err != nil {
-		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
-	}
-
-	tx, err := dbConn.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
-	}
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		} else {
-			err = tx.Commit()
-		}
-	}()
-
-	const sqlQuery = `UPDATE client_images SET pinned = NOT COALESCE(pinned, FALSE) WHERE uuid = $1 AND client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1);`
 	sqlResult, err := tx.ExecContext(ctx, sqlQuery,
 		ptrToNullString(fileUUID),
 		ptrToNullInt64(tagnumber),
@@ -1360,7 +1309,7 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 		}
 	}()
 
-	clientUUID, err := lockClientUUIDByTagnumber(ctx, tx, healthCheck.Tagnumber)
+	clientUUID, err := lockClientRowByTagnumber(ctx, tx, healthCheck.Tagnumber)
 	if err != nil {
 		return err
 	}
@@ -1482,7 +1431,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		}
 	}()
 
-	clientUUID, err := lockClientUUIDBySystemSerial(ctx, tx, *hardwareData.SystemSerial)
+	clientUUID, err := lockClientRowBySystemSerial(ctx, tx, *hardwareData.SystemSerial)
 	if err != nil {
 		return err
 	}

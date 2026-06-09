@@ -11,7 +11,7 @@
 			
 			<form id="print-checkout-form">
 				<label for="print-customer-name">Customer Name</label><br />
-				<input type="text" id="print-customer-name" value="{{ .CustomerName }}" />
+				<input type="text" id="print-customer-name" value="" />
 				<br />
 
 				<label for="print-customer-psid">Customer PSID</label><br />
@@ -19,11 +19,11 @@
 				<br />
 				
 				<label for="print-checkout-date">Checkout Date</label><br />
-				<input type="date" id="print-checkout-date" value="{{ .CheckoutDate }}" />
+				<input type="date" id="print-checkout-date" value="" />
 				<br />
 
 				<label for="print-return-date">Return Date</label><br />
-				<input type="date" id="print-return-date" value="{{ .ReturnDate }}" />
+				<input type="date" id="print-return-date" value="" />
 				<br />
 				<button type="button" id="confirm-and-print">Confirm and Print</button>
 			</form>
@@ -84,10 +84,10 @@
 				</p>
 			</div>
 			<div class="grid-container">
-				<p>Customer Name:</p> <span id="customer_name">{{ .CustomerName }}</span>
+				<p>Customer Name:</p> <span id="customer_name"></span>
 				<p>Customer PSID:</p> <span id="customer_psid"></span>
-				<p>Checkout Date:</p> <span id="checkout_date">{{ .CheckoutDate }}</span>
-				<p>Check-in/Return Date:</p> <span id="return_date">{{ .ReturnDate }}</span>
+				<p>Checkout Date:</p> <span id="checkout_date">\</span>
+				<p>Check-in/Return Date:</p> <span id="return_date"></span>
 				<p>Customer Signature:</p> </span><span class="signature"> </span>
 				<p>Date:</p> <span class="signature"> </span>
 			</div>

@@ -28,9 +28,6 @@ type HttpTemplateResponseData struct {
 	WebmasterName  string
 	WebmasterEmail string
 	ClientTag      string
-	CheckoutDate   string
-	ReturnDate     string
-	CustomerName   string
 }
 
 type ServerTime struct {
@@ -199,7 +196,6 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	requestQueries := req.URL.Query()
 
 	nonce, nonceExists := middleware.GetNonceFromContext(ctx)
 	if !nonceExists || strings.TrimSpace(nonce) == "" {
@@ -309,17 +305,6 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 					return
 				}
 				httpTemplateResponseData.ClientTag = strconv.FormatInt(*tagnumber, 10)
-			}
-
-			if slices.Contains(endpointConfig.Requires, "checkout_date") ||
-				slices.Contains(endpointConfig.Requires, "return_date") ||
-				slices.Contains(endpointConfig.Requires, "customer_name") {
-				checkoutDate := requestQueries.Get("checkout_date")
-				returnDate := requestQueries.Get("return_date")
-				customerName := requestQueries.Get("customer_name")
-				httpTemplateResponseData.CheckoutDate = checkoutDate
-				httpTemplateResponseData.ReturnDate = returnDate
-				httpTemplateResponseData.CustomerName = customerName
 			}
 		}
 
