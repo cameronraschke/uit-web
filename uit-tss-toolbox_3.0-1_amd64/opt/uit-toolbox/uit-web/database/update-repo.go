@@ -867,8 +867,8 @@ func UpsertClientMemoryUsageKB(ctx context.Context, memInfo types.MemoryDataDTO)
 				$1, 
 				$2
 			)
-		ON CONFLICT (tagnumber) DO UPDATE SET 
-			client_uuid = EXCLUDED.client_uuid,
+		ON CONFLICT (client_uuid) DO UPDATE SET 
+			tagnumber = EXCLUDED.tagnumber,
 			memory_usage_kb = EXCLUDED.memory_usage_kb
 	;`
 	var sqlResult sql.Result
@@ -927,8 +927,8 @@ func UpsertClientMemoryCapacityKB(ctx context.Context, memInfo types.MemoryDataD
 				$1, 
 				$2
 			)
-		ON CONFLICT (tagnumber) DO UPDATE SET 
-			client_uuid = EXCLUDED.client_uuid,
+		ON CONFLICT (client_uuid) DO UPDATE SET 
+			tagnumber = EXCLUDED.tagnumber,
 			memory_capacity_kb = EXCLUDED.memory_capacity_kb
 	;`
 	var sqlResult sql.Result
@@ -991,8 +991,8 @@ func UpsertClientCPUUsage(ctx context.Context, cpuData *types.CPUDataDTO) (err e
 			$1, 
 			$2
 		)
-		ON CONFLICT (tagnumber) DO UPDATE SET 
-			client_uuid = EXCLUDED.client_uuid,
+		ON CONFLICT (client_uuid) DO UPDATE SET 
+			tagnumber = EXCLUDED.tagnumber,
 			cpu_usage = EXCLUDED.cpu_usage
 	;`
 	var sqlResult sql.Result
@@ -1053,8 +1053,8 @@ func UpsertClientCPUMHz(ctx context.Context, cpuData *types.CPUDataDTO) (err err
 			$1, 
 			$2
 		)
-		ON CONFLICT (tagnumber) DO UPDATE SET 
-			client_uuid = EXCLUDED.client_uuid,
+		ON CONFLICT (client_uuid) DO UPDATE SET 
+			tagnumber = EXCLUDED.tagnumber,
 			cpu_mhz = EXCLUDED.cpu_mhz
 	;`
 	var sqlResult sql.Result
@@ -1099,8 +1099,8 @@ func (updateRepo *UpdateRepo) UpdateClientNetworkUsage(ctx context.Context, netw
 			$2,
 			$3
 		)
-		ON CONFLICT (tagnumber) DO UPDATE SET 
-			client_uuid = EXCLUDED.client_uuid,
+		ON CONFLICT (client_uuid) DO UPDATE SET 
+			tagnumber = EXCLUDED.tagnumber,
 			network_usage = EXCLUDED.network_usage,
 			link_speed = EXCLUDED.link_speed;`
 	var sqlResult sql.Result
@@ -1157,8 +1157,8 @@ func UpsertClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUDataD
 			$1, 
 			$2
 		)
-		ON CONFLICT (tagnumber) DO UPDATE SET 
-			client_uuid = EXCLUDED.client_uuid,
+		ON CONFLICT (client_uuid) DO UPDATE SET 
+			tagnumber = EXCLUDED.tagnumber,
 			cpu_temp = EXCLUDED.cpu_temp;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
@@ -1208,8 +1208,8 @@ func (updateRepo *UpdateRepo) UpdateClientSystemUptime(ctx context.Context, tag 
 				$1, 
 			 	$2
 			)
-		ON CONFLICT (tagnumber) DO UPDATE SET 
-		client_uuid = EXCLUDED.client_uuid,
+		ON CONFLICT (client_uuid) DO UPDATE SET 
+		tagnumber = EXCLUDED.tagnumber,
 		system_uptime = COALESCE(EXCLUDED.system_uptime, job_queue.system_uptime)
 	;`
 	var sqlResult sql.Result
@@ -1260,8 +1260,8 @@ func (updateRepo *UpdateRepo) UpdateClientAppUptime(ctx context.Context, tag int
 				$1, 
 			 	$2
 			)
-		ON CONFLICT (tagnumber) DO UPDATE SET 
-		client_uuid = EXCLUDED.client_uuid,
+		ON CONFLICT (client_uuid) DO UPDATE SET 
+		tagnumber = EXCLUDED.tagnumber,
 		client_app_uptime = COALESCE(EXCLUDED.client_app_uptime, job_queue.client_app_uptime)
 	;`
 	var sqlResult sql.Result
