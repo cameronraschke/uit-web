@@ -34,32 +34,6 @@ function truncateString(inputStr: string, maxLength: number): { truncatedString:
 	return { truncatedString: newStr, isTruncated: true };
 }
 
-function createTextCell(elID: string | undefined, datasetKey: string | undefined, inputStr: string | null, truncateLen: number | undefined, customError: string | undefined) : HTMLTableCellElement {
-	const cell = document.createElement('td');
-
-	if (elID) cell.id = elID;	
-
-	if (inputStr) {
-		if (datasetKey) cell.dataset[`${datasetKey}`] = inputStr || '';
-		if (truncateLen && inputStr.length > truncateLen) {
-			const truncated = truncateString(inputStr, truncateLen);
-			cell.textContent = truncated.truncatedString;
-			cell.title = inputStr + " (click to expand)";
-			cell.style.cursor = 'pointer';
-			cell.addEventListener('click', () => {
-				cell.textContent = inputStr;
-				if (cell.title) cell.removeAttribute('title');
-				cell.style.cursor = 'auto';
-			}, { once: true });
-		} else {
-			cell.textContent = inputStr;
-		}
-	} else {
-		cell.style.fontStyle = 'italic';
-		cell.textContent = customError !== undefined ? customError : 'N/A';
-	}
-	return cell;
-}
 
 function renderTagOptions(datalistEL: HTMLDataListElement, tags: number[], limit: number): void {
   if (!datalistEL) {

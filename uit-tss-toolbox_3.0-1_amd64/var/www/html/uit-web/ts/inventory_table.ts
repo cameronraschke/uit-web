@@ -387,21 +387,56 @@ async function renderInventoryTable() {
 			const noteContainer = document.createElement('div');
 			noteContainer.classList.add('flex-container', 'vertical', 'centered');
 			if (note !== '') {
-				const truncatedNote = truncateString(note, 30);
 				const noteSpan = document.createElement('span');
-				noteSpan.textContent = truncatedNote.truncatedString;
+				const truncatedButtonEl = document.createElement('button');
+				const truncatedNote = truncateString(note, 50);
 				if (truncatedNote.isTruncated) {
-					noteSpan.style.cursor = 'pointer';
-					noteSpan.title = note;
-					noteSpan.addEventListener('click', () => {
-						const isExpanded = noteSpan.textContent === note;
-						noteSpan.textContent = isExpanded ? truncatedNote.truncatedString : note;
-						if (noteSpan.title) noteSpan.removeAttribute('title');
-						noteSpan.style.cursor = 'auto';
-					}, { once: true });
+					noteSpan.dataset.truncated = 'true';
 				} else {
-					noteSpan.textContent = note;
+					noteSpan.dataset.truncated = 'false';
 				}
+				const updateNoteTruncation = () => {
+					const isTruncated = noteSpan.dataset.truncated === 'true';
+					if (noteContainer.contains(truncatedButtonEl)) {
+						noteContainer.removeChild(truncatedButtonEl);
+					}
+					truncatedButtonEl.removeEventListener('click', () => {}); // remove all listeners to prevent duplicates
+					noteSpan.removeEventListener('click', () => {}); // remove all listeners to prevent duplicates
+					if (isTruncated) {
+						noteSpan.textContent = truncatedNote.truncatedString;
+						noteSpan.title = `(Click to expand) ${note}`;
+						noteSpan.style.cursor = 'pointer';
+						addNoteTextListener();
+					} else {
+						noteSpan.textContent = note;
+						noteSpan.removeAttribute('title');
+						noteSpan.style.cursor = 'auto';
+						truncatedButtonEl.classList.add('svg-button', 'cancel', 'subtle');
+						truncatedButtonEl.style.marginLeft = '8px';
+						truncatedButtonEl.title = 'Collapse note';
+						noteContainer.appendChild(truncatedButtonEl);
+						addNoteCollapseButtonListener();
+					}
+				}
+
+				const addNoteCollapseButtonListener = () => {
+					truncatedButtonEl.addEventListener('click', (e) => {
+						e.stopPropagation();
+						noteSpan.dataset.truncated = 'true';
+						updateNoteTruncation();
+					});
+				};
+
+				const addNoteTextListener = () => {
+					noteSpan.addEventListener('click', (e) => {
+						e.stopPropagation();
+						noteSpan.dataset.truncated = 'false';
+						updateNoteTruncation();
+					});
+				};
+				
+				updateNoteTruncation();
+
 				noteContainer.appendChild(noteSpan);
 			}
 			noteCell.appendChild(noteContainer);
