@@ -299,6 +299,7 @@ function resetSelectElement(selectElement: HTMLSelectElement, defaultText: strin
 function resetInputElement(inputElement: HTMLInputElement, placeholderText: string, isReadOnly: boolean = false, newCSSClass: string | undefined) {
 	inputElement.disabled = true;
 	removeCSSClasses(inputElement, ...inputCSSClasses);
+	inputElement.removeAttribute("tabindex");
 	inputElement.value = "";
 	inputElement.placeholder = placeholderText;
 	inputElement.readOnly = isReadOnly;

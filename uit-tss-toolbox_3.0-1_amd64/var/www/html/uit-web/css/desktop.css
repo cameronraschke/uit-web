@@ -726,7 +726,7 @@ td > div.flex-container {
 	user-select: none;
 	opacity: 0.5;
 	pointer-events: none;
-	/* tabindex: -1; */
+	/* set attribute tabindex: -1 in HTML/JS */
 }
 
 .tabs-container {
