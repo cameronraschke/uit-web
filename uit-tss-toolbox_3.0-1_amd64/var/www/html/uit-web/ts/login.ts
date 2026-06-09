@@ -122,7 +122,8 @@ loginForm.addEventListener("submit", async (event) => {
 			errorMsg.innerText = "Authentication failed. Please check your credentials and try again.";
 			throw new Error("Authentication failed: " + (jsonAuthResponse.status ?? "unknown error"));
 		}
-		if (jsonAuthResponse.expires_at === null || jsonAuthResponse.expires_at <= new Date()) {
+		const expiresAt = new Date(jsonAuthResponse.expires_at as Date);
+		if (jsonAuthResponse.expires_at === null || isNaN(expiresAt.getTime()) || expiresAt <= new Date()) {
 			errorMsg.style.display = "block";
 			errorMsg.innerText = "Invalid response from server. Please try again later.";
 			throw new Error("Invalid authentication response: token is already expired or expires_at field is missing/null");
@@ -136,7 +137,16 @@ loginForm.addEventListener("submit", async (event) => {
 
 		const redirectQuery = new URLSearchParams(window.location.search).get("redirect") ?? "";
 		const redirectURL = new URL(redirectQuery, window.location.origin);
-		if (redirectURL.pathname === "/" || redirectURL.pathname === "/logout" || !redirectURL.pathname.startsWith("/") || redirectURL.pathname.startsWith("//") || redirectURL.pathname.includes("/login")) {
+		const normalizedRedirectPath = redirectURL.pathname.replace(/\/+$/, "") || "/";
+		if (
+			normalizedRedirectPath === "/" ||
+			normalizedRedirectPath === "/logout" ||
+			normalizedRedirectPath === "/login" ||
+			normalizedRedirectPath.startsWith("/logout/") ||
+			normalizedRedirectPath.startsWith("/login/") ||
+			!redirectURL.pathname.startsWith("/") ||
+			redirectURL.pathname.startsWith("//")
+		) {
 			window.location.href = "/dashboard";
 			return;
 		}

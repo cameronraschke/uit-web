@@ -4,7 +4,7 @@ const logoutAuthChannel = new BroadcastChannel('auth');
 logoutAuthChannel.onmessage = function(event) {
 	console.log(event);
 	if (event.data.cmd === 'logout') {
-		logout();
+		logout(undefined, false);
 	}
 };
 
@@ -19,7 +19,7 @@ if (logoutButton !== null) {
 	});
 }
 
-function logout(redirectedURL?: string): void {
+function logout(redirectedURL?: string, shouldBroadcast: boolean = true): void {
 	if (isLoggingOut) {
 		console.warn("Logout already in progress, ignoring additional logout request.");
 		return;
@@ -28,7 +28,9 @@ function logout(redirectedURL?: string): void {
 
 	localStorage.clear();
 	sessionStorage.clear();
-	logoutAuthChannel.postMessage({cmd: 'logout'});
+	if (shouldBroadcast) {
+		logoutAuthChannel.postMessage({cmd: 'logout'});
+	}
 
 	const defaultRedirect = "/logout";
 	const currentRelativePath = window.location.pathname;
@@ -41,5 +43,5 @@ function logout(redirectedURL?: string): void {
 }
 
 if (window.location.pathname === '/logout') {
-	logout();
+	logout(undefined, false);
 }
