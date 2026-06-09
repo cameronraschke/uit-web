@@ -303,7 +303,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		clientLookupTagInput.readOnly = true;
 		clientLookupTagInput.value = clientLookupTagInput.value.toString().trim();
 		clientLookupTagInput.classList.add("readonly-input");
-		clientLookupTagInput.tabIndex = -1;
+		clientLookupTagInput.setAttribute("tabindex", "-1");
 	} else {
 		clientLookupTagInput.classList.add("empty-required-input");
 		clientLookupTagInput.classList.remove("readonly-input");
@@ -316,7 +316,7 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 		clientLookupSerial.readOnly = true;
 		clientLookupSerial.value = clientLookupSerial.value.trim();
 		clientLookupSerial.classList.add("readonly-input");
-		clientLookupSerial.tabIndex = -1;
+		clientLookupSerial.setAttribute("tabindex", "-1");
 	} else {
 		clientLookupSerial.classList.add("empty-required-input");
 		clientLookupSerial.classList.remove("readonly-input");
