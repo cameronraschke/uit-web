@@ -21,16 +21,16 @@ async function fetchCheckoutData(): Promise<CheckoutData> {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-	const printCheckoutFormContainer = document.getElementById('print-checkout-form-container') as HTMLElement;
-	const customerNameEl = document.getElementById('print-customer-name') as HTMLInputElement;
-	const customerPSIDEl = document.getElementById('print-customer-psid') as HTMLInputElement;
-	const checkoutDateEl: HTMLInputElement | undefined = document.getElementById('print-checkout-date') as HTMLInputElement | undefined;
-	const returnDateEl: HTMLInputElement | undefined = document.getElementById('print-return-date') as HTMLInputElement | undefined;
-	const confirmAndPrint = document.getElementById('confirm-and-print') as HTMLElement;
+	const printCheckoutFormContainer = document.getElementById('print-checkout-form-container');
+	const customerNameEl = document.getElementById('print-customer-name') as HTMLInputElement | null;
+	const customerPSIDEl = document.getElementById('print-customer-psid') as HTMLInputElement | null;
+	const checkoutDateEl = document.getElementById('print-checkout-date') as HTMLInputElement | null;
+	const returnDateEl = document.getElementById('print-return-date') as HTMLInputElement | null;
+	const confirmAndPrint = document.getElementById('confirm-and-print') as HTMLElement | null;
 
 	const checkoutData = await fetchCheckoutData();
-	customerNameEl.value = checkoutData.customer_name ?? '';
-	customerPSIDEl.value = checkoutData.customer_psid ?? '';
+	if (customerNameEl) customerNameEl.value = checkoutData.customer_name ?? '';
+	if (customerPSIDEl) customerPSIDEl.value = checkoutData.customer_psid ?? '';
 	if (checkoutData.checkout_date !== null) {
 		const checkoutDate = checkoutData.checkout_date ?? null;
 		const checkoutDateFormatted: string | undefined = new Date(checkoutDate).toISOString().split('T')[0];
@@ -54,10 +54,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 		day: "numeric",
 	};
 
-	confirmAndPrint.addEventListener('click', () => {
+	confirmAndPrint?.addEventListener('click', () => {
 
-		const customerName = customerNameEl.value.trim() ?? '';
-		const customerPSID = customerPSIDEl.value.trim() ?? '';
+		const customerName = customerNameEl?.value.trim() ?? '';
+		const customerPSID = customerPSIDEl?.value.trim() ?? '';
 		const checkoutDateStr = checkoutDateEl?.value.trim() ?? '';
 		const returnDateStr = returnDateEl?.value.trim() ?? '';
 
@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 		window.print();
 
 		window.addEventListener('afterprint', () => {
-			printCheckoutFormContainer.style.display = 'block';
+			printCheckoutFormContainer!.style.display = 'block';
     }, { once: true });
 	});
 });
