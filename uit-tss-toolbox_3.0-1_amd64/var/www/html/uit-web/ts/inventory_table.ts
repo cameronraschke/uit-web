@@ -398,7 +398,7 @@ async function renderInventoryTable() {
 						noteSpan.textContent = isExpanded ? truncatedNote.truncatedString : note;
 						if (noteSpan.title) noteSpan.removeAttribute('title');
 						noteSpan.style.cursor = 'auto';
-					});
+					}, { once: true });
 				} else {
 					noteSpan.textContent = note;
 				}
