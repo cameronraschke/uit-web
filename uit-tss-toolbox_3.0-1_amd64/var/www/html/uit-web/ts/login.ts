@@ -136,10 +136,10 @@ loginForm.addEventListener("submit", async (event) => {
 
 		const redirectQuery = new URLSearchParams(window.location.search).get("redirect") ?? "";
 		const redirectURL = new URL(redirectQuery, window.location.origin);
-		// if (redirectURL.pathname === "/" || redirectURL.pathname === "/logout" || !redirectURL.pathname.startsWith("/") || redirectURL.pathname.startsWith("//") || redirectURL.pathname.includes("/login")) {
-		// 	window.location.href = "/dashboard";
-		// 	return;
-		// }
+		if (redirectURL.pathname === "/" || redirectURL.pathname === "/logout" || !redirectURL.pathname.startsWith("/") || redirectURL.pathname.startsWith("//") || redirectURL.pathname.includes("/login")) {
+			window.location.href = "/dashboard";
+			return;
+		}
 		window.location.href = window.location.origin + redirectURL.pathname + redirectURL.search;
 	} catch (error) {
 		console.error('There was a problem with the fetch operation:', error);

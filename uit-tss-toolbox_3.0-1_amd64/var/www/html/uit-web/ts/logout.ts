@@ -14,28 +14,30 @@ if (logoutButton !== null) {
 		event.preventDefault();
 		this.blur();
 		this.disabled = true;
-		logout();
+		const decodedRedirectURL = window.location.pathname + window.location.search + window.location.hash;
+		logout(decodedRedirectURL);
 	});
 }
 
-async function logout() {
+function logout(redirectedURL?: string): void {
 	if (isLoggingOut) {
 		console.warn("Logout already in progress, ignoring additional logout request.");
 		return;
 	}
 	isLoggingOut = true;
 
-	logoutAuthChannel.postMessage({cmd: 'logout'});
 	localStorage.clear();
 	sessionStorage.clear();
+	logoutAuthChannel.postMessage({cmd: 'logout'});
 
-	let logoutUrl = "/logout";
-	// const currentPath = window.location.pathname;
-	// if (currentPath !== "/login" && currentPath !== "/logout") {
-	// 	logoutUrl += "?redirect=" + encodeURIComponent(currentPath + window.location.search);
-	// }
+	const defaultRedirect = "/logout";
+	const currentRelativePath = window.location.pathname;
+	let fullLogoutUrl = defaultRedirect;
+	if (redirectedURL && (currentRelativePath !== "/login" && currentRelativePath !== "/logout")) {
+		fullLogoutUrl = defaultRedirect + "?redirect=" + encodeURIComponent(redirectedURL);
+	}
 
-	window.location.replace(logoutUrl);
+	window.location.replace(fullLogoutUrl);
 }
 
 if (window.location.pathname === '/logout') {
