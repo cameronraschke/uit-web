@@ -413,7 +413,6 @@ async function renderInventoryTable() {
 						noteSpan.style.cursor = 'auto';
 						if (!noteContainer.contains(truncatedButtonEl)) {
 							truncatedButtonEl.classList.add('svg-button', 'small-x');
-							truncatedButtonEl.style.marginLeft = '8px';
 							truncatedButtonEl.title = 'Collapse note';
 							noteContainer.appendChild(truncatedButtonEl);
 						}

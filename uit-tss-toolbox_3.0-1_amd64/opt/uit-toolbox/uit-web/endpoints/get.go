@@ -265,7 +265,7 @@ func GetClientImagesManifest(w http.ResponseWriter, req *http.Request) {
 
 		// Check if marked as hidden
 		if imageManifest.Hidden != nil && *imageManifest.Hidden {
-			log.Info("Hidden file requested, but not sent: " + fileUUID)
+			// log.Info("Hidden file requested, but not sent: " + fileUUID)
 			continue
 		}
 

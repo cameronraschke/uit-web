@@ -22,10 +22,17 @@ function renderActionButtons(tag: number) {
 		return;
 	}
 	actionsContainer.innerHTML = '';
+	const fileDialog = document.createElement('button');
+	fileDialog.classList.add('svg-button', 'text-left', 'add-photo');
+	fileDialog.textContent = 'Upload Image/Video';
+	actionsContainer.appendChild(fileDialog);
+
 	const uploadButton = document.createElement('button');
-	uploadButton.className = 'svg-button';
-	uploadButton.textContent = 'Upload New Image';
-	uploadButton.addEventListener('click', () => {
+	uploadButton.classList.add('svg-button', 'text-left', 'small-check', 'submit');
+	uploadButton.textContent = 'Submit';
+	actionsContainer.appendChild(uploadButton);
+
+	fileDialog.addEventListener('click', () => {
 		const fileInput = document.createElement('input');
 		fileInput.type = 'file';
 		fileInput.accept = 'image/*,video/*';
@@ -58,12 +65,14 @@ function renderActionButtons(tag: number) {
 					if (err instanceof Error) {
 						alert(`Error uploading files: ${err.message}`);
 					}
+				} finally {
+					fileInput.value = '';
+					await initClientImages();
 				}
 			}
 		});
 		fileInput.click();
 	});
-	actionsContainer.appendChild(uploadButton);
 }
 
 
@@ -361,10 +370,10 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement) 
 
 document.addEventListener('DOMContentLoaded', async () => {
 	await initClientImages();
-	renderActionButtons(Number(new URLSearchParams(window.location.search).get('tagnumber')));
 });
 
 async function initClientImages() {
+	renderActionButtons(Number(new URLSearchParams(window.location.search).get('tagnumber')));
 	container.innerHTML = '<p>Loading images...</p>';
 	const urlParams = new URLSearchParams(window.location.search);
 	const tagnumber = urlParams.get('tagnumber');

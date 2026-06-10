@@ -307,20 +307,17 @@ td > div.flex-container {
 }
 
 .svg-button.small-check {
-	background-color: var(--bg-color);
 	background-image: url(/icons/general/check_small.svg);
 }
 .svg-button.small-check:hover, .svg-button.small-check:focus {
-	background-color: var(--bg-color-darker);
-	background-image: url(/icons/general/close_small.svg);
+	background-image: url(/icons/general/check_small.svg);
 }
 
 .svg-button.small-x {
-	background-color: var(--bg-color);
 	background-image: url(/icons/general/close_small.svg);
 }
 .svg-button.small-x:hover, .svg-button.small-x:focus {
-	background-image: url(/icons/general/check_small.svg);
+	background-image: url(/icons/general/close_small.svg);
 }
 
 .svg-button.delete {
