@@ -114,8 +114,8 @@ func ClientIDLookup(ctx context.Context, tag *int64, serial *string) (*types.Cli
 	var serialErr error
 	whereClause := "WHERE ids.uuid IS NOT NULL "
 	whereArgs := make([]any, 0, 2)
-	if tag == nil || *tag <= 0 {
-		tagErr = fmt.Errorf("tagnumber is nil or invalid")
+	if err := types.IsTagnumberInt64Valid(tag); err != nil {
+		tagErr = fmt.Errorf("tagnumber is nil or invalid: %w", err)
 	} else {
 		whereArgs = append(whereArgs, *tag)
 		whereClause += fmt.Sprintf("AND ids.tagnumber = $%d ", len(whereArgs))

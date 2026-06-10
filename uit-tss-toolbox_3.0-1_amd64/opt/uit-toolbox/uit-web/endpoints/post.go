@@ -644,12 +644,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "InsertInventoryUpdate"))
-	endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
-	if err != nil {
-		log.Warn("Cannot get endpoint config: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+
 	// Parse inventory data
 	appState, err := config.GetAppState()
 	if err != nil {
@@ -657,52 +652,11 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
+
 	htmlFormConstraints, err := appState.GetFormConstraints()
 	if err != nil {
 		log.Error("Cannot retrieve HTMLFormConstraints: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	fileUploadConstraints, err := appState.GetFileUploadConstraints()
-	if err != nil {
-		log.Error("Cannot retrieve FileConstraints: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	maxUpload := endpointConfig.MaxUploadSize
-	if maxUpload == nil {
-		log.Error("Max upload size is not defined for this endpoint")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	totalAllowedBytes := *maxUpload
-	req.Body = http.MaxBytesReader(w, req.Body, totalAllowedBytes)
-	defer req.Body.Close()
-
-	if err := req.ParseMultipartForm(totalAllowedBytes); err != nil {
-		if errors.Is(err, http.ErrNotMultipart) {
-			log.Warn("Request body is not multipart form data: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		if errors.Is(err, http.ErrMissingBoundary) {
-			log.Warn("Multipart form data missing boundary: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-		if os.IsTimeout(err) {
-			log.Warn("Request timed out while reading multipart form: " + err.Error())
-			middleware.WriteJsonError(w, http.StatusRequestTimeout)
-			return
-		}
-		if maxBytesErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
-			log.Warn("Request body too large: " + maxBytesErr.Error())
-			middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
-			return
-		}
-		log.Warn("Cannot parse multipart form: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
 	}
 
@@ -747,19 +701,6 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	clientLookupResult, err := database.ClientIDLookup(ctx, &inventoryDomain.Tagnumber, &inventoryDomain.SystemSerial)
-	if err != nil {
-		log.Warn("Error looking up client ID: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	// File upload part of form:
-	if req.MultipartForm == nil || req.MultipartForm.File == nil {
-		log.Info("File upload part of inventory update is nil, continuing")
-	}
-	files := req.MultipartForm.File["inventory-update-file-input"]
-
 	// Generate transaction UUID to share between multiple DB tables
 	transactionUUID, err := uuid.NewV7()
 	if err != nil {
@@ -771,272 +712,6 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 		log.Error("transaction UUID is nil")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
-	}
-
-	var totalImageFileCount int
-	var totalImageUploadSize int64
-	var totalVideoFileCount int
-	var totalVideoUploadSize int64
-	// var totalInvalidFileCount int = 2
-	// var totalInvalidUploadSize int64 = 1 << 10
-	for _, fileHeader := range files {
-		// var fileUploadRequest = new(types.ImageUploadRequest)
-		var manifest = new(types.ImageManifestDTO)
-
-		if !types.IsPrintableUnicodeString(fileHeader.Filename) {
-			log.Warn("Non-printable characters in uploaded file name: " + fileHeader.Filename)
-			middleware.WriteJsonError(w, http.StatusBadRequest)
-			return
-		}
-
-		fileHeader.Filename = filepath.Join(fileHeader.Filename)
-		fileHeader.Filename = filepath.Clean(fileHeader.Filename)
-
-		createNecessaryDirs := func(clientUUID *string) (string, error) {
-			// Check client UUID
-			if clientUUID == nil || strings.TrimSpace(*clientUUID) == "" {
-				return "", fmt.Errorf("client UUID is nil for tagnumber: %d", clientUUID)
-			}
-			// Create directories if not existing
-			imageDirectoryPath := filepath.Join("/opt/inventory_images", *clientUUID)
-			if err := os.MkdirAll(imageDirectoryPath, 0755); err != nil {
-				return "", fmt.Errorf("cannot create parent directories for '"+imageDirectoryPath+"': %w", err)
-			}
-
-			// Set file/directory permissions
-			if err := os.Chmod(imageDirectoryPath, 0755); err != nil {
-				return "", fmt.Errorf("cannot set directory permissions for '"+imageDirectoryPath+"': %w", err)
-			}
-			if err := os.Chown(imageDirectoryPath, os.Getuid(), os.Getgid()); err != nil {
-				return "", fmt.Errorf("cannot set directory ownership for '"+imageDirectoryPath+"': %w", err)
-			}
-			return imageDirectoryPath, nil
-		}
-
-		// Open uploaded file
-		file, err := fileHeader.Open()
-		if err != nil {
-			log.Warn("Failed to open uploaded file '" + fileHeader.Filename + "': " + err.Error())
-			continue
-		}
-
-		lr := &io.LimitedReader{R: file, N: fileUploadConstraints.ImageConstraints.MaxFileSize + fileUploadConstraints.VideoConstraints.MaxFileSize + 1}
-		fileBytes, err := io.ReadAll(lr)
-		file.Close()
-		if err != nil {
-			log.Warn("Failed to read uploaded file '" + fileHeader.Filename + "': " + err.Error())
-			continue
-		}
-
-		// File size
-		manifest.FileSize = int64(len(fileBytes))
-
-		// MIME type detection
-		mimeType := http.DetectContentType(fileBytes)
-		if mimeType == "application/octet-stream" {
-			log.Warn("Unknown MIME type for file '" + fileHeader.Filename + "'")
-			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)
-			return
-		}
-		manifest.MimeType = mimeType
-		ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
-
-		if fileUploadConstraints.ImageConstraints.AcceptedImageExtensionsAndMimeTypes[ext] != mimeType && fileUploadConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[ext] != mimeType {
-			log.Warn("Unsupported file type for file '" + fileHeader.Filename + "': detected MIME type '" + mimeType + "' does not match expected MIME type for file extension '" + ext + "'")
-			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)
-			return
-		}
-
-		// Get upload timestamp
-		manifest.Time = time.Now().UTC()
-
-		// Generate unique file name
-		fileTimeStampFormatted := manifest.Time.Format("2006-01-02-150405")
-		fileUUID, err := uuid.NewV7()
-		if err != nil {
-			log.Error("Failed to generate file UUID for uploaded file '" + fileHeader.Filename + "': " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		fileUUIDStr := fileUUID.String()
-
-		fileName := fileTimeStampFormatted + "-" + fileUUIDStr + ext
-		manifest.FileName = fileName
-		manifest.FileUUID = fileUUIDStr
-
-		// Compute SHA256 hash of file
-		fileHash := crypto.SHA256.New()
-		if _, err := fileHash.Write(fileBytes); err != nil {
-			log.Error("Failed to compute hash of uploaded file '" + fileHeader.Filename + "': " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		shaSum := fileHash.Sum(nil)
-		fileHashBytes := make([]uint8, 32)
-		copy(fileHashBytes, shaSum[:32])
-		// fileHashString := fmt.Sprintf("%x", fileHashBytes)
-		manifest.SHA256Hash = fileHashBytes
-
-		selectRepo, err := database.NewSelectRepo()
-		if err != nil {
-			log.Error("No database connection available for retrieving existing file hashes")
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		hashes, err := selectRepo.GetFileHashesFromTag(ctx, &inventoryDomain.Tagnumber)
-		if err != nil {
-			log.Error("Failed to get file hashes from tag '" + strconv.FormatInt(inventoryDomain.Tagnumber, 10) + "': " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		hashFound := false
-		for _, hash := range hashes {
-			if bytes.Equal(fileHashBytes, hash) {
-				hashFound = true
-				break
-			}
-		}
-		if hashFound {
-			log.Warn("Duplicate file upload detected for tag '" + strconv.FormatInt(inventoryDomain.Tagnumber, 10) + "': file '" + fileHeader.Filename + "' (" + fmt.Sprintf("%x", fileHashBytes) + ") has same hash as existing file, skipping")
-			continue
-		}
-
-		if fileUploadConstraints.ImageConstraints.AcceptedImageExtensionsAndMimeTypes[ext] == mimeType { // Image file processing
-			if totalImageFileCount >= fileUploadConstraints.ImageConstraints.MaxFileCount {
-				log.Warn("Number of uploaded image files exceeds maximum allowed: " + strconv.Itoa(totalImageFileCount))
-				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
-				return
-			}
-			if manifest.FileSize > fileUploadConstraints.ImageConstraints.MaxFileSize {
-				log.Warn("Uploaded image file '" + fileHeader.Filename + "' too large (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
-				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
-				return
-			}
-			if manifest.FileSize < fileUploadConstraints.ImageConstraints.MinFileSize {
-				log.Warn("Uploaded image file too small: " + fileHeader.Filename + " (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
-				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
-				return
-			}
-			// Create reader (stream) for image decoding
-			imageReader := bytes.NewReader(fileBytes)
-
-			// Rewind and decode image to get image.Image
-			_, err = imageReader.Seek(0, io.SeekStart)
-			if err != nil {
-				log.Error("Failed to seek to start of uploaded image '" + fileHeader.Filename + "': " + err.Error())
-				continue
-			}
-			decodedImage, _, err := image.Decode(imageReader)
-			if err != nil {
-				log.Error("Failed to decode uploaded image '" + fileHeader.Filename + "': " + err.Error())
-				continue
-			}
-
-			// Rewind and decode image to get image config
-			_, err = imageReader.Seek(0, io.SeekStart)
-			if err != nil {
-				log.Error("Failed to seek to start of uploaded image '" + fileHeader.Filename + "': " + err.Error())
-				continue
-			}
-			decodedImageConfig, _, err := image.DecodeConfig(imageReader)
-			if err != nil {
-				log.Error("Failed to decode uploaded image config '" + fileHeader.Filename + "': " + err.Error())
-				continue
-			}
-			resX := int64(decodedImageConfig.Width)
-			manifest.ResolutionX = &resX
-			resY := int64(decodedImageConfig.Height)
-			manifest.ResolutionY = &resY
-
-			// Generate jpeg thumbnail
-			imageDirectoryPath, err := createNecessaryDirs(clientLookupResult.ClientUUID)
-			if err != nil {
-				log.Error("Failed to create necessary directories for thumbnail of '" + fileHeader.Filename + "': " + err.Error())
-				middleware.WriteJsonError(w, http.StatusInternalServerError)
-				return
-			}
-			strippedFileName := strings.TrimSuffix(fileName, filepath.Ext(fileName))
-			fullThumbnailPath := filepath.Join(imageDirectoryPath, strippedFileName+"-thumbnail.jpeg")
-			thumbnailFile, err := os.Create(fullThumbnailPath)
-			if err != nil {
-				log.Error("Failed to create thumbnail file '" + fullThumbnailPath + "': " + err.Error())
-				middleware.WriteJsonError(w, http.StatusInternalServerError)
-				return
-			}
-			if err := os.Chmod(fullThumbnailPath, 0644); err != nil {
-				log.Error("Failed to set permissions for thumbnail file '" + fullThumbnailPath + "': " + err.Error())
-				middleware.WriteJsonError(w, http.StatusInternalServerError)
-				return
-			}
-			if err := jpeg.Encode(thumbnailFile, decodedImage, &jpeg.Options{Quality: 50}); err != nil {
-				log.Error("Failed to encode thumbnail image '" + fullThumbnailPath + "': " + err.Error())
-				middleware.WriteJsonError(w, http.StatusInternalServerError)
-				return
-			}
-			_ = thumbnailFile.Close()
-			thumbnailFileName := strippedFileName + "-thumbnail.jpeg"
-			manifest.ThumbnailFileName = &thumbnailFileName
-			totalImageUploadSize += manifest.FileSize
-			totalImageFileCount++
-		} else if fileUploadConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[ext] == mimeType { // Video file processing
-			if totalVideoFileCount >= fileUploadConstraints.VideoConstraints.MaxFileCount {
-				log.Warn("Number of uploaded video files exceeds maximum allowed: " + strconv.Itoa(totalVideoFileCount))
-				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
-				return
-			}
-			if manifest.FileSize > fileUploadConstraints.VideoConstraints.MaxFileSize {
-				log.Warn("Uploaded video file too large (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
-				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
-				return
-			}
-			if manifest.FileSize < fileUploadConstraints.VideoConstraints.MinFileSize {
-				log.Warn("Uploaded video file too small: " + fileHeader.Filename + " (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
-				middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
-				return
-			}
-			totalVideoFileCount++
-			totalVideoUploadSize += manifest.FileSize
-		} else {
-			log.Warn("Unsupported MIME type for '" + fileHeader.Filename + "': MIME Type: " + mimeType)
-			middleware.WriteJsonError(w, http.StatusUnsupportedMediaType)
-			// totalInvalidFileCount++
-			// totalInvalidUploadSize += fileSize
-			return
-		}
-
-		imageDirectoryPath, err := createNecessaryDirs(clientLookupResult.ClientUUID)
-		if err != nil {
-			log.Error("Failed to create necessary directories for '" + fileHeader.Filename + "': " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		fullFilePath := filepath.Join(imageDirectoryPath, fileName)
-		if err := os.WriteFile(fullFilePath, fileBytes, 0644); err != nil {
-			log.Error("Failed to save uploaded file '" + fullFilePath + "': " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-
-		// Close the uploaded file, not needed anymore
-		_ = file.Close()
-
-		// Insert image metadata into database
-		manifest.Tagnumber = inventoryDomain.Tagnumber
-		manifest.Hidden = false
-		manifest.Pinned = false
-
-		if err := database.UpdateClientImages(ctx, transactionUUID, manifest); err != nil {
-			log.Error("Failed to update inventory image data for '" + fullFilePath + "': " + err.Error())
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-		log.Info(fmt.Sprintf("Uploaded file '%s', Size: %.2f MB, MIME Type: %s", fileName, float64(manifest.FileSize)/1024/1024, mimeType))
-		_ = file.Close()
-	}
-	fileUploadCount := totalImageFileCount + totalVideoFileCount
-	totalActualFileBytes := totalImageUploadSize + totalVideoUploadSize
-	if fileUploadCount > 0 && totalActualFileBytes > 0 {
-		log.Info(fmt.Sprintf("Total uploaded files: %d, Total size of uploaded files: %.2f MB", fileUploadCount, float64(totalActualFileBytes)/1024/1024))
 	}
 
 	// Update db
@@ -1076,6 +751,562 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	}
 
 	middleware.WriteJson(w, http.StatusOK, jsonResponse)
+}
+
+func UploadClientImage(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "UploadClientImage"))
+
+	if req.Method != http.MethodPost {
+		log.Warn("Invalid method for UploadClientImage: " + req.Method)
+		middleware.WriteJsonError(w, http.StatusMethodNotAllowed)
+		return
+	}
+
+	contentType := strings.TrimSpace(req.Header.Get("Content-Type"))
+	if !strings.HasPrefix(strings.ToLower(contentType), "multipart/form-data") {
+		log.Warn("Invalid content type for UploadClientImage: " + contentType)
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	queryValues := req.URL.Query()
+	if len(queryValues) != 1 || len(queryValues["tagnumber"]) != 1 || strings.TrimSpace(queryValues.Get("tagnumber")) == "" {
+		log.Warn("UploadClientImage requires exactly one query key: tagnumber")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	appState, err := config.GetAppState()
+	if err != nil {
+		log.Warn("Cannot get app state: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	tag := middleware.GetInt64Query(req.URL.Query(), "tagnumber")
+	if err := types.IsTagnumberInt64Valid(tag); err != nil {
+		log.Warn("Invalid tagnumber query parameter: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
+	if err != nil {
+		log.Warn("Cannot get endpoint config: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	maxUpload := endpointConfig.MaxUploadSize
+	if maxUpload == nil {
+		log.Error("Max upload size is not defined for this endpoint")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	totalAllowedBytes := *maxUpload
+	req.Body = http.MaxBytesReader(w, req.Body, totalAllowedBytes)
+	defer req.Body.Close()
+
+	if err := req.ParseMultipartForm(totalAllowedBytes); err != nil {
+		if errors.Is(err, http.ErrNotMultipart) {
+			log.Warn("Request body is not multipart form data: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, http.ErrMissingBoundary) {
+			log.Warn("Multipart form data missing boundary: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusBadRequest)
+			return
+		}
+		if os.IsTimeout(err) {
+			log.Warn("Request timed out while reading multipart form: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusRequestTimeout)
+			return
+		}
+		if maxBytesErr, ok := errors.AsType[*http.MaxBytesError](err); ok {
+			log.Warn("Request body too large: " + maxBytesErr.Error())
+			middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
+			return
+		}
+		log.Warn("Cannot parse multipart form: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
+		return
+	}
+	if req.MultipartForm != nil {
+		defer req.MultipartForm.RemoveAll()
+	}
+
+	fileUploadConstraints, err := appState.GetFileUploadConstraints()
+	if err != nil {
+		log.Error("Cannot retrieve FileConstraints: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	clientLookupResult, err := database.ClientIDLookup(ctx, tag, nil)
+	if err != nil {
+		log.Warn("Error looking up client ID: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	// File upload part of form:
+	if req.MultipartForm == nil || req.MultipartForm.File == nil {
+		log.Info("File upload part of image upload is nil")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	files := req.MultipartForm.File["inventory-update-file-input"]
+	if len(files) == 0 {
+		log.Info("No files provided in inventory-update-file-input")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	type uploadFileResult struct {
+		OriginalName string `json:"original_name"`
+		StoredName   string `json:"stored_name,omitempty"`
+		FileUUID     string `json:"file_uuid,omitempty"`
+		MimeType     string `json:"mime_type,omitempty"`
+		Bytes        int64  `json:"bytes,omitempty"`
+		Category     string `json:"category,omitempty"`
+		Status       string `json:"status"`
+		Reason       string `json:"reason,omitempty"`
+	}
+
+	type uploadSummary struct {
+		Status             string             `json:"status"`
+		Tagnumber          int64              `json:"tagnumber"`
+		TotalReceived      int                `json:"total_received"`
+		UploadedCount      int                `json:"uploaded_count"`
+		SkippedCount       int                `json:"skipped_count"`
+		FailedCount        int                `json:"failed_count"`
+		ImageCount         int                `json:"image_count"`
+		VideoCount         int                `json:"video_count"`
+		TotalUploadedBytes int64              `json:"total_uploaded_bytes"`
+		Results            []uploadFileResult `json:"results"`
+	}
+
+	selectRepo, err := database.NewSelectRepo()
+	if err != nil {
+		log.Error("No database connection available for retrieving existing file hashes")
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	hashes, err := selectRepo.GetFileHashesFromTag(ctx, tag)
+	if err != nil {
+		log.Error("Failed to get file hashes from tag '" + strconv.FormatInt(*tag, 10) + "': " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	existingHashes := make(map[string]struct{}, len(hashes))
+	for _, hash := range hashes {
+		existingHashes[string(hash)] = struct{}{}
+	}
+
+	var totalImageFileCount int
+	var totalImageUploadSize int64
+	var totalVideoFileCount int
+	var totalVideoUploadSize int64
+	results := make([]uploadFileResult, 0, len(files))
+	var skippedCount int
+	var failedCount int
+	for _, fileHeader := range files {
+		var manifest = new(types.ImageManifestDTO)
+		result := uploadFileResult{
+			OriginalName: fileHeader.Filename,
+		}
+
+		if !types.IsPrintableUnicodeString(fileHeader.Filename) {
+			log.Warn("Non-printable characters in uploaded file name: " + fileHeader.Filename)
+			result.Status = "failed"
+			result.Reason = "invalid_filename"
+			results = append(results, result)
+			failedCount++
+			continue
+		}
+
+		cleanName := filepath.Clean(fileHeader.Filename)
+		if cleanName == "." || cleanName == string(filepath.Separator) {
+			result.Status = "failed"
+			result.Reason = "invalid_filename"
+			results = append(results, result)
+			failedCount++
+			continue
+		}
+		fileHeader.Filename = filepath.Base(cleanName)
+
+		createNecessaryDirs := func(clientUUID *string) (string, error) {
+			// Check client UUID
+			if clientUUID == nil || strings.TrimSpace(*clientUUID) == "" {
+				return "", fmt.Errorf("client UUID is nil for tagnumber: %d", *tag)
+			}
+			// Create directories if not existing
+			imageDirectoryPath := filepath.Join("/opt/inventory_images", *clientUUID)
+			if err := os.MkdirAll(imageDirectoryPath, 0755); err != nil {
+				return "", fmt.Errorf("cannot create parent directories for '"+imageDirectoryPath+"': %w", err)
+			}
+
+			// Set file/directory permissions
+			if err := os.Chmod(imageDirectoryPath, 0755); err != nil {
+				return "", fmt.Errorf("cannot set directory permissions for '"+imageDirectoryPath+"': %w", err)
+			}
+			if err := os.Chown(imageDirectoryPath, os.Getuid(), os.Getgid()); err != nil {
+				return "", fmt.Errorf("cannot set directory ownership for '"+imageDirectoryPath+"': %w", err)
+			}
+			return imageDirectoryPath, nil
+		}
+
+		// Open uploaded file
+		file, err := fileHeader.Open()
+		if err != nil {
+			log.Warn("Failed to open uploaded file '" + fileHeader.Filename + "': " + err.Error())
+			result.Status = "failed"
+			result.Reason = "open_failed"
+			results = append(results, result)
+			failedCount++
+			continue
+		}
+
+		lr := &io.LimitedReader{R: file, N: fileUploadConstraints.ImageConstraints.MaxFileSize + fileUploadConstraints.VideoConstraints.MaxFileSize + 1}
+		fileBytes, err := io.ReadAll(lr)
+		_ = file.Close()
+		if err != nil {
+			log.Warn("Failed to read uploaded file '" + fileHeader.Filename + "': " + err.Error())
+			result.Status = "failed"
+			result.Reason = "read_failed"
+			results = append(results, result)
+			failedCount++
+			continue
+		}
+
+		// File size
+		manifest.FileSize = int64(len(fileBytes))
+
+		// MIME type detection
+		mimeType := http.DetectContentType(fileBytes)
+		if mimeType == "application/octet-stream" {
+			log.Warn("Unknown MIME type for file '" + fileHeader.Filename + "'")
+			result.Status = "failed"
+			result.Reason = "unknown_mime_type"
+			results = append(results, result)
+			failedCount++
+			continue
+		}
+		manifest.MimeType = mimeType
+		ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+
+		if fileUploadConstraints.ImageConstraints.AcceptedImageExtensionsAndMimeTypes[ext] != mimeType && fileUploadConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[ext] != mimeType {
+			log.Warn("Unsupported file type for file '" + fileHeader.Filename + "': detected MIME type '" + mimeType + "' does not match expected MIME type for file extension '" + ext + "'")
+			result.Status = "failed"
+			result.Reason = "unsupported_file_type"
+			results = append(results, result)
+			failedCount++
+			continue
+		}
+
+		// Get upload timestamp
+		manifest.Time = time.Now().UTC()
+
+		// Generate unique file name
+		fileTimeStampFormatted := manifest.Time.Format("2006-01-02-150405")
+		fileUUID, err := uuid.NewV7()
+		if err != nil {
+			log.Error("Failed to generate file UUID for uploaded file '" + fileHeader.Filename + "': " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		fileUUIDStr := fileUUID.String()
+
+		fileName := fileTimeStampFormatted + "-" + fileUUIDStr + ext
+		manifest.FileName = fileName
+		manifest.FileUUID = fileUUIDStr
+
+		// Compute SHA256 hash of file
+		fileHash := crypto.SHA256.New()
+		if _, err := fileHash.Write(fileBytes); err != nil {
+			log.Error("Failed to compute hash of uploaded file '" + fileHeader.Filename + "': " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		shaSum := fileHash.Sum(nil)
+		fileHashBytes := make([]uint8, 32)
+		copy(fileHashBytes, shaSum[:32])
+		manifest.SHA256Hash = fileHashBytes
+
+		if _, hashFound := existingHashes[string(fileHashBytes)]; hashFound {
+			log.Warn("Duplicate file upload detected for tag '" + strconv.FormatInt(*tag, 10) + "': file '" + fileHeader.Filename + "' (" + fmt.Sprintf("%x", fileHashBytes) + ") has same hash as existing file, skipping")
+			result.Status = "skipped"
+			result.Reason = "duplicate_hash"
+			results = append(results, result)
+			skippedCount++
+			continue
+		}
+
+		thumbnailPath := ""
+		fileCategory := ""
+
+		if fileUploadConstraints.ImageConstraints.AcceptedImageExtensionsAndMimeTypes[ext] == mimeType { // Image file processing
+			if totalImageFileCount >= fileUploadConstraints.ImageConstraints.MaxFileCount {
+				log.Warn("Number of uploaded image files exceeds maximum allowed: " + strconv.Itoa(totalImageFileCount))
+				result.Status = "failed"
+				result.Reason = "max_image_file_count_exceeded"
+				results = append(results, result)
+				failedCount++
+				continue
+			}
+			if manifest.FileSize > fileUploadConstraints.ImageConstraints.MaxFileSize {
+				log.Warn("Uploaded image file '" + fileHeader.Filename + "' too large (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
+				result.Status = "failed"
+				result.Reason = "image_file_too_large"
+				results = append(results, result)
+				failedCount++
+				continue
+			}
+			if manifest.FileSize < fileUploadConstraints.ImageConstraints.MinFileSize {
+				log.Warn("Uploaded image file too small: " + fileHeader.Filename + " (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
+				result.Status = "failed"
+				result.Reason = "image_file_too_small"
+				results = append(results, result)
+				failedCount++
+				continue
+			}
+			// Create reader (stream) for image decoding
+			imageReader := bytes.NewReader(fileBytes)
+
+			// Rewind and decode image to get image.Image
+			_, err = imageReader.Seek(0, io.SeekStart)
+			if err != nil {
+				log.Error("Failed to seek to start of uploaded image '" + fileHeader.Filename + "': " + err.Error())
+				result.Status = "failed"
+				result.Reason = "image_seek_failed"
+				results = append(results, result)
+				failedCount++
+				continue
+			}
+			decodedImage, _, err := image.Decode(imageReader)
+			if err != nil {
+				log.Error("Failed to decode uploaded image '" + fileHeader.Filename + "': " + err.Error())
+				result.Status = "failed"
+				result.Reason = "image_decode_failed"
+				results = append(results, result)
+				failedCount++
+				continue
+			}
+
+			// Rewind and decode image to get image config
+			_, err = imageReader.Seek(0, io.SeekStart)
+			if err != nil {
+				log.Error("Failed to seek to start of uploaded image '" + fileHeader.Filename + "': " + err.Error())
+				result.Status = "failed"
+				result.Reason = "image_seek_failed"
+				results = append(results, result)
+				failedCount++
+				continue
+			}
+			decodedImageConfig, _, err := image.DecodeConfig(imageReader)
+			if err != nil {
+				log.Error("Failed to decode uploaded image config '" + fileHeader.Filename + "': " + err.Error())
+				result.Status = "failed"
+				result.Reason = "image_decode_config_failed"
+				results = append(results, result)
+				failedCount++
+				continue
+			}
+			resX := int64(decodedImageConfig.Width)
+			manifest.ResolutionX = &resX
+			resY := int64(decodedImageConfig.Height)
+			manifest.ResolutionY = &resY
+
+			// Generate jpeg thumbnail
+			imageDirectoryPath, err := createNecessaryDirs(clientLookupResult.ClientUUID)
+			if err != nil {
+				log.Error("Failed to create necessary directories for thumbnail of '" + fileHeader.Filename + "': " + err.Error())
+				result.Status = "failed"
+				result.Reason = "thumbnail_directory_failed"
+				results = append(results, result)
+				failedCount++
+				continue
+			}
+			strippedFileName := strings.TrimSuffix(fileName, filepath.Ext(fileName))
+			fullThumbnailPath := filepath.Join(imageDirectoryPath, strippedFileName+"-thumbnail.jpeg")
+			thumbnailPath = fullThumbnailPath
+			thumbnailFile, err := os.Create(fullThumbnailPath)
+			if err != nil {
+				log.Error("Failed to create thumbnail file '" + fullThumbnailPath + "': " + err.Error())
+				result.Status = "failed"
+				result.Reason = "thumbnail_create_failed"
+				results = append(results, result)
+				failedCount++
+				continue
+			}
+			if err := os.Chmod(fullThumbnailPath, 0644); err != nil {
+				_ = thumbnailFile.Close()
+				log.Error("Failed to set permissions for thumbnail file '" + fullThumbnailPath + "': " + err.Error())
+				result.Status = "failed"
+				result.Reason = "thumbnail_permission_failed"
+				results = append(results, result)
+				failedCount++
+				continue
+			}
+			if err := jpeg.Encode(thumbnailFile, decodedImage, &jpeg.Options{Quality: 50}); err != nil {
+				_ = thumbnailFile.Close()
+				log.Error("Failed to encode thumbnail image '" + fullThumbnailPath + "': " + err.Error())
+				result.Status = "failed"
+				result.Reason = "thumbnail_encode_failed"
+				results = append(results, result)
+				failedCount++
+				continue
+			}
+			_ = thumbnailFile.Close()
+			thumbnailFileName := strippedFileName + "-thumbnail.jpeg"
+			manifest.ThumbnailFileName = &thumbnailFileName
+			totalImageUploadSize += manifest.FileSize
+			totalImageFileCount++
+			fileCategory = "image"
+		} else if fileUploadConstraints.VideoConstraints.AcceptedVideoExtensionsAndMimeTypes[ext] == mimeType { // Video file processing
+			if totalVideoFileCount >= fileUploadConstraints.VideoConstraints.MaxFileCount {
+				log.Warn("Number of uploaded video files exceeds maximum allowed: " + strconv.Itoa(totalVideoFileCount))
+				result.Status = "failed"
+				result.Reason = "max_video_file_count_exceeded"
+				results = append(results, result)
+				failedCount++
+				continue
+			}
+			if manifest.FileSize > fileUploadConstraints.VideoConstraints.MaxFileSize {
+				log.Warn("Uploaded video file too large (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
+				result.Status = "failed"
+				result.Reason = "video_file_too_large"
+				results = append(results, result)
+				failedCount++
+				continue
+			}
+			if manifest.FileSize < fileUploadConstraints.VideoConstraints.MinFileSize {
+				log.Warn("Uploaded video file too small: " + fileHeader.Filename + " (" + strconv.FormatInt(manifest.FileSize, 10) + " bytes)")
+				result.Status = "failed"
+				result.Reason = "video_file_too_small"
+				results = append(results, result)
+				failedCount++
+				continue
+			}
+			totalVideoFileCount++
+			totalVideoUploadSize += manifest.FileSize
+			fileCategory = "video"
+		} else {
+			log.Warn("Unsupported MIME type for '" + fileHeader.Filename + "': MIME Type: " + mimeType)
+			result.Status = "failed"
+			result.Reason = "unsupported_mime_type"
+			results = append(results, result)
+			failedCount++
+			continue
+		}
+
+		imageDirectoryPath, err := createNecessaryDirs(clientLookupResult.ClientUUID)
+		if err != nil {
+			log.Error("Failed to create necessary directories for '" + fileHeader.Filename + "': " + err.Error())
+			result.Status = "failed"
+			result.Reason = "storage_directory_failed"
+			results = append(results, result)
+			failedCount++
+			continue
+		}
+		fullFilePath := filepath.Join(imageDirectoryPath, fileName)
+		if err := os.WriteFile(fullFilePath, fileBytes, 0644); err != nil {
+			log.Error("Failed to save uploaded file '" + fullFilePath + "': " + err.Error())
+			result.Status = "failed"
+			result.Reason = "file_save_failed"
+			results = append(results, result)
+			failedCount++
+			continue
+		}
+
+		// Insert image metadata into database
+		manifest.Tagnumber = *tag
+		manifest.Hidden = false
+		manifest.Pinned = false
+
+		transactionUUID, err := uuid.NewV7()
+		if err != nil {
+			log.Error("error generation a transaction UUID (BulkUpdateInventoryLocation)")
+			_ = os.Remove(fullFilePath)
+			if thumbnailPath != "" {
+				_ = os.Remove(thumbnailPath)
+			}
+			result.Status = "failed"
+			result.Reason = "transaction_uuid_generation_failed"
+			results = append(results, result)
+			failedCount++
+			continue
+		}
+		if transactionUUID == uuid.Nil {
+			log.Error("transaction UUID in BulkUpdateInventoryLocation is nil")
+			_ = os.Remove(fullFilePath)
+			if thumbnailPath != "" {
+				_ = os.Remove(thumbnailPath)
+			}
+			result.Status = "failed"
+			result.Reason = "transaction_uuid_nil"
+			results = append(results, result)
+			failedCount++
+			continue
+		}
+
+		if err := database.UpdateClientImages(ctx, transactionUUID, manifest); err != nil {
+			log.Error("Failed to update inventory image data for '" + fullFilePath + "': " + err.Error())
+			if removeErr := os.Remove(fullFilePath); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
+				log.Warn("Failed to rollback uploaded file after DB error for '" + fullFilePath + "': " + removeErr.Error())
+			}
+			if thumbnailPath != "" {
+				if removeThumbErr := os.Remove(thumbnailPath); removeThumbErr != nil && !errors.Is(removeThumbErr, os.ErrNotExist) {
+					log.Warn("Failed to rollback thumbnail after DB error for '" + thumbnailPath + "': " + removeThumbErr.Error())
+				}
+			}
+			result.Status = "failed"
+			result.Reason = "database_write_failed"
+			results = append(results, result)
+			failedCount++
+			continue
+		}
+
+		existingHashes[string(fileHashBytes)] = struct{}{}
+		result.StoredName = manifest.FileName
+		result.FileUUID = manifest.FileUUID
+		result.MimeType = mimeType
+		result.Bytes = manifest.FileSize
+		result.Category = fileCategory
+		result.Status = "uploaded"
+		results = append(results, result)
+		log.Info(fmt.Sprintf("Uploaded file '%s', Size: %.2f MB, MIME Type: %s", fileName, float64(manifest.FileSize)/1024/1024, mimeType))
+	}
+	fileUploadCount := totalImageFileCount + totalVideoFileCount
+	totalActualFileBytes := totalImageUploadSize + totalVideoUploadSize
+	summary := uploadSummary{
+		Status:             "success",
+		Tagnumber:          *tag,
+		TotalReceived:      len(files),
+		UploadedCount:      fileUploadCount,
+		SkippedCount:       skippedCount,
+		FailedCount:        failedCount,
+		ImageCount:         totalImageFileCount,
+		VideoCount:         totalVideoFileCount,
+		TotalUploadedBytes: totalActualFileBytes,
+		Results:            results,
+	}
+
+	statusCode := http.StatusOK
+	if summary.UploadedCount == 0 {
+		summary.Status = "failed"
+		statusCode = http.StatusBadRequest
+	} else if summary.SkippedCount > 0 || summary.FailedCount > 0 {
+		summary.Status = "partial_success"
+	}
+
+	if fileUploadCount > 0 && totalActualFileBytes > 0 {
+		log.Info(fmt.Sprintf("Total uploaded files: %d, Total size of uploaded files: %.2f MB", fileUploadCount, float64(totalActualFileBytes)/1024/1024))
+	}
+
+	middleware.WriteJson(w, statusCode, summary)
 }
 
 func TogglePinImage(w http.ResponseWriter, req *http.Request) {
