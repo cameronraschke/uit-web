@@ -1298,7 +1298,7 @@ func UploadClientImage(w http.ResponseWriter, req *http.Request) {
 		Results:            results,
 	}
 
-	statusCode := http.StatusOK
+	statusCode := http.StatusAccepted
 	if summary.UploadedCount == 0 {
 		summary.Status = "failed"
 		statusCode = http.StatusBadRequest

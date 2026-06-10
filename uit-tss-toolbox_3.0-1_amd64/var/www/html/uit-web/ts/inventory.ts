@@ -1052,7 +1052,7 @@ if (updateForm) {
 				body: fileData
 			});
 
-			if (!fileUploadResponse.ok) {
+			if (!fileUploadResponse.ok && fileUploadResponse.status !== 202) {
 				throw new Error("Server returned an error during file upload: " + fileUploadResponse.status + " " + fileUploadResponse.statusText);
 			}
 

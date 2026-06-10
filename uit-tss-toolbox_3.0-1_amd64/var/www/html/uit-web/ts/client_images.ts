@@ -22,75 +22,90 @@ function renderActionButtons(tag: number) {
 		return;
 	}
 	actionsContainer.innerHTML = '';
+	
+	const fileInput = document.createElement('input');
+	fileInput.type = 'file';
+	fileInput.accept = 'image/*,video/*';
+	fileInput.multiple = true;
+	fileInput.style.display = 'none';
+
+	fileInput.addEventListener('change', async () => {
+		if (fileInput.files && fileInput.files.length > 0) {
+			fileDialog.textContent = `Upload ${fileInput.files.length} File(s)`;
+		} else {
+			fileDialog.textContent = 'Upload Files';
+		}
+	});
+
+
+	actionsContainer.appendChild(fileInput);
+
 	const fileDialog = document.createElement('button');
 	fileDialog.classList.add('svg-button', 'text-left', 'add-photo');
-	fileDialog.textContent = 'Upload Image/Video';
+	fileDialog.textContent = 'Upload Files';
 	actionsContainer.appendChild(fileDialog);
+
+	fileDialog.addEventListener('click', () => {
+		fileInput.click();
+	});
 
 	const uploadButton = document.createElement('button');
 	uploadButton.classList.add('svg-button', 'text-left', 'small-check', 'submit');
 	uploadButton.textContent = 'Submit';
 	actionsContainer.appendChild(uploadButton);
 
-	fileDialog.addEventListener('click', () => {
-		const fileInput = document.createElement('input');
-		fileInput.type = 'file';
-		fileInput.accept = 'image/*,video/*';
-		fileInput.multiple = true;
-		fileInput.addEventListener('change', async () => {
-			if (fileInput.files && fileInput.files.length > 0) {
-				const files = Array.from(fileInput.files);
-				const fileData = new FormData();
-				for (const file of files) {
-					const fileName = file.name;
-					const fileExtension = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
-					if (!allowedFileExtensions.includes(fileExtension)) {
-						alert(`File type not allowed: ${fileName}`);
-						return;
-					}
-					fileData.append('files', file);
-				}
-				const uploadURL = new URL(`/api/client/files/upload`, window.location.origin);
-				uploadURL.searchParams.set('tagnumber', tag.toString());
-				try {
-					const response = await fetch(uploadURL.toString(), {
-						method: 'POST',
-						body: fileData,
-					});
-					if (!response.ok) {
-						throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
-					}
-					alert('Files uploaded successfully.');
-				} catch (err) {
-					if (err instanceof Error) {
-						alert(`Error uploading files: ${err.message}`);
-					}
-				} finally {
-					fileInput.value = '';
-					await initClientImages();
-				}
+	uploadButton.addEventListener('click', async () => {
+	if (fileInput.files && fileInput.files.length > 0) {
+		const files = Array.from(fileInput.files);
+		const fileData = new FormData();
+		for (const file of files) {
+			const fileName = file.name;
+			const fileExtension = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
+			if (!allowedFileExtensions.includes(fileExtension)) {
+				alert(`File type not allowed: ${fileName}`);
+				return;
 			}
-		});
-		fileInput.click();
-	});
+			fileData.append('files', file);
+		}
+		const uploadURL = new URL(`/api/client/files/upload`, window.location.origin);
+		uploadURL.searchParams.set('tagnumber', tag.toString());
+		try {
+			const response = await fetch(uploadURL.toString(), {
+				method: 'POST',
+				body: fileData,
+			});
+			if (!response.ok || response.status !== 202) {
+				throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+			}
+		} catch (err) {
+			if (err instanceof Error) {
+				alert(`Error uploading files: ${err.message}`);
+			}
+		} finally {
+			fileInput.value = '';
+			await initClientImages();
+		}
+	}
+});
+
 }
 
 
-async function fetchManifestData(clientUUID: number) : Promise<ImageManifest[]> {
+async function fetchManifestData(tag: number) : Promise<ImageManifest[]> {
 	if (!container) {
 		console.error('Image container not found in DOM.');
 		return [];
 	}
 
 	container.innerHTML = '';
-	if (!clientUUID) {
+	if (!tag) {
 		const invalidTagParagraph = document.createElement('p');
 		invalidTagParagraph.textContent = 'Invalid tagnumber provided.';
 		container.appendChild(invalidTagParagraph);
 		return [];
 	}
 	const manifestURL = new URL(`/api/client/files/manifest`, window.location.origin);
-	manifestURL.searchParams.set('tagnumber', clientUUID.toString());
+	manifestURL.searchParams.set('tagnumber', tag.toString());
 
 	try {
 		const response = await fetch(manifestURL.toString());
