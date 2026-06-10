@@ -1040,12 +1040,15 @@ func UploadClientImage(w http.ResponseWriter, req *http.Request) {
 		manifest.SHA256Hash = fileHashBytes
 
 		if _, hashFound := existingHashes[string(fileHashBytes)]; hashFound {
-			log.Warn("Duplicate file upload detected for tag '" + strconv.FormatInt(*tag, 10) + "': file '" + fileHeader.Filename + "' (" + fmt.Sprintf("%x", fileHashBytes) + ") has same hash as existing file, skipping")
-			result.Status = "skipped"
-			result.Reason = "duplicate_hash"
-			results = append(results, result)
-			skippedCount++
-			continue
+			// Duplicate files don't matter if original copy is marked as hidden because original hidden file should be deleted from filesystem
+			if !manifest.Hidden {
+				log.Warn("Duplicate file upload detected for tag '" + strconv.FormatInt(*tag, 10) + "': file '" + fileHeader.Filename + "' (" + fmt.Sprintf("%x", fileHashBytes) + ") has same hash as existing file, skipping")
+				result.Status = "skipped"
+				result.Reason = "duplicate_hash"
+				results = append(results, result)
+				skippedCount++
+				continue
+			}
 		}
 
 		thumbnailPath := ""
