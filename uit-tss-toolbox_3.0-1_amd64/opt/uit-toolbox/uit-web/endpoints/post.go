@@ -857,11 +857,15 @@ func UploadClientImage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	files := req.MultipartForm.File["inventory-update-file-input"]
+	files := req.MultipartForm.File["files"]
 	if len(files) == 0 {
-		log.Info("No files provided in inventory-update-file-input")
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
+		if req.MultipartForm.File["files"] == nil {
+			log.Info("No files provided in request, exiting early")
+			middleware.WriteJsonError(w, http.StatusOK)
+			return
+		} else {
+			files = req.MultipartForm.File["files"]
+		}
 	}
 
 	type uploadFileResult struct {

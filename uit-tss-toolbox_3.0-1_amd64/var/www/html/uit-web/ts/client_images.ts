@@ -13,8 +13,59 @@ type ImageManifest = {
 	caption: string | null
 };
 
-
 const container = document.getElementById('image-container') as HTMLElement;
+const actionsContainer = document.getElementById('client-images-actions-container') as HTMLElement;
+
+function renderActionButtons(tag: number) {
+	if (!actionsContainer) {
+		console.error('Actions container not found in DOM.');
+		return;
+	}
+	actionsContainer.innerHTML = '';
+	const uploadButton = document.createElement('button');
+	uploadButton.className = 'svg-button';
+	uploadButton.textContent = 'Upload New Image';
+	uploadButton.addEventListener('click', () => {
+		const fileInput = document.createElement('input');
+		fileInput.type = 'file';
+		fileInput.accept = 'image/*,video/*';
+		fileInput.multiple = true;
+		fileInput.addEventListener('change', async () => {
+			if (fileInput.files && fileInput.files.length > 0) {
+				const files = Array.from(fileInput.files);
+				const fileData = new FormData();
+				for (const file of files) {
+					const fileName = file.name;
+					const fileExtension = fileName.slice(fileName.lastIndexOf('.')).toLowerCase();
+					if (!allowedFileExtensions.includes(fileExtension)) {
+						alert(`File type not allowed: ${fileName}`);
+						return;
+					}
+					fileData.append('files', file);
+				}
+				const uploadURL = new URL(`/api/client/files/upload`, window.location.origin);
+				uploadURL.searchParams.set('tagnumber', tag.toString());
+				try {
+					const response = await fetch(uploadURL.toString(), {
+						method: 'POST',
+						body: fileData,
+					});
+					if (!response.ok) {
+						throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+					}
+					alert('Files uploaded successfully.');
+				} catch (err) {
+					if (err instanceof Error) {
+						alert(`Error uploading files: ${err.message}`);
+					}
+				}
+			}
+		});
+		fileInput.click();
+	});
+	actionsContainer.appendChild(uploadButton);
+}
+
 
 async function fetchManifestData(clientUUID: number) : Promise<ImageManifest[]> {
 	if (!container) {
@@ -310,6 +361,7 @@ function initListeners(unpinEl: HTMLButtonElement, deleteEl: HTMLButtonElement) 
 
 document.addEventListener('DOMContentLoaded', async () => {
 	await initClientImages();
+	renderActionButtons(Number(new URLSearchParams(window.location.search).get('tagnumber')));
 });
 
 async function initClientImages() {

@@ -295,9 +295,6 @@ const locationFormShowSectionsButtons = [showLocationPartButton, showHardwarePar
 
 const locationFormSections = [locationPart, hardwarePart, softwarePart, propertyPart, notesFilesPart];
 
-const allowedFileNameRegex = /^[a-zA-Z0-9.\-_ ()]+\.(jpg|jpeg|jfif|png|mp4|json)$/i; // file name + extension
-const allowedFileExtensions = [".jpg", ".jpeg", ".jfif", ".png", ".mp4", ".json"];
-
 const statusesThatIndicateBroken = ["needs-repair"];
 const statusesThatIndicateCheckout = ["checked-out", "reserved-for-checkout"];
 

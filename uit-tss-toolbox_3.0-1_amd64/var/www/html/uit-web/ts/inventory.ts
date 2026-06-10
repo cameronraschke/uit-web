@@ -1032,7 +1032,7 @@ if (updateForm) {
 					if (!allowedFileExtensions.some(ext => fileName.toLowerCase().endsWith(ext))) {
 						throw new Error(`File name ${fileName} has a forbidden extension`);
 					}
-					fileData.append("inventory-update-file-input", file, fileName);
+					fileData.append("files", file, fileName);
 				}
 			}
 

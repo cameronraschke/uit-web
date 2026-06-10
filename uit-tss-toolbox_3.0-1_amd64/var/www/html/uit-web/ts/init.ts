@@ -25,6 +25,9 @@ const thirtySeconds = 30 * 1000; // 30 seconds in milliseconds
 const oneMinute = 60 * 1000; // 1 minute in milliseconds
 const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
 
+const allowedFileNameRegex = /^[a-zA-Z0-9.\-_ ()]+\.(jpg|jpeg|jfif|png|mp4|json)$/i; // file name + extension
+const allowedFileExtensions = [".jpg", ".jpeg", ".jfif", ".png", ".mp4", ".json"];
+
 function truncateString(inputStr: string, maxLength: number): { truncatedString: string, isTruncated: boolean } {
 	const str = inputStr ? inputStr.trim() : "";
 	if (str.length <= maxLength) {
