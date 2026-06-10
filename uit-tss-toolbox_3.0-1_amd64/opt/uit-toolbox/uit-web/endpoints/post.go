@@ -892,21 +892,11 @@ func UploadClientImage(w http.ResponseWriter, req *http.Request) {
 		Results            []uploadFileResult `json:"results"`
 	}
 
-	selectRepo, err := database.NewSelectRepo()
-	if err != nil {
-		log.Error("No database connection available for retrieving existing file hashes")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	hashes, err := selectRepo.GetFileHashesFromTag(ctx, tag)
+	dbManifest, err := database.GetClientImageManifestByTag(ctx, tag)
 	if err != nil {
 		log.Error("Failed to get file hashes from tag '" + strconv.FormatInt(*tag, 10) + "': " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
-	}
-	existingHashes := make(map[string]struct{}, len(hashes))
-	for _, hash := range hashes {
-		existingHashes[string(hash)] = struct{}{}
 	}
 
 	var totalImageFileCount int
@@ -916,6 +906,7 @@ func UploadClientImage(w http.ResponseWriter, req *http.Request) {
 	results := make([]uploadFileResult, 0, len(files))
 	var skippedCount int
 	var failedCount int
+	var uploadRequestHashes [][]byte
 	for _, fileHeader := range files {
 		var manifest = new(types.ImageManifestDTO)
 		result := uploadFileResult{
@@ -1038,16 +1029,41 @@ func UploadClientImage(w http.ResponseWriter, req *http.Request) {
 		fileHashBytes := make([]uint8, 32)
 		copy(fileHashBytes, shaSum[:32])
 		manifest.SHA256Hash = fileHashBytes
+		uploadRequestHashes = append(uploadRequestHashes, fileHashBytes)
+		if len(uploadRequestHashes) > 1 {
+			for i := 0; i < len(uploadRequestHashes)-1; i++ {
+				if bytes.Equal(uploadRequestHashes[i], fileHashBytes) {
+					log.Warn("Duplicate file upload detected within same request for tag '" + strconv.FormatInt(*tag, 10) + "': file '" + fileHeader.Filename + "' has same hash as another uploaded file, skipping")
+					result.Status = "skipped"
+					result.Reason = "duplicate_hash_in_request"
+					results = append(results, result)
+					skippedCount++
+					continue
+				}
+			}
+		}
 
-		if _, hashFound := existingHashes[string(fileHashBytes)]; hashFound {
-			// Duplicate files don't matter if original copy is marked as hidden because original hidden file should be deleted from filesystem
-			if !manifest.Hidden {
-				log.Warn("Duplicate file upload detected for tag '" + strconv.FormatInt(*tag, 10) + "': file '" + fileHeader.Filename + "' (" + fmt.Sprintf("%x", fileHashBytes) + ") has same hash as existing file, skipping")
-				result.Status = "skipped"
-				result.Reason = "duplicate_hash"
-				results = append(results, result)
-				skippedCount++
-				continue
+		for _, m := range dbManifest {
+			if m.SHA256Hash != nil && bytes.Equal(*m.SHA256Hash, manifest.SHA256Hash) {
+				// Duplicate files don't matter if original copy is marked as hidden because original hidden file should be deleted from filesystem
+				if !manifest.Hidden {
+					log.Warn("Duplicate file upload detected for tag '" + strconv.FormatInt(*tag, 10) + "': file '" + fileHeader.Filename + "' (" + fmt.Sprintf("%x", fileHashBytes) + ") has same hash as existing file, skipping")
+					result.Status = "skipped"
+					result.Reason = "duplicate_hash"
+					results = append(results, result)
+					skippedCount++
+					continue
+				}
+			}
+			if m.FileName != nil {
+				if m.FileName == &manifest.FileName {
+					log.Warn("Duplicate file name detected for tag '" + strconv.FormatInt(*tag, 10) + "': file '" + fileHeader.Filename + "' has same generated file name as existing file, skipping")
+					result.Status = "skipped"
+					result.Reason = "duplicate_filename"
+					results = append(results, result)
+					skippedCount++
+					continue
+				}
 			}
 		}
 
@@ -1276,7 +1292,6 @@ func UploadClientImage(w http.ResponseWriter, req *http.Request) {
 			continue
 		}
 
-		existingHashes[string(fileHashBytes)] = struct{}{}
 		result.StoredName = manifest.FileName
 		result.FileUUID = manifest.FileUUID
 		result.MimeType = mimeType
