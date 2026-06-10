@@ -777,17 +777,17 @@ func UploadClientImage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	appState, err := config.GetAppState()
-	if err != nil {
-		log.Warn("Cannot get app state: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
 	tag := middleware.GetInt64Query(req.URL.Query(), "tagnumber")
 	if err := types.IsTagnumberInt64Valid(tag); err != nil {
 		log.Warn("Invalid tagnumber query parameter: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	appState, err := config.GetAppState()
+	if err != nil {
+		log.Warn("Cannot get app state: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 

@@ -11,6 +11,9 @@
 		"allowed_methods": ["GET", "POST"]
 	},
 	"/api/client/files/manifest": {},
+	"/api/client/files/upload": {
+		"allowed_methods": ["POST"]
+	},
 	"/api/client/files": {
 		"allowed_methods": ["GET", "DELETE"]
 	},

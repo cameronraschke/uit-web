@@ -1014,6 +1014,7 @@ if (updateForm) {
 			});
 			formData.append("json", new Blob([jsonPayload], { type: "application/json" }), "inventory.json");
 
+			const fileData = new FormData();
 			if (fileInputUpdate && fileInputUpdate.files && fileInputUpdate.files.length > 0) {
 				const fileList = Array.from(fileInputUpdate.files);
 				for (const file of fileList) {
@@ -1031,20 +1032,28 @@ if (updateForm) {
 					if (!allowedFileExtensions.some(ext => fileName.toLowerCase().endsWith(ext))) {
 						throw new Error(`File name ${fileName} has a forbidden extension`);
 					}
-					formData.append("inventory-update-file-input", file, fileName);
+					fileData.append("inventory-update-file-input", file, fileName);
 				}
 			}
 
 			const response = await fetch("/api/inventory/update_client_data", {
 				method: "POST",
-				headers: {
-					"credentials": "include"
-				},
+				credentials: "include",
 				body: formData
 			});
 
 			if (!response.ok) {
 				throw new Error("Server returned an error: " + response.status + " " + response.statusText);
+			}
+
+			const fileUploadResponse = await fetch("/api/client/files/upload?tagnumber=" + encodeURIComponent(clientLookupTagInput.value), {
+				method: "POST",
+				credentials: "include",
+				body: fileData
+			});
+
+			if (!fileUploadResponse.ok) {
+				throw new Error("Server returned an error during file upload: " + fileUploadResponse.status + " " + fileUploadResponse.statusText);
 			}
 
 			const data = await response.text();

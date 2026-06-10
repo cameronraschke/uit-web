@@ -126,6 +126,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("GET /api/client/files/manifest", httpsFullAPIChain.ThenFunc(endpoints.GetClientImagesManifest))
 	httpsRouter.Handle("GET /api/client/files", httpsFullAPIChain.ThenFunc(endpoints.GetImage))
 	httpsRouter.Handle("GET /api/client/live_screenshot", httpsFullAPIChain.ThenFunc(endpoints.DownloadLiveImage))
+	httpsRouter.Handle("POST /api/client/files/upload", httpsFullAPIChain.ThenFunc(endpoints.UploadClientImage))
 	httpsRouter.Handle("POST /api/files/toggle_pin", httpsFullAPIChain.ThenFunc(endpoints.TogglePinImage))
 	httpsRouter.Handle("POST /api/client/live_screenshot", httpsFullAPIChain.ThenFunc(endpoints.UploadLiveImage))
 	httpsRouter.Handle("DELETE /api/client/files", httpsFullAPIChain.ThenFunc(endpoints.DeleteImage))
