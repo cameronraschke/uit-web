@@ -258,6 +258,19 @@ td > div.flex-container {
 	user-select: none;
 }
 
+.svg-button.text-right {
+	direction: rtl;
+	text-indent: var(--svg-padding-left);
+	background-repeat: no-repeat;
+	background-size: 1.5rem;
+	background-position: 0.5rem center;
+	user-select: none;
+}
+
+.svg-button.copy-text {
+	background-image: url(/icons/general/copy.svg);
+}
+
 .svg-button.photo-album {
 	background-image: url(/icons/media/photo_album.svg);
 }
@@ -829,6 +842,9 @@ td > div.flex-container {
 }
 
 .copyable-text {
+	border: 1px dashed rgba(0, 0, 0, 0.4);
+	border-radius: var(--border-radius);
+	padding: 0.5rem;
 	cursor: pointer;
 	user-select: all;
 	white-space: pre;

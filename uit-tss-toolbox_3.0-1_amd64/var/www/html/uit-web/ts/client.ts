@@ -157,13 +157,16 @@ function renderClientData(data: ClientInfoResponse | null): void {
 
 	// Client UUID
 	const ClientUUIDEl = document.createElement('p');
-	ClientUUIDEl.classList.add('copyable-text');
+	ClientUUIDEl.textContent = `Client UUID: `;
+	const clientUUIDSpan = document.createElement('span');
+	clientUUIDSpan.classList.add('copyable-text', 'svg-button', 'text-right', 'copy-text');
+	clientUUIDSpan.textContent = data.ClientUUID ?? 'N/A';
 	ClientUUIDEl.addEventListener('click', () => {
 		if (data.ClientUUID) {
 			navigator.clipboard.writeText(data.ClientUUID);
 		}
 	});
-	ClientUUIDEl.textContent = `Client UUID: ${data.ClientUUID ?? 'N/A'}`;
+	ClientUUIDEl.appendChild(clientUUIDSpan);
 	clientIDsDiv.appendChild(ClientUUIDEl);
 	
 	fragment.appendChild(clientIDsDiv);
