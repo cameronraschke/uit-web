@@ -1029,6 +1029,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			latest_os_versions.latest_os_version,
 			os_info.admin_users,
 			os_info.is_disk_encrypted,
+			os_info.secure_boot_enabled,
 			client_health.last_hardware_check,
 			(CASE 
 				WHEN latest_historical_firmware_data.bios_version = static_bios_stats.bios_version THEN TRUE
@@ -1085,6 +1086,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			latest_os_versions.latest_os_version,
 			os_info.admin_users,
 			os_info.is_disk_encrypted,
+			os_info.secure_boot_enabled,
 			client_health.last_hardware_check,
 			static_bios_stats.bios_version,
 			latest_historical_firmware_data.bios_version,
@@ -1141,6 +1143,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&row.LatestOsVersion,
 			&adminUsers,
 			&row.IsDiskEncrypted,
+			&row.SecureBootEnabled,
 			&row.LastHardwareCheck,
 			&row.BIOSUpdated,
 			&row.BIOSVersion,
