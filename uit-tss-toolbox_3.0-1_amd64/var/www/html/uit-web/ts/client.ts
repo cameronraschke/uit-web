@@ -157,6 +157,12 @@ function renderClientData(data: ClientInfoResponse | null): void {
 
 	// Client UUID
 	const ClientUUIDEl = document.createElement('p');
+	ClientUUIDEl.classList.add('copyable-text');
+	ClientUUIDEl.addEventListener('click', () => {
+		if (data.ClientUUID) {
+			navigator.clipboard.writeText(data.ClientUUID);
+		}
+	});
 	ClientUUIDEl.textContent = `Client UUID: ${data.ClientUUID ?? 'N/A'}`;
 	clientIDsDiv.appendChild(ClientUUIDEl);
 	

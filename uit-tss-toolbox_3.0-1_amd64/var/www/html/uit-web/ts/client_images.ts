@@ -32,8 +32,10 @@ function renderActionButtons(tag: number) {
 	fileInput.addEventListener('change', async () => {
 		if (fileInput.files && fileInput.files.length > 0) {
 			fileDialog.textContent = `Upload ${fileInput.files.length} File(s)`;
+			uploadButton.style.display = 'inline-block';
 		} else {
 			fileDialog.textContent = 'Upload Files';
+			uploadButton.style.display = 'none';
 		}
 	});
 
@@ -52,6 +54,7 @@ function renderActionButtons(tag: number) {
 	const uploadButton = document.createElement('button');
 	uploadButton.classList.add('svg-button', 'text-left', 'small-check', 'submit');
 	uploadButton.textContent = 'Submit';
+	uploadButton.style.display = 'none';
 	actionsContainer.appendChild(uploadButton);
 
 	uploadButton.addEventListener('click', async () => {

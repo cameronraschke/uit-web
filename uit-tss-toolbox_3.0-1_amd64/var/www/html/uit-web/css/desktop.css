@@ -827,3 +827,10 @@ td > div.flex-container {
 	pointer-events: none;
 	white-space: normal;
 }
+
+.copyable-text {
+	cursor: pointer;
+	user-select: all;
+	white-space: pre;
+	white-space-collapse: collapse;
+}
