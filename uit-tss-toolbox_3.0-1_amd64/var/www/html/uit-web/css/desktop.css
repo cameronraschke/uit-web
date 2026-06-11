@@ -259,16 +259,20 @@ td > div.flex-container {
 }
 
 .svg-button.text-right {
-	direction: rtl;
 	text-indent: var(--svg-padding-left);
+	padding-right: 2.3rem;
 	background-repeat: no-repeat;
 	background-size: 1.5rem;
-	background-position: 0.5rem center;
+	background-position: calc(100% - 0.5rem) center;
 	user-select: none;
 }
 
 .svg-button.copy-text {
 	background-image: url(/icons/general/copy.svg);
+}
+
+.svg-button.copy-text:active {
+	background-image: url(/icons/general/check_small.svg);
 }
 
 .svg-button.photo-album {
@@ -849,4 +853,5 @@ td > div.flex-container {
 	user-select: all;
 	white-space: pre;
 	white-space-collapse: collapse;
+	padding-right: 2rem;
 }
