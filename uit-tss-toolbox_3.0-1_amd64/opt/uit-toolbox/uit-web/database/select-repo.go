@@ -1169,6 +1169,17 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		return nil, nil
 	}
 
+	resultsWithErrors, err := ModifyClientConfigErrorResults(results)
+	if err != nil {
+		return nil, fmt.Errorf("error modifying client config error results: %w", err)
+	}
+	return resultsWithErrors, nil
+}
+
+func ModifyClientConfigErrorResults(results []types.InventoryTableRow) ([]types.InventoryTableRow, error) {
+	if len(results) == 0 {
+		return results, nil
+	}
 	// Set client configuration errors
 	for i := range results {
 		// If client is missing required info in the DB
@@ -1249,6 +1260,11 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			}
 			// If OS is windows
 			if results[i].OsName != nil && strings.Contains(strings.ToLower(*results[i].OsName), "windows") {
+				// If secure boot is not enabled
+				if results[i].SecureBootEnabled != nil && !*results[i].SecureBootEnabled {
+					secureBootNotEnabled := types.SecureBootNotEnabled.ToConfigErrorResponse()
+					results[i].ClientErrors = append(results[i].ClientErrors, secureBootNotEnabled)
+				}
 				// If OS is windows but Bitlocker is not enabled
 				if results[i].IsDiskEncrypted != nil && !*results[i].IsDiskEncrypted {
 					diskNotEncryptedErr := types.DiskNotEncrypted.ToConfigErrorResponse()
@@ -1289,7 +1305,6 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			}
 		}
 	}
-
 	return results, nil
 }
 
@@ -2196,6 +2211,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		os_info.admin_users,
 		os_info.is_intune_joined,
 		os_info.is_disk_encrypted,
+		os_info.secure_boot_enabled,
 		historical_firmware_data.bios_version,
 		historical_firmware_data.bios_release_date,
 		hardware_data.device_type,
@@ -2300,6 +2316,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		os_info.admin_users,
 		os_info.is_intune_joined,
 		os_info.is_disk_encrypted,
+		os_info.secure_boot_enabled,
 		historical_firmware_data.bios_version,
 		historical_firmware_data.bios_release_date,
 		static_disk_stats.disk_type,
@@ -2392,6 +2409,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 			&adminUsers,
 			&clientInfoResult.IsIntuneJoined,
 			&clientInfoResult.IsDiskEncrypted,
+			&clientInfoResult.SecureBootEnabled,
 			&clientInfoResult.BIOSVersion,
 			&clientInfoResult.BIOSReleaseDate,
 			&clientInfoResult.DeviceType,

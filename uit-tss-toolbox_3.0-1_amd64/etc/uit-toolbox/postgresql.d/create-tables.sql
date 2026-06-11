@@ -746,6 +746,8 @@ CREATE TABLE IF NOT EXISTS os_info (
 	ad_computer_name VARCHAR(128) DEFAULT NULL,
 	ad_distinguished_name VARCHAR(512) DEFAULT NULL,
 	is_intune_joined BOOLEAN DEFAULT NULL,
+	secure_boot_enabled BOOLEAN DEFAULT NULL,
+	updated_from_windows BOOLEAN DEFAULT FALSE NOT NULL,
 
 	CONSTRAINT os_info_client_uuid_fkey
 		FOREIGN KEY (client_uuid)

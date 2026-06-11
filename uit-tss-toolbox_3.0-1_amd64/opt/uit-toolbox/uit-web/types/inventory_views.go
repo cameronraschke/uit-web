@@ -68,6 +68,7 @@ const (
 	MissingRequiredHardwareInfo
 	MissingRequiredSoftwareInfo
 	MissingImages
+	SecureBootNotEnabled
 )
 
 var ClientConfigurationErrorStrings = map[ClientConfigurationError]string{
@@ -85,6 +86,7 @@ var ClientConfigurationErrorStrings = map[ClientConfigurationError]string{
 	MissingRequiredHardwareInfo: "Missing required hardware information",
 	MissingRequiredSoftwareInfo: "Missing required OS information",
 	MissingImages:               "Missing images",
+	SecureBootNotEnabled:        "Secure Boot is not enabled",
 }
 
 func (s ClientConfigurationError) String() string {
@@ -122,6 +124,7 @@ var ClientConfigurationErrors = map[ClientConfigurationError]ClientConfigErrorMe
 	MissingRequiredHardwareInfo: {ErrorLevel: Error.String(), ErrorType: HardwareIssueType.String(), ErrorMessage: MissingRequiredHardwareInfo.String()},
 	MissingRequiredSoftwareInfo: {ErrorLevel: Error.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: MissingRequiredSoftwareInfo.String()},
 	MissingImages:               {ErrorLevel: Info.String(), ErrorType: OtherIssueType.String(), ErrorMessage: MissingImages.String()},
+	SecureBootNotEnabled:        {ErrorLevel: Warning.String(), ErrorType: FirmwareIssueType.String(), ErrorMessage: SecureBootNotEnabled.String()},
 }
 
 type InventoryTableRow struct {
@@ -146,6 +149,7 @@ type InventoryTableRow struct {
 	OsVersion           *string                            `json:"os_version"`
 	LatestOsVersion     *string                            `json:"latest_os_version"`
 	IsDiskEncrypted     *bool                              `json:"windows_bitlocker_enabled"`
+	SecureBootEnabled   *bool                              `json:"secure_boot_enabled"`
 	LastHardwareCheck   *time.Time                         `json:"last_hardware_check"`
 	BIOSUpdated         *bool                              `json:"bios_updated"`
 	BIOSVersion         *string                            `json:"bios_version"`

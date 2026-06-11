@@ -17,6 +17,7 @@ type WindowsUpdateRequest struct {
 	BIOSVersion               *string    `json:"bios_version"`
 	BIOSReleaseDate           *string    `json:"bios_release_date"` // Converted later
 	TPMVersion                *string    `json:"tpm_version"`
+	SecureBootEnabled         *bool      `json:"secure_boot_enabled"`
 	OSInstalledAt             *string    `json:"os_installed_at"` // Converted later
 	OSVendor                  *string    `json:"os_vendor"`
 	OSPlatform                *string    `json:"os_platform"`
@@ -50,7 +51,7 @@ type WindowsUpdateRequest struct {
 	BatteryDesignCapacity     *int64     `json:"battery_design_capacity"`
 	BatteryHealthPcnt         *float64   `json:"battery_health_pct"`
 	BatteryChargeCycleCount   *int64     `json:"battery_charge_cycle_count"`
-	UpdatedFromWindows        *bool      `json:"updated_from_windows"`
+	UpdatedFromWindows        bool       `json:"updated_from_windows"`
 }
 
 type WindowsUpdateDTO struct {
@@ -64,6 +65,7 @@ type WindowsUpdateDTO struct {
 	BIOSVersion               *string
 	BIOSReleaseDate           *time.Time
 	TPMVersion                *string
+	SecureBootEnabled         *bool
 	OSInstalledAt             *time.Time
 	OSVendor                  *string
 	OSPlatform                *string
@@ -138,10 +140,6 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 		return nil, fmt.Errorf("invalid bios_release_date format: %w", err)
 	}
 
-	if request.UpdatedFromWindows == nil {
-		request.UpdatedFromWindows = new(bool) // default to false if not provided
-	}
-
 	adAdminUsersArr := make([]string, 0)
 	if request.AdminUsers != nil && strings.TrimSpace(*request.AdminUsers) != "" {
 		adAdminUsersArr = strings.Split(*request.AdminUsers, ";")
@@ -158,6 +156,7 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 		BIOSVersion:               request.BIOSVersion,
 		BIOSReleaseDate:           &convertedBIOSReleaseDate,
 		TPMVersion:                request.TPMVersion,
+		SecureBootEnabled:         request.SecureBootEnabled,
 		OSInstalledAt:             &convertedTime,
 		OSVendor:                  request.OSVendor,
 		OSPlatform:                request.OSPlatform,
@@ -191,7 +190,7 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 		BatteryDesignCapacity:     request.BatteryDesignCapacity,
 		BatteryHealthPcnt:         request.BatteryHealthPcnt,
 		BatteryChargeCycleCount:   request.BatteryChargeCycleCount,
-		UpdatedFromWindows:        *request.UpdatedFromWindows,
+		UpdatedFromWindows:        request.UpdatedFromWindows,
 	}, nil
 }
 
