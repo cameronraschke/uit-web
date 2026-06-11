@@ -758,21 +758,21 @@ func UploadClientImage(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "UploadClientImage"))
 
 	if req.Method != http.MethodPost {
-		log.Warn("Invalid method for UploadClientImage: " + req.Method)
+		log.Warn("Invalid method for image upload request: " + req.Method)
 		middleware.WriteJsonError(w, http.StatusMethodNotAllowed)
 		return
 	}
 
 	contentType := strings.TrimSpace(req.Header.Get("Content-Type"))
 	if !strings.HasPrefix(strings.ToLower(contentType), "multipart/form-data") {
-		log.Warn("Invalid content type for UploadClientImage: " + contentType)
+		log.Warn("Invalid content type for image upload request: " + contentType)
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
 	queryValues := req.URL.Query()
 	if len(queryValues) != 1 || len(queryValues["tagnumber"]) != 1 || strings.TrimSpace(queryValues.Get("tagnumber")) == "" {
-		log.Warn("UploadClientImage requires exactly one query key: tagnumber")
+		log.Warn("Image upload request requires exactly one query key to be populated: tagnumber")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -793,22 +793,21 @@ func UploadClientImage(w http.ResponseWriter, req *http.Request) {
 
 	endpointConfig, err := config.GetWebEndpointConfig(req.URL.Path)
 	if err != nil {
-		log.Warn("Cannot get endpoint config: " + err.Error())
+		log.Warn("Cannot get endpoint config from AppState for path: " + req.URL.Path + " - " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
-	maxUpload := endpointConfig.MaxUploadSize
-	if maxUpload == nil {
-		log.Error("Max upload size is not defined for this endpoint")
+	maxAllowedUploadBytes := endpointConfig.MaxUploadSize
+	if maxAllowedUploadBytes == nil {
+		log.Error("Max upload size is not defined for endpoint path: " + req.URL.Path)
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	totalAllowedBytes := *maxUpload
-	req.Body = http.MaxBytesReader(w, req.Body, totalAllowedBytes)
+	req.Body = http.MaxBytesReader(w, req.Body, *maxAllowedUploadBytes)
 	defer req.Body.Close()
 
-	if err := req.ParseMultipartForm(totalAllowedBytes); err != nil {
+	if err := req.ParseMultipartForm(*maxAllowedUploadBytes); err != nil {
 		if errors.Is(err, http.ErrNotMultipart) {
 			log.Warn("Request body is not multipart form data: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -846,7 +845,7 @@ func UploadClientImage(w http.ResponseWriter, req *http.Request) {
 
 	clientLookupResult, err := database.ClientIDLookup(ctx, tag, nil)
 	if err != nil {
-		log.Warn("Error looking up client ID: " + err.Error())
+		log.Warn("Error looking up client ID for tag '" + strconv.FormatInt(*tag, 10) + "': " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
