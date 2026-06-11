@@ -17,6 +17,7 @@ type ClientInfoResponse = {
 	ClientStatus:              string | null
 	IsBroken:                  boolean | null
 	DiskRemoved:               boolean | null
+	SecureBootEnabled:         boolean | null
 	ClientNote:                string | null
 	LocationLog:              any[] | null
 	JobStartTime:                   Date | null
@@ -260,9 +261,18 @@ function renderClientData(data: ClientInfoResponse | null): void {
 		}
 		osInfoDiv.appendChild(biosVersionEl);
 
-		// TPM Version
+		// TPM Version and Secure Boot 
 		const tpmVersionEl = document.createElement('p');
 		tpmVersionEl.textContent = `TPM Version: ${data.TPMVersion ?? 'N/A'}`;
+			const secureBootSpan = document.createElement('span');
+		if (data.SecureBootEnabled !== null) {
+			secureBootSpan.textContent = ` (Secure Boot ${data.SecureBootEnabled ? 'Enabled' : 'Disabled'})`;
+			tpmVersionEl.appendChild(secureBootSpan);
+		} else {
+			secureBootSpan.textContent = ' (Secure Boot Status Unknown)';
+			secureBootSpan.style.fontStyle = 'italic';
+			tpmVersionEl.appendChild(secureBootSpan);
+		}
 		osInfoDiv.appendChild(tpmVersionEl);
 
 		// AD Domain / OU
