@@ -2456,6 +2456,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 			&clientInfoResult.MemorySerial,
 			&clientInfoResult.MemoryCapacityKB,
 			&clientInfoResult.MemorySpeedMHz,
+			&clientInfoResult.FileCount,
 		); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, nil
