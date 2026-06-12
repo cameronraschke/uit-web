@@ -246,7 +246,7 @@ function renderEmptyTable(tableBodyEl: HTMLTableSectionElement, message: string)
   
   const inventoryRow = document.createElement('tr');
   const cell = document.createElement('td');
-  cell.colSpan = 10;
+  cell.colSpan = inventoryTable?.rows[0]?.cells.length ?? 1; // span all columns
   cell.textContent = message;
   inventoryRow.appendChild(cell);
   tableBodyEl.appendChild(inventoryRow);
