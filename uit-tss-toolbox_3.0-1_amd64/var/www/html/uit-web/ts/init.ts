@@ -598,6 +598,27 @@ async function waitForNextPaint(frames = 1) {
 	}
 }
 
+function showCopiedTextStyleChange(spanEL: HTMLSpanElement | null = null): void {
+	const copySpans: HTMLSpanElement[] = spanEL ? [spanEL] : Array.from(document.querySelectorAll(".copyable-text"));
+	copySpans.forEach((span: HTMLSpanElement | null) => {
+		if (!span) return;
+		if (span.classList.contains("copied")) {
+			span.classList.remove("copied");
+			clearTimeout(Number(span.dataset.copiedTimeoutId));
+			delete span.dataset.copiedTimeoutId;
+			CSS.highlights.delete("steps");
+		}
+		span.classList.add("copied");
+		const rangeToHighlight = new Range();
+		rangeToHighlight.selectNodeContents(span);
+		CSS.highlights.set("steps", new Highlight(rangeToHighlight));
+		const timeoutId = setTimeout(() => {
+			span.classList.remove("copied");
+		}, fiveSeconds);
+		span.dataset.copiedTimeoutId = timeoutId.toString();
+	});
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
 	if (!navigator.onLine) {
 		console.warn("Offline, redirecting to logout");
@@ -631,4 +652,5 @@ document.addEventListener("DOMContentLoaded", async () => {
 		console.warn("Error initializing available tags:", error);
 		window.globalLookupResults = [] as GlobalLookupResultCache[];
 	}
+	showCopiedTextStyleChange();
 });

@@ -159,11 +159,12 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	const ClientUUIDEl = document.createElement('p');
 	ClientUUIDEl.textContent = `Client UUID: `;
 	const clientUUIDSpan = document.createElement('span');
-	clientUUIDSpan.classList.add('copyable-text', 'svg-button', 'text-right', 'copy-text');
+	clientUUIDSpan.classList.add('copyable-text');
 	clientUUIDSpan.textContent = data.ClientUUID ?? 'N/A';
 	ClientUUIDEl.addEventListener('click', () => {
 		if (data.ClientUUID) {
 			navigator.clipboard.writeText(data.ClientUUID);
+			showCopiedTextStyleChange(clientUUIDSpan);
 		}
 	});
 	ClientUUIDEl.appendChild(clientUUIDSpan);

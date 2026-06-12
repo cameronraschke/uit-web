@@ -272,7 +272,7 @@ td > div.flex-container {
 	background-image: url(/icons/general/copy.svg);
 }
 
-.svg-button.copy-text:active {
+.svg-button.copy-text.copied {
 	background-image: url(/icons/general/check_small.svg);
 }
 
@@ -847,6 +847,12 @@ td > div.flex-container {
 }
 
 .copyable-text {
+	text-indent: var(--svg-padding-left);
+	padding-right: 2.3rem;
+	background-repeat: no-repeat;
+	background-size: 1.5rem;
+	background-position: calc(100% - 0.5rem) center;
+	user-select: none;
 	border: 1px dashed rgba(0, 0, 0, 0.4);
 	border-radius: var(--border-radius);
 	padding: 0.5rem;
@@ -855,4 +861,17 @@ td > div.flex-container {
 	white-space: pre;
 	white-space-collapse: collapse;
 	padding-right: 2rem;
+	background-image: url(/icons/general/copy.svg);
+}
+
+.copyable-text.copied {
+	background-image: url(/icons/general/check_small.svg);
+}
+
+.copyable-text.copied::highlight(steps) {
+	background-color: rgba(255, 255, 0, 0.384);
+}
+
+.copyable-text.copied::selection {
+	background-color: rgba(255, 255, 0, 0.384);
 }
