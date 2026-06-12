@@ -469,14 +469,15 @@ td > div.flex-container {
 	align-items: center;
 	gap: var(--select-element-margin);
 	text-align: center;
+	align-content: center;
+	p, span {
+		text-align: center;
+	}
 	div {
 		position: relative;
 		width: 100%;
 		p, span {
 			text-align: center;
-		}
-		img {
-			position: absolute;
 		}
 	}
 }
@@ -508,14 +509,15 @@ td > div.flex-container {
 	align-items: center;
 	gap: var(--select-element-margin);
 	text-align: center;
+	align-content: center;
+	p, span {
+		text-align: center;
+	}
 	div {
 		position: relative;
 		width: 100%;
 		p, span {
 			text-align: center;
-		}
-		img {
-			position: absolute;
 		}
 	}
 }
@@ -815,12 +817,17 @@ td > div.flex-container {
 	text-decoration: underline;
 }
 
+div:has(> img.tooltip-image) {
+	min-height: 2rem;
+}
+
 .tooltip-image {
-	display: inline-flex;
+	/* display: inline-flex; */
+	position: absolute;
 	align-items: center;
 	justify-content: center;
-	width: 1.5rem;
-	height: auto;
+	height: 23px;
+	width: 23px;
 	margin-left: 0.3rem;
 	margin-right: 0.3rem;
 	cursor: help;
@@ -833,10 +840,12 @@ td > div.flex-container {
 .tooltip-image.warning {
 	/* color: var(--warning-color); */
 	filter: invert(68%) sepia(43%) saturate(3507%) hue-rotate(3deg) brightness(106%) contrast(107%);
+	transform: rotate(180deg);
 }
 .tooltip-image.error {
 	/* color: var(--error-color); */
 	filter: invert(35%) sepia(37%) saturate(2588%) hue-rotate(333deg) brightness(96%) contrast(89%);
+	transform: rotate(180deg);
 }
 
 .tooltip-textbox {

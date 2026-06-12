@@ -409,19 +409,34 @@ async function renderInventoryTable(minimumRowIndex = 0, maximumRowIndex = INVEN
 			} else {
 				manufacturerModelSpan.style.fontStyle = 'italic';
 			}
-			if (manufacturerModelSpan.textContent.length > 30) {
-				const arr = manufacturerModelSpan.textContent.split('/');
-				
-				const truncated = (arr[0] !== undefined && arr[1] !== undefined) ? `${arr[0].substring(0, 11)}.../${arr[1].substring(0, 17)}...` : manufacturerModelSpan.textContent;
-				manufacturerModelSpan.title = manufacturerModelSpan.textContent;
+			const manufacturerModelFullText = manufacturerModelSpan.textContent;
+			if (manufacturerModelFullText.length > 30) {
+				const arr = manufacturerModelFullText.split('/');
+
+				if (arr[0] !== undefined && arr[1] !== undefined) {
+					if (arr[0].length > 11) {
+						manufacturerModelSpan.textContent = `${arr[0].substring(0, 11)}...`;
+					} else {
+						manufacturerModelSpan.textContent = arr[0];
+					}
+
+					if (arr[0].length > 1 && arr[1].length > 1) {
+						manufacturerModelSpan.textContent += '/';
+					}
+
+					if (arr[1].length > 17) {
+						manufacturerModelSpan.textContent += `${arr[1].substring(0, 17)}...`;
+					} else {
+						manufacturerModelSpan.textContent += arr[1];
+					}
+				}
+
+				manufacturerModelSpan.title = manufacturerModelFullText;
 				manufacturerModelSpan.style.cursor = 'pointer';
-				manufacturerModelSpan.textContent = truncated;
 				manufacturerModelSpan.addEventListener('click', () => {
-					manufacturerModelSpan.textContent = manufacturerModelSpan.title;
+					manufacturerModelSpan.textContent = manufacturerModelFullText;
 					manufacturerModelSpan.style.cursor = 'auto';
 				}, { once: true });
-			} else {
-				manufacturerModelSpan.textContent = manufacturerModelSpan.textContent;
 			}
 			hardwareContainer.appendChild(manufacturerModelSpan);
 
@@ -494,25 +509,29 @@ async function renderInventoryTable(minimumRowIndex = 0, maximumRowIndex = INVEN
 			const statusCell = document.createElement('td');
 			const statusContainer = document.createElement('div');
 			statusContainer.classList.add('flex-container', 'vertical', 'centered');
+			const statusDiv = document.createElement('div');
 			const statusSpan = document.createElement('span');
 			if (inventoryRow.status_formatted !== '') {
 				statusSpan.textContent = inventoryRow.status_formatted;
-				if (inventoryRow.status === 'retired') {
-					const tooltipIndicator = document.createElement('img');
-					tooltipIndicator.src = '/icons/general/info.svg';
-					tooltipIndicator.classList.add('tooltip-image', 'info');
-					tooltipIndicator.setAttribute('tabindex', '0');
-					statusSpan.appendChild(tooltipIndicator);
-					attachPortalTooltip(
-						tooltipIndicator,
-						`Retired Date: ${inventoryRow.retired_date ? new Date(inventoryRow.retired_date).toLocaleDateString() : 'N/A'}`,
-					);
-				}
+				
 			} else {
 				statusSpan.textContent = 'N/A';
 				statusSpan.style.fontStyle = 'italic';
 			}
-			statusContainer.appendChild(statusSpan);
+			statusDiv.appendChild(statusSpan);
+
+			if (inventoryRow.status === 'retired') {
+				const tooltipIndicator = document.createElement('img');
+				tooltipIndicator.src = '/icons/general/info.svg';
+				tooltipIndicator.classList.add('tooltip-image', 'info');
+				tooltipIndicator.setAttribute('tabindex', '0');
+				attachPortalTooltip(
+					tooltipIndicator,
+					`Retired Date: ${inventoryRow.retired_date ? new Date(inventoryRow.retired_date).toLocaleDateString() : 'N/A'}`,
+				);
+				statusDiv.appendChild(tooltipIndicator);
+			}
+			statusContainer.appendChild(statusDiv);
 			statusCell.appendChild(statusContainer);
 			tr.appendChild(statusCell);
 
@@ -521,70 +540,7 @@ async function renderInventoryTable(minimumRowIndex = 0, maximumRowIndex = INVEN
 			const noteContainer = document.createElement('div');
 			noteContainer.classList.add('flex-container', 'vertical', 'centered');
 			if (note !== '') {
-				const noteSpan = document.createElement('span');
-				const truncatedButtonEl = document.createElement('button');
-				const truncatedNote = truncateString(note, 50);
-				
-				const updateNoteTruncation = () => {
-					const isTruncated = noteSpan.dataset.truncated === 'true';
-					if (noteContainer.contains(truncatedButtonEl)) {
-						noteContainer.removeChild(truncatedButtonEl);
-					}
-					truncatedButtonEl.removeEventListener('click', () => {}); // remove all listeners to prevent duplicates
-					noteSpan.removeEventListener('click', () => {}); // remove all listeners to prevent duplicates
-					if (isTruncated) {
-						if (noteSpan.textContent !== truncatedNote.truncatedString) {
-							noteSpan.textContent = truncatedNote.truncatedString;
-							noteSpan.title = `(Click to expand) ${note}`;
-							noteSpan.style.cursor = 'pointer';
-						}
-						addNoteTextListener();
-					} else {
-						if (noteSpan.textContent !== note) {
-							noteSpan.textContent = note;
-						}
-						noteSpan.removeAttribute('title');
-						noteSpan.style.cursor = 'auto';
-						if (!noteContainer.contains(truncatedButtonEl)) {
-							truncatedButtonEl.classList.add('svg-button', 'small-x');
-							truncatedButtonEl.title = 'Collapse note';
-							noteContainer.appendChild(truncatedButtonEl);
-						}
-						addNoteCollapseButtonListener();
-					}
-				}
-
-				const addNoteCollapseButtonListener = () => {
-					truncatedButtonEl.addEventListener('click', (e) => {
-						e.stopPropagation();
-						noteSpan.dataset.truncated = 'true';
-						if (e.currentTarget) {
-							e.currentTarget.removeEventListener('click', () => {}); // remove all listeners to prevent duplicates
-						}
-						updateNoteTruncation();
-					});
-				};
-
-				const addNoteTextListener = () => {
-					noteSpan.addEventListener('click', (e) => {
-						e.stopPropagation();
-						noteSpan.dataset.truncated = 'false';
-						if (e.currentTarget) {
-							e.currentTarget.removeEventListener('click', () => {}); // remove all listeners to prevent duplicates
-						}
-						updateNoteTruncation();
-					});
-				};
-				
-				if (truncatedNote.isTruncated) {
-					noteSpan.dataset.truncated = 'true';
-					updateNoteTruncation();
-				} else {
-					noteSpan.textContent = note;
-					noteSpan.dataset.truncated = 'false';
-				}
-
-				noteContainer.appendChild(noteSpan);
+				truncateSpanEl(noteContainer, note, 50);
 			}
 			noteCell.appendChild(noteContainer);
 			tr.appendChild(noteCell);
@@ -720,4 +676,63 @@ if (inventoryTableSearch) {
 			renderInventoryTable(0, INVENTORY_TABLE_PAGE_SIZE, true, false);
 		}, 100);
 	});
+}
+
+function truncateSpanEl(container: HTMLElement, spanTextContent: string, maxLength: number) {
+	if (spanTextContent !== '') {
+		const noteSpan = document.createElement('span');
+		const truncatedButtonEl = document.createElement('button');
+		const truncatedNote = truncateString(spanTextContent, maxLength);
+
+		const onCollapseClick = (e: MouseEvent) => {
+			e.stopPropagation();
+			noteSpan.dataset.truncated = 'true';
+			updateNoteTruncation();
+		};
+
+		const onNoteClick = (e: MouseEvent) => {
+			e.stopPropagation();
+			noteSpan.dataset.truncated = 'false';
+			updateNoteTruncation();
+		};
+
+		const updateNoteTruncation = () => {
+			const isTruncated = noteSpan.dataset.truncated === 'true';
+			if (container.contains(truncatedButtonEl)) {
+				container.removeChild(truncatedButtonEl);
+			}
+			truncatedButtonEl.removeEventListener('click', onCollapseClick);
+			noteSpan.removeEventListener('click', onNoteClick);
+			if (isTruncated) {
+				if (noteSpan.textContent !== truncatedNote.truncatedString) {
+					noteSpan.textContent = truncatedNote.truncatedString;
+					noteSpan.title = `(Click to expand) ${spanTextContent}`;
+					noteSpan.style.cursor = 'pointer';
+				}
+				noteSpan.addEventListener('click', onNoteClick);
+			} else {
+				if (noteSpan.textContent !== spanTextContent) {
+					noteSpan.textContent = spanTextContent;
+				}
+				noteSpan.removeAttribute('title');
+				noteSpan.style.cursor = 'auto';
+				if (!container.contains(truncatedButtonEl)) {
+					truncatedButtonEl.classList.add('svg-button', 'small-x');
+					truncatedButtonEl.title = 'Collapse note';
+					container.appendChild(truncatedButtonEl);
+				}
+				truncatedButtonEl.addEventListener('click', onCollapseClick);
+			}
+		};
+
+		if (truncatedNote.isTruncated) {
+			noteSpan.dataset.truncated = 'true';
+			updateNoteTruncation();
+		} else {
+			noteSpan.textContent = spanTextContent;
+			noteSpan.dataset.truncated = 'false';
+		}
+
+		container.appendChild(noteSpan);
+	}
 }
