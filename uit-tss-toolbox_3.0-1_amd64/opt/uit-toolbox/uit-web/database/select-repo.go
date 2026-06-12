@@ -2165,7 +2165,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 	WITH files AS (
 		SELECT client_uuid, COUNT(*) AS file_count from client_images WHERE hidden = FALSE GROUP BY client_uuid
 	),
-	WITH os_installed_table AS (
+	os_installed_table AS (
 			SELECT * FROM (
 			SELECT
 				ROW_NUMBER() OVER (PARTITION BY jobstats.client_uuid ORDER BY jobstats.time DESC NULLS LAST) AS "row_num",
