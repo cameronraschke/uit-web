@@ -598,6 +598,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 
 	filterOptions := new(types.InventoryAdvSearchOptions)
 
+	// Location filter
 	if ok := req.URL.Query().Has("filter_location") && req.URL.Query().Get("filter_location") != ""; ok {
 		locationFilter := new(types.AdvSearchOptionString)
 		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_location"))
@@ -615,6 +616,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		filterOptions.Location = locationFilter
 	}
 
+	// Building/room filter
 	if ok := req.URL.Query().Has("filter_building_room") && req.URL.Query().Get("filter_building_room") != ""; ok {
 		buildingRoomFilter := new(types.AdvSearchOptionString)
 		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_building_room"))
@@ -644,6 +646,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		filterOptions.BuildingAndRoom = buildingRoomFilter
 	}
 
+	// System manufacturer filter
 	if ok := req.URL.Query().Has("filter_system_manufacturer") && req.URL.Query().Get("filter_system_manufacturer") != ""; ok {
 		manufacturerFilter := new(types.AdvSearchOptionString)
 		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_system_manufacturer"))
@@ -661,6 +664,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		filterOptions.SystemManufacturer = manufacturerFilter
 	}
 
+	// System model filter
 	if ok := req.URL.Query().Has("filter_system_model") && req.URL.Query().Get("filter_system_model") != ""; ok {
 		modelFilter := new(types.AdvSearchOptionString)
 		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_system_model"))
@@ -678,6 +682,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		filterOptions.SystemModel = modelFilter
 	}
 
+	// Device type filter
 	if ok := req.URL.Query().Has("filter_device_type") && req.URL.Query().Get("filter_device_type") != ""; ok {
 		deviceTypeFilter := new(types.AdvSearchOptionString)
 		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_device_type"))
@@ -695,6 +700,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		filterOptions.DeviceType = deviceTypeFilter
 	}
 
+	// Department filter
 	if ok := req.URL.Query().Has("filter_department_name") && req.URL.Query().Get("filter_department_name") != ""; ok {
 		departmentFilter := new(types.AdvSearchOptionString)
 		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_department_name"))
@@ -712,6 +718,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		filterOptions.Department = departmentFilter
 	}
 
+	// AD domain/OU filter
 	if ok := req.URL.Query().Has("filter_ad_domain") && req.URL.Query().Get("filter_ad_domain") != ""; ok {
 		adDomainFilter := new(types.AdvSearchOptionString)
 		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_ad_domain"))
@@ -729,6 +736,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		filterOptions.ADDomain = adDomainFilter
 	}
 
+	// Client status filter
 	if ok := req.URL.Query().Has("filter_status") && req.URL.Query().Get("filter_status") != ""; ok {
 		statusFilter := new(types.AdvSearchOptionString)
 		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_status"))
@@ -746,6 +754,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		filterOptions.Status = statusFilter
 	}
 
+	// Is broken filter
 	if ok := req.URL.Query().Has("filter_is_broken") && req.URL.Query().Get("filter_is_broken") != ""; ok {
 		isBrokenFilter := new(types.AdvSearchOptionBool)
 		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_is_broken"))
@@ -763,6 +772,7 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 		filterOptions.IsBroken = isBrokenFilter
 	}
 
+	// Has images filter
 	if ok := req.URL.Query().Has("filter_has_images") && req.URL.Query().Get("filter_has_images") != ""; ok {
 		hasImagesFilter := new(types.AdvSearchOptionBool)
 		jsonValue, err := decodeMaybeBase64URLJSON(req.URL.Query().Get("filter_has_images"))

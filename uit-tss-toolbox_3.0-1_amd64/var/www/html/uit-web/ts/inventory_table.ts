@@ -1,3 +1,6 @@
+const INVENTORY_TABLE_PAGE_SIZE = 20;
+let inventoryTableCurrentPageIndex = 0;
+
 function removePortalTooltip() {
 	if (activePortalTooltip !== null) {
 		activePortalTooltip.remove();
@@ -88,10 +91,157 @@ function createManufacturerModelCell(inventoryRow: InventoryTableRow) {
   return cell;
 }
 
+function getInventoryTablePageNumberFromURL() {
+	const pageParam = new URLSearchParams(window.location.search).get('page');
+	const pageNumber = Number(pageParam);
+	if (!Number.isInteger(pageNumber) || pageNumber < 1) {
+		return 1;
+	}
+	return pageNumber;
+}
+
+function setInventoryTablePageNumberInURL(pageNumber: number) {
+	const nextURL = new URL(window.location.href);
+	if (pageNumber <= 1) {
+		nextURL.searchParams.delete('page');
+	} else {
+		nextURL.searchParams.set('page', pageNumber.toString());
+	}
+
+	const nextSearch = nextURL.searchParams.toString();
+	history.replaceState(null, '', nextSearch ? `${nextURL.pathname}?${nextSearch}` : nextURL.pathname);
+}
+
+function getInventoryTablePageHref(pageNumber: number) {
+	const nextURL = new URL(window.location.href);
+	if (pageNumber <= 1) {
+		nextURL.searchParams.delete('page');
+	} else {
+		nextURL.searchParams.set('page', pageNumber.toString());
+	}
+	return nextURL.toString();
+}
+
+function getInventoryTableSearchQuery() {
+	if (!inventoryTableSearch) {
+		return {
+			searchIncludesSpecialChars: false,
+			normalizedSearchText: '',
+		};
+	}
+
+	let searchIncludesSpecialChars = /[^a-zA-Z0-9]/.test(inventoryTableSearch.value);
+	let normalizedSearchText = String(inventoryTableSearch.value.trim().toLowerCase());
+	if (normalizedSearchText === '') {
+		searchIncludesSpecialChars = false;
+	}
+	normalizedSearchText = !searchIncludesSpecialChars ? normalizedSearchText.replace(/[^a-zA-Z0-9]/g, '') : normalizedSearchText;
+
+	return {
+		searchIncludesSpecialChars,
+		normalizedSearchText,
+	};
+}
+
+function applyInventoryTableSearch(tableData: InventoryTableRow[]) {
+	const { searchIncludesSpecialChars, normalizedSearchText } = getInventoryTableSearchQuery();
+	if (normalizedSearchText === '') {
+		return tableData;
+	}
+
+	return tableData.filter((inventoryRow) => {
+		let searchableData = `${inventoryRow.tagnumber ?? ''} ${inventoryRow.system_serial ?? ''} ${inventoryRow.location_formatted ?? ''} ${inventoryRow.note ?? ''}`.toLowerCase();
+		searchableData = !searchIncludesSpecialChars ? searchableData.replace(/[^a-zA-Z0-9]/g, '') : searchableData;
+		return searchableData.includes(normalizedSearchText);
+	});
+}
+
+function applyInventoryTableSort(tableData: InventoryTableRow[]) {
+	const sortedData = [...tableData];
+	const selectedSort = inventoryTableSortBy?.value ?? 'time-desc';
+	const sortKeys = selectedSort.split('-');
+	const sortKey = sortKeys[0] ?? 'time';
+	const sortOrder = sortKeys[1] ?? 'desc';
+
+	sortedData.sort((a, b) => {
+		if (sortKey === 'time') {
+			const aTime = new Date(a.last_updated || 0).getTime();
+			const bTime = new Date(b.last_updated || 0).getTime();
+			return sortOrder === 'asc' ? aTime - bTime : bTime - aTime;
+		}
+		if (sortKey === 'tagnumber') {
+			return sortOrder === 'asc' ? Number(a.tagnumber) - Number(b.tagnumber) : Number(b.tagnumber) - Number(a.tagnumber);
+		}
+		if (sortKey === 'serial') {
+			const aSerial = a.system_serial?.trim() ?? '';
+			const bSerial = b.system_serial?.trim() ?? '';
+			return sortOrder === 'asc' ? aSerial.localeCompare(bSerial) : bSerial.localeCompare(aSerial);
+		}
+		if (sortKey === 'location') {
+			const aLocation = a.location_formatted ?? '';
+			const bLocation = b.location_formatted ?? '';
+			return sortOrder === 'asc' ? aLocation.localeCompare(bLocation) : bLocation.localeCompare(aLocation);
+		}
+		return 0;
+	});
+
+	return sortedData;
+}
+
+function renderInventoryPagination(totalRows: number, currentPageIndex: number) {
+	if (!inventoryTablePagination) {
+		return;
+	}
+
+	const pageCount = Math.max(1, Math.ceil(totalRows / INVENTORY_TABLE_PAGE_SIZE));
+	if (pageCount <= 1) {
+		inventoryTablePagination.innerHTML = '';
+		inventoryTablePagination.style.display = 'none';
+		return;
+	}
+
+	inventoryTablePagination.style.display = 'flex';
+	inventoryTablePagination.replaceChildren();
+
+	for (let pageNumber = 1; pageNumber <= pageCount; pageNumber++) {
+		const pageAnchor = document.createElement('a');
+		pageAnchor.href = getInventoryTablePageHref(pageNumber);
+		pageAnchor.textContent = pageNumber.toString();
+		pageAnchor.classList.add('inventory-page-link');
+		if (pageNumber - 1 === currentPageIndex) {
+			pageAnchor.classList.add('active');
+		}
+		pageAnchor.addEventListener('click', async (event) => {
+			event.preventDefault();
+			const targetPageIndex = pageNumber - 1;
+			if (targetPageIndex === inventoryTableCurrentPageIndex) {
+				return;
+			}
+			inventoryTableCurrentPageIndex = targetPageIndex;
+			const renderSucceeded = await renderInventoryTable(
+				targetPageIndex * INVENTORY_TABLE_PAGE_SIZE,
+				(targetPageIndex + 1) * INVENTORY_TABLE_PAGE_SIZE,
+				true,
+				false,
+			);
+			if (renderSucceeded) {
+				setInventoryTablePageNumberInURL(pageNumber);
+				document.getElementById('update-and-search-container')?.scrollIntoView({ block: 'start', behavior: 'instant', inline: 'nearest' });
+			}
+		});
+		inventoryTablePagination.appendChild(pageAnchor);
+	}
+}
+
 // Empty table state
 function renderEmptyTable(tableBodyEl: HTMLTableSectionElement, message: string) {
 	if (!tableBodyEl) return;
   if (inventoryTableRowCountEl) inventoryTableRowCountEl.textContent = '0 entries';
+	inventoryTableCurrentPageIndex = 0;
+	if (inventoryTablePagination) {
+		inventoryTablePagination.innerHTML = '';
+		inventoryTablePagination.style.display = 'none';
+	}
   tableBodyEl.innerHTML = '';
   
   const inventoryRow = document.createElement('tr');
@@ -102,32 +252,59 @@ function renderEmptyTable(tableBodyEl: HTMLTableSectionElement, message: string)
   tableBodyEl.appendChild(inventoryRow);
 }
 
-async function renderInventoryTable() {
-	updateURLFromAdvFilters(); // necessary, fetchFilteredInventoryData relies on URL parameters
+async function renderInventoryTable(minimumRowIndex = 0, maximumRowIndex = INVENTORY_TABLE_PAGE_SIZE, skipURLUpdate = false, resolvePageFromURL = true) {
+	const isDefaultPageRender = minimumRowIndex === 0 && maximumRowIndex === INVENTORY_TABLE_PAGE_SIZE;
+	if (resolvePageFromURL && isDefaultPageRender) {
+		const pageNumberFromURL = getInventoryTablePageNumberFromURL();
+		minimumRowIndex = (pageNumberFromURL - 1) * INVENTORY_TABLE_PAGE_SIZE;
+		maximumRowIndex = minimumRowIndex + INVENTORY_TABLE_PAGE_SIZE;
+	}
+
+	if (!skipURLUpdate) {
+		updateURLFromAdvFilters(); // necessary, fetchFilteredInventoryData relies on URL parameters
+	}
 	removePortalTooltip();
 	try {
 		const tableData: InventoryTableRow[] | null = await fetchFilteredInventoryData();
 		if (tableData === null) {
 			renderEmptyTable(inventoryTableBody, 'No results found.');
-			return;
+			return false;
 		}
 		if (!Array.isArray(tableData) || tableData.length === 0) {
 			renderEmptyTable(inventoryTableBody, 'No results found.');
-			return;
+			return false;
 		}
 
-		const sortedData = [...tableData].sort((a, b) => 
-			new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
-		);
+		const sortedData = applyInventoryTableSort(applyInventoryTableSearch(tableData));
+		if (sortedData.length === 0) {
+			renderEmptyTable(inventoryTableBody, 'No results found.');
+			return false;
+		}
 
 		// Row count
 		if (inventoryTableRowCountEl) inventoryTableRowCountEl.textContent = `${sortedData.length} entries`;
+		inventoryTableCurrentPageIndex = Math.max(0, Math.floor(minimumRowIndex / INVENTORY_TABLE_PAGE_SIZE));
 
 		// Fragment
-		const fragment = document.createDocumentFragment();
+		const inventoryTableFragment = document.createDocumentFragment();
 
 		// Table body
-		for (const inventoryRow of sortedData) {
+		const totalRows = sortedData.length;
+		if (maximumRowIndex !== 0 && minimumRowIndex >= totalRows && totalRows > 0) {
+			inventoryTableCurrentPageIndex = Math.max(0, Math.ceil(totalRows / INVENTORY_TABLE_PAGE_SIZE) - 1);
+			minimumRowIndex = inventoryTableCurrentPageIndex * INVENTORY_TABLE_PAGE_SIZE;
+			maximumRowIndex = minimumRowIndex + INVENTORY_TABLE_PAGE_SIZE;
+		}
+		const visibleMaximumRowIndex = maximumRowIndex === 0 ? totalRows : maximumRowIndex;
+		const startIndex = Math.max(0, minimumRowIndex);
+		const endIndex = Math.min(visibleMaximumRowIndex, totalRows);
+
+		for (let rowIndex = startIndex; rowIndex < endIndex; rowIndex++) {
+			const inventoryRow = sortedData[rowIndex];
+			if (!inventoryRow) {
+				continue;
+			}
+			
 			const tr = document.createElement('tr');
 
 			// variables & dataset values
@@ -555,52 +732,24 @@ async function renderInventoryTable() {
 				}
 			}
 
-			fragment.appendChild(tr);
+			inventoryTableFragment.appendChild(tr);
 		}
-		if (inventoryTableBody) inventoryTableBody.replaceChildren(fragment);
+		if (inventoryTableBody) {
+			inventoryTableBody.replaceChildren(inventoryTableFragment);
+		}
+		setInventoryTablePageNumberInURL(inventoryTableCurrentPageIndex + 1);
+		renderInventoryPagination(totalRows, inventoryTableCurrentPageIndex);
+		return true;
 	} catch (error) {
 		console.error('Error rendering inventory table:', error);
 		renderEmptyTable(inventoryTableBody, 'Error loading inventory data. Please try again.');
+		return false;
 	}
 }
 
 if (inventoryTableSortBy) {
-	inventoryTableSortBy.addEventListener('change', () => {
-		const presentRows = Array.from(inventoryTableBody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
-		const rowData = presentRows.map(row => ({
-			lastUpdated: row.dataset.lastUpdated || '',
-			tagnumber: row.dataset.tagnumber || '',
-			systemSerial: row.dataset.systemSerial || '',
-			locationFormatted: row.dataset.locationFormatted || '',
-			rowElement: row
-		}));
-		const sortedRows = rowData.sort((a, b) => {
-			if (!inventoryTableSortBy.value) return 0;
-			const sortKeys = inventoryTableSortBy.value.split('-');
-			const sortKey = sortKeys[0];
-			const sortOrder = sortKeys[1];
-			
-			if (sortKey === 'time') {
-				const aTime = Number(a.lastUpdated) || 0;
-				const bTime = Number(b.lastUpdated) || 0;
-				return sortOrder === 'asc' ? aTime - bTime : bTime - aTime;
-			}
-			if (sortKey === 'tagnumber') {
-				return sortOrder === 'asc' ? Number(a.tagnumber) - Number(b.tagnumber) : Number(b.tagnumber) - Number(a.tagnumber);
-			}
-			if (sortKey === 'serial') {
-				const aSerial = a.systemSerial || '';
-				const bSerial = b.systemSerial || '';
-				return sortOrder === 'asc' ? aSerial.localeCompare(bSerial) : bSerial.localeCompare(aSerial);
-			}
-			if (sortKey === 'location') {
-				const aLocation = a.locationFormatted || '';
-				const bLocation = b.locationFormatted || '';
-				return sortOrder === 'asc' ? aLocation.localeCompare(bLocation) : bLocation.localeCompare(aLocation);
-			}
-			return 0;
-		});
-		sortedRows.forEach(row => inventoryTableBody.appendChild(row.rowElement));
+	inventoryTableSortBy.addEventListener('change', async () => {
+		await renderInventoryTable(0, INVENTORY_TABLE_PAGE_SIZE, true, false);
 	});
 }
 
@@ -611,26 +760,7 @@ if (inventoryTableSearch) {
 		}
 
 		inventoryTableSearchDebounce = setTimeout(() => {
-			let searchIncludesSpecialChars = /[^a-zA-Z0-9]/.test(inventoryTableSearch.value);
-
-			let lowerCaseSearchedTextInput = String(inventoryTableSearch.value.trim().toLowerCase());
-			if (lowerCaseSearchedTextInput === '') searchIncludesSpecialChars = false;
-			lowerCaseSearchedTextInput = !searchIncludesSpecialChars ? lowerCaseSearchedTextInput.replace(/[^a-zA-Z0-9]/g, "") : lowerCaseSearchedTextInput;
-			const allRows = Array.from(inventoryTableBody.querySelectorAll('tr'));
-			for (const row of allRows) {
-				if (lowerCaseSearchedTextInput === '') {
-					row.style.display = 'table-row';
-					continue;
-				}
-				let lowerCaseSearchableData = (row.dataset.tagnumber + ' ' + row.dataset.systemSerial + ' ' + row.dataset.locationFormatted + ' ' + row.dataset.note).toLowerCase();
-				lowerCaseSearchableData = !searchIncludesSpecialChars ? lowerCaseSearchableData.replace(/[^a-zA-Z0-9]/g, "") : lowerCaseSearchableData;
-				if (lowerCaseSearchableData.includes(lowerCaseSearchedTextInput)) { // lowerCaseSearchedTextInput values are already lower case
-					row.style.display = 'table-row';
-				} else {
-					row.style.display = 'none';
-				}
-			}
-			if (inventoryTableRowCountEl) inventoryTableRowCountEl.textContent = `${allRows.filter(row => row.style.display === 'table-row').length} entries`;
+			renderInventoryTable(0, INVENTORY_TABLE_PAGE_SIZE, true, false);
 		}, 100);
 	});
 }

@@ -186,6 +186,7 @@ button.readonly-input {
 }
 
 table {
+	table-layout: fixed;
   width: 100%;
   border-collapse: collapse;
   margin: auto;
