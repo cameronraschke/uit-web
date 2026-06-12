@@ -6,6 +6,7 @@ type ClientInfoResponse struct {
 	AcquiredDate              *time.Time               `json:"AcquiredDate"`
 	AdminUsers                *[]string                `json:"AdminUsers"`
 	Building                  *string                  `json:"Building"`
+	IsCheckedOut              *bool                    `json:"IsCheckedOut"`
 	CheckoutDate              *time.Time               `json:"CheckoutDate"`
 	CheckoutLog               *[]CheckoutLogResponse   `json:"CheckoutLog"`
 	ClientImages              *[]ImageManifestResponse `json:"ClientImages"`
@@ -26,7 +27,6 @@ type ClientInfoResponse struct {
 	FileCount                 *int64                   `json:"FileCount"`
 	IsDiskEncrypted           *bool                    `json:"IsDiskEncrypted"`
 	IsBroken                  *bool                    `json:"IsBroken"`
-	IsCheckedOut              *bool                    `json:"IsCheckedOut"`
 	IsIntuneJoined            *bool                    `json:"IsIntuneJoined"`
 	JobLog                    *[]JobLogResponse        `json:"JobLog"`
 	JobStartTime              *time.Time               `json:"JobStartTime"`

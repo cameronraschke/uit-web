@@ -337,59 +337,6 @@ async function renderInventoryTable(minimumRowIndex = 0, maximumRowIndex = INVEN
 			// tr.dataset.osName = osName;
 			// tr.dataset.osVersion = osVersion;
 
-			// Actions cell
-			const actionsCell = document.createElement('td');
-			actionsCell.classList.add('flex-container', 'horizontal', 'centered');
-			const actionsContainer = document.createElement('div');
-			const editAnchor = document.createElement('a');
-			const editButton = document.createElement('button');
-			const imagesAnchor = document.createElement('a');
-			const viewImagesButton = document.createElement('button');
-
-			actionsContainer.classList.add('flex-container', 'vertical', 'centered');
-			editAnchor.classList.add('smaller-text');
-			editButton.classList.add('svg-button', 'text-left', 'edit');
-			viewImagesButton.classList.add('svg-button', 'text-left', 'photo-album');
-
-			const editURL = new URL(window.location.href);
-			editURL.searchParams.set('tagnumber', tagnumber);
-			editURL.searchParams.set('system_serial', systemSerial);
-			editURL.searchParams.set('update', 'true');
-			editAnchor.href = editURL.toString();
-
-			const imagesURL = new URL(`client_images?tagnumber=${tagnumber}`, window.location.origin);
-			imagesAnchor.target = '_blank';
-			imagesAnchor.href = imagesURL.toString();
-	
-			editButton.textContent = 'Edit';
-
-			if (inventoryRow.file_count !== null && inventoryRow.file_count > 0) {
-				viewImagesButton.textContent = `Images (${inventoryRow.file_count})`;
-			} else {
-				viewImagesButton.textContent = 'Images (0)';
-				viewImagesButton.style.backgroundColor = "var(--transparent-accent-color)";
-			}
-
-			editAnchor.appendChild(editButton);
-			imagesAnchor.appendChild(viewImagesButton);
-			actionsContainer.appendChild(editAnchor);
-			actionsContainer.appendChild(imagesAnchor);
-
-			if (inventoryRow.checkout_bool === true) {
-				const printAnchor = document.createElement('a');
-				printAnchor.target = '_blank';
-				printAnchor.href = new URL(`checkout-form?tagnumber=${tagnumber}`, window.location.origin).toString();
-
-				const printButton = document.createElement('button');
-				printButton.classList.add('svg-button', 'text-left', 'print');
-				printButton.textContent = 'Checkout Form';
-				printAnchor.appendChild(printButton);
-				actionsContainer.appendChild(printAnchor);
-			}
-			
-			actionsCell.appendChild(actionsContainer);
-			tr.appendChild(actionsCell);
-
 			// Tag Number URL with system serial as well
 			const idCell = document.createElement('td');
 			const idContainer = document.createElement('div');

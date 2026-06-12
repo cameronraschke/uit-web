@@ -118,7 +118,7 @@ function renderClientData(data: ClientInfoResponse | null): void {
 		return;
 	}
 
-	// Inventory button link
+	// Update inventory button link
 	const updateInventoryButton = document.createElement('button');
 	updateInventoryButton.textContent = 'Update Inventory';
 	updateInventoryButton.classList.add('svg-button', 'text-left', 'edit');
@@ -132,7 +132,12 @@ function renderClientData(data: ClientInfoResponse | null): void {
 
 	// View images link
 	const imageViewButton = document.createElement('button');
-	imageViewButton.textContent = 'View Client Images';
+	if (data.FileCount !== null && data.FileCount > 0) {
+		imageViewButton.textContent = `Images (${data.FileCount})`;
+	} else {
+		imageViewButton.textContent = 'Images (0)';
+		imageViewButton.style.backgroundColor = "var(--transparent-accent-color)";
+	}
 	if (data.ClientImages && data.ClientImages.length > 0) imageViewButton.textContent += ` (${data.ClientImages.length})`;
 	imageViewButton.classList.add('svg-button', 'text-left', 'photo-album');
 	const imageViewLink = document.createElement('a');
@@ -141,6 +146,18 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	imageViewLink.href = imageViewURL.toString();
 	imageViewLink.appendChild(imageViewButton);
 	clientActionsContainer.appendChild(imageViewLink);
+
+	if (data.IsCheckedOut) {
+		const printAnchor = document.createElement('a');
+		printAnchor.target = '_blank';
+		printAnchor.href = new URL(`checkout-form?tagnumber=${data.Tagnumber?.toString() ?? ''}`, window.location.origin).toString();
+
+		const printButton = document.createElement('button');
+		printButton.classList.add('svg-button', 'text-left', 'print');
+		printButton.textContent = 'Checkout Form';
+		printAnchor.appendChild(printButton);
+		clientActionsContainer.appendChild(printAnchor);
+	}
 
 	const fragment = document.createDocumentFragment();
 	const clientIDsDiv = document.createElement('div');
@@ -194,6 +211,12 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	const departmentEl = document.createElement('p');
 	departmentEl.textContent = `Department: ${data.DepartmentName ?? 'N/A'}`;
 	locationInfoDiv.appendChild(departmentEl);
+
+	if (data.IsCheckedOut) {
+		const checkoutInfoEl = document.createElement('p');
+		checkoutInfoEl.textContent = `Checked out to ${data.CustomerName ?? 'N/A'} on ${data.CheckoutDate ? new Date(data.CheckoutDate).toLocaleDateString() : 'N/A'}. Scheduled for return on ${data.ReturnDate ? new Date(data.ReturnDate).toLocaleDateString() : 'N/A'}.`;
+		locationInfoDiv.appendChild(checkoutInfoEl);
+	}
 
 	fragment.appendChild(locationInfoDiv);
 

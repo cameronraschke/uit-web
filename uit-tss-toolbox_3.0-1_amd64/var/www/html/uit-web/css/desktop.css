@@ -95,7 +95,6 @@ button {
   padding: var(--input-padding);
   border-radius: var(--border-radius-button);
   border: var(--border-width) solid var(--default-border-color);
-	background-color: var(--bg-color);
 	color: var(--text-color);
 	transition: 
 		background-color 0.3s ease,
@@ -216,15 +215,11 @@ th {
 td {
   vertical-align: middle;
   text-align: center;
-  padding: 1rem 0rem;
+  /* padding: 1rem 0rem; */
 }
 
 td > div.flex-container {
 	row-gap: 0.5rem;
-}
-
-.vertical-spacer {
-  margin: 5dvh 0 0 0;
 }
 
 .message {
@@ -302,7 +297,6 @@ td > div.flex-container {
 }
 
 .svg-button.cancel.subtle {
-	background-color: var(--bg-color);
 	background-image: url(/icons/general/close_small.svg);
 }
 
@@ -316,7 +310,6 @@ td > div.flex-container {
 }
 
 .svg-button.edit {
-	background-color: var(--bg-color);
 	background-image: url(/icons/general/edit_square.svg);
 }
 
@@ -340,7 +333,6 @@ td > div.flex-container {
 
 .svg-button.delete {
 	padding-left: 2rem;
-	background-color: var(--bg-color);
 	background-image: url(/icons/general/delete.svg);
 }
 .svg-button.delete:hover, .svg-button.delete:focus {
@@ -349,7 +341,6 @@ td > div.flex-container {
 }
 
 .svg-button.unpinned {
-	background-color: var(--bg-color);
 	background-image: url(/icons/general/add_location.svg);
 }
 .svg-button.unpinned:hover, .svg-button.unpinned:focus {
@@ -357,7 +348,6 @@ td > div.flex-container {
 }
 
 .svg-button.pinned {
-	background-color: var(--bg-color);
 	background-image: url(/icons/general/location_on.svg);
 }
 .svg-button.pinned:hover, .svg-button.pinned:focus {
@@ -366,7 +356,6 @@ td > div.flex-container {
 }
 
 .svg-button.print {
-	background-color: var(--bg-color);
 	background-image: url(/icons/general/print.svg);
 }
 .svg-button.print:hover, .svg-button.print:focus {
@@ -798,9 +787,13 @@ td > div.flex-container {
 }
 
 .hover-link {
+	font-weight: bold;
+	font-size: 1.2rem;
+	padding: 0.25rem;
 	color: var(--text-color);
 	text-decoration: underline;
 	transition: color 0.1s ease, text-decoration 0.1s ease;
+	margin: auto;
 }
 
 .hover-link:hover {

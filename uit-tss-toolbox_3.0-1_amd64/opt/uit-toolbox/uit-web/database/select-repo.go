@@ -1044,7 +1044,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			(CASE WHEN DATE(CURRENT_TIMESTAMP) < most_recent_checkout.return_date THEN TRUE ELSE FALSE END) AS "checkout_bool",
 			locations.note, 
 			locations.time AS last_updated, 
-			files.file_count
+			(CASE WHEN files.file_count IS NOT NULL AND files.file_count > 0 THEN files.file_count ELSE 0 END) AS "file_count"
 		FROM ids
 			LEFT JOIN locations ON ids.uuid = locations.client_uuid
 			LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
@@ -2162,6 +2162,9 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		return nil, fmt.Errorf("tagnumber cannot be nil")
 	}
 	const sqlCode = `
+	WITH files AS (
+		SELECT client_uuid, COUNT(*) AS file_count from client_images WHERE hidden = FALSE GROUP BY client_uuid
+	),
 	WITH os_installed_table AS (
 			SELECT * FROM (
 			SELECT
@@ -2259,7 +2262,8 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		historical_hardware_data.battery_charge_cycles,
 		historical_hardware_data.memory_serial,
 		historical_hardware_data.memory_capacity_kb,
-		historical_hardware_data.memory_speed_mhz
+		historical_hardware_data.memory_speed_mhz,
+		(CASE WHEN files.file_count IS NOT NULL AND files.file_count > 0 THEN files.file_count ELSE 0 END) AS "file_count"
 	FROM ids
 		LEFT JOIN locations ON ids.uuid = locations.client_uuid
 		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
@@ -2275,6 +2279,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		LEFT JOIN client_images ON ids.uuid = client_images.client_uuid
 		LEFT JOIN os_info ON ids.uuid = os_info.client_uuid
 		LEFT JOIN os_installed_table ON ids.uuid = os_installed_table.client_uuid
+		LEFT JOIN files ON ids.uuid = files.client_uuid
 	WHERE ids.tagnumber = $1
 	GROUP BY
 		ids.tagnumber,
@@ -2358,7 +2363,8 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		historical_hardware_data.battery_charge_cycles,
 		historical_hardware_data.memory_serial,
 		historical_hardware_data.memory_capacity_kb,
-		historical_hardware_data.memory_speed_mhz
+		historical_hardware_data.memory_speed_mhz,
+		files.file_count
 	;`
 
 	pgxPool, err := config.GetPGXPool()

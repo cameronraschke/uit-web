@@ -217,7 +217,6 @@ const advSearchParams: Record<string, AdvSearchFilterElement> = {
 // Table elements
 const inventoryTable = document.getElementById('inventory-table') as HTMLTableElement;
 const inventoryTableBody = document.getElementById('inventory-table-body') as HTMLTableSectionElement;
-const inventoryTableFooter = document.getElementById('inventory-table-footer') as HTMLTableSectionElement;
 const inventoryTablePagination = document.getElementById('inventory-table-pagination') as HTMLElement;
 const inventoryTableRowCountEl = document.getElementById('inventory-table-rowcount') as HTMLElement;
 const inventoryTableSearch = document.getElementById('inventory-table-search') as HTMLInputElement;
