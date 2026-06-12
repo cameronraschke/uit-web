@@ -133,14 +133,14 @@ function initLogout() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-	initLogout();
 	try {
 		const headerContent = await fetchHeader();
 		drawHeader(headerContent);
+		initLogout();
+		initHeader();
 	} catch (error) {
 		console.error("Error in drawHeader:", error);
 	}
-	initHeader();
 	for (const [relativePath, menuElementId] of pathMap) {
 		const menuItem = document.getElementById(menuElementId);
 		if (menuItem === null) {

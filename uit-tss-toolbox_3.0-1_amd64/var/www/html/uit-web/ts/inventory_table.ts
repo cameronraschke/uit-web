@@ -344,15 +344,15 @@ async function renderInventoryTable(minimumRowIndex = 0, maximumRowIndex = INVEN
 			idContainer.classList.add('flex-container', 'vertical', 'centered');
 			
 			// Tag number
-			const tagSpan = document.createElement('span');
+			const tagContainer = document.createElement('div');
 			const tagAnchor = document.createElement('a');
 			tagAnchor.classList.add('hover-link');
 			const tagURL = new URL(`client?tagnumber=${tagnumber}`, window.location.origin);
 			tagAnchor.href = tagURL.toString();
 			tagAnchor.target = '_blank';
 			tagAnchor.appendChild(document.createTextNode(tagnumber));
-			tagSpan.appendChild(tagAnchor);
-			idContainer.appendChild(tagSpan);
+			tagContainer.appendChild(tagAnchor);
+			idContainer.appendChild(tagContainer);
 
 			// System Serial
 			const serialSpan = document.createElement('span');
@@ -444,14 +444,19 @@ async function renderInventoryTable(minimumRowIndex = 0, maximumRowIndex = INVEN
 			softwareContainer.classList.add('flex-container', 'vertical', 'centered');
 
 			// OS Installed
+			const osContainer = document.createElement('div');
 			const osSpan = document.createElement('span');
+			const osVersionSpan = document.createElement('span');
 			if (osInstalled === true && inventoryRow.disk_removed === false) {
 				if (osName !== '' && osVersion !== '') {
-					osSpan.textContent = `${inventoryRow.os_name} (${inventoryRow.os_version})`;
+					osSpan.textContent = `${inventoryRow.os_name} `;
+					osVersionSpan.textContent = `(${inventoryRow.os_version})`;
 				} else if (osName !== '' && osVersion === '') {
-					osSpan.textContent = `${inventoryRow.os_name} (vers. N/A)`;
+					osSpan.textContent = `${inventoryRow.os_name} `;
+					osVersionSpan.textContent = '(vers. unknown)';
 				} else if (osName === '' && osVersion !== '') {
-					osSpan.textContent = `OS Installed (vers. ${inventoryRow.os_version})`;
+					osSpan.textContent = `OS Installed `;
+					osVersionSpan.textContent = `(vers. ${inventoryRow.os_version})`;
 				} else {
 					osSpan.textContent = 'Unknown OS Installed';
 				}
@@ -460,10 +465,15 @@ async function renderInventoryTable(minimumRowIndex = 0, maximumRowIndex = INVEN
 					osSpan.textContent = 'Disk Removed - No OS';
 				} else {
 					osSpan.textContent = 'OS Not Installed';
+					osSpan.style.fontStyle = 'italic';
 				}
-				osSpan.style.fontStyle = 'italic';
 			}
-			softwareContainer.appendChild(osSpan);
+			osContainer.appendChild(osSpan);
+			if (osVersionSpan.textContent !== '') {
+				osContainer.appendChild(document.createElement('br'));
+				osContainer.appendChild(osVersionSpan);
+			}
+			softwareContainer.appendChild(osContainer);
 
 			// AD Domain
 			const domainSpan = document.createElement('span');
@@ -668,14 +678,14 @@ async function renderInventoryTable(minimumRowIndex = 0, maximumRowIndex = INVEN
 						generalTooltip,
 						`Hardware Configuration Error(s): ${(hardwareErrArr.length > 0 ? hardwareErrArr.join(', ') : '') + (otherSoftwareErrArr.length > 0 ? (hardwareErrArr.length > 0 ? ', ' : '') + otherSoftwareErrArr.join(', ') : '')}`,
 					);
-					tagSpan.appendChild(generalTooltip);
+					tagContainer.appendChild(generalTooltip);
 				}
 				if (softwareErrArr.length > 0 || firmwareErrArr.length > 0) {
 					attachPortalTooltip(
 						softwareTooltip,
 						`Software Configuration Error(s): ${(softwareErrArr.length > 0 ? softwareErrArr.join(', ') : '') + (firmwareErrArr.length > 0 ? (softwareErrArr.length > 0 ? ', ' : '') + firmwareErrArr.join(', ') : '')}`,
 					);
-					osSpan.appendChild(softwareTooltip);
+					osContainer.appendChild(softwareTooltip);
 				}
 			}
 

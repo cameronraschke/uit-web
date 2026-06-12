@@ -469,8 +469,15 @@ td > div.flex-container {
 	align-items: center;
 	gap: var(--select-element-margin);
 	text-align: center;
-	span {
+	div {
+		position: relative;
 		width: 100%;
+		p, span {
+			text-align: center;
+		}
+		img {
+			position: absolute;
+		}
 	}
 }
 
@@ -501,8 +508,15 @@ td > div.flex-container {
 	align-items: center;
 	gap: var(--select-element-margin);
 	text-align: center;
-	span {
+	div {
+		position: relative;
 		width: 100%;
+		p, span {
+			text-align: center;
+		}
+		img {
+			position: absolute;
+		}
 	}
 }
 
@@ -805,9 +819,10 @@ td > div.flex-container {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-width: 1.1rem;
-	margin-left: 0.25rem;
-	padding-right: 0.4rem;
+	width: 1.5rem;
+	height: auto;
+	margin-left: 0.3rem;
+	margin-right: 0.3rem;
 	cursor: help;
 	user-select: none;
 }
