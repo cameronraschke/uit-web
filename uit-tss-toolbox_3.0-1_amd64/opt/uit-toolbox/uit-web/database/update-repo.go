@@ -1532,10 +1532,127 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 	INSERT INTO historical_disk_data (
 		time, 
 		transaction_uuid, 
+		updated_from_windows, 
 		client_uuid, 
-		updated_from_windows
+		disk_model, 
+		disk_type, 
+		disk_size_kb, 
+		disk_serial, 
+		disk_firmware_version, 
+		disk_reads_kb, 
+		disk_writes_kb, 
+		disk_power_cycles, 
+		disk_power_on_hours, 
+		disk_error_count
 	) VALUES (
-	 )`
+		CURRENT_TIMESTAMP, 
+		$1, 
+		$2, 
+		$3, 
+		$4, 
+		$5,
+		$6,
+		$7,
+		$8,
+		$9,
+		$10,
+		$11,
+		$12, 
+		$13
+	) ON CONFLICT (transaction_uuid) DO UPDATE SET
+	 	time = CURRENT_TIMESTAMP,
+		updated_from_windows = COALESCE(EXCLUDED.updated_from_windows, historical_disk_data.updated_from_windows),
+		client_uuid = COALESCE(EXCLUDED.client_uuid, historical_disk_data.client_uuid),
+		disk_model = COALESCE(EXCLUDED.disk_model, historical_disk_data.disk_model),
+		disk_type = COALESCE(EXCLUDED.disk_type, historical_disk_data.disk_type),
+		disk_size_kb = COALESCE(EXCLUDED.disk_size_kb, historical_disk_data.disk_size_kb),
+		disk_serial = COALESCE(EXCLUDED.disk_serial, historical_disk_data.disk_serial),
+		disk_firmware_version = COALESCE(EXCLUDED.disk_firmware_version, historical_disk_data.disk_firmware_version),
+		disk_reads_kb = COALESCE(EXCLUDED.disk_reads_kb, historical_disk_data.disk_reads_kb),
+		disk_writes_kb = COALESCE(EXCLUDED.disk_writes_kb, historical_disk_data.disk_writes_kb),
+		disk_power_cycles = COALESCE(EXCLUDED.disk_power_cycles, historical_disk_data.disk_power_cycles),
+		disk_power_on_hours = COALESCE(EXCLUDED.disk_power_on_hours, historical_disk_data.disk_power_on_hours),
+		disk_error_count = COALESCE(EXCLUDED.disk_error_count, historical_disk_data.disk_error_count)	
+	;`
+
+	historicalDiskDataResult, err := tx.ExecContext(ctx, historicalDiskDataInsertSQL,
+		hardwareData.TransactionUUID,
+		false,
+		clientUUID,
+		ptrToNullString(hardwareData.DiskModel),
+		ptrToNullString(hardwareData.DiskType),
+		ptrToNullInt64(hardwareData.DiskSize),
+		ptrToNullString(hardwareData.DiskSerial),
+		ptrToNullString(hardwareData.DiskFirmware),
+		ptrToNullInt64(hardwareData.DiskReadsKB),
+		ptrToNullInt64(hardwareData.DiskWritesKB),
+		ptrToNullInt64(hardwareData.DiskPowerCycles),
+		ptrToNullInt64(hardwareData.DiskPowerOnHours),
+		ptrToNullInt64(hardwareData.DiskErrors),
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(historicalDiskDataResult, 1); err != nil {
+		return err
+	}
+
+	const historicalBatteryDataTableInsertSQL = `
+	INSERT INTO historical_battery_data (
+		time,
+		transaction_uuid,
+		updated_from_windows,
+		client_uuid,
+		battery_serial,
+		battery_manufacturer,
+		battery_model,
+		battery_charge_cycles,
+		battery_design_capacity,
+		battery_manufacture_date,
+		battery_current_max_capacity
+	) VALUES (
+		CURRENT_TIMESTAMP,
+		$1,
+		$2,
+		$3,
+		$4,
+		$5,
+		$6,
+		$7,
+		$8,
+		$9,
+		$10
+	) ON CONFLICT (transaction_uuid) DO UPDATE SET
+		time = CURRENT_TIMESTAMP,
+		updated_from_windows = COALESCE(EXCLUDED.updated_from_windows, historical_battery_data.updated_from_windows),
+		client_uuid = COALESCE(EXCLUDED.client_uuid, historical_battery_data.client_uuid),
+		battery_serial = COALESCE(EXCLUDED.battery_serial, historical_battery_data.battery_serial),
+		battery_manufacturer = COALESCE(EXCLUDED.battery_manufacturer, historical_battery_data.battery_manufacturer),
+		battery_model = COALESCE(EXCLUDED.battery_model, historical_battery_data.battery_model),
+		battery_charge_cycles = COALESCE(EXCLUDED.battery_charge_cycles, historical_battery_data.battery_charge_cycles),
+		battery_design_capacity = COALESCE(EXCLUDED.battery_design_capacity, historical_battery_data.battery_design_capacity),
+		battery_manufacture_date = COALESCE(EXCLUDED.battery_manufacture_date, historical_battery_data.battery_manufacture_date),
+		battery_current_max_capacity = COALESCE(EXCLUDED.battery_current_max_capacity, historical_battery_data.battery_current_max_capacity)
+	;`
+
+	batteryHardwareDataSQLResult, err := tx.ExecContext(ctx, historicalBatteryDataTableInsertSQL,
+		hardwareData.TransactionUUID,
+		false,
+		clientUUID,
+		ptrToNullString(hardwareData.BatterySerial),
+		ptrToNullString(hardwareData.BatteryManufacturer),
+		ptrToNullString(hardwareData.BatteryModel),
+		ptrToNullInt64(hardwareData.BatteryChargeCycles),
+		ptrToNullFloat64(hardwareData.BatteryDesignCapacity),
+		ptrToNullDate(hardwareData.BatteryManufactureDate),
+		ptrToNullFloat64(hardwareData.BatteryCurrentMaxCapacity),
+	)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+	if err := VerifyRowsAffected(batteryHardwareDataSQLResult, 1); err != nil {
+		return err
+	}
 
 	const historicalHardwareDataTable = `INSERT INTO historical_hardware_data 
 		(
@@ -1544,23 +1661,6 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			client_uuid, 
 			ethernet_mac, 
 			wifi_mac, 
-			disk_model, 
-			disk_type, 
-			disk_size_kb, 
-			disk_serial, 
-			disk_writes_kb, 
-			disk_reads_kb, 
-			disk_power_on_hours, 
-			disk_errors, 
-			disk_power_cycles, 
-			disk_firmware, 
-			battery_model, 
-			battery_serial, 
-			battery_charge_cycles, 
-			battery_current_max_capacity, 
-			battery_design_capacity, 
-			battery_manufacturer, 
-			battery_manufacture_date, 
 			memory_serial, 
 			memory_capacity_kb, 
 			memory_speed_mhz 
@@ -1572,47 +1672,12 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			$4,
 			$5,
 			$6,
-			$7,
-			$8,
-			$9,
-			$10,
-			$11,
-			$12,
-			$13,
-			$14,
-			$15,
-			$16,
-			$17,
-			$18,
-			$19,
-			$20,
-			$21,
-			$22,
-			$23,
-			$24
-		) ON CONFLICT (transaction_uuid) 
-		DO UPDATE SET
+			$7
+		) ON CONFLICT (transaction_uuid) DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
 			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_hardware_data.client_uuid),
 			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, historical_hardware_data.ethernet_mac),
 			wifi_mac =  COALESCE(EXCLUDED.wifi_mac, historical_hardware_data.wifi_mac),
-			disk_model = COALESCE(EXCLUDED.disk_model, historical_hardware_data.disk_model),
-			disk_type = COALESCE(EXCLUDED.disk_type, historical_hardware_data.disk_type),
-			disk_size_kb = COALESCE(EXCLUDED.disk_size_kb, historical_hardware_data.disk_size_kb),
-			disk_serial = COALESCE(EXCLUDED.disk_serial, historical_hardware_data.disk_serial),
-			disk_writes_kb = COALESCE(EXCLUDED.disk_writes_kb, historical_hardware_data.disk_writes_kb),
-			disk_reads_kb = COALESCE(EXCLUDED.disk_reads_kb, historical_hardware_data.disk_reads_kb),
-			disk_power_on_hours = COALESCE(EXCLUDED.disk_power_on_hours, historical_hardware_data.disk_power_on_hours),
-			disk_errors = COALESCE(EXCLUDED.disk_errors, historical_hardware_data.disk_errors),
-			disk_power_cycles = COALESCE(EXCLUDED.disk_power_cycles, historical_hardware_data.disk_power_cycles),
-			disk_firmware = COALESCE(EXCLUDED.disk_firmware, historical_hardware_data.disk_firmware),
-			battery_model = COALESCE(EXCLUDED.battery_model, historical_hardware_data.battery_model),
-			battery_serial = COALESCE(EXCLUDED.battery_serial, historical_hardware_data.battery_serial),
-			battery_charge_cycles = COALESCE(EXCLUDED.battery_charge_cycles, historical_hardware_data.battery_charge_cycles),
-			battery_current_max_capacity = COALESCE(EXCLUDED.battery_current_max_capacity, historical_hardware_data.battery_current_max_capacity),
-			battery_design_capacity = COALESCE(EXCLUDED.battery_design_capacity, historical_hardware_data.battery_design_capacity),
-			battery_manufacturer = COALESCE(EXCLUDED.battery_manufacturer, historical_hardware_data.battery_manufacturer),
-			battery_manufacture_date = COALESCE(EXCLUDED.battery_manufacture_date, historical_hardware_data.battery_manufacture_date),
 			memory_serial = COALESCE(EXCLUDED.memory_serial, historical_hardware_data.memory_serial),
 			memory_capacity_kb = COALESCE(EXCLUDED.memory_capacity_kb, historical_hardware_data.memory_capacity_kb),
 			memory_speed_mhz = COALESCE(EXCLUDED.memory_speed_mhz, historical_hardware_data.memory_speed_mhz)
@@ -1624,23 +1689,6 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		clientUUID,
 		ptrToNullString(hardwareData.EthernetMAC),
 		ptrToNullString(hardwareData.WiFiMAC),
-		ptrToNullString(hardwareData.DiskModel),
-		ptrToNullString(hardwareData.DiskType),
-		ptrToNullInt64(hardwareData.DiskSize),
-		ptrToNullString(hardwareData.DiskSerial),
-		ptrToNullInt64(hardwareData.DiskWritesKB),
-		ptrToNullInt64(hardwareData.DiskReadsKB),
-		ptrToNullInt64(hardwareData.DiskPowerOnHours),
-		ptrToNullInt64(hardwareData.DiskErrors),
-		ptrToNullInt64(hardwareData.DiskPowerCycles),
-		ptrToNullString(hardwareData.DiskFirmware),
-		ptrToNullString(hardwareData.BatteryModel),
-		ptrToNullString(hardwareData.BatterySerial),
-		ptrToNullInt64(hardwareData.BatteryChargeCycles),
-		ptrToNullFloat64(hardwareData.BatteryCurrentMaxCapacity),
-		ptrToNullFloat64(hardwareData.BatteryDesignCapacity),
-		ptrToNullString(hardwareData.BatteryManufacturer),
-		ptrToNullDate(hardwareData.BatteryManufactureDate),
 		ptrToNullString(hardwareData.MemorySerial),
 		ptrToNullInt64(hardwareData.MemoryCapacityKB),
 		ptrToNullInt64(hardwareData.MemorySpeedMHz),
@@ -2020,6 +2068,11 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		}
 	}()
 
+	clientUUID, err := lockClientRowBySystemSerial(ctx, tx, windowsUpdateDTO.SystemSerial)
+	if err != nil {
+		return fmt.Errorf("%s: %w", "error while locking client row by system serial", err)
+	}
+
 	// hardware_data upsert
 	const hardwareDataSql = `
 		INSERT INTO hardware_data (
@@ -2027,7 +2080,6 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			transaction_uuid,
 			updated_from_windows,
 			client_uuid,
-			tagnumber,
 			system_serial,
 			ethernet_mac,
 			wifi_mac,
@@ -2040,8 +2092,6 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		) VALUES (
 			CURRENT_TIMESTAMP,
 			$1,
-			TRUE,
-			(SELECT uuid FROM ids WHERE tagnumber = $2 and system_serial = $3),
 			$2,
 			$3,
 			$4,
@@ -2050,13 +2100,13 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			$7,
 			$8,
 			$9,
-			$10, 
-			$11
+			$10,
+			$11, 
+			$12
 		) ON CONFLICT (client_uuid) DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
 			transaction_uuid = EXCLUDED.transaction_uuid,
 			updated_from_windows = EXCLUDED.updated_from_windows,
-			tagnumber = COALESCE(EXCLUDED.tagnumber, hardware_data.tagnumber),
 			system_serial = COALESCE(EXCLUDED.system_serial, hardware_data.system_serial),
 			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, hardware_data.ethernet_mac),
 			wifi_mac = COALESCE(EXCLUDED.wifi_mac, hardware_data.wifi_mac),
@@ -2070,7 +2120,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 
 	hardwareDataResult, err := tx.ExecContext(ctx, hardwareDataSql,
 		toNullUUID(transactionUUID),
-		toNullInt64(windowsUpdateDTO.Tagnumber),
+		true,
+		clientUUID,
 		toNullString(windowsUpdateDTO.SystemSerial),
 		ptrToNullString(windowsUpdateDTO.EthernetMACAddr),
 		ptrToNullString(windowsUpdateDTO.WifiMACAddr),
@@ -2090,38 +2141,35 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 
 	// client_health upsert
 	const clientHealthSql = `
-		INSERT INTO client_health
-			(
-				time, 
-				transaction_uuid, 
-				client_uuid, 
-				battery_health_pcnt, 
-				disk_free_space_kb, 
-				last_hardware_check, 
-				updated_from_windows
-			) VALUES (
+		INSERT INTO client_health (
+			time, 
+			transaction_uuid, 
+			updated_from_windows, 
+			client_uuid, 
+			battery_health_pcnt, 
+			disk_free_space_kb, 
+			last_hardware_check 
+		) VALUES (
 			CURRENT_TIMESTAMP, 
 			$1, 
-			(SELECT uuid FROM ids WHERE tagnumber = $2 AND system_serial = $3 ORDER BY time DESC LIMIT 1), 
-			$4,
-			$5,
-			$6, 
-			TRUE
-		)
-		ON CONFLICT (client_uuid)
-			DO UPDATE SET
+			$2, 
+			$3, 
+			$4, 
+			$5, 
+			$6 
+		) ON CONFLICT (client_uuid) DO UPDATE SET
 				time = CURRENT_TIMESTAMP,
 				transaction_uuid = EXCLUDED.transaction_uuid,
+				updated_from_windows = EXCLUDED.updated_from_windows, 
 				battery_health_pcnt = COALESCE(EXCLUDED.battery_health_pcnt, client_health.battery_health_pcnt),
 				disk_free_space_kb = COALESCE(EXCLUDED.disk_free_space_kb, client_health.disk_free_space_kb),
-				last_hardware_check = COALESCE(EXCLUDED.last_hardware_check, client_health.last_hardware_check),
-				updated_from_windows = EXCLUDED.updated_from_windows
+				last_hardware_check = COALESCE(EXCLUDED.last_hardware_check, client_health.last_hardware_check)
 	;`
 
 	clientHealthResult, err := tx.ExecContext(ctx, clientHealthSql,
 		toNullUUID(transactionUUID),
-		toNullInt64(windowsUpdateDTO.Tagnumber),
-		toNullString(windowsUpdateDTO.SystemSerial),
+		true,
+		clientUUID,
 		ptrToNullFloat64(windowsUpdateDTO.BatteryHealthPcnt),
 		ptrToNullInt64(windowsUpdateDTO.DiskFreeSpaceKB),
 		toNullTime(windowsUpdateDTO.LastHardwareCheck),
@@ -2133,71 +2181,42 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		return err
 	}
 
-	// // historical_hardware_data insert
-	// const clientHistoricalHealthSql = `
-	// 	INSERT INTO historical_hardware_data (
-	// 			time,
-	// 			transaction_uuid,
-	// 			updated_from_windows,
-	// 			client_uuid,
-	// 			ethernet_mac,
-	// 			wifi_mac,
-	// 			disk_model,
-	// 			disk_type,
-	// 			disk_size_kb,
-	// 			battery_serial,
-	// 			battery_manufacturer,
-	// 			battery_design_capacity,
-	// 			battery_current_max_capacity,
-	// 			battery_charge_cycles,
-	// 			battery_health,
-	// 			memory_capacity_kb,
-	// 			memory_speed_mhz
-	// 		) VALUES (
-	// 			CURRENT_TIMESTAMP,
-	// 			$1,
-	// 			TRUE,
-	// 			(SELECT uuid FROM ids WHERE tagnumber = $2 and system_serial = $3),
-	// 			$4,
-	// 			$5,
-	// 			$6,
-	// 			$7,
-	// 			$8,
-	// 			$9,
-	// 			$10,
-	// 			$11,
-	// 			$12,
-	// 			$13,
-	// 			$14,
-	// 			$15,
-	// 			$16
-	// 		) ON CONFLICT DO NOTHING
-	// ;`
+	if windowsUpdateDTO.DiskModel != nil && windowsUpdateDTO.DiskType != nil && windowsUpdateDTO.DiskSizeKB != nil {
+		const diskDataInsertSQL = `
+		INSERT INTO historical_disk_data (
+			time,
+			transaction_uuid,
+			updated_from_windows,
+			client_uuid,
+			disk_model,
+			disk_type,
+			disk_size_kb
+		) VALUES (
+			CURRENT_TIMESTAMP,
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6
+		)
+		;`
 
-	// historicalClientHealthRes, err := tx.ExecContext(ctx, clientHistoricalHealthSql,
-	// 	toNullUUID(transactionUUID),
-	// 	toNullInt64(windowsUpdateDTO.Tagnumber),
-	// 	toNullString(windowsUpdateDTO.SystemSerial),
-	// 	ptrToNullString(windowsUpdateDTO.EthernetMACAddr),
-	// 	ptrToNullString(windowsUpdateDTO.WifiMACAddr),
-	// 	ptrToNullString(windowsUpdateDTO.DiskModel),
-	// 	ptrToNullString(windowsUpdateDTO.DiskType),
-	// 	ptrToNullInt64(windowsUpdateDTO.DiskSizeKB),
-	// 	ptrToNullString(windowsUpdateDTO.BatterySerial),
-	// 	ptrToNullString(windowsUpdateDTO.BatteryManufacturer),
-	// 	ptrToNullInt64(windowsUpdateDTO.BatteryDesignCapacity),
-	// 	ptrToNullInt64(windowsUpdateDTO.BatteryCurrentMaxCapacity),
-	// 	ptrToNullInt64(windowsUpdateDTO.BatteryChargeCycleCount),
-	// 	ptrToNullFloat64(windowsUpdateDTO.BatteryHealthPcnt),
-	// 	ptrToNullInt64(windowsUpdateDTO.MemoryCapacityKB),
-	// 	ptrToNullInt64(windowsUpdateDTO.MemorySpeedMHz),
-	// )
-	// if err != nil {
-	// 	return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
-	// }
-	// if err := VerifyRowsAffected(historicalClientHealthRes, 1); err != nil {
-	// 	return err
-	// }
+		diskDataResult, err := tx.ExecContext(ctx, diskDataInsertSQL,
+			toNullUUID(transactionUUID),
+			true,
+			clientUUID,
+			ptrToNullString(windowsUpdateDTO.DiskModel),
+			ptrToNullString(windowsUpdateDTO.DiskType),
+			ptrToNullInt64(windowsUpdateDTO.DiskSizeKB),
+		)
+		if err != nil {
+			return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+		}
+		if err := VerifyRowsAffected(diskDataResult, 1); err != nil {
+			return err
+		}
+	}
 
 	// os_info upsert
 	const osInfoSQLCode = `

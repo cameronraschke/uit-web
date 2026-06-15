@@ -58,6 +58,8 @@ func ToTimePtr(v sql.NullTime) *time.Time {
 func ptrToNullString(p *string) sql.NullString {
 	if p == nil {
 		return sql.NullString{}
+	} else if *p == "" {
+		return sql.NullString{}
 	}
 	return sql.NullString{String: *p, Valid: true}
 }
