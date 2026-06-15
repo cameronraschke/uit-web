@@ -771,3 +771,27 @@ CREATE TABLE IF NOT EXISTS historical_firmware_data (
 		ON UPDATE CASCADE
 		ON DELETE SET NULL
 );
+
+CREATE TABLE historical_disk_data (
+	time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+	transaction_uuid UUID DEFAULT uuidv7() PRIMARY KEY, 
+	updated_from_windows BOOLEAN NOT NULL, 
+	client_uuid UUID NOT NULL, 
+	disk_model VARCHAR(36) DEFAULT NULL, 
+	disk_type VARCHAR(4) DEFAULT NULL, 
+	disk_size_kb BIGINT DEFAULT NULL, 
+	disk_serial VARCHAR(128) DEFAULT NULL, 
+	disk_firmware_version VARCHAR(128) DEFAULT NULL,
+	disk_reads_kb BIGINT DEFAULT NULL, 
+	disk_writes_kb BIGINT DEFAULT NULL, 
+	disk_power_cycles INTEGER DEFAULT NULL, 
+	disk_power_on_hours INTEGER DEFAULT NULL, 
+	disk_error_count INTEGER DEFAULT NULL, 
+	disk_errors TEXT[] DEFAULT NULL, 
+
+	CONSTRAINT historical_disk_data_client_uuid_fkey
+		FOREIGN KEY (client_uuid)
+			REFERENCES ids(uuid)
+		ON UPDATE CASCADE
+		ON DELETE SET NULL
+);
