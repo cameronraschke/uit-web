@@ -772,7 +772,7 @@ CREATE TABLE IF NOT EXISTS historical_firmware_data (
 		ON DELETE SET NULL
 );
 
-CREATE TABLE historical_disk_data (
+CREATE TABLE IF NOT EXISTS historical_disk_data (
 	time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, 
 	transaction_uuid UUID DEFAULT uuidv7() PRIMARY KEY, 
 	updated_from_windows BOOLEAN NOT NULL, 
@@ -830,7 +830,7 @@ CREATE TABLE historical_disk_data (
 -- 	WHERE time IS NOT NULL
 -- 	ORDER BY time DESC NULLS LAST;
 
-CREATE TABLE historical_battery_data (
+CREATE TABLE IF NOT EXISTS historical_battery_data (
 	time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, 
 	transaction_uuid UUID DEFAULT uuidv7() PRIMARY KEY,  
 	updated_from_windows BOOLEAN NOT NULL, 
