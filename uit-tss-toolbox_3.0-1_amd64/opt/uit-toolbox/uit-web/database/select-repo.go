@@ -1328,11 +1328,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			WHERE 
 				historical_battery_data.battery_design_capacity IS NOT NULL 
 				AND historical_battery_data.battery_current_max_capacity IS NOT NULL 
-			GROUP BY 
-				hardware_data.system_model, 
-				historical_battery_data.client_uuid, 
-				historical_battery_data.battery_current_max_capacity, 
-				historical_battery_data.battery_design_capacity
 		)
 		GROUP BY system_model
 	),
@@ -1347,8 +1342,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			WHERE
 				historical_battery_data.battery_design_capacity IS NOT NULL 
 				AND historical_battery_data.battery_current_max_capacity IS NOT NULL
-				GROUP BY historical_battery_data.client_uuid, historical_battery_data.time, historical_battery_data.battery_current_max_capacity, historical_battery_data.battery_design_capacity
-				ORDER BY historical_battery_data.client_uuid DESC NULLS LAST
 		) t1 WHERE t1.row_num = 1
 	),
 	latest_historical_disk_data AS (
@@ -1372,7 +1365,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		) t1 WHERE t1.row_num = 1
 	),
 	latest_completed_job AS (
-			SELECT * FROM 
+		SELECT * FROM 
 			(SELECT
 			ROW_NUMBER() OVER (PARTITION BY jobstats.client_uuid ORDER BY jobstats.time DESC NULLS LAST) AS "row_num",
 			jobstats.client_uuid,
@@ -1390,19 +1383,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		WHERE 
 			(jobstats.job_cancelled IS NULL OR jobstats.job_cancelled = FALSE)
 			AND (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
-		GROUP BY
-			jobstats.client_uuid,
-			jobstats.tagnumber,
-			jobstats.time,
-			jobstats.erase_completed,
-			jobstats.erase_mode,
-			jobstats.erase_time,
-			jobstats.clone_completed,
-			jobstats.clone_image,
-			jobstats.clone_master,
-			jobstats.clone_time,
-			jobstats.job_cancelled
-			ORDER BY jobstats.tagnumber, "row_num"
 		) t1 WHERE t1.row_num = 1
 	),
 	newest_image AS (
@@ -1415,8 +1395,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			LEFT JOIN hardware_data ON jobstats.tagnumber = (SELECT tagnumber from ids where uuid = hardware_data.client_uuid)
 			WHERE
 				jobstats.clone_master = TRUE 
-				GROUP BY hardware_data.system_model, jobstats.time
-				ORDER BY jobstats.time DESC NULLS LAST
 		) t1 WHERE t1.row_num = 1
 	),
 	job_queue_position AS (
@@ -1516,8 +1494,8 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		'0' AS "network_usage",
 		job_queue.battery_charge_pcnt,
 		job_queue.battery_status,
-		ROUND((historical_battery_data.battery_current_max_capacity::decimal / battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt",
-		ROUND((historical_battery_data.battery_current_max_capacity::decimal / battery_design_capacity::decimal * 100) - avg_battery_health.avg_battery_health_pcnt, 2) AS "battery_health_deviation",
+		current_battery_health.battery_health_pcnt AS "battery_health_pcnt",
+		ROUND(current_battery_health.battery_health_pcnt - avg_battery_health.avg_battery_health_pcnt, 2) AS "battery_health_deviation",
 		NULL AS "plugged_in",
 		job_queue.watts_now AS "power_usage"
 	FROM ids
@@ -1525,7 +1503,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN job_queue ON ids.uuid = job_queue.client_uuid
 	LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
 	LEFT JOIN latest_historical_disk_data ON ids.uuid = latest_historical_disk_data.client_uuid
-	LEFT JOIN historical_battery_data ON ids.uuid = historical_battery_data.client_uuid
 	LEFT JOIN latest_firmware_data ON ids.uuid = latest_firmware_data.client_uuid
 	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
 	LEFT JOIN current_battery_health ON ids.uuid = current_battery_health.client_uuid
