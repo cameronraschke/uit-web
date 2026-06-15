@@ -1337,16 +1337,19 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		GROUP BY system_model
 	),
 	current_battery_health AS (
-		SELECT 
-			DISTINCT ON (historical_battery_data.client_uuid) historical_battery_data.client_uuid,
-			ROUND((historical_battery_data.battery_current_max_capacity::decimal / historical_battery_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt"
-		FROM 
-			historical_battery_data
-		WHERE
-			historical_battery_data.battery_design_capacity IS NOT NULL 
-			AND historical_battery_data.battery_current_max_capacity IS NOT NULL
-			GROUP BY historical_battery_data.client_uuid, historical_battery_data.battery_current_max_capacity, historical_battery_data.battery_design_capacity
-			ORDER BY historical_battery_data.client_uuid DESC NULLS LAST
+		SELECT * FROM (
+			SELECT 
+				historical_battery_data.client_uuid,
+				ROUND((historical_battery_data.battery_current_max_capacity::decimal / historical_battery_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt",
+				ROW_NUMBER() OVER (PARTITION BY historical_battery_data.client_uuid ORDER BY historical_battery_data.time DESC NULLS LAST) AS "row_num"
+			FROM 
+				historical_battery_data
+			WHERE
+				historical_battery_data.battery_design_capacity IS NOT NULL 
+				AND historical_battery_data.battery_current_max_capacity IS NOT NULL
+				GROUP BY historical_battery_data.client_uuid, historical_battery_data.time, historical_battery_data.battery_current_max_capacity, historical_battery_data.battery_design_capacity
+				ORDER BY historical_battery_data.client_uuid DESC NULLS LAST
+		) t1 WHERE t1.row_num = 1
 	),
 	latest_historical_disk_data AS (
 		SELECT * FROM (
