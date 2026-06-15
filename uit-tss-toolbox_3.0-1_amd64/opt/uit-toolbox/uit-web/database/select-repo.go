@@ -1513,8 +1513,8 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		'0' AS "network_usage",
 		job_queue.battery_charge_pcnt,
 		job_queue.battery_status,
-		ROUND((battery_current_max_capacity::decimal / battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt",
-		ROUND(current_battery_health.battery_health_pcnt - avg_battery_health.avg_battery_health_pcnt, 2) AS "battery_health_deviation",
+		ROUND((historical_battery_data.battery_current_max_capacity::decimal / battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt",
+		ROUND((historical_battery_data.battery_current_max_capacity::decimal / battery_design_capacity::decimal * 100) - avg_battery_health.avg_battery_health_pcnt, 2) AS "battery_health_deviation",
 		NULL AS "plugged_in",
 		job_queue.watts_now AS "power_usage"
 	FROM ids
@@ -1522,6 +1522,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN job_queue ON ids.uuid = job_queue.client_uuid
 	LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
 	LEFT JOIN latest_historical_disk_data ON ids.uuid = latest_historical_disk_data.client_uuid
+	LEFT JOIN historical_battery_data ON ids.uuid = historical_battery_data.client_uuid
 	LEFT JOIN latest_firmware_data ON ids.uuid = latest_firmware_data.client_uuid
 	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
 	LEFT JOIN current_battery_health ON ids.uuid = current_battery_health.client_uuid
