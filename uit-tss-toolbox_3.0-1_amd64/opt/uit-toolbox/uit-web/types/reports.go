@@ -59,10 +59,3 @@ type AllLocationsRow struct {
 	LocationFormatted *string    `json:"location_formatted"`
 	LocationCount     *int64     `json:"location_count"`
 }
-
-type ClientReportRow struct {
-	Tagnumber              *int64     `json:"tagnumber"`
-	BatteryHealthPcnt      *float64   `json:"battery_health_pcnt"`
-	BatteryHealthDeviation *float64   `json:"battery_health_deviation"`
-	BatteryHealthTimestamp *time.Time `json:"battery_health_timestamp"`
-}

@@ -1370,7 +1370,7 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 		return err
 	}
 
-	const clientHealthCheckHistorySQL = `
+	const clientFirmwareTableInsertSQL = `
 		INSERT INTO 
 			historical_firmware_data (
 				time, 
@@ -1392,7 +1392,7 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_firmware_data.bios_release_date)
 	;`
 
-	sqlResult, err = tx.ExecContext(ctx, clientHealthCheckHistorySQL,
+	sqlResult, err = tx.ExecContext(ctx, clientFirmwareTableInsertSQL,
 		toNullString(healthCheck.TransactionUUID),
 		clientUUID,
 		ptrToNullString(healthCheck.BIOSVersion),
@@ -1408,6 +1408,7 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 	return nil
 }
 
+// Function to be used from Linux request
 func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error) {
 	if hardwareData == nil || hardwareData.SystemSerial == nil || strings.TrimSpace(hardwareData.TransactionUUID) == "" {
 		return fmt.Errorf("hardwareData is invalid")
@@ -1527,33 +1528,42 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		return err
 	}
 
+	const historicalDiskDataInsertSQL = `
+	INSERT INTO historical_disk_data (
+		time, 
+		transaction_uuid, 
+		client_uuid, 
+		updated_from_windows
+	) VALUES (
+	 )`
+
 	const historicalHardwareDataTable = `INSERT INTO historical_hardware_data 
 		(
-			transaction_uuid,
-			time,
-			client_uuid,
+			transaction_uuid, 
+			time, 
+			client_uuid, 
 			ethernet_mac, 
 			wifi_mac, 
-			disk_model,
-			disk_type,
-			disk_size_kb,
-			disk_serial,
-			disk_writes_kb,
-			disk_reads_kb,
-			disk_power_on_hours,
-			disk_errors,
-			disk_power_cycles,
-			disk_firmware,
-			battery_model,
-			battery_serial,
-			battery_charge_cycles,
-			battery_current_max_capacity,
-			battery_design_capacity,
-			battery_manufacturer,
-			battery_manufacture_date,
-			memory_serial,
-			memory_capacity_kb,
-			memory_speed_mhz
+			disk_model, 
+			disk_type, 
+			disk_size_kb, 
+			disk_serial, 
+			disk_writes_kb, 
+			disk_reads_kb, 
+			disk_power_on_hours, 
+			disk_errors, 
+			disk_power_cycles, 
+			disk_firmware, 
+			battery_model, 
+			battery_serial, 
+			battery_charge_cycles, 
+			battery_current_max_capacity, 
+			battery_design_capacity, 
+			battery_manufacturer, 
+			battery_manufacture_date, 
+			memory_serial, 
+			memory_capacity_kb, 
+			memory_speed_mhz 
 		) VALUES (
 			$1,
 			CURRENT_TIMESTAMP,

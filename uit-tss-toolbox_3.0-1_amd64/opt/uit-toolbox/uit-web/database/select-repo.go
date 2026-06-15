@@ -26,7 +26,6 @@ type Select interface {
 	GetJobQueueOverview(ctx context.Context) (*types.JobQueueOverview, error)
 	GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteRow, error)
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
-	GetClientBatteryReport(ctx context.Context) ([]types.ClientReportRow, error)
 	GetAllJobs(ctx context.Context) ([]types.AllJobsRow, error)
 	GetAllLocations(ctx context.Context) ([]types.AllLocationsRow, error)
 	GetAllDeviceTypes(ctx context.Context) ([]types.DeviceType, error)
@@ -1321,46 +1320,42 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	WITH avg_battery_health AS (
 		SELECT system_model, AVG(avg_battery_health_pcnt) AS "avg_battery_health_pcnt" 
 		FROM (
-			SELECT hardware_data.system_model, (historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100) AS "avg_battery_health_pcnt" 
+			SELECT hardware_data.system_model, (historical_battery_data.battery_current_max_capacity::decimal / historical_battery_data.battery_design_capacity::decimal * 100) AS "avg_battery_health_pcnt" 
 			FROM 
-				historical_hardware_data 
+				historical_battery_data 
 			LEFT JOIN 
-				hardware_data ON historical_hardware_data.client_uuid = hardware_data.client_uuid
+				hardware_data ON historical_battery_data.client_uuid = hardware_data.client_uuid
 			WHERE 
-				historical_hardware_data.battery_design_capacity IS NOT NULL 
-				AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
-				AND historical_hardware_data.updated_from_windows = FALSE
+				historical_battery_data.battery_design_capacity IS NOT NULL 
+				AND historical_battery_data.battery_current_max_capacity IS NOT NULL 
 			GROUP BY 
-				hardware_data.system_model,
-				historical_hardware_data.client_uuid, 
-				historical_hardware_data.battery_current_max_capacity, 
-				historical_hardware_data.battery_design_capacity
+				hardware_data.system_model, 
+				historical_battery_data.client_uuid, 
+				historical_battery_data.battery_current_max_capacity, 
+				historical_battery_data.battery_design_capacity
 		)
 		GROUP BY system_model
 	),
 	current_battery_health AS (
 		SELECT 
-			DISTINCT ON (historical_hardware_data.client_uuid) historical_hardware_data.client_uuid,
-			ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt"
+			DISTINCT ON (historical_battery_data.client_uuid) historical_battery_data.client_uuid,
+			ROUND((historical_battery_data.battery_current_max_capacity::decimal / historical_battery_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt"
 		FROM 
-			historical_hardware_data
+			historical_battery_data
 		WHERE
-			historical_hardware_data.battery_design_capacity IS NOT NULL 
-			AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
-			GROUP BY historical_hardware_data.client_uuid, historical_hardware_data.battery_current_max_capacity, historical_hardware_data.battery_design_capacity
-			ORDER BY historical_hardware_data.client_uuid DESC NULLS LAST
+			historical_battery_data.battery_design_capacity IS NOT NULL 
+			AND historical_battery_data.battery_current_max_capacity IS NOT NULL
+			GROUP BY historical_battery_data.client_uuid, historical_battery_data.battery_current_max_capacity, historical_battery_data.battery_design_capacity
+			ORDER BY historical_battery_data.client_uuid DESC NULLS LAST
 	),
-	latest_historical_hardware_data AS (
+	latest_historical_disk_data AS (
 		SELECT * FROM (
 			SELECT 
-				ROW_NUMBER() OVER (PARTITION BY historical_hardware_data.client_uuid ORDER BY historical_hardware_data.time DESC NULLS LAST) AS "row_num", historical_hardware_data.time, 
-				historical_hardware_data.client_uuid, 
-				historical_hardware_data.disk_type, 
-				historical_hardware_data.disk_size_kb AS "disk_capacity",
-				historical_hardware_data.disk_model,
-				historical_hardware_data.battery_design_capacity, 
-				historical_hardware_data.battery_current_max_capacity
-			FROM historical_hardware_data
+				ROW_NUMBER() OVER (PARTITION BY historical_disk_data.client_uuid ORDER BY historical_disk_data.time DESC NULLS LAST) AS "row_num", historical_disk_data.time, 
+				historical_disk_data.client_uuid, 
+				historical_disk_data.disk_model, 
+				historical_disk_data.disk_size_kb AS "disk_capacity"
+			FROM historical_disk_data
 		) t1 WHERE t1.row_num = 1
 	),
 	latest_firmware_data AS (
@@ -1507,7 +1502,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		'0' AS "disk_usage",
 		job_queue.disk_temp,
 		static_disk_stats.disk_type,
-		latest_historical_hardware_data.disk_capacity AS "disk_size_kb",
+		latest_historical_disk_data.disk_capacity AS "disk_size_kb",
 		'80' AS "max_disk_temp",
 		(CASE
 			WHEN job_queue.disk_temp > 80 THEN TRUE
@@ -1526,7 +1521,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN locations ON ids.uuid = locations.client_uuid
 	LEFT JOIN job_queue ON ids.uuid = job_queue.client_uuid
 	LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
-	LEFT JOIN latest_historical_hardware_data ON ids.uuid = latest_historical_hardware_data.client_uuid
+	LEFT JOIN latest_historical_disk_data ON ids.uuid = latest_historical_disk_data.client_uuid
 	LEFT JOIN latest_firmware_data ON ids.uuid = latest_firmware_data.client_uuid
 	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
 	LEFT JOIN current_battery_health ON ids.uuid = current_battery_health.client_uuid
@@ -1534,7 +1529,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN static_image_names ON latest_completed_job.clone_image = static_image_names.image_name
 	LEFT JOIN static_job_names ON job_queue.job_name = static_job_names.job_name
 	LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
-	LEFT JOIN static_disk_stats ON latest_historical_hardware_data.disk_model = static_disk_stats.disk_model
+	LEFT JOIN static_disk_stats ON latest_historical_disk_data.disk_model = static_disk_stats.disk_model
 	LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
 	LEFT JOIN job_queue_position ON ids.uuid = job_queue_position.client_uuid
 	LEFT JOIN newest_image ON hardware_data.system_model = newest_image.system_model
@@ -1626,91 +1621,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		return nil, nil
 	}
 	return jobQueueRows, nil
-}
-
-func (repo *SelectRepo) GetClientBatteryReport(ctx context.Context) ([]types.ClientReportRow, error) {
-	const sqlQuery = `
-	WITH avg_battery_health AS (
-		SELECT system_model, AVG(avg_battery_health_pcnt) AS "avg_battery_health_pcnt" 
-		FROM (
-			SELECT hardware_data.system_model, (historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100) AS "avg_battery_health_pcnt" 
-			FROM 
-				historical_hardware_data 
-			LEFT JOIN 
-				hardware_data ON historical_hardware_data.client_uuid = hardware_data.client_uuid
-			WHERE 
-				historical_hardware_data.battery_design_capacity IS NOT NULL 
-				AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
-			GROUP BY 
-				hardware_data.system_model,
-				historical_hardware_data.client_uuid, 
-				historical_hardware_data.battery_current_max_capacity, 
-				historical_hardware_data.battery_design_capacity
-		)
-		GROUP BY system_model
-	),
-	current_battery_health AS (
-		SELECT 
-			client_uuid, ROUND((historical_hardware_data.battery_current_max_capacity::decimal / historical_hardware_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt"
-		FROM 
-			historical_hardware_data
-		WHERE 
-			historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY client_uuid)
-			AND historical_hardware_data.battery_design_capacity IS NOT NULL 
-			AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
-	)
-	SELECT 
-		historical_hardware_data.time AS "battery_health_timestamp", 
-		historical_hardware_data.client_uuid, 
-		current_battery_health.battery_health_pcnt AS "battery_health_pcnt", 
-		ROUND(current_battery_health.battery_health_pcnt - avg_battery_health.avg_battery_health_pcnt, 2) AS "battery_health_deviation"
-	FROM historical_hardware_data
-	LEFT JOIN hardware_data ON historical_hardware_data.client_uuid = hardware_data.client_uuid
-	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
-	LEFT JOIN current_battery_health ON historical_hardware_data.client_uuid = current_battery_health.client_uuid
-	WHERE 
-		historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY client_uuid)
-		AND historical_hardware_data.battery_design_capacity IS NOT NULL 
-		AND historical_hardware_data.battery_current_max_capacity IS NOT NULL
-	GROUP BY 
-		hardware_data.system_model,
-		historical_hardware_data.client_uuid, 
-		historical_hardware_data.time, 
-		avg_battery_health.avg_battery_health_pcnt,
-		current_battery_health.battery_health_pcnt,
-		historical_hardware_data.battery_current_max_capacity,
-		historical_hardware_data.battery_design_capacity
-	ORDER BY historical_hardware_data.time DESC NULLS LAST;
-	`
-	var clientReports []types.ClientReportRow
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error: %w", ctx.Err())
-		}
-		var clientReport types.ClientReportRow
-		if err := rows.Scan(
-			&clientReport.BatteryHealthTimestamp,
-			&clientReport.Tagnumber,
-			&clientReport.BatteryHealthPcnt,
-			&clientReport.BatteryHealthDeviation,
-		); err != nil {
-			return nil, err
-		}
-		clientReports = append(clientReports, clientReport)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
-	}
-	if len(clientReports) == 0 {
-		return nil, nil
-	}
-	return clientReports, nil
 }
 
 func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]types.AllJobsRow, error) {
@@ -2235,31 +2145,31 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		historical_hardware_data.time AS "historical_hardware_data_time",
 		static_disk_stats.disk_type,
 		( 100 - 
-			historical_hardware_data.disk_writes_kb::double precision
+			historical_disk_data.disk_writes_kb::double precision
 			/ NULLIF(static_disk_stats.max_kbw, 0)::double precision
 			* 100
 		) AS "disk_health_pcnt",
 		(
-			historical_hardware_data.battery_current_max_capacity::double precision
-			/ NULLIF(historical_hardware_data.battery_design_capacity, 0)::double precision
+			historical_battery_data.battery_current_max_capacity::double precision
+			/ NULLIF(historical_battery_data.battery_design_capacity, 0)::double precision
 			* 100
 		) AS "battery_health_pcnt", 
- 		historical_hardware_data.disk_model,
-		historical_hardware_data.disk_size_kb,
-		historical_hardware_data.disk_serial,
-		historical_hardware_data.disk_writes_kb,
-		historical_hardware_data.disk_reads_kb,
-		historical_hardware_data.disk_power_on_hours,
-		historical_hardware_data.disk_errors,
-		historical_hardware_data.disk_power_cycles,
-		historical_hardware_data.disk_firmware,
-		historical_hardware_data.battery_manufacturer,
-		historical_hardware_data.battery_model,
-		historical_hardware_data.battery_serial,
-		historical_hardware_data.battery_manufacture_date,
-		historical_hardware_data.battery_design_capacity,
-		historical_hardware_data.battery_current_max_capacity,
-		historical_hardware_data.battery_charge_cycles,
+ 		historical_disk_data.disk_model,
+		historical_disk_data.disk_size_kb,
+		historical_disk_data.disk_serial,
+		historical_disk_data.disk_writes_kb,
+		historical_disk_data.disk_reads_kb,
+		historical_disk_data.disk_power_on_hours,
+		historical_disk_data.disk_error_count,
+		historical_disk_data.disk_power_cycles,
+		historical_disk_data.disk_firmware_version,
+		historical_battery_data.battery_manufacturer,
+		historical_battery_data.battery_model,
+		historical_battery_data.battery_serial,
+		historical_battery_data.battery_manufacture_date,
+		historical_battery_data.battery_design_capacity,
+		historical_battery_data.battery_current_max_capacity,
+		historical_battery_data.battery_charge_cycles,
 		historical_hardware_data.memory_serial,
 		historical_hardware_data.memory_capacity_kb,
 		historical_hardware_data.memory_speed_mhz,
@@ -2271,8 +2181,10 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
 		LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
 		LEFT JOIN historical_hardware_data ON ids.uuid = historical_hardware_data.client_uuid AND historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY client_uuid)
+		LEFT JOIN historical_disk_data ON ids.uuid = historical_disk_data.client_uuid AND historical_disk_data.time IN (SELECT MAX(time) FROM historical_disk_data GROUP BY client_uuid)
 		LEFT JOIN historical_firmware_data ON ids.uuid = historical_firmware_data.client_uuid AND historical_firmware_data.time IN (SELECT MAX(time) FROM historical_firmware_data GROUP BY client_uuid)
-		LEFT JOIN static_disk_stats ON historical_hardware_data.disk_model = static_disk_stats.disk_model
+		LEFT JOIN historical_battery_data ON ids.uuid = historical_battery_data.client_uuid AND historical_battery_data.time IN (SELECT MAX(time) FROM historical_battery_data GROUP BY client_uuid)
+		LEFT JOIN static_disk_stats ON historical_disk_data.disk_model = static_disk_stats.disk_model
 		LEFT JOIN jobstats ON ids.uuid = jobstats.client_uuid AND jobstats.time IN (SELECT MAX(time) FROM jobstats WHERE client_uuid = ids.uuid AND (erase_completed = TRUE OR clone_completed = TRUE))
 		LEFT JOIN static_image_names ON jobstats.clone_image = static_image_names.image_name
 		LEFT JOIN checkout_log ON ids.uuid = checkout_log.client_uuid AND checkout_log.time IN (SELECT MAX(time) FROM checkout_log WHERE client_uuid = ids.uuid)
@@ -2342,25 +2254,25 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		hardware_data.cpu_core_count,
 		hardware_data.cpu_thread_count,
 		historical_hardware_data.time,
-		historical_hardware_data.disk_writes_kb,
-		historical_hardware_data.battery_current_max_capacity,
-		historical_hardware_data.battery_design_capacity,
-		historical_hardware_data.disk_model,
-		historical_hardware_data.disk_size_kb,
-		historical_hardware_data.disk_serial,
-		historical_hardware_data.disk_writes_kb,
-		historical_hardware_data.disk_reads_kb,
-		historical_hardware_data.disk_power_on_hours,
-		historical_hardware_data.disk_errors,
-		historical_hardware_data.disk_power_cycles,
-		historical_hardware_data.disk_firmware,
-		historical_hardware_data.battery_manufacturer,
-		historical_hardware_data.battery_model,
-		historical_hardware_data.battery_serial,
-		historical_hardware_data.battery_manufacture_date,
-		historical_hardware_data.battery_design_capacity,
-		historical_hardware_data.battery_current_max_capacity,
-		historical_hardware_data.battery_charge_cycles,
+		historical_disk_data.disk_writes_kb,
+		historical_battery_data.battery_current_max_capacity,
+		historical_battery_data.battery_design_capacity,
+		historical_disk_data.disk_model,
+		historical_disk_data.disk_size_kb,
+		historical_disk_data.disk_serial,
+		historical_disk_data.disk_writes_kb,
+		historical_disk_data.disk_reads_kb,
+		historical_disk_data.disk_power_on_hours,
+		historical_disk_data.disk_error_count,
+		historical_disk_data.disk_power_cycles,
+		historical_disk_data.disk_firmware_version,
+		historical_battery_data.battery_manufacturer,
+		historical_battery_data.battery_model,
+		historical_battery_data.battery_serial,
+		historical_battery_data.battery_manufacture_date,
+		historical_battery_data.battery_design_capacity,
+		historical_battery_data.battery_current_max_capacity,
+		historical_battery_data.battery_charge_cycles,
 		historical_hardware_data.memory_serial,
 		historical_hardware_data.memory_capacity_kb,
 		historical_hardware_data.memory_speed_mhz,

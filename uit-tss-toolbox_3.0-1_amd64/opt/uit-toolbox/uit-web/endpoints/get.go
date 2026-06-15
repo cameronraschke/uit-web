@@ -892,26 +892,6 @@ func GetDepartments(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, departments)
 }
 
-func FetchBatteryStandardDeviation(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository in FetchBatteryStandardDeviation: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	batteryStdDevData, err := db.GetClientBatteryReport(ctx)
-	if err != nil {
-		log.Warn("Query error in FetchBatteryStandardDeviation: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	middleware.WriteJson(w, http.StatusOK, batteryStdDevData)
-}
-
 func GetAllJobs(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)

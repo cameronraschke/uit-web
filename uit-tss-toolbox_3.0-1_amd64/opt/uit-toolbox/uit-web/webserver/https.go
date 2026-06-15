@@ -73,7 +73,6 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("POST /api/overview/note", httpsFullAPIChain.ThenFunc(endpoints.InsertNewNote))
 
 	// Reports
-	httpsRouter.Handle("GET /api/reports/client/battery_health", httpsFullAPIChain.ThenFunc(endpoints.FetchBatteryStandardDeviation))
 
 	// Client-specific
 	httpsRouter.Handle("GET /api/client/job_queue/queued_job", httpsFullAPIChain.ThenFunc(endpoints.GetClientQueuedJobs))

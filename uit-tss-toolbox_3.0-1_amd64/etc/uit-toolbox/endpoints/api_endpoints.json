@@ -27,7 +27,6 @@
 	"/api/overview/all_models": {},
 	"/api/overview/all_domains": {},
 	"/api/overview/all_departments": {},
-	"/api/reports/client/battery_health": {},
 	"/api/overview/job_queue/all_jobs": {},
 	"/api/job_queue/all_clients/update_job": {
 		"allowed_methods": ["POST"]

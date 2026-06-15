@@ -795,3 +795,85 @@ CREATE TABLE historical_disk_data (
 		ON UPDATE CASCADE
 		ON DELETE SET NULL
 );
+
+-- INSERT INTO historical_disk_data (
+-- 	time, 
+-- 	transaction_uuid, 
+-- 	updated_from_windows, 
+-- 	client_uuid, 
+-- 	disk_model, 
+-- 	disk_type,
+-- 	disk_size_kb, 
+-- 	disk_serial, 
+-- 	disk_firmware_version, 
+-- 	disk_reads_kb, 
+-- 	disk_writes_kb, 
+-- 	disk_power_cycles, 
+-- 	disk_power_on_hours, 
+-- 	disk_error_count
+-- ) SELECT 
+-- 	time, 
+-- 	transaction_uuid, 
+-- 	updated_from_windows, 
+-- 	client_uuid, 
+-- 	disk_model, 
+-- 	disk_type,
+-- 	disk_size_kb, 
+-- 	disk_serial, 
+-- 	disk_firmware, 
+-- 	disk_reads_kb, 
+-- 	disk_writes_kb, 
+-- 	disk_power_cycles, 
+-- 	disk_power_on_hours, 
+-- 	disk_errors
+-- 	FROM historical_hardware_data
+-- 	WHERE time IS NOT NULL
+-- 	ORDER BY time DESC NULLS LAST;
+
+CREATE TABLE historical_battery_data (
+	time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, 
+	transaction_uuid UUID DEFAULT uuidv7() PRIMARY KEY,  
+	updated_from_windows BOOLEAN NOT NULL, 
+	client_uuid UUID NOT NULL, 
+	battery_serial VARCHAR(64) DEFAULT NULL, 
+	battery_manufacturer VARCHAR(64) DEFAULT NULL, 
+	battery_model VARCHAR(64) DEFAULT NULL, 
+	battery_charge_cycles INTEGER DEFAULT NULL, 
+	battery_design_capacity INTEGER DEFAULT NULL,
+	battery_manufacture_date DATE DEFAULT NULL, 
+	battery_current_max_capacity INTEGER DEFAULT NULL, 
+
+	CONSTRAINT historical_battery_data_client_uuid_fkey
+		FOREIGN KEY (client_uuid)
+			REFERENCES ids(uuid)
+		ON UPDATE CASCADE
+		ON DELETE SET NULL
+);
+
+-- INSERT INTO historical_battery_data (
+-- 	time, 
+-- 	transaction_uuid, 
+-- 	updated_from_windows, 
+-- 	client_uuid, 
+-- 	battery_serial, 
+-- 	battery_manufacturer, 
+-- 	battery_model, 
+-- 	battery_charge_cycles, 
+-- 	battery_design_capacity,
+-- 	battery_manufacture_date, 
+-- 	battery_current_max_capacity
+-- ) SELECT 
+-- 	time, 
+-- 	transaction_uuid, 
+-- 	updated_from_windows, 
+-- 	client_uuid, 
+-- 	battery_serial, 
+-- 	battery_manufacturer, 
+-- 	battery_model, 
+-- 	battery_charge_cycles, 
+-- 	battery_design_capacity,
+-- 	battery_manufacture_date, 
+-- 	battery_current_max_capacity
+-- 	FROM historical_hardware_data
+-- 	WHERE time IS NOT NULL
+-- 	ORDER BY time DESC NULLS LAST;
