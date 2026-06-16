@@ -1046,14 +1046,16 @@ if (updateForm) {
 				throw new Error("Server returned an error: " + response.status + " " + response.statusText);
 			}
 
-			const fileUploadResponse = await fetch("/api/client/files/upload?tagnumber=" + encodeURIComponent(clientLookupTagInput.value), {
-				method: "POST",
-				credentials: "include",
-				body: fileData
-			});
+			if (fileData.has("files")) {
+				const fileUploadResponse = await fetch("/api/client/files/upload?tagnumber=" + encodeURIComponent(clientLookupTagInput.value), {
+					method: "POST",
+					credentials: "include",
+					body: fileData
+				});
 
-			if (!fileUploadResponse.ok && fileUploadResponse.status !== 202) {
-				throw new Error("Server returned an error during file upload: " + fileUploadResponse.status + " " + fileUploadResponse.statusText);
+				if (!fileUploadResponse.ok && fileUploadResponse.status !== 202) {
+					throw new Error("Server returned an error during file upload: " + fileUploadResponse.status + " " + fileUploadResponse.statusText);
+				}
 			}
 
 			const data = await response.text();

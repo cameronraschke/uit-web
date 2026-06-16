@@ -859,8 +859,8 @@ func UploadClientImage(w http.ResponseWriter, req *http.Request) {
 	files := req.MultipartForm.File["files"]
 	if len(files) == 0 {
 		if req.MultipartForm.File["files"] == nil {
-			log.Info("No files provided in request, exiting early")
-			middleware.WriteJsonError(w, http.StatusOK)
+			log.Info("No client images provided in request, exiting early")
+			middleware.WriteJsonError(w, http.StatusBadRequest)
 			return
 		} else {
 			files = req.MultipartForm.File["files"]
