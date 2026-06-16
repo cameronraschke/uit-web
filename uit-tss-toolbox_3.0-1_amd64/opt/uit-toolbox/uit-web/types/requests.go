@@ -10,6 +10,7 @@ type WindowsUpdateRequest struct {
 	LastHardwareCheck         *time.Time `json:"last_hardware_check"`
 	Tagnumber                 *int64     `json:"tagnumber"`
 	SystemSerial              *string    `json:"system_serial"`
+	SystemUUID                *string    `json:"system_uuid"`
 	SystemManufacturer        *string    `json:"system_manufacturer"`
 	SystemModel               *string    `json:"system_model"`
 	SystemSKU                 *string    `json:"system_sku"`
@@ -58,6 +59,7 @@ type WindowsUpdateDTO struct {
 	LastHardwareCheck         time.Time
 	Tagnumber                 int64
 	SystemSerial              string
+	SystemUUID                *string
 	SystemManufacturer        *string
 	SystemModel               *string
 	SystemSKU                 *string
@@ -149,6 +151,7 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 		LastHardwareCheck:         *request.LastHardwareCheck,
 		Tagnumber:                 *request.Tagnumber,
 		SystemSerial:              *request.SystemSerial,
+		SystemUUID:                request.SystemUUID,
 		SystemManufacturer:        request.SystemManufacturer,
 		SystemModel:               request.SystemModel,
 		SystemSKU:                 request.SystemSKU,

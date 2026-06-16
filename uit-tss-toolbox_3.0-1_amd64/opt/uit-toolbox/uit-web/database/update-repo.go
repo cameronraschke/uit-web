@@ -2081,6 +2081,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			updated_from_windows,
 			client_uuid,
 			system_serial,
+			system_uuid,
 			ethernet_mac,
 			wifi_mac,
 			system_manufacturer,
@@ -2102,12 +2103,14 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			$9,
 			$10,
 			$11, 
-			$12
+			$12,
+			$13
 		) ON CONFLICT (client_uuid) DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
 			transaction_uuid = EXCLUDED.transaction_uuid,
 			updated_from_windows = EXCLUDED.updated_from_windows,
 			system_serial = COALESCE(EXCLUDED.system_serial, hardware_data.system_serial),
+			system_uuid = COALESCE(EXCLUDED.system_uuid, hardware_data.system_uuid),
 			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, hardware_data.ethernet_mac),
 			wifi_mac = COALESCE(EXCLUDED.wifi_mac, hardware_data.wifi_mac),
 			system_manufacturer = COALESCE(EXCLUDED.system_manufacturer, hardware_data.system_manufacturer),
@@ -2123,6 +2126,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		true,
 		clientUUID,
 		toNullString(windowsUpdateDTO.SystemSerial),
+		ptrToNullString(windowsUpdateDTO.SystemUUID),
 		ptrToNullString(windowsUpdateDTO.EthernetMACAddr),
 		ptrToNullString(windowsUpdateDTO.WifiMACAddr),
 		ptrToNullString(windowsUpdateDTO.SystemManufacturer),
