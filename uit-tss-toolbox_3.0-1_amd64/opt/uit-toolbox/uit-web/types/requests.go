@@ -14,7 +14,7 @@ type WindowsUpdateRequest struct {
 	BatteryCurrentMaxCapacity *int64     `json:"battery_current_max_capacity"`
 	BatteryDesignCapacity     *int64     `json:"battery_design_capacity"`
 	BatteryHealthPcnt         *float64   `json:"battery_health_pct"`
-	BatteryChargeCycleCount   *int64     `json:"battery_charge_cycle_count"`
+	BatteryChargeCycleCount   *int64     `json:"battery_charge_cycles"`
 	LastHardwareCheck         *time.Time `json:"last_hardware_check"`
 	Tagnumber                 *int64     `json:"tagnumber"`
 	SystemSerial              *string    `json:"system_serial"`
