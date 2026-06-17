@@ -2084,24 +2084,26 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		return fmt.Errorf("%w: %s", types.MissingFieldError, "TransactionUUID")
 	}
 
-	dbConn, err := config.GetDatabaseConn()
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
-	tx, err := dbConn.BeginTx(ctx, nil)
+	tx, err := pgxPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 
 	defer func() {
 		if err != nil {
-			_ = tx.Rollback()
-		} else {
-			err = tx.Commit()
+			_ = tx.Rollback(ctx)
+			return
+		}
+		if commitErr := tx.Commit(ctx); commitErr != nil {
+			err = commitErr
 		}
 	}()
 
-	clientUUID, err := lockClientRowBySystemSerial(ctx, tx, windowsUpdateDTO.SystemSerial)
+	clientUUID, err := lockClientRowBySystemSerialPGX(ctx, tx, windowsUpdateDTO.SystemSerial)
 	if err != nil {
 		return fmt.Errorf("%s: %w", "error while locking client row by system serial", err)
 	}
@@ -2154,7 +2156,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			tpm_version = COALESCE(EXCLUDED.tpm_version, hardware_data.tpm_version)
 	;`
 
-	hardwareDataResult, err := tx.ExecContext(ctx, hardwareDataSql,
+	hardwareDataResult, err := tx.Exec(ctx, hardwareDataSql,
 		toNullUUID(transactionUUID),
 		true,
 		clientUUID,
@@ -2172,8 +2174,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
-	if err := VerifyRowsAffected(hardwareDataResult, 1); err != nil {
-		return err
+	if hardwareDataResult.RowsAffected() != 1 {
+		return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseAffectedRowsError, hardwareDataResult.RowsAffected())
 	}
 
 	// client_health upsert
@@ -2203,7 +2205,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 				last_hardware_check = COALESCE(EXCLUDED.last_hardware_check, client_health.last_hardware_check)
 	;`
 
-	clientHealthResult, err := tx.ExecContext(ctx, clientHealthSql,
+	clientHealthResult, err := tx.Exec(ctx, clientHealthSql,
 		toNullUUID(transactionUUID),
 		true,
 		clientUUID,
@@ -2214,8 +2216,46 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
-	if err := VerifyRowsAffected(clientHealthResult, 1); err != nil {
-		return err
+	if clientHealthResult.RowsAffected() != 1 {
+		return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseAffectedRowsError, clientHealthResult.RowsAffected())
+	}
+
+	if windowsUpdateDTO.MemoryCapacityKB != nil &&
+		windowsUpdateDTO.MemorySpeedMHz != nil {
+		const memoryDataInsertSQL = `
+		INSERT INTO historical_hardware_data (
+			time,
+			transaction_uuid,
+			updated_from_windows,
+			client_uuid,
+			memory_capacity_kb,
+			memory_speed_mhz,
+			memory_serial
+		) VALUES (
+			CURRENT_TIMESTAMP,
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6::TEXT[]
+		)
+		;`
+
+		memoryDataResult, err := tx.Exec(ctx, memoryDataInsertSQL,
+			toNullUUID(transactionUUID),
+			true,
+			clientUUID,
+			ptrToNullInt64(windowsUpdateDTO.MemoryCapacityKB),
+			ptrToNullInt64(windowsUpdateDTO.MemorySpeedMHz),
+			windowsUpdateDTO.MemorySerial,
+		)
+		if err != nil {
+			return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+		}
+		if memoryDataResult.RowsAffected() != 1 {
+			return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseAffectedRowsError, memoryDataResult.RowsAffected())
+		}
 	}
 
 	if windowsUpdateDTO.DiskModel != nil &&
@@ -2241,7 +2281,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		)
 		;`
 
-		diskDataResult, err := tx.ExecContext(ctx, diskDataInsertSQL,
+		diskDataResult, err := tx.Exec(ctx, diskDataInsertSQL,
 			toNullUUID(transactionUUID),
 			true,
 			clientUUID,
@@ -2252,8 +2292,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		if err != nil {
 			return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 		}
-		if err := VerifyRowsAffected(diskDataResult, 1); err != nil {
-			return err
+		if diskDataResult.RowsAffected() != 1 {
+			return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseAffectedRowsError, diskDataResult.RowsAffected())
 		}
 	}
 
@@ -2289,7 +2329,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		)
 		;`
 
-		batteryDataInsertResult, batteryDataInsertErr := tx.ExecContext(ctx, batteryDataInsertSQL,
+		batteryDataInsertResult, batteryDataInsertErr := tx.Exec(ctx, batteryDataInsertSQL,
 			toNullUUID(transactionUUID),
 			true,
 			toNullUUID(clientUUID),
@@ -2305,8 +2345,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		if batteryDataInsertErr != nil {
 			return fmt.Errorf("%w: %w", types.DatabaseUpdateError, batteryDataInsertErr)
 		}
-		if err := VerifyRowsAffected(batteryDataInsertResult, 1); err != nil {
-			return err
+		if batteryDataInsertResult.RowsAffected() != 1 {
+			return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseAffectedRowsError, batteryDataInsertResult.RowsAffected())
 		}
 	}
 
@@ -2385,8 +2425,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		adminUsers = nil
 	}
 
-	var sqlResult sql.Result
-	sqlResult, err = tx.ExecContext(ctx, osInfoSQLCode,
+	osInfoResult, err := tx.Exec(ctx, osInfoSQLCode,
 		toNullUUID(transactionUUID),
 		toNullInt64(windowsUpdateDTO.Tagnumber),
 		toNullString(windowsUpdateDTO.SystemSerial),
@@ -2412,8 +2451,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
-	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	if osInfoResult.RowsAffected() != 1 {
+		return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseAffectedRowsError, osInfoResult.RowsAffected())
 	}
 
 	const clientFirmwareInsertSQL = `
@@ -2441,7 +2480,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_firmware_data.bios_release_date)
 	;`
 
-	firmwareSQLResult, err := tx.ExecContext(ctx, clientFirmwareInsertSQL,
+	firmwareSQLResult, err := tx.Exec(ctx, clientFirmwareInsertSQL,
 		toNullString(transactionUUID.String()),
 		toNullInt64(windowsUpdateDTO.Tagnumber),
 		ptrToNullBool(&windowsUpdateDTO.UpdatedFromWindows),
@@ -2451,8 +2490,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
-	if err := VerifyRowsAffected(firmwareSQLResult, 1); err != nil {
-		return err
+	if firmwareSQLResult.RowsAffected() != 1 {
+		return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseUpdateError, firmwareSQLResult.RowsAffected())
 	}
 	return nil
 }
