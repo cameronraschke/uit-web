@@ -35,7 +35,7 @@ type InventoryUpdateRequest struct {
 	Note               *string    `json:"note"`
 }
 
-// ADDomain model for inventory update operations after ingress
+// InventoryUpdateDTO for inventory update operations after ingress
 type InventoryUpdateDTO struct {
 	Tagnumber          int64
 	SystemSerial       string
@@ -231,7 +231,7 @@ func (updateRequest *InventoryUpdateRequest) ToDTO(htmlFormConstraints *HTMLForm
 
 	// Last hardware check (optional, process as UTC)
 	if updateRequest.LastHardwareCheck != nil && !updateRequest.LastHardwareCheck.IsZero() {
-		lastHardwareCheckUTC := timePtrToUTC(updateRequest.LastHardwareCheck)
+		lastHardwareCheckUTC := copyTimePtrToUTC(updateRequest.LastHardwareCheck)
 		if lastHardwareCheckUTC.After(time.Now().UTC()) {
 			return nil, fmt.Errorf("last_hardware_check cannot be in the future")
 		}
@@ -293,15 +293,15 @@ func (updateRequest *InventoryUpdateRequest) ToDTO(htmlFormConstraints *HTMLForm
 		Department:         strings.TrimSpace(*updateRequest.Department),
 		ADDomain:           strings.TrimSpace(*updateRequest.ADDomain),
 		PropertyCustodian:  copyTrimmedStringPtr(updateRequest.PropertyCustodian),
-		AcquiredDate:       timePtrToUTC(updateRequest.AcquiredDate),
-		RetiredDate:        timePtrToUTC(updateRequest.RetiredDate),
+		AcquiredDate:       copyTimePtrToUTC(updateRequest.AcquiredDate),
+		RetiredDate:        copyTimePtrToUTC(updateRequest.RetiredDate),
 		IsBroken:           copyBoolPtr(updateRequest.IsBroken),
 		DiskRemoved:        copyBoolPtr(updateRequest.DiskRemoved),
-		LastHardwareCheck:  timePtrToUTC(updateRequest.LastHardwareCheck),
+		LastHardwareCheck:  copyTimePtrToUTC(updateRequest.LastHardwareCheck),
 		ClientStatus:       strings.TrimSpace(*updateRequest.ClientStatus),
 		CheckoutBool:       copyBoolPtr(updateRequest.CheckoutBool),
-		CheckoutDate:       timePtrToUTC(updateRequest.CheckoutDate),
-		ReturnDate:         timePtrToUTC(updateRequest.ReturnDate),
+		CheckoutDate:       copyTimePtrToUTC(updateRequest.CheckoutDate),
+		ReturnDate:         copyTimePtrToUTC(updateRequest.ReturnDate),
 		CustomerName:       copyTrimmedStringPtr(updateRequest.CustomerName),
 		Note:               copyTrimmedStringPtr(updateRequest.Note),
 	}
@@ -318,17 +318,17 @@ func (dto *InventoryUpdateDTO) ToLocationWriteModel(transactionUUID uuid.UUID) *
 		Tagnumber:         dto.Tagnumber,
 		SystemSerial:      dto.SystemSerial,
 		Location:          dto.Location,
-		Building:          copyStringPtr(dto.Building),
-		Room:              copyStringPtr(dto.Room),
+		Building:          copyTrimmedStringPtr(dto.Building),
+		Room:              copyTrimmedStringPtr(dto.Room),
 		Department:        dto.Department,
 		ADDomain:          dto.ADDomain,
-		PropertyCustodian: copyStringPtr(dto.PropertyCustodian),
-		AcquiredDate:      copyTimePtr(dto.AcquiredDate),
-		RetiredDate:       copyTimePtr(dto.RetiredDate),
+		PropertyCustodian: copyTrimmedStringPtr(dto.PropertyCustodian),
+		AcquiredDate:      copyTimePtrToUTC(dto.AcquiredDate),
+		RetiredDate:       copyTimePtrToUTC(dto.RetiredDate),
 		IsBroken:          copyBoolPtr(dto.IsBroken),
 		DiskRemoved:       copyBoolPtr(dto.DiskRemoved),
 		ClientStatus:      dto.ClientStatus,
-		Note:              copyStringPtr(dto.Note),
+		Note:              copyTrimmedStringPtr(dto.Note),
 	}
 }
 
@@ -339,9 +339,9 @@ func (dto *InventoryUpdateDTO) ToHardwareWriteModel(transactionUUID uuid.UUID) *
 	return &InventoryHardwareWriteModel{
 		TransactionUUID:    transactionUUID,
 		Tagnumber:          dto.Tagnumber,
-		SystemManufacturer: copyStringPtr(dto.SystemManufacturer),
-		SystemModel:        copyStringPtr(dto.SystemModel),
-		DeviceType:         copyStringPtr(dto.DeviceType),
+		SystemManufacturer: copyTrimmedStringPtr(dto.SystemManufacturer),
+		SystemModel:        copyTrimmedStringPtr(dto.SystemModel),
+		DeviceType:         copyTrimmedStringPtr(dto.DeviceType),
 	}
 }
 
@@ -352,7 +352,7 @@ func (dto *InventoryUpdateDTO) ToClientHealthWriteModel(transactionUUID uuid.UUI
 	return &ClientHealthDTO{
 		TransactionUUID:   transactionUUID.String(),
 		Tagnumber:         dto.Tagnumber,
-		LastHardwareCheck: copyTimePtr(dto.LastHardwareCheck),
+		LastHardwareCheck: copyTimePtrToUTC(dto.LastHardwareCheck),
 	}
 }
 
@@ -368,13 +368,103 @@ func (dto *InventoryUpdateDTO) ToCheckoutWriteModel(transactionUUID uuid.UUID) *
 		TransactionUUID: transactionUUID,
 		Tagnumber:       dto.Tagnumber,
 		CheckoutBool:    copyBoolPtr(dto.CheckoutBool),
-		CheckoutDate:    copyTimePtr(dto.CheckoutDate),
-		ReturnDate:      copyTimePtr(dto.ReturnDate),
-		CustomerName:    copyStringPtr(dto.CustomerName),
+		CheckoutDate:    copyTimePtrToUTC(dto.CheckoutDate),
+		ReturnDate:      copyTimePtrToUTC(dto.ReturnDate),
+		CustomerName:    copyTrimmedStringPtr(dto.CustomerName),
 	}
 }
 
 type BulkUpdateRequest struct {
 	Location   *string `json:"bulk_location"`
 	Tagnumbers []int64 `json:"bulk_tagnumbers"`
+}
+
+type InventoryTableRow struct {
+	Tagnumber           *int64                             `json:"tagnumber"`
+	SystemSerial        *string                            `json:"system_serial"`
+	Location            *string                            `json:"location"`
+	LocationFormatted   *string                            `json:"location_formatted"`
+	Building            *string                            `json:"building"`
+	Room                *string                            `json:"room"`
+	SystemManufacturer  *string                            `json:"system_manufacturer"`
+	SystemModel         *string                            `json:"system_model"`
+	DeviceType          *string                            `json:"device_type"`
+	DeviceTypeFormatted *string                            `json:"device_type_formatted"`
+	Department          *string                            `json:"department_name"`
+	DepartmentFormatted *string                            `json:"department_formatted"`
+	ADDomain            *string                            `json:"ad_domain"`
+	AdminUsers          *[]string                          `json:"admin_users"`
+	IsIntuneJoined      *bool                              `json:"is_intune_joined"`
+	DomainFormatted     *string                            `json:"ad_domain_formatted"`
+	OsInstalled         *bool                              `json:"os_installed"`
+	OsName              *string                            `json:"os_name"`
+	OsVersion           *string                            `json:"os_version"`
+	LatestOsVersion     *string                            `json:"latest_os_version"`
+	IsDiskEncrypted     *bool                              `json:"windows_bitlocker_enabled"`
+	SecureBootEnabled   *bool                              `json:"secure_boot_enabled"`
+	LastHardwareCheck   *time.Time                         `json:"last_hardware_check"`
+	BIOSUpdated         *bool                              `json:"bios_updated"`
+	BIOSVersion         *string                            `json:"bios_version"`
+	Status              *string                            `json:"status"`
+	StatusFormatted     *string                            `json:"status_formatted"`
+	IsBroken            *bool                              `json:"is_broken"`
+	DiskRemoved         *bool                              `json:"disk_removed"`
+	RetiredDate         *time.Time                         `json:"retired_date"`
+	IsCheckedOut        *bool                              `json:"checkout_bool"`
+	Note                *string                            `json:"note"`
+	LastUpdated         *time.Time                         `json:"last_updated"`
+	FileCount           *int64                             `json:"file_count"`
+	ClientErrors        []ClientConfigErrorMessageResponse `json:"client_configuration_errors,omitempty"`
+}
+
+type InventoryAdvSearchOptions struct {
+	Location           *AdvSearchOptionString `json:"filter_location"`
+	BuildingAndRoom    *AdvSearchOptionString `json:"filter_building_room"`
+	Building           *string                `json:"-"`
+	Room               *string                `json:"-"`
+	SystemManufacturer *AdvSearchOptionString `json:"filter_system_manufacturer"`
+	SystemModel        *AdvSearchOptionString `json:"filter_system_model"`
+	DeviceType         *AdvSearchOptionString `json:"filter_device_type"`
+	Department         *AdvSearchOptionString `json:"filter_department_name"`
+	ADDomain           *AdvSearchOptionString `json:"filter_ad_domain"`
+	Status             *AdvSearchOptionString `json:"filter_status"`
+	IsBroken           *AdvSearchOptionBool   `json:"filter_is_broken"`
+	HasImages          *AdvSearchOptionBool   `json:"filter_has_images"`
+}
+
+type AdvSearchOptionString struct {
+	ParamValue *string `json:"param_value"`
+	Not        *bool   `json:"not"`
+}
+
+type AdvSearchOptionBool struct {
+	ParamValue *bool `json:"param_value"`
+	Not        *bool `json:"not"`
+}
+
+type InventoryFormPrefill struct {
+	Time               *time.Time `json:"time"`
+	Tagnumber          *int64     `json:"tagnumber"`
+	SystemSerial       *string    `json:"system_serial"`
+	Location           *string    `json:"location"`
+	Building           *string    `json:"building"`
+	Room               *string    `json:"room"`
+	SystemManufacturer *string    `json:"system_manufacturer"`
+	SystemModel        *string    `json:"system_model"`
+	DeviceType         *string    `json:"device_type"`
+	Department         *string    `json:"department_name"`
+	ADDomain           *string    `json:"ad_domain"`
+	PropertyCustodian  *string    `json:"property_custodian"`
+	AcquiredDate       *time.Time `json:"acquired_date"`
+	RetiredDate        *time.Time `json:"retired_date"`
+	IsBroken           *bool      `json:"is_broken"`
+	DiskRemoved        *bool      `json:"disk_removed"`
+	LastHardwareCheck  *time.Time `json:"last_hardware_check"`
+	ClientStatus       *string    `json:"status"`
+	CheckoutBool       *bool      `json:"checkout_bool"`
+	CheckoutDate       *time.Time `json:"checkout_date"`
+	ReturnDate         *time.Time `json:"return_date"`
+	CustomerName       *string    `json:"customer_name"`
+	Note               *string    `json:"note"`
+	FileCount          *int64     `json:"file_count"`
 }

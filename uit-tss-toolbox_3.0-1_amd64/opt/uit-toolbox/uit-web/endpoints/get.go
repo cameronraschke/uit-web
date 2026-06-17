@@ -570,27 +570,6 @@ func GetJobQueueTable(w http.ResponseWriter, req *http.Request) {
 	middleware.WriteJson(w, http.StatusOK, jobQueueTable)
 }
 
-func GetJobQueueOverview(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetJobQueueOverview"))
-
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository (GetJobQueueOverview): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	jobQueueOverview, err := db.GetJobQueueOverview(ctx)
-	if err != nil {
-		log.Warn("Query error (GetJobQueueOverview): " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	middleware.WriteJson(w, http.StatusOK, jobQueueOverview)
-}
-
 func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetInventoryTableData"))

@@ -62,14 +62,6 @@ type ClientHealthCheck struct {
 	LastHardwareCheck *time.Time `json:"last_hardware_check"`
 }
 
-type DeviceType struct {
-	DeviceType          string `json:"device_type"`
-	DeviceTypeFormatted string `json:"device_type_formatted"`
-	DeviceMetaCategory  string `json:"device_meta_category"`
-	DeviceTypeCount     int64  `json:"device_type_count"`
-	SortOrder           int64  `json:"sort_order"`
-}
-
 type MemoryDataRequest struct {
 	Tagnumber       *int64  `json:"tagnumber"`
 	TotalUsageKB    *int64  `json:"memory_usage_kb"`

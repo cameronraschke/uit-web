@@ -84,12 +84,12 @@ type ClientInfoResponse struct {
 }
 
 type CheckoutLogResponse struct {
-	TransactionUUID *string    `json:"transaction_uuid"`
-	Tagnumber       *int64     `json:"tagnumber"`
-	IsCheckedOut    *bool      `json:"is_checked_out"`
 	CheckoutDate    *time.Time `json:"checkout_date"`
-	ReturnDate      *time.Time `json:"return_date"`
 	CustomerName    *string    `json:"customer_name"`
+	IsCheckedOut    *bool      `json:"is_checked_out"`
+	ReturnDate      *time.Time `json:"return_date"`
+	Tagnumber       *int64     `json:"tagnumber"`
+	TransactionUUID *string    `json:"transaction_uuid"`
 }
 
 type LocationLogResponse struct {

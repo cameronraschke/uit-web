@@ -1,12 +1,13 @@
-type CheckoutData = {
-	tagnumber: number | null;
-	customer_name: string | null;
-	customer_psid: string | null;
+type CheckoutLogResponse = {
 	checkout_date: string | null;
+	customer_name: string | null;
+	is_checked_out: boolean | null;
 	return_date: string | null;
+	tagnumber: number | null;
+	transaction_uuid: string | null;
 };
 
-async function fetchCheckoutData(): Promise<CheckoutData> {
+async function fetchCheckoutData(): Promise<CheckoutLogResponse> {
 	const urlParams = new URLSearchParams(window.location.search);
 	const tagNumber = urlParams.get("tagnumber");
 	if (!tagNumber) {
@@ -16,7 +17,7 @@ async function fetchCheckoutData(): Promise<CheckoutData> {
 	if (!response.ok) {
 		throw new Error(`Failed to fetch checkout data: ${response.statusText}`);
 	}
-	const data: CheckoutData = await response.json();
+	const data: CheckoutLogResponse = await response.json();
 	return data;
 }
 
@@ -30,7 +31,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 	const checkoutData = await fetchCheckoutData();
 	if (customerNameEl) customerNameEl.value = checkoutData.customer_name ?? '';
-	if (customerPSIDEl) customerPSIDEl.value = checkoutData.customer_psid ?? '';
 	if (checkoutData.checkout_date !== null) {
 		const checkoutDate = checkoutData.checkout_date ?? null;
 		const checkoutDateFormatted: string | undefined = new Date(checkoutDate).toISOString().split('T')[0];
@@ -63,11 +63,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 		(document.querySelector('#customer_name') as HTMLElement).textContent = customerName;
-		(document.querySelector('#customer_psid') as HTMLElement).textContent = customerPSID;
 		(document.querySelector('#checkout_date') as HTMLElement).textContent =  checkoutDateStr ? new Date(checkoutDateStr + "T00:00:00").toLocaleDateString('en-US', options) : '';
 		(document.querySelector('#return_date') as HTMLElement).textContent = returnDateStr ? new Date(returnDateStr + "T00:00:00").toLocaleDateString('en-US', options) : '';
 
-		if (customerName || customerPSID) {
+		if (customerName !== null && customerName !== '') {
 			const urlParams = new URLSearchParams(window.location.search)
 			let fileName = urlParams.get("tagnumber") + " Checkout Form";
 			if (customerName) fileName = fileName + ` - ${customerName}`;

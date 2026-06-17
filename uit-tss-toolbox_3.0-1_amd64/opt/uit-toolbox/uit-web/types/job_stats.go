@@ -23,6 +23,24 @@ type UpdateJobStatsRequest struct {
 	CloneDuration   *int64     `json:"clone_job_duration"`
 }
 
+type JobStatsDTO struct {
+	TransactionUUID string
+	ClientUUID      string
+	Tagnumber       int64
+	SystemSerial    string
+	JobStartTime    time.Time
+	DiskName        string
+	JobCancelled    *bool
+	EraseCompleted  *bool
+	EraseMode       string
+	EraseDiskPcnt   int64
+	EraseDuration   int64
+	CloneCompleted  *bool
+	CloneMaster     string
+	CloneImageName  string
+	CloneDuration   int64
+}
+
 func (req *UpdateJobStatsRequest) ToDTO() (*JobStatsDTO, error) {
 	dto := new(JobStatsDTO)
 	if req == nil {
@@ -121,22 +139,4 @@ func (req *UpdateJobStatsRequest) ToDTO() (*JobStatsDTO, error) {
 		dto.CloneDuration = *req.CloneDuration
 	}
 	return dto, nil
-}
-
-type JobStatsDTO struct {
-	TransactionUUID string
-	ClientUUID      string
-	Tagnumber       int64
-	SystemSerial    string
-	JobStartTime    time.Time
-	DiskName        string
-	JobCancelled    *bool
-	EraseCompleted  *bool
-	EraseMode       string
-	EraseDiskPcnt   int64
-	EraseDuration   int64
-	CloneCompleted  *bool
-	CloneMaster     string
-	CloneImageName  string
-	CloneDuration   int64
 }

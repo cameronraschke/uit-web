@@ -23,12 +23,11 @@ type Select interface {
 	CheckTwoFactorCode(ctx context.Context, twoFactorCode *string) (string, error)
 	CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error)
 	GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error)
-	GetJobQueueOverview(ctx context.Context) (*types.JobQueueOverview, error)
-	GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteRow, error)
+	GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteResponse, error)
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
 	GetAllJobs(ctx context.Context) ([]types.AllJobsRow, error)
 	GetAllLocations(ctx context.Context) ([]types.AllLocationsRow, error)
-	GetAllDeviceTypes(ctx context.Context) ([]types.DeviceType, error)
+	GetAllDeviceTypes(ctx context.Context) ([]types.AllDeviceTypesRow, error)
 	GetClientHardwareOverview(ctx context.Context, tag int64) ([]types.ClientHardwareView, error)
 	GetJobQueuePosition(ctx context.Context, tag int64) (int64, error)
 	GetJobName(ctx context.Context, tag int64) (string, error)
@@ -480,33 +479,7 @@ func SelectIsClientJobAvailable(ctx context.Context, tag *int64) (*bool, error) 
 	return &jobAvailable, nil
 }
 
-func (repo *SelectRepo) GetJobQueueOverview(ctx context.Context) (*types.JobQueueOverview, error) {
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	const sqlQuery = `SELECT t1.total_queued_jobs, t2.total_active_jobs, t3.total_active_blocking_jobs
-	FROM 
-	(SELECT COUNT(*) AS total_queued_jobs FROM job_queue WHERE job_queued = TRUE AND job_name IS NOT NULL AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_heard)) < 10) AS t1,
-	(SELECT COUNT(*) AS total_active_jobs FROM job_queue WHERE job_queued = TRUE AND job_name IS NOT NULL AND job_active = TRUE AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_heard)) < 10) AS t2,
-	(SELECT COUNT(*) AS total_active_blocking_jobs FROM job_queue WHERE job_queued = TRUE AND job_active = FALSE AND job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone')) AS t3;`
-
-	var jobQueueOverview types.JobQueueOverview
-	row := repo.DB.QueryRowContext(ctx, sqlQuery)
-	if err := row.Scan(
-		&jobQueueOverview.TotalQueuedJobs,
-		&jobQueueOverview.TotalActiveJobs,
-		&jobQueueOverview.TotalActiveBlockingJobs,
-	); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("error during row scan: %w", err)
-	}
-	return &jobQueueOverview, nil
-}
-
-func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteRow, error) {
+func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteResponse, error) {
 	if noteType == nil || strings.TrimSpace(*noteType) == "" {
 		return nil, fmt.Errorf("noteType is nil or empty")
 	}
@@ -520,12 +493,12 @@ func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*types.
 		WHERE note_type = $1 
 		ORDER BY time DESC NULLS LAST LIMIT 1;`
 
-	var generalNoteRow types.GeneralNoteRow
+	var generalNoteRow types.GeneralNoteResponse
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullString(noteType))
 	if err := row.Scan(
 		&generalNoteRow.Time,
 		&generalNoteRow.NoteType,
-		&generalNoteRow.Note,
+		&generalNoteRow.NoteContent,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -1752,7 +1725,7 @@ func GetAllStatuses(ctx context.Context) (map[string][]types.AllClientStatuses, 
 	return statusMap, nil
 }
 
-func (repo *SelectRepo) GetAllDeviceTypes(ctx context.Context) ([]types.DeviceType, error) {
+func (repo *SelectRepo) GetAllDeviceTypes(ctx context.Context) ([]types.AllDeviceTypesRow, error) {
 	const sqlQuery = `SELECT static_device_types.device_type, 
 			static_device_types.device_type_formatted, 
 			static_device_types.device_meta_category, 
@@ -1769,12 +1742,12 @@ func (repo *SelectRepo) GetAllDeviceTypes(ctx context.Context) ([]types.DeviceTy
 	}
 	defer rows.Close()
 
-	var allDeviceTypes []types.DeviceType
+	var allDeviceTypes []types.AllDeviceTypesRow
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("context error: %w", ctx.Err())
 		}
-		var deviceType types.DeviceType
+		var deviceType types.AllDeviceTypesRow
 		if err := rows.Scan(
 			&deviceType.DeviceType,
 			&deviceType.DeviceTypeFormatted,
@@ -2007,7 +1980,7 @@ func GetAllBuildingsAndRooms(ctx context.Context) ([]types.AllBuildingsAndRooms,
 	return buildingAndRooms, nil
 }
 
-func SelectCheckoutData(ctx context.Context, tag *int64) (*types.CheckoutData, error) {
+func SelectCheckoutData(ctx context.Context, tag *int64) (*types.CheckoutLogResponse, error) {
 	if err := types.IsTagnumberInt64Valid(tag); err != nil {
 		return nil, err
 	}
@@ -2030,7 +2003,7 @@ func SelectCheckoutData(ctx context.Context, tag *int64) (*types.CheckoutData, e
 	LIMIT 1
 	;`
 
-	var checkoutData types.CheckoutData
+	var checkoutData types.CheckoutLogResponse
 	if err := dbConn.QueryRowContext(ctx, sqlQuery,
 		ptrToNullInt64(tag),
 	).Scan(

@@ -2,24 +2,25 @@ package types
 
 import "time"
 
-type JobQueueOverview struct {
-	TotalQueuedJobs         *int64 `json:"total_queued_jobs"`
-	TotalActiveJobs         *int64 `json:"total_active_jobs"`
-	TotalActiveBlockingJobs *int64 `json:"total_active_blocking_jobs"`
-}
-
-type DashboardInventorySummary struct {
-	SystemModel          *string `json:"system_model"`
-	SystemModelCount     *int64  `json:"system_model_count"`
-	TotalCheckedOut      *int64  `json:"total_checked_out"`
-	AvailableForCheckout *int64  `json:"available_for_checkout"`
-}
-
 type ClientLookupRow struct {
 	Tagnumber          *int64     `json:"tagnumber"`
 	SystemSerial       *string    `json:"system_serial"`
 	ClientUUID         *string    `json:"client_uuid"`
 	LastInventoryEntry *time.Time `json:"last_inventory_entry,omitempty"`
+}
+
+type AllDeviceTypesRow struct {
+	DeviceType          string `json:"device_type"`
+	DeviceTypeFormatted string `json:"device_type_formatted"`
+	DeviceMetaCategory  string `json:"device_meta_category"`
+	DeviceTypeCount     int64  `json:"device_type_count"`
+	SortOrder           int64  `json:"sort_order"`
+}
+
+type AllBuildingsAndRooms struct {
+	BuildingName *string `json:"building_name"`
+	RoomName     *string `json:"room_name"`
+	ClientCount  *int64  `json:"client_count"`
 }
 
 type AllManufacturersAndModelsRow struct {

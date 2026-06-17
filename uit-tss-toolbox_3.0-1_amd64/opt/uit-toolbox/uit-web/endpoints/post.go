@@ -82,7 +82,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Unmarshal JSON from base64 bytes
-	clientFormAuthData := new(types.AuthRequest)
+	clientFormAuthData := new(types.LoginRequest)
 	if err := json.Unmarshal(base64Decoded, clientFormAuthData); err != nil {
 		log.Warn("Cannot unmarshal JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -606,7 +606,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 
 	// Parse and validate note data
-	var newNote types.Note
+	var newNote types.GeneralNoteResponse
 	err = json.NewDecoder(req.Body).Decode(&newNote)
 	if err != nil {
 		log.Warn("Cannot decode note JSON: " + err.Error())
@@ -614,7 +614,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if newNote.NoteType == nil || newNote.Content == nil {
+	if newNote.NoteType == nil || newNote.NoteContent == nil {
 		log.Warn("Note type or content is nil, not inserting new note")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -624,7 +624,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
 	}
-	if utf8.RuneCountInString(strings.TrimSpace(*newNote.Content)) < htmlFormConstraints.GeneralNote.NoteContentMinChars || utf8.RuneCountInString(*newNote.Content) > htmlFormConstraints.GeneralNote.NoteContentMaxChars {
+	if utf8.RuneCountInString(strings.TrimSpace(*newNote.NoteContent)) < htmlFormConstraints.GeneralNote.NoteContentMinChars || utf8.RuneCountInString(*newNote.NoteContent) > htmlFormConstraints.GeneralNote.NoteContentMaxChars {
 		log.Warn("Note content outside of valid length range, not inserting new note")
 		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
@@ -632,7 +632,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 
 	// Insert note into database
 	curTime := time.Now().UTC()
-	err = database.InsertNewNote(ctx, &curTime, newNote.NoteType, newNote.Content)
+	err = database.InsertNewNote(ctx, &curTime, newNote.NoteType, newNote.NoteContent)
 	if err != nil {
 		log.Error("Failed to insert new note: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
