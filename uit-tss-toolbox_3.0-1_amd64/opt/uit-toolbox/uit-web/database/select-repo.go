@@ -2243,6 +2243,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 	}
 
 	var adminUsers []string
+	var memorySerialArr []string
 	rows, err := pgxPool.Query(ctx, sqlCode, tag)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
@@ -2323,7 +2324,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 			&clientInfoResult.BatteryDesignCapacity,
 			&clientInfoResult.BatteryCurrentMaxCapacity,
 			&clientInfoResult.BatteryChargeCycles,
-			&clientInfoResult.MemorySerial,
+			&memorySerialArr,
 			&clientInfoResult.MemoryCapacityKB,
 			&clientInfoResult.MemorySpeedMHz,
 			&clientInfoResult.FileCount,
@@ -2335,8 +2336,15 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		}
 	}
 
-	if adminUsers != nil {
-		clientInfoResult.AdminUsers = &adminUsers
+	if len(adminUsers) > 0 {
+		clientInfoResult.AdminUsers = adminUsers
+	} else {
+		clientInfoResult.AdminUsers = nil
+	}
+	if len(memorySerialArr) > 0 {
+		clientInfoResult.MemorySerial = memorySerialArr
+	} else {
+		clientInfoResult.MemorySerial = nil
 	}
 
 	return &clientInfoResult, nil

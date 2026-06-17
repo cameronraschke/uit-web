@@ -18,13 +18,13 @@ import (
 	"uit-toolbox/types"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type Update interface {
 	UpdateClientNetworkUsage(ctx context.Context, networkData *types.NetworkData) (err error)
 	UpdateClientAppUptime(ctx context.Context, tag int64, appUptime int64) (err error)
 	UpdateClientSystemUptime(ctx context.Context, tag int64, systemUptime int64) (err error)
-	UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error)
 	UpdateJobQueuedAt(ctx context.Context, jobQueue *types.JobQueueTableRowView) (err error)
 	UpdateClientLastHeard(ctx context.Context, tag *int64, lastHeard *time.Time) (err error)
 	UpdateClientBatteryChargePcnt(ctx context.Context, tag *int64, percent *float64) (err error)
@@ -70,6 +70,24 @@ func lockClientRowBySystemSerial(ctx context.Context, tx *sql.Tx, systemSerial s
 		return uuid.Nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 
+	return clientUUID, nil
+}
+
+func lockClientRowBySystemSerialPGX(ctx context.Context, tx pgx.Tx, systemSerial string) (uuid.UUID, error) {
+	const sqlCode = `
+        SELECT uuid
+        FROM ids
+        WHERE system_serial = $1
+        FOR UPDATE
+    ;`
+	var clientUUID uuid.UUID
+	err := tx.QueryRow(ctx, sqlCode, systemSerial).Scan(&clientUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, fmt.Errorf("%w: no client found for system serial '%s'", types.DatabaseQueryError, systemSerial)
+		}
+		return uuid.Nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
 	return clientUUID, nil
 }
 
@@ -1409,31 +1427,41 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 }
 
 // Function to be used from Linux request
-func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error) {
+func UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHardwareView) (err error) {
 	if hardwareData == nil || hardwareData.SystemSerial == nil || strings.TrimSpace(hardwareData.TransactionUUID) == "" {
 		return fmt.Errorf("hardwareData is invalid")
 	}
 	if ctx.Err() != nil {
 		return fmt.Errorf("context error: %w", ctx.Err())
 	}
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
-		return fmt.Errorf("error beginning DB transaction: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
+
+	tx, err := pgxPool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
+	}
+
 	defer func() {
 		if err != nil {
-			_ = tx.Rollback()
-		} else {
-			err = tx.Commit()
+			_ = tx.Rollback(ctx)
+			return
+		}
+		if commitErr := tx.Commit(ctx); commitErr != nil {
+			err = commitErr
 		}
 	}()
 
-	clientUUID, err := lockClientRowBySystemSerial(ctx, tx, *hardwareData.SystemSerial)
+	clientUUID, err := lockClientRowBySystemSerialPGX(ctx, tx, *hardwareData.SystemSerial)
 	if err != nil {
 		return err
 	}
 
-	const hardwareDataTable = `INSERT INTO hardware_data
+	const hardwareDataTable = `
+	INSERT INTO hardware_data
 		(
 			transaction_uuid,
 			time,
@@ -1497,10 +1525,9 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, hardware_data.ethernet_mac),
 			wifi_mac = COALESCE(EXCLUDED.wifi_mac, hardware_data.wifi_mac),
 			tpm_version = COALESCE(EXCLUDED.tpm_version, hardware_data.tpm_version)
-			;
-	`
-	var hardwareResult sql.Result
-	hardwareResult, err = tx.ExecContext(ctx, hardwareDataTable,
+	;`
+
+	hardwareDataResult, err := tx.Exec(ctx, hardwareDataTable,
 		ptrToNullString(&hardwareData.TransactionUUID),
 		clientUUID,
 		ptrToNullString(hardwareData.SystemSerial),
@@ -1524,8 +1551,8 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
-	if err := VerifyRowsAffected(hardwareResult, 1); err != nil {
-		return err
+	if hardwareDataResult.RowsAffected() != 1 {
+		return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseAffectedRowsError, hardwareDataResult.RowsAffected())
 	}
 
 	const historicalDiskDataInsertSQL = `
@@ -1575,7 +1602,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		disk_error_count = COALESCE(EXCLUDED.disk_error_count, historical_disk_data.disk_error_count)	
 	;`
 
-	historicalDiskDataResult, err := tx.ExecContext(ctx, historicalDiskDataInsertSQL,
+	historicalDiskDataResult, err := tx.Exec(ctx, historicalDiskDataInsertSQL,
 		hardwareData.TransactionUUID,
 		false,
 		clientUUID,
@@ -1593,8 +1620,8 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
-	if err := VerifyRowsAffected(historicalDiskDataResult, 1); err != nil {
-		return err
+	if historicalDiskDataResult.RowsAffected() != 1 {
+		return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseAffectedRowsError, historicalDiskDataResult.RowsAffected())
 	}
 
 	const historicalBatteryDataTableInsertSQL = `
@@ -1635,7 +1662,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		battery_current_max_capacity = COALESCE(EXCLUDED.battery_current_max_capacity, historical_battery_data.battery_current_max_capacity)
 	;`
 
-	batteryHardwareDataSQLResult, err := tx.ExecContext(ctx, historicalBatteryDataTableInsertSQL,
+	batteryHardwareDataSQLResult, err := tx.Exec(ctx, historicalBatteryDataTableInsertSQL,
 		hardwareData.TransactionUUID,
 		false,
 		clientUUID,
@@ -1650,14 +1677,14 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
-	if err := VerifyRowsAffected(batteryHardwareDataSQLResult, 1); err != nil {
-		return err
+	if batteryHardwareDataSQLResult.RowsAffected() != 1 {
+		return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseAffectedRowsError, batteryHardwareDataSQLResult.RowsAffected())
 	}
 
 	const historicalHardwareDataTable = `INSERT INTO historical_hardware_data 
 		(
-			transaction_uuid, 
 			time, 
+			transaction_uuid, 
 			client_uuid, 
 			ethernet_mac, 
 			wifi_mac, 
@@ -1665,12 +1692,12 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			memory_capacity_kb, 
 			memory_speed_mhz 
 		) VALUES (
-			$1,
 			CURRENT_TIMESTAMP,
+			$1,
 			$2,
 			$3,
 			$4,
-			$5,
+			$5::TEXT[],
 			$6,
 			$7
 		) ON CONFLICT (transaction_uuid) DO UPDATE SET
@@ -1683,21 +1710,27 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			memory_speed_mhz = COALESCE(EXCLUDED.memory_speed_mhz, historical_hardware_data.memory_speed_mhz)
 	;`
 
-	var hardwareHistoryResult sql.Result
-	hardwareHistoryResult, err = tx.ExecContext(ctx, historicalHardwareDataTable,
-		ptrToNullString(&hardwareData.TransactionUUID),
-		clientUUID,
+	var memorySerialArray []string
+	if hardwareData.MemorySerial != nil {
+		memorySerialArray = append(memorySerialArray, hardwareData.MemorySerial...)
+	}
+	if len(memorySerialArray) == 0 {
+		memorySerialArray = nil
+	}
+	hardwareHistoryResult, err := tx.Exec(ctx, historicalHardwareDataTable,
+		toNullString(hardwareData.TransactionUUID),
+		toNullUUID(clientUUID),
 		ptrToNullString(hardwareData.EthernetMAC),
 		ptrToNullString(hardwareData.WiFiMAC),
-		ptrToNullString(hardwareData.MemorySerial),
+		memorySerialArray,
 		ptrToNullInt64(hardwareData.MemoryCapacityKB),
 		ptrToNullInt64(hardwareData.MemorySpeedMHz),
 	)
 	if err != nil {
 		return err
 	}
-	if err := VerifyRowsAffected(hardwareHistoryResult, 1); err != nil {
-		return err
+	if hardwareHistoryResult.RowsAffected() != 1 {
+		return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseAffectedRowsError, hardwareHistoryResult.RowsAffected())
 	}
 
 	const clientFirmwareInsertSQL = `
@@ -1725,7 +1758,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_firmware_data.bios_release_date)
 	;`
 
-	firmwareSQLResult, err := tx.ExecContext(ctx, clientFirmwareInsertSQL,
+	firmwareSQLResult, err := tx.Exec(ctx, clientFirmwareInsertSQL,
 		toNullString(hardwareData.TransactionUUID),
 		clientUUID,
 		ptrToNullString(hardwareData.BiosVersion),
@@ -1735,8 +1768,8 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
-	if err := VerifyRowsAffected(firmwareSQLResult, 1); err != nil {
-		return err
+	if firmwareSQLResult.RowsAffected() != 1 {
+		return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseAffectedRowsError, firmwareSQLResult.RowsAffected())
 	}
 	return nil
 }

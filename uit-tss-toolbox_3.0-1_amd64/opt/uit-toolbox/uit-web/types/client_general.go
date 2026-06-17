@@ -4,7 +4,7 @@ import "time"
 
 type ClientInfoResponse struct {
 	AcquiredDate              *time.Time               `json:"AcquiredDate"`
-	AdminUsers                *[]string                `json:"AdminUsers"`
+	AdminUsers                []string                `json:"AdminUsers"`
 	Building                  *string                  `json:"Building"`
 	IsCheckedOut              *bool                    `json:"IsCheckedOut"`
 	CheckoutDate              *time.Time               `json:"CheckoutDate"`
@@ -70,7 +70,7 @@ type ClientInfoResponse struct {
 	BatteryDesignCapacity     *float64                 `json:"BatteryDesignCapacity"`
 	BatteryCurrentMaxCapacity *float64                 `json:"BatteryCurrentMaxCapacity"`
 	BatteryChargeCycles       *int64                   `json:"BatteryChargeCycles"`
-	MemorySerial              *string                  `json:"MemorySerial"`
+	MemorySerial              []string                 `json:"MemorySerial"`
 	MemoryCapacityKB          *int64                   `json:"MemoryCapacityKB"`
 	MemorySpeedMHz            *int64                   `json:"MemorySpeedMHz"`
 	SystemManufacturer        *string                  `json:"SystemManufacturer"`

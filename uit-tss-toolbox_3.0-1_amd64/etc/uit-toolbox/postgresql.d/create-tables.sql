@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	battery_design_capacity INTEGER DEFAULT NULL,
 	battery_manufacturer VARCHAR(64) DEFAULT NULL,
 	battery_manufacture_date DATE DEFAULT NULL,
-	memory_serial VARCHAR(128) DEFAULT NULL,
+	memory_serial TEXT[] DEFAULT NULL,
 	memory_capacity_kb BIGINT DEFAULT NULL,
 	memory_speed_mhz SMALLINT DEFAULT NULL,
 	updated_from_windows BOOLEAN DEFAULT FALSE NOT NULL,

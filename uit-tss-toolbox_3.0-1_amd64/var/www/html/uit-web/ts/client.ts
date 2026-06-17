@@ -70,7 +70,7 @@ type ClientInfoResponse = {
 	BatteryDesignCapacity:     number | null
 	BatteryCurrentMaxCapacity: number | null
 	BatteryChargeCycles:       number | null
-	MemorySerial:              string | null
+	MemorySerial:              string[] | null
 	MemoryCapacityKB:          number | null
 	MemorySpeedMHz:            number | null
 	SystemManufacturer:        string | null

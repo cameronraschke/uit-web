@@ -43,6 +43,7 @@ type WindowsUpdateRequest struct {
 	ADComputerName            *string    `json:"ad_computer_name"`
 	ADDistinguishedName       *string    `json:"ad_distinguished_name"`
 	IsIntuneJoined            *bool      `json:"is_intune_joined"`
+	MemorySerial              *string    `json:"memory_serial"`
 	MemoryCapacityKB          *int64     `json:"memory_capacity_kb"`
 	MemorySpeedMHz            *int64     `json:"memory_speed_mhz"`
 	CPUModel                  *string    `json:"cpu_model"`
@@ -94,6 +95,7 @@ type WindowsUpdateDTO struct {
 	ADComputerName            *string
 	ADDistinguishedName       *string
 	IsIntuneJoined            *bool
+	MemorySerial              []string
 	MemoryCapacityKB          *int64
 	MemorySpeedMHz            *int64
 	CPUModel                  *string
@@ -169,6 +171,14 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 		adAdminUsersArr = strings.Split(*request.AdminUsers, ";")
 	}
 
+	memorySerialArr := make([]string, 0)
+	if request.MemorySerial != nil && strings.TrimSpace(*request.MemorySerial) != "" {
+		memorySerial := strings.TrimSpace(*request.MemorySerial)
+		if memorySerial != "" {
+			memorySerialArr = strings.Split(memorySerial, ";")
+		}
+	}
+
 	return &WindowsUpdateDTO{
 		BatteryManufactureDate:    convertedBatteryManufactureDate,
 		BatteryManufacturer:       request.BatteryManufacturer,
@@ -206,6 +216,7 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 		ADComputerName:            request.ADComputerName,
 		ADDistinguishedName:       request.ADDistinguishedName,
 		IsIntuneJoined:            request.IsIntuneJoined,
+		MemorySerial:              memorySerialArr,
 		MemoryCapacityKB:          request.MemoryCapacityKB,
 		MemorySpeedMHz:            request.MemorySpeedMHz,
 		CPUModel:                  request.CPUModel,
