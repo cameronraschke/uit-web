@@ -1700,7 +1700,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 		return err
 	}
 
-	const clientHealthCheckHistorySQL = `
+	const clientFirmwareInsertSQL = `
 		INSERT INTO 
 			historical_firmware_data (
 				time, 
@@ -1725,7 +1725,7 @@ func (updateRepo *UpdateRepo) UpdateClientHardwareData(ctx context.Context, hard
 			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_firmware_data.bios_release_date)
 	;`
 
-	firmwareSQLResult, err := tx.ExecContext(ctx, clientHealthCheckHistorySQL,
+	firmwareSQLResult, err := tx.ExecContext(ctx, clientFirmwareInsertSQL,
 		toNullString(hardwareData.TransactionUUID),
 		clientUUID,
 		ptrToNullString(hardwareData.BiosVersion),
@@ -2185,7 +2185,9 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		return err
 	}
 
-	if windowsUpdateDTO.DiskModel != nil && windowsUpdateDTO.DiskType != nil && windowsUpdateDTO.DiskSizeKB != nil {
+	if windowsUpdateDTO.DiskModel != nil &&
+		windowsUpdateDTO.DiskType != nil &&
+		windowsUpdateDTO.DiskSizeKB != nil {
 		const diskDataInsertSQL = `
 		INSERT INTO historical_disk_data (
 			time,
@@ -2218,6 +2220,59 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 		}
 		if err := VerifyRowsAffected(diskDataResult, 1); err != nil {
+			return err
+		}
+	}
+
+	if windowsUpdateDTO.BatteryChargeCycleCount != nil &&
+		windowsUpdateDTO.BatteryDesignCapacity != nil &&
+		windowsUpdateDTO.BatteryCurrentMaxCapacity != nil {
+		// Battery data insert
+		const batteryDataInsertSQL = `
+		INSERT INTO historical_battery_data (
+			time,
+			transaction_uuid,
+			updated_from_windows,
+			client_uuid,
+			battery_serial,
+			battery_manufacturer,
+			battery_model,
+			battery_charge_cycles,
+			battery_design_capacity,
+			battery_manufacture_date,
+			battery_current_max_capacity
+		) VALUES (
+			CURRENT_TIMESTAMP,
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10
+		)
+		;`
+
+		batteryDataInsertResult, batteryDataInsertErr := tx.ExecContext(ctx, batteryDataInsertSQL,
+			toNullUUID(transactionUUID),
+			true,
+			toNullUUID(clientUUID),
+			windowsUpdateDTO.BatterySerial,
+			windowsUpdateDTO.BatteryManufacturer,
+			windowsUpdateDTO.BatteryModel,
+			windowsUpdateDTO.BatteryChargeCycleCount,
+			windowsUpdateDTO.BatteryDesignCapacity,
+			windowsUpdateDTO.BatteryManufactureDate,
+			windowsUpdateDTO.BatteryCurrentMaxCapacity,
+		)
+
+		if batteryDataInsertErr != nil {
+			return fmt.Errorf("%w: %w", types.DatabaseUpdateError, batteryDataInsertErr)
+		}
+		if err := VerifyRowsAffected(batteryDataInsertResult, 1); err != nil {
 			return err
 		}
 	}
@@ -2328,7 +2383,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 
-	const clientHealthCheckHistorySQL = `
+	const clientFirmwareInsertSQL = `
 		INSERT INTO 
 			historical_firmware_data (
 				time, 
@@ -2353,7 +2408,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_firmware_data.bios_release_date)
 	;`
 
-	firmwareSQLResult, err := tx.ExecContext(ctx, clientHealthCheckHistorySQL,
+	firmwareSQLResult, err := tx.ExecContext(ctx, clientFirmwareInsertSQL,
 		toNullString(transactionUUID.String()),
 		toNullInt64(windowsUpdateDTO.Tagnumber),
 		ptrToNullBool(&windowsUpdateDTO.UpdatedFromWindows),

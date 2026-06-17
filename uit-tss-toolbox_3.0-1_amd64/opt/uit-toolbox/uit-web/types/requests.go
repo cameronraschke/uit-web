@@ -7,6 +7,14 @@ import (
 )
 
 type WindowsUpdateRequest struct {
+	BatteryManufactureDate    *string    `json:"battery_manufacture_date"`
+	BatteryManufacturer       *string    `json:"battery_manufacturer"`
+	BatteryModel              *string    `json:"battery_model"`
+	BatterySerial             *string    `json:"battery_serial"`
+	BatteryCurrentMaxCapacity *int64     `json:"battery_current_max_capacity"`
+	BatteryDesignCapacity     *int64     `json:"battery_design_capacity"`
+	BatteryHealthPcnt         *float64   `json:"battery_health_pct"`
+	BatteryChargeCycleCount   *int64     `json:"battery_charge_cycle_count"`
 	LastHardwareCheck         *time.Time `json:"last_hardware_check"`
 	Tagnumber                 *int64     `json:"tagnumber"`
 	SystemSerial              *string    `json:"system_serial"`
@@ -46,16 +54,18 @@ type WindowsUpdateRequest struct {
 	DiskFreeSpaceKB           *int64     `json:"disk_free_space_kb"`
 	EthernetMACAddr           *string    `json:"ethernet_mac_addr"`
 	WifiMACAddr               *string    `json:"wifi_mac_addr"`
-	BatteryManufacturer       *string    `json:"battery_manufacturer"`
-	BatterySerial             *string    `json:"battery_serial"`
-	BatteryCurrentMaxCapacity *int64     `json:"battery_current_max_capacity"`
-	BatteryDesignCapacity     *int64     `json:"battery_design_capacity"`
-	BatteryHealthPcnt         *float64   `json:"battery_health_pct"`
-	BatteryChargeCycleCount   *int64     `json:"battery_charge_cycle_count"`
 	UpdatedFromWindows        bool       `json:"updated_from_windows"`
 }
 
 type WindowsUpdateDTO struct {
+	BatteryManufactureDate    *time.Time
+	BatteryManufacturer       *string
+	BatteryModel              *string
+	BatterySerial             *string
+	BatteryCurrentMaxCapacity *int64
+	BatteryDesignCapacity     *int64
+	BatteryHealthPcnt         *float64
+	BatteryChargeCycleCount   *int64
 	LastHardwareCheck         time.Time
 	Tagnumber                 int64
 	SystemSerial              string
@@ -95,12 +105,6 @@ type WindowsUpdateDTO struct {
 	DiskFreeSpaceKB           *int64
 	EthernetMACAddr           *string
 	WifiMACAddr               *string
-	BatteryManufacturer       *string
-	BatterySerial             *string
-	BatteryCurrentMaxCapacity *int64
-	BatteryDesignCapacity     *int64
-	BatteryHealthPcnt         *float64
-	BatteryChargeCycleCount   *int64
 	UpdatedFromWindows        bool
 }
 
@@ -129,7 +133,7 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 	if request.OSInstalledAt == nil || strings.TrimSpace(*request.OSInstalledAt) == "" {
 		return nil, fmt.Errorf("os_installed_at is required")
 	}
-	convertedTime, err := time.Parse(time.RFC3339, *request.OSInstalledAt)
+	convertedTime, err := time.Parse(time.RFC3339, strings.TrimSpace(*request.OSInstalledAt))
 	if err != nil {
 		return nil, fmt.Errorf("invalid os_installed_at format: %w", err)
 	}
@@ -137,9 +141,27 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 	if request.BIOSReleaseDate == nil || strings.TrimSpace(*request.BIOSReleaseDate) == "" {
 		return nil, fmt.Errorf("bios_release_date is required")
 	}
-	convertedBIOSReleaseDate, err := time.Parse(time.RFC3339, *request.BIOSReleaseDate)
-	if err != nil {
-		return nil, fmt.Errorf("invalid bios_release_date format: %w", err)
+
+	var convertedBatteryManufactureDate *time.Time
+	if request.BatteryManufactureDate != nil && strings.TrimSpace(*request.BatteryManufactureDate) != "" {
+		tmpBatteryManufactureDate, err := time.Parse(time.RFC3339, strings.TrimSpace(*request.BatteryManufactureDate))
+		if err != nil || tmpBatteryManufactureDate.IsZero() {
+			// return nil, fmt.Errorf("invalid battery_manufacture_date format: %w", err)
+			convertedBatteryManufactureDate = nil
+		} else {
+			convertedBatteryManufactureDate = &tmpBatteryManufactureDate
+		}
+	}
+
+	var convertedBIOSReleaseDate *time.Time
+	if request.BIOSReleaseDate != nil && strings.TrimSpace(*request.BIOSReleaseDate) != "" {
+		tmpBIOSReleaseDate, err := time.Parse(time.RFC3339, strings.TrimSpace(*request.BIOSReleaseDate))
+		if err != nil || tmpBIOSReleaseDate.IsZero() {
+			// return nil, fmt.Errorf("invalid bios_release_date format: %w", err)
+			convertedBIOSReleaseDate = nil
+		} else {
+			convertedBIOSReleaseDate = &tmpBIOSReleaseDate
+		}
 	}
 
 	adAdminUsersArr := make([]string, 0)
@@ -148,6 +170,14 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 	}
 
 	return &WindowsUpdateDTO{
+		BatteryManufactureDate:    convertedBatteryManufactureDate,
+		BatteryManufacturer:       request.BatteryManufacturer,
+		BatteryModel:              request.BatteryModel,
+		BatterySerial:             request.BatterySerial,
+		BatteryCurrentMaxCapacity: request.BatteryCurrentMaxCapacity,
+		BatteryDesignCapacity:     request.BatteryDesignCapacity,
+		BatteryHealthPcnt:         request.BatteryHealthPcnt,
+		BatteryChargeCycleCount:   request.BatteryChargeCycleCount,
 		LastHardwareCheck:         *request.LastHardwareCheck,
 		Tagnumber:                 *request.Tagnumber,
 		SystemSerial:              *request.SystemSerial,
@@ -157,7 +187,7 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 		SystemSKU:                 request.SystemSKU,
 		ChassisType:               request.ChassisType,
 		BIOSVersion:               request.BIOSVersion,
-		BIOSReleaseDate:           &convertedBIOSReleaseDate,
+		BIOSReleaseDate:           convertedBIOSReleaseDate,
 		TPMVersion:                request.TPMVersion,
 		SecureBootEnabled:         request.SecureBootEnabled,
 		OSInstalledAt:             &convertedTime,
@@ -187,12 +217,6 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 		DiskFreeSpaceKB:           request.DiskFreeSpaceKB,
 		EthernetMACAddr:           request.EthernetMACAddr,
 		WifiMACAddr:               request.WifiMACAddr,
-		BatteryManufacturer:       request.BatteryManufacturer,
-		BatterySerial:             request.BatterySerial,
-		BatteryCurrentMaxCapacity: request.BatteryCurrentMaxCapacity,
-		BatteryDesignCapacity:     request.BatteryDesignCapacity,
-		BatteryHealthPcnt:         request.BatteryHealthPcnt,
-		BatteryChargeCycleCount:   request.BatteryChargeCycleCount,
 		UpdatedFromWindows:        request.UpdatedFromWindows,
 	}, nil
 }

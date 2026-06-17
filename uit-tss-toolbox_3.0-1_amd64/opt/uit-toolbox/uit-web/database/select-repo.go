@@ -2135,7 +2135,11 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
 		LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
 		LEFT JOIN historical_hardware_data ON ids.uuid = historical_hardware_data.client_uuid AND historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY client_uuid)
-		LEFT JOIN historical_disk_data ON ids.uuid = historical_disk_data.client_uuid AND historical_disk_data.time IN (SELECT MAX(time) FROM historical_disk_data GROUP BY client_uuid)
+		LEFT JOIN historical_disk_data ON ids.uuid = historical_disk_data.client_uuid 
+			AND historical_disk_data.updated_from_windows = FALSE
+			AND historical_disk_data.time IN (SELECT MAX(time) FROM historical_disk_data GROUP BY client_uuid)
+			AND historical_disk_data.disk_writes_kb IS NOT NULL
+			AND historical_disk_data.disk_model IS NOT NULL
 		LEFT JOIN historical_firmware_data ON ids.uuid = historical_firmware_data.client_uuid AND historical_firmware_data.time IN (SELECT MAX(time) FROM historical_firmware_data GROUP BY client_uuid)
 		LEFT JOIN historical_battery_data ON ids.uuid = historical_battery_data.client_uuid AND historical_battery_data.time IN (SELECT MAX(time) FROM historical_battery_data GROUP BY client_uuid)
 		LEFT JOIN static_disk_stats ON historical_disk_data.disk_model = static_disk_stats.disk_model
