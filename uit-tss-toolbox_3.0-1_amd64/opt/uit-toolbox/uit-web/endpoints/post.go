@@ -1516,7 +1516,7 @@ func SetClientHardwareData(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	var hardwareData types.ClientHardwareView
+	var hardwareData *types.ClientHardwareView
 	if err := json.Unmarshal(clientBody, &hardwareData); err != nil {
 		log.Warn("Cannot decode SetClientHardwareData JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -1534,13 +1534,8 @@ func SetClientHardwareData(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	updateRepo, err := database.NewUpdateRepo()
-	if err != nil {
-		log.Error("No database connection available for SetClientHardwareData")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	if hardwareData == (types.ClientHardwareView{}) {
+
+	if hardwareData == nil {
 		log.Warn("Empty hardware data provided in SetClientHardwareData")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -1567,7 +1562,7 @@ func SetClientHardwareData(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 	}
-	if err = updateRepo.UpdateClientHardwareData(ctx, &hardwareData); err != nil {
+	if err := database.UpdateClientHardwareData(ctx, hardwareData); err != nil {
 		log.Error("Failed to update client hardware data: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
