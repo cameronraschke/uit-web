@@ -654,8 +654,8 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				const jsonText = await jsonFileUpload.files[0].text();
 				try {
 					const jsonData = JSON.parse(jsonText);
-					if (jsonData && jsonData.last_hardware_check) {
-						const hardwareCheckDate = new Date(jsonData.last_hardware_check);
+					if (jsonData && jsonData.request_metadata.last_hardware_check) {
+						const hardwareCheckDate = new Date(jsonData.request_metadata.last_hardware_check);
 						const hardwareCheckDateLocalTZ = !isNaN(hardwareCheckDate.getTime())
 							? new Date(hardwareCheckDate.getTime() - hardwareCheckDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 							: "";
@@ -1197,11 +1197,11 @@ async function uploadJSONFile(jsonFile: File): Promise<any> {
 			});
 			if (!data.ok) throw new Error("Server returned an error: " + data.status + " " + data.statusText);
 			const jsonData = await data.json();
-			if (jsonData && jsonData.tagnumber > 0) {
+			if (jsonData && jsonData.request_metadata.tagnumber > 0) {
 				try {
-					await populateLocationForm(jsonData.tagnumber, jsonData.system_serial);
-					clientLookupTagInput.value = jsonData.tagnumber.toString();
-					clientLookupSerial.value = jsonData.system_serial || '';
+					await populateLocationForm(jsonData.request_metadata.tagnumber, jsonData.request_metadata.system_serial);
+					clientLookupTagInput.value = jsonData.request_metadata.tagnumber.toString();
+					clientLookupSerial.value = jsonData.request_metadata.system_serial || '';
 					lastHardwareCheckUpdate.classList.remove("empty-input");
 					lastHardwareCheckUpdate.classList.add("changed-input");
 					updateURLFromAdvFilters();
@@ -1240,7 +1240,7 @@ if (jsonFileUpload && jsonFileUploadButton) {
 			jsonFileUploadButton.textContent = `JSON File: ${jsonFile.name}`;
 			jsonFileUploadButton.classList.add("changed-input");
 			const jsonData = await JSON.parse(await jsonFile.text());
-			await populateLocationForm(jsonData.tagnumber, jsonData.system_serial);
+			await populateLocationForm(jsonData.request_metadata.tagnumber, jsonData.request_metadata.system_serial);
 		} else {
 			jsonFileUploadButton.textContent = "Upload JSON File";
 			jsonFileUploadButton.classList.remove("changed-input");
