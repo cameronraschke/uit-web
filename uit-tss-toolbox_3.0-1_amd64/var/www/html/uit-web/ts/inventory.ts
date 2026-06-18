@@ -1197,11 +1197,11 @@ async function uploadJSONFile(jsonFile: File): Promise<any> {
 			});
 			if (!data.ok) throw new Error("Server returned an error: " + data.status + " " + data.statusText);
 			const jsonData = await data.json();
-			if (jsonData && jsonData.request_metadata.tagnumber > 0) {
+			if (jsonData && jsonData.tagnumber > 0) {
 				try {
-					await populateLocationForm(jsonData.request_metadata.tagnumber, jsonData.request_metadata.system_serial);
-					clientLookupTagInput.value = jsonData.request_metadata.tagnumber.toString();
-					clientLookupSerial.value = jsonData.request_metadata.system_serial || '';
+					await populateLocationForm(jsonData.tagnumber, jsonData.system_serial);
+					clientLookupTagInput.value = jsonData.tagnumber.toString();
+					clientLookupSerial.value = jsonData.system_serial || '';
 					lastHardwareCheckUpdate.classList.remove("empty-input");
 					lastHardwareCheckUpdate.classList.add("changed-input");
 					updateURLFromAdvFilters();
