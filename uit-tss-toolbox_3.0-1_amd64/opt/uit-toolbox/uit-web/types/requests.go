@@ -4,7 +4,17 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
+
+type RequestMetadata struct {
+	TimeStamp          *time.Time `json:"timestamp"`
+	TransactionUUID    *uuid.UUID `json:"transaction_uuid"`
+	UpdatedFromWindows *bool      `json:"updated_from_windows"`
+	Tagnumber          *int64     `json:"tagnumber"`
+	SystemSerial       *string    `json:"system_serial"`
+}
 
 type WindowsUpdateRequest struct {
 	BatteryManufactureDate    *string    `json:"battery_manufacture_date"`

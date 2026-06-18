@@ -839,7 +839,7 @@ func SetClientJob(ctx context.Context, tag int64, clientJob string) (err error) 
 	return nil
 }
 
-func UpsertClientMemoryUsageKB(ctx context.Context, memInfo types.MemoryDataDTO) (err error) {
+func UpsertClientMemoryUsageKB(ctx context.Context, memInfo types.MemoryDataUpdateDTO) (err error) {
 	if memInfo.Tagnumber == 0 {
 		return fmt.Errorf("%w: %w", types.InvalidFieldError, fmt.Errorf("tagnumber is required in memory data"))
 	}
@@ -899,7 +899,7 @@ func UpsertClientMemoryUsageKB(ctx context.Context, memInfo types.MemoryDataDTO)
 	return nil
 }
 
-func UpsertClientMemoryCapacityKB(ctx context.Context, memInfo types.MemoryDataDTO) (err error) {
+func UpsertClientMemoryCapacityKB(ctx context.Context, memInfo types.MemoryDataUpdateDTO) (err error) {
 	if memInfo.Tagnumber == 0 {
 		return fmt.Errorf("%w: %w", types.InvalidFieldError, fmt.Errorf("tagnumber is required in memory data"))
 	}
@@ -959,7 +959,7 @@ func UpsertClientMemoryCapacityKB(ctx context.Context, memInfo types.MemoryDataD
 	return nil
 }
 
-func UpsertClientCPUUsage(ctx context.Context, cpuData *types.CPUDataDTO) (err error) {
+func UpsertClientCPUUsage(ctx context.Context, cpuData *types.CPUDataUpdateDTO) (err error) {
 	if cpuData == nil {
 		return fmt.Errorf("CPU data is required")
 	}
@@ -1023,7 +1023,7 @@ func UpsertClientCPUUsage(ctx context.Context, cpuData *types.CPUDataDTO) (err e
 	return nil
 }
 
-func UpsertClientCPUMHz(ctx context.Context, cpuData *types.CPUDataDTO) (err error) {
+func UpsertClientCPUMHz(ctx context.Context, cpuData *types.CPUDataUpdateDTO) (err error) {
 	if cpuData == nil {
 		return fmt.Errorf("CPU data is required")
 	}
@@ -1132,7 +1132,7 @@ func (updateRepo *UpdateRepo) UpdateClientNetworkUsage(ctx context.Context, netw
 	return nil
 }
 
-func UpsertClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUDataDTO) (err error) {
+func UpsertClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUDataUpdateDTO) (err error) {
 	if cpuTempData == nil {
 		return fmt.Errorf("CPU data is required")
 	}

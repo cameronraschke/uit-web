@@ -151,7 +151,7 @@ func SetClientMemoryUsageKB(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var memInfoRequest types.MemoryDataRequest
+	var memInfoRequest types.MemoryDataUpdateRequest
 	if err := json.Unmarshal(requestBody, &memInfoRequest); err != nil {
 		log.Warn(types.JSONUnmarshalError.Error() + ": " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -197,7 +197,7 @@ func SetClientMemoryCapacityKB(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var memInfoRequest types.MemoryDataRequest
+	var memInfoRequest types.MemoryDataUpdateRequest
 	if err := json.Unmarshal(requestBody, &memInfoRequest); err != nil {
 		log.Warn(types.JSONUnmarshalError.Error() + ": " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -242,7 +242,7 @@ func SetClientCPUUsage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var cpuDataRequest types.CPUDataRequest
+	var cpuDataRequest types.CPUDataUpdateRequest
 	if err := json.Unmarshal(requestBody, &cpuDataRequest); err != nil {
 		log.Warn("Cannot unmarshal JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -280,7 +280,7 @@ func SetClientCPUMHz(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var cpuUpdateRequest types.CPUDataRequest
+	var cpuUpdateRequest types.CPUDataUpdateRequest
 	if err := json.Unmarshal(requestBody, &cpuUpdateRequest); err != nil {
 		log.Warn(types.JSONUnmarshalError.Error() + ": " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -367,7 +367,7 @@ func SetClientCPUTemperature(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var cpuDataRequest types.CPUDataRequest
+	var cpuDataRequest types.CPUDataUpdateRequest
 	if err := json.Unmarshal(requestBody, &cpuDataRequest); err != nil {
 		log.Warn("Cannot unmarshal JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
@@ -556,18 +556,18 @@ func UpdateClientBatteryChargePcnt(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	batteryData := new(types.BatteryData)
+	batteryData := new(types.BatteryDataRequest)
 	if err := json.Unmarshal(requestBody, batteryData); err != nil {
 		log.Warn("Cannot unmarshal JSON: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if batteryData.Tagnumber == 0 || batteryData.Percent == nil {
+	if batteryData.Tagnumber == nil || *batteryData.Tagnumber == 0 || batteryData.BatteryChargePcnt == nil {
 		log.Warn("Missing tag number or battery percentage")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if *batteryData.Percent < 0 || *batteryData.Percent > 100 {
+	if *batteryData.BatteryChargePcnt < 0 || *batteryData.BatteryChargePcnt > 100 {
 		log.Warn("Battery percentage out of valid range (0-100)")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -578,7 +578,7 @@ func UpdateClientBatteryChargePcnt(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	if err := updateRepo.UpdateClientBatteryChargePcnt(ctx, &batteryData.Tagnumber, batteryData.Percent); err != nil {
+	if err := updateRepo.UpdateClientBatteryChargePcnt(ctx, batteryData.Tagnumber, batteryData.BatteryChargePcnt); err != nil {
 		log.Error("Failed to update client battery percentage: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return

@@ -2,7 +2,10 @@ package types
 
 import (
 	"fmt"
+	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type ClientHardwareView struct {
@@ -62,7 +65,7 @@ type ClientHealthCheck struct {
 	LastHardwareCheck *time.Time `json:"last_hardware_check"`
 }
 
-type MemoryDataRequest struct {
+type MemoryDataUpdateRequest struct {
 	Tagnumber       *int64  `json:"tagnumber"`
 	TotalUsageKB    *int64  `json:"memory_usage_kb"`
 	TotalCapacityKB *int64  `json:"memory_capacity_kb"`
@@ -70,7 +73,7 @@ type MemoryDataRequest struct {
 	SpeedMHz        *int64  `json:"speed_mhz"`
 }
 
-type MemoryDataDTO struct {
+type MemoryDataUpdateDTO struct {
 	Tagnumber       int64
 	TotalUsageKB    int64
 	TotalCapacityKB int64
@@ -78,7 +81,7 @@ type MemoryDataDTO struct {
 	SpeedMHz        int64
 }
 
-func (m *MemoryDataRequest) ToDTO() (*MemoryDataDTO, error) {
+func (m *MemoryDataUpdateRequest) ToDTO() (*MemoryDataUpdateDTO, error) {
 	if m == nil {
 		return nil, fmt.Errorf("memory data request is nil")
 	}
@@ -101,7 +104,7 @@ func (m *MemoryDataRequest) ToDTO() (*MemoryDataDTO, error) {
 	if m.SpeedMHz != nil {
 		speedMHz = *m.SpeedMHz
 	}
-	return &MemoryDataDTO{
+	return &MemoryDataUpdateDTO{
 		Tagnumber:       *m.Tagnumber,
 		TotalUsageKB:    usageKB,
 		TotalCapacityKB: capacityKB,
@@ -110,21 +113,21 @@ func (m *MemoryDataRequest) ToDTO() (*MemoryDataDTO, error) {
 	}, nil
 }
 
-type CPUDataRequest struct {
+type CPUDataUpdateRequest struct {
 	Tagnumber     *int64   `json:"tagnumber"`
 	UsagePercent  *float64 `json:"cpu_current_usage"`
 	MHz           *float64 `json:"cpu_current_mhz"`
 	MillidegreesC *float64 `json:"cpu_millidegrees_c"`
 }
 
-type CPUDataDTO struct {
+type CPUDataUpdateDTO struct {
 	Tagnumber     int64
 	UsagePercent  float64
 	MHz           float64
 	MillidegreesC float64
 }
 
-func (c *CPUDataRequest) ToDTO() (*CPUDataDTO, error) {
+func (c *CPUDataUpdateRequest) ToDTO() (*CPUDataUpdateDTO, error) {
 	if c == nil {
 		return nil, fmt.Errorf("CPU data request is nil")
 	}
@@ -152,7 +155,7 @@ func (c *CPUDataRequest) ToDTO() (*CPUDataDTO, error) {
 		}
 		millidegreesC = *c.MillidegreesC
 	}
-	return &CPUDataDTO{
+	return &CPUDataUpdateDTO{
 		Tagnumber:     *c.Tagnumber,
 		UsagePercent:  usagePercent,
 		MHz:           mhz,
@@ -166,7 +169,99 @@ type NetworkData struct {
 	LinkSpeed    *int64 `json:"link_speed"`
 }
 
-type BatteryData struct {
-	Tagnumber int64    `json:"tagnumber"`
-	Percent   *float64 `json:"battery_charge_pcnt"`
+type BatteryDataRequest struct {
+	TransactionUUID           *string    `json:"transaction_uuid"`
+	UpdatedFromWindows        *bool      `json:"updated_from_windows"`
+	TimeStamp                 *time.Time `json:"timestamp"`
+	Tagnumber                 *int64     `json:"tagnumber"`
+	SystemSerial              *string    `json:"system_serial"`
+	BatteryChargeCycles       *int64     `json:"battery_charge_cycles"`
+	BatteryChargePcnt         *float64   `json:"battery_charge_pcnt"`
+	BatteryCurrentMaxCapacity *float64   `json:"battery_current_max_capacity"`
+	BatteryDesignCapacity     *float64   `json:"battery_design_capacity"`
+	BatteryManufactureDate    *string    `json:"battery_manufacture_date"`
+	BatteryManufacturer       *string    `json:"battery_manufacturer"`
+	BatteryModel              *string    `json:"battery_model"`
+	BatterySerial             *string    `json:"battery_serial"`
+}
+
+type BatteryDataDTO struct {
+	TransactionUUID           uuid.UUID
+	UpdatedFromWindows        bool
+	TimeStamp                 time.Time
+	Tagnumber                 int64
+	SystemSerial              string
+	BatteryChargeCycles       *int64
+	BatteryChargePcnt         *float64
+	BatteryCurrentMaxCapacity *float64
+	BatteryDesignCapacity     *float64
+	BatteryManufactureDate    *string
+	BatteryManufacturer       *string
+	BatteryModel              *string
+	BatterySerial             *string
+}
+
+func (b *BatteryDataRequest) ToDTO() (dto *BatteryDataDTO, err error) {
+	if b == nil {
+		return nil, fmt.Errorf("battery data request is nil")
+	}
+
+	// transactionUUID is optional, generate a new one if not provided
+	var transactionUUID uuid.UUID
+	if b.TransactionUUID == nil {
+		transactionUUID, err = uuid.NewV7()
+		if err != nil {
+			return nil, fmt.Errorf("%w: failed to generate transaction UUID", InvalidFieldError)
+		}
+	} else {
+		transactionUUID, err = uuid.Parse(*b.TransactionUUID)
+		if err != nil {
+			return nil, fmt.Errorf("%w: invalid transaction UUID", InvalidFieldError)
+		}
+	}
+
+	// updatedFromWindows is optional, default to false if not provided
+	updatedFromWindows := false
+	if b.UpdatedFromWindows != nil && *b.UpdatedFromWindows {
+		updatedFromWindows = *b.UpdatedFromWindows
+	}
+
+	// timestamp is optional, use current UTC time if not provided
+	var timestamp time.Time
+	if b.TimeStamp == nil {
+		timestamp = time.Now().UTC()
+	} else {
+		if b.TimeStamp.IsZero() {
+			return nil, fmt.Errorf("%w: timestamp cannot be zero", InvalidFieldError)
+		}
+		timestamp = b.TimeStamp.UTC()
+	}
+
+	// tagnumber
+	if err := IsTagnumberInt64Valid(b.Tagnumber); err != nil {
+		return nil, err
+	}
+
+	// systemSerial is optional, but if provided, it must not be empty
+	if b.SystemSerial == nil || strings.TrimSpace(*b.SystemSerial) == "" {
+		return nil, fmt.Errorf("%w: system serial cannot be empty/nil", InvalidFieldError)
+	}
+
+	dto = &BatteryDataDTO{
+		TransactionUUID:           transactionUUID,
+		UpdatedFromWindows:        updatedFromWindows,
+		TimeStamp:                 timestamp,
+		Tagnumber:                 *b.Tagnumber,
+		SystemSerial:              *b.SystemSerial,
+		BatteryChargeCycles:       b.BatteryChargeCycles,
+		BatteryChargePcnt:         b.BatteryChargePcnt,
+		BatteryCurrentMaxCapacity: b.BatteryCurrentMaxCapacity,
+		BatteryDesignCapacity:     b.BatteryDesignCapacity,
+		BatteryManufactureDate:    b.BatteryManufactureDate,
+		BatteryManufacturer:       b.BatteryManufacturer,
+		BatteryModel:              b.BatteryModel,
+		BatterySerial:             b.BatterySerial,
+	}
+
+	return dto, nil
 }
