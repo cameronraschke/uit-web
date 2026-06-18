@@ -1414,7 +1414,7 @@ func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealt
 		toNullString(healthCheck.TransactionUUID),
 		clientUUID,
 		ptrToNullString(healthCheck.BIOSVersion),
-		ptrToNullString(healthCheck.BIOSReleaseDate),
+		ptrToNullTime(healthCheck.BIOSReleaseDate),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -1763,7 +1763,7 @@ func UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHar
 		clientUUID,
 		ptrToNullString(hardwareData.BiosVersion),
 		ptrToNullString(hardwareData.BiosFirmware),
-		ptrToNullDate(hardwareData.BiosReleaseDate),
+		ptrToNullTime(hardwareData.BiosReleaseDate),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)

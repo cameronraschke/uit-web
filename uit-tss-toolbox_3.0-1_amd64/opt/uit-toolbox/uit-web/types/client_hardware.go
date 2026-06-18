@@ -48,7 +48,7 @@ type ClientHardwareView struct {
 	BatteryManufacturer       *string  `json:"battery_manufacturer"`
 	BatteryManufactureDate    *string  `json:"battery_manufacture_date"`
 	BiosVersion               *string  `json:"bios_version"`
-	BiosReleaseDate           *string  `json:"bios_release_date"`
+	BiosReleaseDate           *time.Time  `json:"bios_release_date"`
 	BiosFirmware              *string  `json:"bios_firmware"`
 	MemorySerial              []string `json:"memory_serial"`
 	MemoryCapacityKB          *int64   `json:"memory_capacity_kb"`
@@ -60,7 +60,7 @@ type ClientHealthCheck struct {
 	Tagnumber         int64      `json:"tagnumber"`
 	SystemSerial      *string    `json:"health_system_serial"`
 	BIOSVersion       *string    `json:"bios_version"`
-	BIOSReleaseDate   *string    `json:"bios_release_date"`
+	BIOSReleaseDate   *time.Time    `json:"bios_release_date"`
 	TPMVersion        *string    `json:"health_tpm_version"`
 	LastHardwareCheck *time.Time `json:"last_hardware_check"`
 }
