@@ -654,8 +654,8 @@ async function populateLocationForm(tag?: number, serial?: string): Promise<void
 				const jsonText = await jsonFileUpload.files[0].text();
 				try {
 					const jsonData = JSON.parse(jsonText);
-					if (jsonData && jsonData.request_metadata.last_hardware_check) {
-						const hardwareCheckDate = new Date(jsonData.request_metadata.last_hardware_check);
+					if (jsonData && jsonData.request_metadata.timestamp) {
+						const hardwareCheckDate = new Date(jsonData.request_metadata.timestamp);
 						const hardwareCheckDateLocalTZ = !isNaN(hardwareCheckDate.getTime())
 							? new Date(hardwareCheckDate.getTime() - hardwareCheckDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 							: "";
