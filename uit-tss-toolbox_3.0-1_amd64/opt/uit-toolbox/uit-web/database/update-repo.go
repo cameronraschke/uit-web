@@ -2376,7 +2376,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			ad_distinguished_name,
 			is_intune_joined,
 			secure_boot_enabled,
-			updated_from_windows
+			updated_from_windows,
+			installed_apps
 		) VALUES (
 			(SELECT uuid FROM ids WHERE tagnumber = $2 AND system_serial = $3),
 			$1,
@@ -2398,7 +2399,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			$18,
 			$19,
 			$20,
-			$21
+			$21,
+			$22::TEXT[]
 		) ON CONFLICT (client_uuid) DO UPDATE SET
 			client_uuid = EXCLUDED.client_uuid,
 			transaction_uuid = EXCLUDED.transaction_uuid,
@@ -2420,7 +2422,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			ad_distinguished_name = EXCLUDED.ad_distinguished_name,
 			is_intune_joined = EXCLUDED.is_intune_joined,
 			secure_boot_enabled = EXCLUDED.secure_boot_enabled,
-			updated_from_windows = EXCLUDED.updated_from_windows
+			updated_from_windows = EXCLUDED.updated_from_windows,
+			installed_apps = EXCLUDED.installed_apps
 			;`
 
 	adminUsers := windowsUpdateDTO.AdminUsers
@@ -2450,6 +2453,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		ptrToNullBool(windowsUpdateDTO.IsIntuneJoined),
 		ptrToNullBool(windowsUpdateDTO.SecureBootEnabled),
 		ptrToNullBool(windowsUpdateDTO.RequestMetadata.UpdatedFromWindows),
+		windowsUpdateDTO.InstalledApps,
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)

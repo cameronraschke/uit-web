@@ -63,6 +63,7 @@ type WindowsUpdateRequest struct {
 	DiskFreeSpaceKB           *int64           `json:"disk_free_space_kb"`
 	EthernetMACAddr           *string          `json:"ethernet_mac_addr"`
 	WifiMACAddr               *string          `json:"wifi_mac_addr"`
+	InstalledApps             *string          `json:"installed_apps"`
 }
 
 type WindowsUpdateDTO struct {
@@ -112,6 +113,7 @@ type WindowsUpdateDTO struct {
 	DiskFreeSpaceKB           *int64
 	EthernetMACAddr           *string
 	WifiMACAddr               *string
+	InstalledApps             []string
 }
 
 type WindowsUpdateResponse struct {
@@ -189,6 +191,11 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 		}
 	}
 
+	installedAppsArr := make([]string, 0)
+	if request.InstalledApps != nil && strings.TrimSpace(*request.InstalledApps) != "" {
+		installedAppsArr = strings.Split(*request.InstalledApps, ";")
+	}
+
 	return &WindowsUpdateDTO{
 		RequestMetadata:           request.RequestMetadata,
 		BatteryManufactureDate:    convertedBatteryManufactureDate,
@@ -236,6 +243,7 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 		DiskFreeSpaceKB:           request.DiskFreeSpaceKB,
 		EthernetMACAddr:           request.EthernetMACAddr,
 		WifiMACAddr:               request.WifiMACAddr,
+		InstalledApps:             installedAppsArr,
 	}, nil
 }
 
