@@ -2071,12 +2071,15 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
 	}
 	if windowsUpdateDTO == nil {
-		return fmt.Errorf("%w: %s", types.InvalidFieldError, "ClientHealthDTO")
+		return fmt.Errorf("%w: %s", types.InvalidFieldError, "WindowsUpdateDTO")
 	}
-	if err := types.IsTagnumberInt64Valid(&windowsUpdateDTO.Tagnumber); err != nil {
+	if windowsUpdateDTO.RequestMetadata == nil {
+		return fmt.Errorf("%w: %s", types.InvalidFieldError, "RequestMetadata")
+	}
+	if err := types.IsTagnumberInt64Valid(windowsUpdateDTO.RequestMetadata.Tagnumber); err != nil {
 		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
-	if strings.TrimSpace(windowsUpdateDTO.SystemSerial) == "" {
+	if windowsUpdateDTO.RequestMetadata.SystemSerial == nil || strings.TrimSpace(*windowsUpdateDTO.RequestMetadata.SystemSerial) == "" {
 		return fmt.Errorf("%w: %s", types.MissingFieldError, "SystemSerial")
 	}
 
@@ -2103,7 +2106,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		}
 	}()
 
-	clientUUID, err := lockClientRowBySystemSerialPGX(ctx, tx, windowsUpdateDTO.SystemSerial)
+	clientUUID, err := lockClientRowBySystemSerialPGX(ctx, tx, *windowsUpdateDTO.RequestMetadata.SystemSerial)
 	if err != nil {
 		return fmt.Errorf("%s: %w", "error while locking client row by system serial", err)
 	}
@@ -2159,8 +2162,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 	hardwareDataResult, err := tx.Exec(ctx, hardwareDataSql,
 		toNullUUID(transactionUUID),
 		true,
-		clientUUID,
-		toNullString(windowsUpdateDTO.SystemSerial),
+		toNullUUID(clientUUID),
+		ptrToNullString(windowsUpdateDTO.RequestMetadata.SystemSerial),
 		ptrToNullString(windowsUpdateDTO.SystemUUID),
 		ptrToNullString(windowsUpdateDTO.EthernetMACAddr),
 		ptrToNullString(windowsUpdateDTO.WifiMACAddr),
@@ -2211,7 +2214,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		clientUUID,
 		ptrToNullFloat64(windowsUpdateDTO.BatteryHealthPcnt),
 		ptrToNullInt64(windowsUpdateDTO.DiskFreeSpaceKB),
-		toNullTime(windowsUpdateDTO.LastHardwareCheck),
+		ptrToNullTime(windowsUpdateDTO.RequestMetadata.TimeStamp),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -2427,8 +2430,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 
 	osInfoResult, err := tx.Exec(ctx, osInfoSQLCode,
 		toNullUUID(transactionUUID),
-		toNullInt64(windowsUpdateDTO.Tagnumber),
-		toNullString(windowsUpdateDTO.SystemSerial),
+		ptrToNullInt64(windowsUpdateDTO.RequestMetadata.Tagnumber),
+		ptrToNullString(windowsUpdateDTO.RequestMetadata.SystemSerial),
 		ptrToNullTime(windowsUpdateDTO.OSInstalledAt),
 		ptrToNullString(windowsUpdateDTO.OSVendor),
 		ptrToNullString(windowsUpdateDTO.OSPlatform),
@@ -2446,7 +2449,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		ptrToNullString(windowsUpdateDTO.ADDistinguishedName),
 		ptrToNullBool(windowsUpdateDTO.IsIntuneJoined),
 		ptrToNullBool(windowsUpdateDTO.SecureBootEnabled),
-		windowsUpdateDTO.UpdatedFromWindows,
+		ptrToNullBool(windowsUpdateDTO.RequestMetadata.UpdatedFromWindows),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -2482,8 +2485,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 
 	firmwareSQLResult, err := tx.Exec(ctx, clientFirmwareInsertSQL,
 		toNullString(transactionUUID.String()),
-		toNullInt64(windowsUpdateDTO.Tagnumber),
-		ptrToNullBool(&windowsUpdateDTO.UpdatedFromWindows),
+		ptrToNullInt64(windowsUpdateDTO.RequestMetadata.Tagnumber),
+		ptrToNullBool(windowsUpdateDTO.RequestMetadata.UpdatedFromWindows),
 		ptrToNullString(windowsUpdateDTO.BIOSVersion),
 		ptrToNullTime(windowsUpdateDTO.BIOSReleaseDate),
 	)

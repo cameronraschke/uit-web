@@ -1775,8 +1775,8 @@ func ReceiveWindowsClientInfo(w http.ResponseWriter, req *http.Request) {
 		Status int64  `json:"tagnumber"`
 		Serial string `json:"system_serial"`
 	}{
-		Status: *requestData.Tagnumber,
-		Serial: *requestData.SystemSerial,
+		Status: *requestData.RequestMetadata.Tagnumber,
+		Serial: *requestData.RequestMetadata.SystemSerial,
 	})
 }
 
