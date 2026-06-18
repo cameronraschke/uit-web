@@ -49,7 +49,7 @@ type ClientInfoResponse struct {
 	BatteryHealthPcnt         *float64                 `json:"BatteryHealthPcnt"`
 	DeviceType                *string                  `json:"DeviceType"`
 	BIOSVersion               *string                  `json:"BIOSVersion"`
-	BIOSReleaseDate           *string                  `json:"BIOSReleaseDate"`
+	BIOSReleaseDate           *time.Time               `json:"BIOSReleaseDate"`
 	EthernetMAC               *string                  `json:"EthernetMAC"`
 	WiFiMAC                   *string                  `json:"WiFiMAC"`
 	TPMVersion                *string                  `json:"TPMVersion"`

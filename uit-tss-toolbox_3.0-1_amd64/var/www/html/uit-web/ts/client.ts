@@ -49,7 +49,7 @@ type ClientInfoResponse = {
 	BatteryHealthPcnt:         number | null
 	DeviceType:                string | null
 	BIOSVersion:               string | null
-	BIOSReleaseDate:           string | null
+	BIOSReleaseDate:           Date | null
 	EthernetMAC:               string | null
 	WiFiMAC:                   string | null
 	TPMVersion:                string | null
