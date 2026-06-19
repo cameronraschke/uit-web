@@ -7,17 +7,21 @@ type CheckoutLogResponse = {
 	transaction_uuid: string | null;
 };
 
-async function fetchCheckoutData(): Promise<CheckoutLogResponse> {
+async function fetchCheckoutData(): Promise<CheckoutLogResponse | undefined> {
 	const urlParams = new URLSearchParams(window.location.search);
-	const tagNumber = urlParams.get("tagnumber");
-	if (!tagNumber) {
-		throw new Error("Tag number is required");
+	const tag = urlParams.get("tagnumber");
+	if (tag === null || tag.trim() === '') {
+		console.error("Tag number is required");
+		return undefined;
 	}
-	const response = await fetch(`/api/checkout?tagnumber=${encodeURIComponent(tagNumber)}`);
+	const response = await fetch(`/api/checkout?tagnumber=${encodeURIComponent(tag)}`);
 	if (!response.ok) {
 		throw new Error(`Failed to fetch checkout data: ${response.statusText}`);
 	}
 	const data: CheckoutLogResponse = await response.json();
+	if (data === null || data === undefined) {
+		throw new Error("Could not fetch checkout data");
+	}
 	return data;
 }
 
@@ -30,6 +34,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 	const confirmAndPrint = document.getElementById('confirm-and-print') as HTMLElement | null;
 
 	const checkoutData = await fetchCheckoutData();
+	if (checkoutData === undefined) {
+		console.error("Could not fetch checkout data");
+		return undefined;
+	}
 	if (customerNameEl) customerNameEl.value = checkoutData.customer_name ?? '';
 	if (checkoutData.checkout_date !== null) {
 		const checkoutDate = checkoutData.checkout_date ?? null;
