@@ -19,7 +19,7 @@ type ClientInfoResponse = {
 	DiskRemoved:               boolean | null
 	SecureBootEnabled:         boolean | null
 	ClientNote:                string | null
-	LocationLog:              any[] | null
+	LocationLog:              any[] | []
 	JobStartTime:                   Date | null
 	CloneCompleted:            boolean | null
 	CloneJobDuration:          number | null
@@ -27,14 +27,14 @@ type ClientInfoResponse = {
 	EraseCompleted:            boolean | null
 	EraseJobDuration:          number | null
 	EraseMode:                 string | null
-	JobLog:                    any[] | null
+	JobLog:                    any[] | []
 	IsCheckedOut:              boolean | null
 	CheckoutDate:              Date | null
 	ReturnDate:                Date | null
 	CustomerName:              string | null
-	CheckoutLog:               any[] | null
+	CheckoutLog:               any[] | []
 	FileCount:                 number | null
-	ClientImages:              any[] | null
+	ClientImages:              any[] | []
 	LastOSEntryTime:           Date | null
 	OSInstalled:               boolean | null
 	OSName:                    string | null
