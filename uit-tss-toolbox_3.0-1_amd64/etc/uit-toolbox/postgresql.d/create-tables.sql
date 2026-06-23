@@ -272,46 +272,70 @@ CREATE TABLE IF NOT EXISTS static_bios_stats (
 	bios_version VARCHAR(24) DEFAULT NULL
 );
 
+WITH most_recent_firmware_data AS (
+	SELECT client_uuid, bios_version FROM (
+		SELECT 
+			ROW_NUMBER() OVER (PARTITION BY historical_firmware_data.client_uuid ORDER BY time DESC) AS "row_nums", 
+			time, 
+			historical_firmware_data.client_uuid, 
+			historical_firmware_data.bios_version 
+		FROM 
+			historical_firmware_data 
+		WHERE 
+			historical_firmware_data.bios_version IS NOT NULL 
+	) t1 WHERE t1.row_nums = 1
+)
 INSERT INTO static_bios_stats
 	(
 		system_model,
 		bios_version
 	)
-VALUES
-	('HP ProBook 450 G6', 'R71 Ver. 01.33.00'),
-	('Dell Pro Slim Plus QBS1250', '1.6.2'),
-	('Latitude 7400', '1.43.0'),
-	('OptiPlex 7000', '1.40.0'),
-	('Latitude 7420', '1.48.0'),
-	('Latitude 3500', '1.36.0'),
-	('Latitude 3560', 'A19'),
-	('Latitude 3590', '1.26.0'),
-	('Latitude 7430', '1.29.0'),
-	('Latitude 7490', '1.41.0'),
-	('Latitude 7480', '1.40.0'),
-	('Latitude E7470', '1.36.3'),
-	('OptiPlex 9010 AIO', 'A25'),
-	('Latitude E6430', 'A24'),
-	('OptiPlex 790', 'A22'),
-	('OptiPlex 780', 'A15'),
-	('OptiPlex 7460 AIO', '1.35.0'),
-	('Latitude 5590', '1.38.0'),
-	('XPS 15 9560', '1.24.0'),
-	('Latitude 5480', '1.39.0'),
-	('Latitude 5289', '1.35.0'),
-	('Surface Book', '92.3748.768'),
-	('Aspire T3-710', 'R01-B1'),
-	('Surface Pro', NULL),
-	('Surface Pro 4', '109.3748.768'),
-	('OptiPlex 5080', '1.28.1'),
-	('OptiPlex 7040', '1.24.0'),
-	('OptiPlex 7050', '1.27.0'),
-	('OptiPlex 5070', '1.31.1'),
-	('OptiPlex 7010', 'A29'),
-	('OptiPlex 7780', '1.36.1')
+SELECT hardware_data.system_model, MAX(most_recent_firmware_data.bios_version)
+FROM ids
+LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
+LEFT JOIN most_recent_firmware_data ON most_recent_firmware_data.client_uuid = hardware_data.client_uuid 
+WHERE 
+	hardware_data.system_model IS NOT NULL
+	AND most_recent_firmware_data.bios_version IS NOT NULL
+GROUP BY hardware_data.system_model
+ORDER BY hardware_data.system_model
 ON CONFLICT (system_model) DO UPDATE SET 
 	bios_version = EXCLUDED.bios_version
 ;
+
+-- VALUES
+-- 	('HP ProBook 450 G6', 'R71 Ver. 01.33.00'),
+-- 	('Dell Pro Slim Plus QBS1250', '1.6.2'),
+-- 	('Latitude 7400', '1.43.0'),
+-- 	('OptiPlex 7000', '1.40.0'),
+-- 	('Latitude 7420', '1.50.1'),
+-- 	('Latitude 3500', '1.36.0'),
+-- 	('Latitude 3560', 'A19'),
+-- 	('Latitude 3590', '1.26.0'),
+-- 	('Latitude 7430', '1.29.0'),
+-- 	('Latitude 7490', '1.41.0'),
+-- 	('Latitude 7480', '1.40.0'),
+-- 	('Latitude E7470', '1.36.3'),
+-- 	('OptiPlex 9010 AIO', 'A25'),
+-- 	('Latitude E6430', 'A24'),
+-- 	('OptiPlex 790', 'A22'),
+-- 	('OptiPlex 780', 'A15'),
+-- 	('OptiPlex 7460 AIO', '1.35.0'),
+-- 	('Latitude 5590', '1.38.0'),
+-- 	('XPS 15 9560', '1.24.0'),
+-- 	('Latitude 5480', '1.39.0'),
+-- 	('Latitude 5289', '1.35.0'),
+-- 	('Surface Book', '92.3748.768'),
+-- 	('Aspire T3-710', 'R01-B1'),
+-- 	('Surface Pro', NULL),
+-- 	('Surface Pro 4', '109.3748.768'),
+-- 	('OptiPlex 5080', '1.28.1'),
+-- 	('OptiPlex 7040', '1.24.0'),
+-- 	('OptiPlex 7050', '1.27.0'),
+-- 	('OptiPlex 5070', '1.31.1'),
+-- 	('OptiPlex 7010', 'A29'),
+-- 	('OptiPlex 7780', '1.36.1')
+
 
 
 
