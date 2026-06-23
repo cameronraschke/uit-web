@@ -57,8 +57,8 @@ fi
 			--compression gzip \
 			--clean \
 			--debian-installer live \
-			--debian-installer-distribution bookworm \
-			--distribution bookworm \
+			--debian-installer-distribution trixie \
+			--distribution trixie \
 			--debootstrap-options "--arch=amd64 --variant=minbase" \
 			--hdd-label uit-toolbox-client \
 			--hdd-size auto \
@@ -66,8 +66,8 @@ fi
 			--initramfs live-boot \
 			--initsystem systemd \
 			--iso-application uit-toolbox-client \
-			--iso-preparer "Cameron Raschke caraschke@uh.edu" \
-			--iso-publisher "Cameron Raschke caraschke@uh.edu" \
+			--iso-preparer "Cameron Raschke" \
+			--iso-publisher "Cameron Raschke" \
 			--iso-volume uit-toolbox-client \
 			--memtest none \
 			--mode debian \

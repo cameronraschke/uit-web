@@ -393,7 +393,7 @@ type InventoryTableRow struct {
 	Department          *string                            `json:"department_name"`
 	DepartmentFormatted *string                            `json:"department_formatted"`
 	ADDomain            *string                            `json:"ad_domain"`
-	AdminUsers          *[]string                          `json:"admin_users"`
+	AdminUsers          []string                           `json:"admin_users"`
 	IsIntuneJoined      *bool                              `json:"is_intune_joined"`
 	DomainFormatted     *string                            `json:"ad_domain_formatted"`
 	OsInstalled         *bool                              `json:"os_installed"`

@@ -8,8 +8,8 @@ type ClientInfoResponse struct {
 	Building                  *string                  `json:"Building"`
 	IsCheckedOut              *bool                    `json:"IsCheckedOut"`
 	CheckoutDate              *time.Time               `json:"CheckoutDate"`
-	CheckoutLog               *[]CheckoutLogResponse   `json:"CheckoutLog"`
-	ClientImages              *[]ImageManifestResponse `json:"ClientImages"`
+	CheckoutLog               []CheckoutLogResponse   `json:"CheckoutLog"`
+	ClientImages              []ImageManifestResponse `json:"ClientImages"`
 	ClientNote                *string                  `json:"ClientNote"`
 	ClientStatus              *string                  `json:"ClientStatus"`
 	ClientUUID                *string                  `json:"ClientUUID"`
@@ -28,12 +28,12 @@ type ClientInfoResponse struct {
 	IsDiskEncrypted           *bool                    `json:"IsDiskEncrypted"`
 	IsBroken                  *bool                    `json:"IsBroken"`
 	IsIntuneJoined            *bool                    `json:"IsIntuneJoined"`
-	JobLog                    *[]JobLogResponse        `json:"JobLog"`
+	JobLog                    []JobLogResponse        `json:"JobLog"`
 	JobStartTime              *time.Time               `json:"JobStartTime"`
 	LastOSEntryTime           *time.Time               `json:"LastOSEntryTime"`
 	Location                  *string                  `json:"Location"`
 	LocationEntryTime         *time.Time               `json:"LocationEntryTime"`
-	LocationLog               *[]LocationLogResponse   `json:"LocationLog"`
+	LocationLog               []LocationLogResponse   `json:"LocationLog"`
 	OSInstalled               *bool                    `json:"OSInstalled"`
 	OSName                    *string                  `json:"OSName"`
 	OSVersion                 *string                  `json:"OSVersion"`

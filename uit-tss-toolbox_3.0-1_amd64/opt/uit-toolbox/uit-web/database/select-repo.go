@@ -1133,7 +1133,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		}
 
 		if adminUsers != nil {
-			row.AdminUsers = &adminUsers
+			row.AdminUsers = adminUsers
 		}
 		results = append(results, row)
 	}
@@ -1255,7 +1255,7 @@ func ModifyClientConfigErrorResults(results []types.InventoryTableRow) ([]types.
 						intuneNotEnrolled := types.IntuneNotEnrolled.ToConfigErrorResponse()
 						results[i].ClientErrors = append(results[i].ClientErrors, intuneNotEnrolled)
 					}
-					if results[i].AdminUsers == nil || len(*results[i].AdminUsers) < 2 {
+					if len(results[i].AdminUsers) < 2 {
 						adminUsersMissing := types.AdminUsersMissing.ToConfigErrorResponse()
 						results[i].ClientErrors = append(results[i].ClientErrors, adminUsersMissing)
 					}
