@@ -2207,7 +2207,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		LEFT JOIN os_info ON ids.uuid = os_info.client_uuid
 		LEFT JOIN os_installed_cte ON ids.uuid = os_installed_cte.client_uuid
 		LEFT JOIN client_files_cte ON ids.uuid = client_files_cte.client_uuid
-	WHERE ids.client_uuid = $1
+	WHERE ids.uuid = $1
 	GROUP BY
 		ids.tagnumber,
 		ids.system_serial,
