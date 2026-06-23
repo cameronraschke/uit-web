@@ -16,6 +16,9 @@ import (
 	"time"
 	"uit-toolbox/config"
 	"uit-toolbox/types"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Select interface {
@@ -49,6 +52,56 @@ func NewSelectRepo() (Select, error) {
 }
 
 var _ Select = (*SelectRepo)(nil)
+
+func GetClientUUIDByTag(ctx context.Context, pgxPool *pgxpool.Pool, tagnumber int64) (clientUUID uuid.UUID, err error) {
+	if pgxPool == nil {
+		pgxPool, err = config.GetPGXPool()
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+		}
+	}
+
+	const sqlCode = `
+		SELECT uuid
+		FROM ids
+		WHERE tagnumber = $1
+	;`
+
+	err = pgxPool.QueryRow(ctx, sqlCode, toNullInt64(tagnumber)).Scan(&clientUUID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return uuid.Nil, fmt.Errorf("%w: no client found for tagnumber '%d'", types.DatabaseQueryError, tagnumber)
+		}
+		return uuid.Nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+
+	return clientUUID, nil
+}
+
+func GetClientUUIDBySerial(ctx context.Context, pgxPool *pgxpool.Pool, systemSerial string) (clientUUID uuid.UUID, err error) {
+	if pgxPool == nil {
+		pgxPool, err = config.GetPGXPool()
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+		}
+	}
+
+	const sqlCode = `
+		SELECT uuid
+		FROM ids
+		WHERE system_serial = $1
+	;`
+
+	err = pgxPool.QueryRow(ctx, sqlCode, toNullString(systemSerial)).Scan(&clientUUID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return uuid.Nil, fmt.Errorf("%w: no client found for system serial '%s'", types.DatabaseQueryError, systemSerial)
+		}
+		return uuid.Nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+
+	return clientUUID, nil
+}
 
 func SelectAllIDs(ctx context.Context) ([]types.ClientLookupRow, error) {
 	dbConn, err := config.GetDatabaseConn()
@@ -2025,12 +2078,13 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 	if tag == 0 {
 		return nil, fmt.Errorf("tagnumber cannot be nil")
 	}
+
 	const sqlCode = `
-	WITH files AS (
-		SELECT client_uuid, COUNT(*) AS file_count from client_images WHERE hidden = FALSE GROUP BY client_uuid
+	WITH client_files_cte AS (
+		SELECT client_uuid, COUNT(*) AS file_count from client_images WHERE hidden = FALSE AND client_uuid = $1 GROUP BY client_uuid
 	),
-	os_installed_table AS (
-			SELECT * FROM (
+	os_installed_cte AS (
+		SELECT * FROM (
 			SELECT
 				ROW_NUMBER() OVER (PARTITION BY jobstats.client_uuid ORDER BY jobstats.time DESC NULLS LAST) AS "row_num",
 				jobstats.time,
@@ -2040,9 +2094,12 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 			FROM jobstats
 			LEFT JOIN hardware_data ON jobstats.client_uuid = hardware_data.client_uuid
 			LEFT JOIN static_image_names ON hardware_data.system_model = static_image_names.image_platform_model
-			WHERE (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE) and jobstats.client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1)
+			WHERE 
+				jobstats.client_uuid = $1
+				AND (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE) 
 			GROUP BY jobstats.time, jobstats.client_uuid, static_image_names.image_version, jobstats.erase_completed, jobstats.clone_completed
-			ORDER BY jobstats.client_uuid, jobstats.time DESC NULLS LAST) t1 WHERE t1.row_num = 1
+			ORDER BY jobstats.client_uuid, jobstats.time DESC NULLS LAST) t1 
+		WHERE t1.row_num = 1
 	)
 	SELECT 
 		ids.tagnumber,
@@ -2074,8 +2131,8 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		checkout_log.customer_name,
 		COUNT(client_images.filename),
 		os_info.time AS "os_info_time",
-		os_installed_table.os_installed,
-		COALESCE(os_info.os_name, os_installed_table.image_version) AS "os_name",
+		os_installed_cte.os_installed,
+		COALESCE(os_info.os_name, os_installed_cte.image_version) AS "os_name",
 		(CASE WHEN locations.disk_removed = TRUE THEN NULL WHEN os_info.windows_build_number IS NOT NULL AND os_info.windows_ubr IS NOT NULL THEN CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) ELSE NULL END) AS "os_version",
 		COALESCE(os_info.ad_computer_name, os_info.computer_name) AS "computer_name",
 		os_info.admin_users,
@@ -2127,7 +2184,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		historical_hardware_data.memory_serial,
 		historical_hardware_data.memory_capacity_kb,
 		historical_hardware_data.memory_speed_mhz,
-		(CASE WHEN files.file_count IS NOT NULL AND files.file_count > 0 THEN files.file_count ELSE 0 END) AS "file_count"
+		(CASE WHEN client_files_cte.file_count IS NOT NULL AND client_files_cte.file_count > 0 THEN client_files_cte.file_count ELSE 0 END) AS "file_count"
 	FROM ids
 		LEFT JOIN locations ON ids.uuid = locations.client_uuid
 		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
@@ -2148,9 +2205,9 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		LEFT JOIN checkout_log ON ids.uuid = checkout_log.client_uuid AND checkout_log.time IN (SELECT MAX(time) FROM checkout_log WHERE client_uuid = ids.uuid)
 		LEFT JOIN client_images ON ids.uuid = client_images.client_uuid
 		LEFT JOIN os_info ON ids.uuid = os_info.client_uuid
-		LEFT JOIN os_installed_table ON ids.uuid = os_installed_table.client_uuid
-		LEFT JOIN files ON ids.uuid = files.client_uuid
-	WHERE ids.tagnumber = $1
+		LEFT JOIN os_installed_cte ON ids.uuid = os_installed_cte.client_uuid
+		LEFT JOIN client_files_cte ON ids.uuid = client_files_cte.client_uuid
+	WHERE ids.client_uuid = $1
 	GROUP BY
 		ids.tagnumber,
 		ids.system_serial,
@@ -2185,9 +2242,9 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		checkout_log.return_date,
 		checkout_log.customer_name,
 		os_info.time,
-		os_installed_table.os_installed,
+		os_installed_cte.os_installed,
 		os_info.os_name,
-		os_installed_table.image_version,
+		os_installed_cte.image_version,
 		os_info.os_version,
 		os_info.ad_computer_name,
 		os_info.computer_name,
@@ -2234,7 +2291,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		historical_hardware_data.memory_serial,
 		historical_hardware_data.memory_capacity_kb,
 		historical_hardware_data.memory_speed_mhz,
-		files.file_count
+		client_files_cte.file_count
 	;`
 
 	pgxPool, err := config.GetPGXPool()
@@ -2242,11 +2299,16 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
-	var adminUsers []string
-	var memorySerialArr []string
-	rows, err := pgxPool.Query(ctx, sqlCode, tag)
+	clientUUID, err := GetClientUUIDByTag(ctx, pgxPool, tag)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+
+	var adminUsers []string
+	var memorySerialArr []string
+	rows, err := pgxPool.Query(ctx, sqlCode, clientUUID)
+	if err != nil {
+		return nil, fmt.Errorf("Error selecting client UUID: %w: %w", types.DatabaseQueryError, err)
 	}
 	defer rows.Close()
 
