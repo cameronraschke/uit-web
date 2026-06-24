@@ -2217,6 +2217,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		AND historical_disk_data.client_uuid = $1
 		AND historical_firmware_data.client_uuid = $1
 		AND historical_battery_data.client_uuid = $1
+		AND client_images.client_uuid = $1
 	GROUP BY
 		ids.tagnumber,
 		ids.system_serial,
@@ -2229,6 +2230,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		historical_disk_data.client_uuid,
 		historical_firmware_data.client_uuid,
 		historical_battery_data.client_uuid,
+		client_images.client_uuid,
 		locations.time,
 		locations.location,
 		locations.building,
