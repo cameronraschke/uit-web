@@ -2081,7 +2081,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 
 	const sqlCode = `
 	WITH client_files_cte AS (
-		SELECT client_uuid, COUNT(*) AS file_count from client_images WHERE hidden = FALSE AND client_uuid = $1
+		SELECT client_uuid, COUNT(*) AS file_count from client_images WHERE hidden = FALSE AND client_uuid = $1 GROUP BY client_uuid
 	),
 	os_installed_cte AS (
 		SELECT * FROM (
