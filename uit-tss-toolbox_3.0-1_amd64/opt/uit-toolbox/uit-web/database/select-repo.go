@@ -2081,7 +2081,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 
 	const sqlCode = `
 	WITH client_files_cte AS (
-		SELECT client_uuid, COUNT(*) AS file_count from client_images WHERE hidden = FALSE AND client_uuid = $1 GROUP BY client_uuid
+		SELECT client_uuid, COUNT(*) AS file_count from client_images WHERE hidden = FALSE AND client_uuid = $1
 	),
 	os_installed_cte AS (
 		SELECT * FROM (
@@ -2207,11 +2207,28 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		LEFT JOIN os_info ON ids.uuid = os_info.client_uuid
 		LEFT JOIN os_installed_cte ON ids.uuid = os_installed_cte.client_uuid
 		LEFT JOIN client_files_cte ON ids.uuid = client_files_cte.client_uuid
-	WHERE ids.uuid = $1
+	WHERE 
+		ids.uuid = $1
+		AND locations.client_uuid = $1
+		AND hardware_data.client_uuid = $1
+		AND jobstats.client_uuid = $1
+		AND os_info.client_uuid = $1
+		AND historical_hardware_data.client_uuid = $1
+		AND historical_disk_data.client_uuid = $1
+		AND historical_firmware_data.client_uuid = $1
+		AND historical_battery_data.client_uuid = $1
 	GROUP BY
 		ids.tagnumber,
 		ids.system_serial,
 		ids.uuid,
+		locations.client_uuid,
+		hardware_data.client_uuid,
+		jobstats.client_uuid,
+		os_info.client_uuid,
+		historical_hardware_data.client_uuid,
+		historical_disk_data.client_uuid,
+		historical_firmware_data.client_uuid,
+		historical_battery_data.client_uuid,
 		locations.time,
 		locations.location,
 		locations.building,
