@@ -2081,25 +2081,10 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 
 	const sqlCode = `
 	WITH client_files_cte AS (
-		SELECT client_uuid, COUNT(*) AS file_count from client_images WHERE hidden = FALSE AND client_uuid = $1 GROUP BY client_uuid
-	),
-	os_installed_cte AS (
-		SELECT * FROM (
-			SELECT
-				ROW_NUMBER() OVER (PARTITION BY jobstats.client_uuid ORDER BY jobstats.time DESC NULLS LAST) AS "row_num",
-				jobstats.time,
-				jobstats.client_uuid,
-				static_image_names.image_version,
-				(CASE WHEN jobstats.erase_completed IS TRUE AND jobstats.clone_completed IS DISTINCT FROM TRUE THEN FALSE ELSE TRUE END) AS "os_installed"
-			FROM jobstats
-			LEFT JOIN hardware_data ON jobstats.client_uuid = hardware_data.client_uuid
-			LEFT JOIN static_image_names ON hardware_data.system_model = static_image_names.image_platform_model
-			WHERE 
-				jobstats.client_uuid = $1
-				AND (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE) 
-			GROUP BY jobstats.time, jobstats.client_uuid, static_image_names.image_version, jobstats.erase_completed, jobstats.clone_completed
-			ORDER BY jobstats.client_uuid, jobstats.time DESC NULLS LAST) t1 
-		WHERE t1.row_num = 1
+		SELECT
+			COUNT(*)::BIGINT AS file_count
+		FROM client_images
+		WHERE hidden = FALSE AND client_uuid = $1
 	)
 	SELECT 
 		ids.tagnumber,
@@ -2129,10 +2114,10 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		checkout_log.checkout_date,
 		checkout_log.return_date,
 		checkout_log.customer_name,
-		COUNT(client_images.filename),
+		client_files_cte.file_count,
 		os_info.time AS "os_info_time",
-		os_installed_cte.os_installed,
-		COALESCE(os_info.os_name, os_installed_cte.image_version) AS "os_name",
+		(CASE WHEN jobstats.erase_completed IS TRUE AND jobstats.clone_completed IS DISTINCT FROM TRUE THEN FALSE ELSE TRUE END) AS "os_installed",
+		COALESCE(os_info.os_name, image_version_cte.image_version) AS "os_name",
 		(CASE WHEN locations.disk_removed = TRUE THEN NULL WHEN os_info.windows_build_number IS NOT NULL AND os_info.windows_ubr IS NOT NULL THEN CONCAT(os_info.windows_build_number, '.', os_info.windows_ubr) ELSE NULL END) AS "os_version",
 		COALESCE(os_info.ad_computer_name, os_info.computer_name) AS "computer_name",
 		os_info.admin_users,
@@ -2186,131 +2171,177 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		historical_hardware_data.memory_speed_mhz,
 		(CASE WHEN client_files_cte.file_count IS NOT NULL AND client_files_cte.file_count > 0 THEN client_files_cte.file_count ELSE 0 END) AS "file_count"
 	FROM ids
-		LEFT JOIN locations ON ids.uuid = locations.client_uuid
+		JOIN LATERAL (
+			SELECT
+				time,
+				client_uuid,
+				location,
+				building,
+				room,
+				department_name,
+				ad_domain,
+				property_custodian,
+				acquired_date,
+				retired_date,
+				client_status,
+				is_broken,
+				disk_removed,
+				note
+			FROM locations
+			WHERE client_uuid = ids.uuid
+			ORDER BY time DESC NULLS LAST
+			LIMIT 1
+		) locations ON TRUE
 		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 		LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
 		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
-		LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
-		LEFT JOIN historical_hardware_data ON ids.uuid = historical_hardware_data.client_uuid AND historical_hardware_data.time IN (SELECT MAX(time) FROM historical_hardware_data GROUP BY client_uuid)
-		LEFT JOIN historical_disk_data ON ids.uuid = historical_disk_data.client_uuid 
-			AND historical_disk_data.updated_from_windows = FALSE
-			AND historical_disk_data.time IN (SELECT MAX(time) FROM historical_disk_data GROUP BY client_uuid)
-			AND historical_disk_data.disk_writes_kb IS NOT NULL
-			AND historical_disk_data.disk_model IS NOT NULL
-		LEFT JOIN historical_firmware_data ON ids.uuid = historical_firmware_data.client_uuid AND historical_firmware_data.time IN (SELECT MAX(time) FROM historical_firmware_data GROUP BY client_uuid)
-		LEFT JOIN historical_battery_data ON ids.uuid = historical_battery_data.client_uuid AND historical_battery_data.time IN (SELECT MAX(time) FROM historical_battery_data GROUP BY client_uuid)
+		JOIN LATERAL (
+			SELECT
+				client_uuid,
+				device_type,
+				ethernet_mac,
+				wifi_mac,
+				tpm_version,
+				system_manufacturer,
+				system_model,
+				system_sku,
+				cpu_manufacturer,
+				cpu_model,
+				cpu_max_speed_mhz,
+				cpu_core_count,
+				cpu_thread_count
+			FROM hardware_data
+			WHERE client_uuid = ids.uuid
+			ORDER BY time DESC NULLS LAST
+			LIMIT 1
+		) hardware_data ON TRUE
+		JOIN LATERAL (
+			SELECT
+				time,
+				client_uuid,
+				memory_serial,
+				memory_capacity_kb,
+				memory_speed_mhz
+			FROM historical_hardware_data
+			WHERE client_uuid = ids.uuid
+			ORDER BY time DESC NULLS LAST
+			LIMIT 1
+		) historical_hardware_data ON TRUE
+		JOIN LATERAL (
+			SELECT
+				time,
+				client_uuid,
+				disk_model,
+				disk_size_kb,
+				disk_serial,
+				disk_writes_kb,
+				disk_reads_kb,
+				disk_power_on_hours,
+				disk_error_count,
+				disk_power_cycles,
+				disk_firmware_version
+			FROM historical_disk_data
+			WHERE
+				client_uuid = ids.uuid
+				AND updated_from_windows = FALSE
+				AND disk_writes_kb IS NOT NULL
+				AND disk_model IS NOT NULL
+			ORDER BY time DESC NULLS LAST
+			LIMIT 1
+		) historical_disk_data ON TRUE
+		JOIN LATERAL (
+			SELECT
+				time,
+				client_uuid,
+				bios_version,
+				bios_release_date
+			FROM historical_firmware_data
+			WHERE client_uuid = ids.uuid
+			ORDER BY time DESC NULLS LAST
+			LIMIT 1
+		) historical_firmware_data ON TRUE
+		JOIN LATERAL (
+			SELECT
+				time,
+				client_uuid,
+				battery_manufacturer,
+				battery_model,
+				battery_serial,
+				battery_manufacture_date,
+				battery_design_capacity,
+				battery_current_max_capacity,
+				battery_charge_cycles
+			FROM historical_battery_data
+			WHERE client_uuid = ids.uuid
+			ORDER BY time DESC NULLS LAST
+			LIMIT 1
+		) historical_battery_data ON TRUE
 		LEFT JOIN static_disk_stats ON historical_disk_data.disk_model = static_disk_stats.disk_model
-		LEFT JOIN jobstats ON ids.uuid = jobstats.client_uuid AND jobstats.time IN (SELECT MAX(time) FROM jobstats WHERE client_uuid = ids.uuid AND (erase_completed = TRUE OR clone_completed = TRUE))
+		JOIN LATERAL (
+			SELECT
+				time,
+				client_uuid,
+				clone_completed,
+				clone_time,
+				clone_image,
+				erase_completed,
+				erase_time,
+				erase_mode
+			FROM jobstats
+			WHERE
+				client_uuid = ids.uuid
+				AND (erase_completed = TRUE OR clone_completed = TRUE)
+			ORDER BY time DESC NULLS LAST
+			LIMIT 1
+		) jobstats ON TRUE
 		LEFT JOIN static_image_names ON jobstats.clone_image = static_image_names.image_name
-		LEFT JOIN checkout_log ON ids.uuid = checkout_log.client_uuid AND checkout_log.time IN (SELECT MAX(time) FROM checkout_log WHERE client_uuid = ids.uuid)
-		LEFT JOIN client_images ON ids.uuid = client_images.client_uuid
-		LEFT JOIN os_info ON ids.uuid = os_info.client_uuid
-		LEFT JOIN os_installed_cte ON ids.uuid = os_installed_cte.client_uuid
-		LEFT JOIN client_files_cte ON ids.uuid = client_files_cte.client_uuid
+		LEFT JOIN LATERAL (
+			SELECT
+				checkout_bool,
+				checkout_date,
+				return_date,
+				customer_name
+			FROM checkout_log
+			WHERE client_uuid = ids.uuid
+			ORDER BY time DESC NULLS LAST
+			LIMIT 1
+		) checkout_log ON TRUE
+		JOIN LATERAL (
+			SELECT
+				time,
+				client_uuid,
+				os_name,
+				windows_build_number,
+				windows_ubr,
+				os_version,
+				ad_computer_name,
+				computer_name,
+				admin_users,
+				is_intune_joined,
+				is_disk_encrypted,
+				secure_boot_enabled
+			FROM os_info
+			WHERE client_uuid = ids.uuid
+			ORDER BY time DESC NULLS LAST
+			LIMIT 1
+		) os_info ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT
+				image_version
+			FROM static_image_names
+			WHERE image_platform_model = hardware_data.system_model
+			ORDER BY image_version DESC NULLS LAST
+			LIMIT 1
+		) image_version_cte ON TRUE
+		CROSS JOIN client_files_cte
+		JOIN LATERAL (
+			SELECT 1 AS has_image
+			FROM client_images
+			WHERE client_uuid = ids.uuid
+			LIMIT 1
+		) image_presence ON TRUE
 	WHERE 
 		ids.uuid = $1
-		AND locations.client_uuid = $1
-		AND hardware_data.client_uuid = $1
-		AND jobstats.client_uuid = $1
-		AND os_info.client_uuid = $1
-		AND historical_hardware_data.client_uuid = $1
-		AND historical_disk_data.client_uuid = $1
-		AND historical_firmware_data.client_uuid = $1
-		AND historical_battery_data.client_uuid = $1
-		AND client_images.client_uuid = $1
-	GROUP BY
-		ids.tagnumber,
-		ids.system_serial,
-		ids.uuid,
-		locations.client_uuid,
-		hardware_data.client_uuid,
-		jobstats.client_uuid,
-		os_info.client_uuid,
-		historical_hardware_data.client_uuid,
-		historical_disk_data.client_uuid,
-		historical_firmware_data.client_uuid,
-		historical_battery_data.client_uuid,
-		client_images.client_uuid,
-		locations.time,
-		locations.location,
-		locations.building,
-		locations.room,
-		locations.department_name,
-		static_department_info.department_name_formatted,
-		locations.ad_domain,
-		static_ad_domains.domain_name_formatted,
-		locations.property_custodian,
-		locations.acquired_date,
-		locations.retired_date,
-		locations.client_status,
-		static_client_statuses.status_formatted,
-		locations.is_broken,
-		locations.disk_removed,
-		os_info.windows_build_number,
-		os_info.windows_ubr,
-		locations.note,
-		jobstats.time,
-		jobstats.clone_completed,
-		jobstats.clone_time,
-		jobstats.clone_image,
-		jobstats.erase_completed,
-		jobstats.erase_time,
-		jobstats.erase_mode,
-		checkout_log.checkout_bool,
-		checkout_log.checkout_date,
-		checkout_log.return_date,
-		checkout_log.customer_name,
-		os_info.time,
-		os_installed_cte.os_installed,
-		os_info.os_name,
-		os_installed_cte.image_version,
-		os_info.os_version,
-		os_info.ad_computer_name,
-		os_info.computer_name,
-		os_info.admin_users,
-		os_info.is_intune_joined,
-		os_info.is_disk_encrypted,
-		os_info.secure_boot_enabled,
-		historical_firmware_data.bios_version,
-		historical_firmware_data.bios_release_date,
-		static_disk_stats.disk_type,
-		static_disk_stats.max_kbw,
-		hardware_data.device_type,
-		hardware_data.ethernet_mac,
-		hardware_data.wifi_mac,
-		hardware_data.tpm_version,
-		hardware_data.system_manufacturer,
-		hardware_data.system_model,
-		hardware_data.system_sku,
-		hardware_data.cpu_manufacturer,
-		hardware_data.cpu_model,
-		hardware_data.cpu_max_speed_mhz,
-		hardware_data.cpu_core_count,
-		hardware_data.cpu_thread_count,
-		historical_hardware_data.time,
-		historical_disk_data.disk_writes_kb,
-		historical_battery_data.battery_current_max_capacity,
-		historical_battery_data.battery_design_capacity,
-		historical_disk_data.disk_model,
-		historical_disk_data.disk_size_kb,
-		historical_disk_data.disk_serial,
-		historical_disk_data.disk_writes_kb,
-		historical_disk_data.disk_reads_kb,
-		historical_disk_data.disk_power_on_hours,
-		historical_disk_data.disk_error_count,
-		historical_disk_data.disk_power_cycles,
-		historical_disk_data.disk_firmware_version,
-		historical_battery_data.battery_manufacturer,
-		historical_battery_data.battery_model,
-		historical_battery_data.battery_serial,
-		historical_battery_data.battery_manufacture_date,
-		historical_battery_data.battery_design_capacity,
-		historical_battery_data.battery_current_max_capacity,
-		historical_battery_data.battery_charge_cycles,
-		historical_hardware_data.memory_serial,
-		historical_hardware_data.memory_capacity_kb,
-		historical_hardware_data.memory_speed_mhz,
-		client_files_cte.file_count
 	;`
 
 	pgxPool, err := config.GetPGXPool()
