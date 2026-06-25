@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS jobstats (
 		ON DELETE SET NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_jobstats_time ON jobstats (time DESC NULLS LAST);
+
 CREATE TABLE IF NOT EXISTS historical_hardware_data (
 	transaction_uuid UUID PRIMARY KEY,
 	time TIMESTAMP WITH TIME ZONE DEFAULT NULL,
@@ -89,6 +91,8 @@ CREATE TABLE IF NOT EXISTS historical_hardware_data (
 		ON UPDATE CASCADE
 		ON DELETE SET NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_historical_hardware_data_time ON historical_hardware_data (time DESC NULLS LAST);
 
 CREATE TABLE IF NOT EXISTS locations (
 	client_uuid UUID PRIMARY KEY,
@@ -797,6 +801,8 @@ CREATE TABLE IF NOT EXISTS historical_firmware_data (
 		ON DELETE SET NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_historical_firmware_data_time ON historical_firmware_data (time DESC NULLS LAST);
+
 CREATE TABLE IF NOT EXISTS historical_disk_data (
 	time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL, 
 	transaction_uuid UUID DEFAULT uuidv7() PRIMARY KEY, 
@@ -820,6 +826,8 @@ CREATE TABLE IF NOT EXISTS historical_disk_data (
 		ON UPDATE CASCADE
 		ON DELETE SET NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_historical_disk_data_time ON historical_disk_data (time DESC NULLS LAST);
 
 -- INSERT INTO historical_disk_data (
 -- 	time, 
@@ -874,6 +882,8 @@ CREATE TABLE IF NOT EXISTS historical_battery_data (
 		ON UPDATE CASCADE
 		ON DELETE SET NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_historical_battery_data_time ON historical_battery_data (time DESC NULLS LAST);
 
 -- INSERT INTO historical_battery_data (
 -- 	time, 

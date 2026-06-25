@@ -1343,10 +1343,21 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	}
 
 	const sqlQuery = `
-	WITH avg_battery_health AS (
-		SELECT system_model, AVG(avg_battery_health_pcnt) AS "avg_battery_health_pcnt" 
+	WITH top_clients AS MATERIALIZED (
+    SELECT ids.uuid
+    FROM ids
+    LEFT JOIN job_queue ON ids.uuid = job_queue.client_uuid
+    ORDER BY job_queue.last_heard DESC NULLS LAST
+    LIMIT 50
+	),
+	avg_battery_health AS (
+		SELECT 
+			system_model, 
+			AVG(avg_battery_health_pcnt) AS "avg_battery_health_pcnt" 
 		FROM (
-			SELECT hardware_data.system_model, (historical_battery_data.battery_current_max_capacity::decimal / historical_battery_data.battery_design_capacity::decimal * 100) AS "avg_battery_health_pcnt" 
+			SELECT 
+				hardware_data.system_model, 
+				(historical_battery_data.battery_current_max_capacity::decimal / historical_battery_data.battery_design_capacity::decimal * 100) AS "avg_battery_health_pcnt" 
 			FROM 
 				historical_battery_data 
 			LEFT JOIN 
@@ -1357,21 +1368,63 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		)
 		GROUP BY system_model
 	),
+	latest_model_per_client AS (
+		SELECT DISTINCT ON (hardware_data.client_uuid)
+			hardware_data.client_uuid, 
+			hardware_data.system_model
+		FROM hardware_data
+		INNER JOIN top_clients ON top_clients.uuid = hardware_data.client_uuid
+		WHERE 
+			hardware_data.system_model IS NOT NULL
+		ORDER BY
+			hardware_data.client_uuid,
+			hardware_data.time DESC NULLS LAST
+	),
 	newest_image AS (
-		SELECT * FROM (
-			SELECT 
-				jobstats.time, 
-				hardware_data.system_model, 
-				ROW_NUMBER() OVER (PARTITION BY hardware_data.system_model ORDER BY jobstats.time DESC NULLS LAST) AS "row_num"
-			FROM jobstats
-			LEFT JOIN hardware_data ON jobstats.tagnumber = (SELECT tagnumber from ids where uuid = hardware_data.client_uuid)
-			WHERE
-				jobstats.clone_master = TRUE 
-		) t1 WHERE t1.row_num = 1
+		SELECT
+			latest_model_per_client.system_model,
+			MAX(jobstats.time) AS time
+		FROM jobstats
+		INNER JOIN latest_model_per_client ON jobstats.client_uuid = latest_model_per_client.client_uuid
+		WHERE 
+			jobstats.clone_master = TRUE
+		GROUP BY 
+			latest_model_per_client.system_model
+	),
+	live_queue AS (
+		SELECT
+			job_queue.client_uuid, 
+			job_queue.job_name, 
+			ROW_NUMBER() OVER (
+				ORDER BY job_queue.job_queued_at ASC NULLS LAST
+			) AS queue_order
+		FROM job_queue
+		WHERE
+			(job_queue.job_queued = TRUE OR job_queue.job_name IS NOT NULL)
+			AND job_queue.last_heard IS NOT NULL
+			AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.last_heard)) < 10
+	),
+	job_queue_positions AS (
+		SELECT
+			live_queue.client_uuid,
+			live_queue.job_name,
+			DENSE_RANK() OVER (
+				ORDER BY
+				CASE
+				WHEN live_queue.job_name IN (
+					'hpEraseAndClone',
+					'hpCloneOnly',
+					'generic-erase+clone',
+					'generic-clone'
+				) THEN COALESCE(live_queue.queue_order, 0)
+				ELSE 0
+				END
+			) - 1 AS position
+		FROM live_queue
 	)
 	SELECT
-		locations.tagnumber,
-		locations.system_serial,
+		ids.tagnumber,
+		ids.system_serial,
 		hardware_data.system_manufacturer,
 		hardware_data.system_model,
 		locationFormatting(locations.location) AS "location",
@@ -1454,10 +1507,11 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		ROUND(current_battery_health.battery_health_pcnt - avg_battery_health.avg_battery_health_pcnt, 2) AS "battery_health_deviation",
 		NULL AS "plugged_in",
 		job_queue.watts_now AS "power_usage"
-	FROM ids
-	LEFT JOIN locations ON ids.uuid = locations.client_uuid
+	FROM top_clients
+	INNER JOIN ids ON ids.uuid = top_clients.uuid
 	LEFT JOIN job_queue ON ids.uuid = job_queue.client_uuid
 	LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
+	LEFT JOIN locations ON ids.uuid = locations.client_uuid
 	LEFT JOIN LATERAL (
 		SELECT 
 			disk_model, 
@@ -1510,38 +1564,18 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		ORDER BY jobstats.time DESC NULLS LAST
 		LIMIT 1
 	) latest_completed_job ON TRUE
-	LEFT JOIN static_image_names ON latest_completed_job.clone_image = static_image_names.image_name
+	LEFT JOIN os_info ON ids.uuid = os_info.client_uuid
 	LEFT JOIN static_job_names ON job_queue.job_name = static_job_names.job_name
 	LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
 	LEFT JOIN static_disk_stats ON latest_historical_disk_data.disk_model = static_disk_stats.disk_model
 	LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
-	LEFT JOIN LATERAL (
-		SELECT 
-			DENSE_RANK() OVER (ORDER BY
-				(CASE
-					WHEN job_queue.job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone') THEN COALESCE(t1.position, 0)
-					ELSE 0
-				END)
-			) - 1 AS "position"
-		FROM (
-			SELECT 
-				job_name,
-				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) AS "position"
-			FROM 
-				job_queue 
-			WHERE 
-				(job_queued = TRUE OR job_name IS NOT NULL)
-				AND job_queue.last_heard IS NOT NULL
-				AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.last_heard)) < 10
-		) t1
-	) job_queue_positions ON TRUE
-	LEFT JOIN newest_image ON hardware_data.system_model = newest_image.system_model
-	LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
-	LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
-	LEFT JOIN os_info ON ids.uuid = os_info.client_uuid
+	LEFT JOIN static_image_names ON static_image_names.image_name = latest_completed_job.clone_image
+	LEFT JOIN newest_image ON newest_image.system_model = hardware_data.system_model
+	LEFT JOIN job_queue_positions ON job_queue_positions.client_uuid = ids.uuid
+	LEFT JOIN static_client_statuses ON static_client_statuses.status_name = locations.client_status
+	LEFT JOIN static_department_info ON static_department_info.department_name = locations.department_name
 	ORDER BY
 		job_queue.last_heard DESC NULLS LAST
-	LIMIT 50
 	;`
 
 	rows, err := dbConn.QueryContext(ctx, sqlQuery)
