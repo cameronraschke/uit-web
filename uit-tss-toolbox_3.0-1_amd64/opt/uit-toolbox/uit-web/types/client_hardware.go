@@ -9,50 +9,50 @@ import (
 )
 
 type ClientHardwareView struct {
-	TransactionUUID           string   `json:"transaction_uuid"`
-	Tagnumber                 *int64   `json:"tagnumber"`
-	SystemSerial              *string  `json:"system_serial"`
-	SystemUUID                *string  `json:"system_uuid"`
-	SystemManufacturer        *string  `json:"system_manufacturer"`
-	SystemModel               *string  `json:"system_model"`
-	SystemSKU                 *string  `json:"system_sku"`
-	ProductFamily             *string  `json:"product_family,omitempty"`
-	ProductName               *string  `json:"product_name,omitempty"`
-	DeviceType                *string  `json:"device_type"`
-	ChassisType               *string  `json:"chassis_type"`
-	MotherboardSerial         *string  `json:"motherboard_serial"`
-	MotherboardManufacturer   *string  `json:"motherboard_manufacturer"`
-	CPUManufacturer           *string  `json:"cpu_manufacturer"`
-	CPUModel                  *string  `json:"cpu_model"`
-	CPUMaxSpeedMhz            *int64   `json:"cpu_max_speed_mhz"`
-	CPUCoreCount              *int64   `json:"cpu_core_count"`
-	CPUThreadCount            *int64   `json:"cpu_thread_count"`
-	EthernetMAC               *string  `json:"ethernet_mac"`
-	WiFiMAC                   *string  `json:"wifi_mac"`
-	TPMVersion                *string  `json:"tpm_version"`
-	DiskModel                 *string  `json:"disk_model"`
-	DiskType                  *string  `json:"disk_type"`
-	DiskSize                  *int64   `json:"disk_size_kb"`
-	DiskSerial                *string  `json:"disk_serial"`
-	DiskWritesKB              *int64   `json:"disk_writes_kb"`
-	DiskReadsKB               *int64   `json:"disk_reads_kb"`
-	DiskPowerOnHours          *int64   `json:"disk_power_on_hours"`
-	DiskErrors                *int64   `json:"disk_errors"`
-	DiskPowerCycles           *int64   `json:"disk_power_cycles"`
-	DiskFirmware              *string  `json:"disk_firmware"`
-	BatteryModel              *string  `json:"battery_model"`
-	BatterySerial             *string  `json:"battery_serial"`
-	BatteryChargeCycles       *int64   `json:"battery_charge_cycles"`
-	BatteryCurrentMaxCapacity *float64 `json:"battery_current_max_capacity"`
-	BatteryDesignCapacity     *float64 `json:"battery_design_capacity"`
-	BatteryManufacturer       *string  `json:"battery_manufacturer"`
-	BatteryManufactureDate    *string  `json:"battery_manufacture_date"`
-	BiosVersion               *string  `json:"bios_version"`
-	BiosReleaseDate           *time.Time  `json:"bios_release_date"`
-	BiosFirmware              *string  `json:"bios_firmware"`
-	MemorySerial              []string `json:"memory_serial"`
-	MemoryCapacityKB          *int64   `json:"memory_capacity_kb"`
-	MemorySpeedMHz            *int64   `json:"memory_speed_mhz"`
+	TransactionUUID           string     `json:"transaction_uuid"`
+	Tagnumber                 *int64     `json:"tagnumber"`
+	SystemSerial              *string    `json:"system_serial"`
+	SystemUUID                *string    `json:"system_uuid"`
+	SystemManufacturer        *string    `json:"system_manufacturer"`
+	SystemModel               *string    `json:"system_model"`
+	SystemSKU                 *string    `json:"system_sku"`
+	ProductFamily             *string    `json:"product_family,omitempty"`
+	ProductName               *string    `json:"product_name,omitempty"`
+	DeviceType                *string    `json:"device_type"`
+	ChassisType               *string    `json:"chassis_type"`
+	MotherboardSerial         *string    `json:"motherboard_serial"`
+	MotherboardManufacturer   *string    `json:"motherboard_manufacturer"`
+	CPUManufacturer           *string    `json:"cpu_manufacturer"`
+	CPUModel                  *string    `json:"cpu_model"`
+	CPUMaxSpeedMhz            *int64     `json:"cpu_max_speed_mhz"`
+	CPUCoreCount              *int64     `json:"cpu_core_count"`
+	CPUThreadCount            *int64     `json:"cpu_thread_count"`
+	EthernetMAC               *string    `json:"ethernet_mac"`
+	WiFiMAC                   *string    `json:"wifi_mac"`
+	TPMVersion                *string    `json:"tpm_version"`
+	DiskModel                 *string    `json:"disk_model"`
+	DiskType                  *string    `json:"disk_type"`
+	DiskSize                  *int64     `json:"disk_size_kb"`
+	DiskSerial                *string    `json:"disk_serial"`
+	DiskWritesKB              *int64     `json:"disk_writes_kb"`
+	DiskReadsKB               *int64     `json:"disk_reads_kb"`
+	DiskPowerOnHours          *int64     `json:"disk_power_on_hours"`
+	DiskErrors                *int64     `json:"disk_errors"`
+	DiskPowerCycles           *int64     `json:"disk_power_cycles"`
+	DiskFirmware              *string    `json:"disk_firmware"`
+	BatteryModel              *string    `json:"battery_model"`
+	BatterySerial             *string    `json:"battery_serial"`
+	BatteryChargeCycles       *int64     `json:"battery_charge_cycles"`
+	BatteryCurrentMaxCapacity *float64   `json:"battery_current_max_capacity"`
+	BatteryDesignCapacity     *float64   `json:"battery_design_capacity"`
+	BatteryManufacturer       *string    `json:"battery_manufacturer"`
+	BatteryManufactureDate    *string    `json:"battery_manufacture_date"`
+	BiosVersion               *string    `json:"bios_version"`
+	BiosReleaseDate           *time.Time `json:"bios_release_date"`
+	BiosFirmware              *string    `json:"bios_firmware"`
+	MemorySerial              []string   `json:"memory_serial"`
+	MemoryCapacityKB          *int64     `json:"memory_capacity_kb"`
+	MemorySpeedMHz            *int64     `json:"memory_speed_mhz"`
 }
 
 type ClientHealthCheck struct {
@@ -60,7 +60,7 @@ type ClientHealthCheck struct {
 	Tagnumber         int64      `json:"tagnumber"`
 	SystemSerial      *string    `json:"health_system_serial"`
 	BIOSVersion       *string    `json:"bios_version"`
-	BIOSReleaseDate   *time.Time    `json:"bios_release_date"`
+	BIOSReleaseDate   *time.Time `json:"bios_release_date"`
 	TPMVersion        *string    `json:"health_tpm_version"`
 	LastHardwareCheck *time.Time `json:"last_hardware_check"`
 }
