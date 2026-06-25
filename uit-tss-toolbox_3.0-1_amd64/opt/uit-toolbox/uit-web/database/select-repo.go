@@ -1357,60 +1357,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		)
 		GROUP BY system_model
 	),
-	current_battery_health AS (
-		SELECT * FROM (
-			SELECT 
-				historical_battery_data.client_uuid,
-				ROUND((historical_battery_data.battery_current_max_capacity::decimal / historical_battery_data.battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt",
-				ROW_NUMBER() OVER (PARTITION BY historical_battery_data.client_uuid ORDER BY historical_battery_data.time DESC NULLS LAST) AS "row_num"
-			FROM 
-				historical_battery_data
-			WHERE
-				historical_battery_data.battery_design_capacity IS NOT NULL 
-				AND historical_battery_data.battery_current_max_capacity IS NOT NULL
-		) t1 WHERE t1.row_num = 1
-	),
-	latest_historical_disk_data AS (
-		SELECT * FROM (
-			SELECT 
-				ROW_NUMBER() OVER (PARTITION BY historical_disk_data.client_uuid ORDER BY historical_disk_data.time DESC NULLS LAST) AS "row_num", historical_disk_data.time, 
-				historical_disk_data.client_uuid, 
-				historical_disk_data.disk_model, 
-				historical_disk_data.disk_size_kb AS "disk_capacity"
-			FROM historical_disk_data
-		) t1 WHERE t1.row_num = 1
-	),
-	latest_firmware_data AS (
-		SELECT * FROM (
-			SELECT 
-				ROW_NUMBER() OVER (PARTITION BY historical_firmware_data.client_uuid ORDER BY historical_firmware_data.time DESC NULLS LAST) AS "row_num", 
-				historical_firmware_data.client_uuid, 
-				historical_firmware_data.bios_version
-			FROM historical_firmware_data
-			WHERE historical_firmware_data.bios_version IS NOT NULL
-		) t1 WHERE t1.row_num = 1
-	),
-	latest_completed_job AS (
-		SELECT * FROM 
-			(SELECT
-			ROW_NUMBER() OVER (PARTITION BY jobstats.client_uuid ORDER BY jobstats.time DESC NULLS LAST) AS "row_num",
-			jobstats.client_uuid,
-			jobstats.tagnumber,
-			jobstats.time, 
-			jobstats.erase_completed, 
-			jobstats.erase_mode, 
-			jobstats.erase_time, 
-			jobstats.clone_completed, 
-			jobstats.clone_image, 
-			jobstats.clone_master, 
-			jobstats.clone_time, 
-			jobstats.job_cancelled
-		FROM jobstats
-		WHERE 
-			(jobstats.job_cancelled IS NULL OR jobstats.job_cancelled = FALSE)
-			AND (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
-		) t1 WHERE t1.row_num = 1
-	),
 	newest_image AS (
 		SELECT * FROM (
 			SELECT 
@@ -1422,18 +1368,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			WHERE
 				jobstats.clone_master = TRUE 
 		) t1 WHERE t1.row_num = 1
-	),
-	job_queue_position AS (
-		SELECT 
-			client_uuid, 
-			ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) AS "position",
-			job_name
-		FROM 
-			job_queue 
-		WHERE 
-			(job_queued = TRUE OR job_name IS NOT NULL)
-			AND job_queue.last_heard IS NOT NULL
-			AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.last_heard)) < 10
 	)
 	SELECT
 		locations.tagnumber,
@@ -1455,11 +1389,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		job_queue.job_active,
 		job_queue.job_queued,
 		job_queue.job_queued_at,
-		DENSE_RANK() OVER (ORDER BY
-		(CASE
-			WHEN job_queue.job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone') THEN COALESCE(job_queue_position.position, 0)
-			ELSE 0
-		END)) - 1 AS "job_queue_position",
+		job_queue_positions.position AS "job_queue_position",
 		job_queue.job_name,
 		static_job_names.job_name_readable,
 		(CASE
@@ -1509,7 +1439,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		'0' AS "disk_usage",
 		job_queue.disk_temp,
 		static_disk_stats.disk_type,
-		latest_historical_disk_data.disk_capacity AS "disk_size_kb",
+		latest_historical_disk_data.disk_size_kb,
 		'80' AS "max_disk_temp",
 		(CASE
 			WHEN job_queue.disk_temp > 80 THEN TRUE
@@ -1528,17 +1458,83 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN locations ON ids.uuid = locations.client_uuid
 	LEFT JOIN job_queue ON ids.uuid = job_queue.client_uuid
 	LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
-	LEFT JOIN latest_historical_disk_data ON ids.uuid = latest_historical_disk_data.client_uuid
-	LEFT JOIN latest_firmware_data ON ids.uuid = latest_firmware_data.client_uuid
+	LEFT JOIN LATERAL (
+		SELECT 
+			disk_model, 
+			disk_size_kb
+		FROM historical_disk_data
+		WHERE 
+			client_uuid = ids.uuid
+		ORDER BY time DESC NULLS LAST
+		LIMIT 1
+	) latest_historical_disk_data ON TRUE
+	LEFT JOIN LATERAL (
+		SELECT 
+				bios_version
+			FROM historical_firmware_data
+			WHERE 
+				client_uuid = ids.uuid
+				AND bios_version IS NOT NULL
+			ORDER BY time DESC NULLS LAST
+			LIMIT 1
+	) latest_firmware_data ON TRUE
 	LEFT JOIN avg_battery_health ON hardware_data.system_model = avg_battery_health.system_model
-	LEFT JOIN current_battery_health ON ids.uuid = current_battery_health.client_uuid
-	LEFT JOIN latest_completed_job ON ids.uuid = latest_completed_job.client_uuid
+	LEFT JOIN LATERAL (
+		SELECT 
+			ROUND((battery_current_max_capacity::decimal / battery_design_capacity::decimal * 100), 2) AS "battery_health_pcnt"
+		FROM 
+			historical_battery_data
+		WHERE
+			client_uuid = ids.uuid
+			AND battery_design_capacity IS NOT NULL 
+			AND battery_current_max_capacity IS NOT NULL
+		ORDER BY time DESC NULLS LAST
+		LIMIT 1
+	) current_battery_health ON TRUE
+	LEFT JOIN LATERAL (
+		SELECT
+			jobstats.time, 
+			jobstats.erase_completed, 
+			jobstats.erase_mode, 
+			jobstats.erase_time, 
+			jobstats.clone_completed, 
+			jobstats.clone_image, 
+			jobstats.clone_master, 
+			jobstats.clone_time, 
+			jobstats.job_cancelled
+		FROM jobstats
+		WHERE 
+			ids.uuid = jobstats.client_uuid
+			AND (jobstats.job_cancelled IS NULL OR jobstats.job_cancelled = FALSE)
+			AND (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
+		ORDER BY jobstats.time DESC NULLS LAST
+		LIMIT 1
+	) latest_completed_job ON TRUE
 	LEFT JOIN static_image_names ON latest_completed_job.clone_image = static_image_names.image_name
 	LEFT JOIN static_job_names ON job_queue.job_name = static_job_names.job_name
 	LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
 	LEFT JOIN static_disk_stats ON latest_historical_disk_data.disk_model = static_disk_stats.disk_model
 	LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
-	LEFT JOIN job_queue_position ON ids.uuid = job_queue_position.client_uuid
+	LEFT JOIN LATERAL (
+		SELECT 
+			DENSE_RANK() OVER (ORDER BY
+				(CASE
+					WHEN job_queue.job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone') THEN COALESCE(t1.position, 0)
+					ELSE 0
+				END)
+			) - 1 AS "position"
+		FROM (
+			SELECT 
+				job_name,
+				ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) AS "position"
+			FROM 
+				job_queue 
+			WHERE 
+				(job_queued = TRUE OR job_name IS NOT NULL)
+				AND job_queue.last_heard IS NOT NULL
+				AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.last_heard)) < 10
+		) t1
+	) job_queue_positions ON TRUE
 	LEFT JOIN newest_image ON hardware_data.system_model = newest_image.system_model
 	LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
 	LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
