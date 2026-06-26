@@ -78,8 +78,11 @@ func (request *ClientHealthUpdateRequest) ToDTO() (*ClientHealthDTO, error) {
 	if request == nil {
 		return nil, fmt.Errorf("nil input")
 	}
-	if request.Tagnumber == 0 || strings.TrimSpace(request.TransactionUUID) == "" {
-		return nil, fmt.Errorf("missing tagnumber or transaction UUID")
+	if err := IsTagnumberInt64Valid(&request.Tagnumber); err != nil {
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "tagnumber", err)
+	}
+	if strings.TrimSpace(request.TransactionUUID) == "" {
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "transaction_uuid", "missing transaction UUID")
 	}
 	dto := new(ClientHealthDTO)
 	utcTime := time.Now().UTC()

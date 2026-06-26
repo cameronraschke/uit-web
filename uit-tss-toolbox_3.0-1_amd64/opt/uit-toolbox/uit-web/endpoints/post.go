@@ -415,11 +415,22 @@ func SetClientNetworkUsage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if networkData.Tagnumber == 0 || networkData.NetworkUsage == nil || networkData.LinkSpeed == nil {
-		log.Warn("Missing tag number, network usage, or link speed")
+	if err := types.IsTagnumberInt64Valid(&networkData.Tagnumber); err != nil {
+		log.Warn("Invalid tagnumber: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
+	if networkData.NetworkUsage == nil {
+		log.Warn("Request is missing network usage")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if networkData.LinkSpeed == nil {
+		log.Warn("Request is missing link speed")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
 	updateRepo, err := database.NewUpdateRepo()
 	if err != nil {
 		log.Error("No database connection available for updating client network usage")
@@ -460,8 +471,13 @@ func SetClientUptime(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if uptimeData.Tagnumber == 0 || (uptimeData.ClientAppUptime == nil && uptimeData.SystemUptime == nil) {
-		log.Warn("Missing tag number or uptime data")
+	if err := types.IsTagnumberInt64Valid(&uptimeData.Tagnumber); err != nil {
+		log.Warn(fmt.Sprintf("%v: %s (%v)", types.InvalidRequestFieldError, "tagnumber", err))
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if uptimeData.ClientAppUptime == nil && uptimeData.SystemUptime == nil {
+		log.Warn(fmt.Sprintf("%v: %s (%v)", types.InvalidRequestFieldError, "uptime data", "both clientAppUptime and systemUptime are nil"))
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -473,7 +489,7 @@ func SetClientUptime(w http.ResponseWriter, req *http.Request) {
 	}
 	if uptimeData.ClientAppUptime != nil {
 		if err := updateRepo.UpdateClientAppUptime(ctx, uptimeData.Tagnumber, *uptimeData.ClientAppUptime); err != nil {
-			log.Error("Failed to update client uptime: " + err.Error())
+			log.Error(fmt.Sprintf("%v '%s': %v", types.FailedToUpdateDatabaseValueError, "clientAppUptime", err))
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -481,7 +497,7 @@ func SetClientUptime(w http.ResponseWriter, req *http.Request) {
 
 	if uptimeData.SystemUptime != nil {
 		if err := updateRepo.UpdateClientSystemUptime(ctx, uptimeData.Tagnumber, *uptimeData.SystemUptime); err != nil {
-			log.Error("Failed to update client system uptime: " + err.Error())
+			log.Error(fmt.Sprintf("%v '%s': %v", types.FailedToUpdateDatabaseValueError, "systemUptime", err))
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -518,19 +534,24 @@ func SetClientLastHeard(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if lastHeardData.Tagnumber == 0 || lastHeardData.LastHeard.IsZero() {
-		log.Warn("Missing tag number or last heard time")
+	if err := types.IsTagnumberInt64Valid(&lastHeardData.Tagnumber); err != nil {
+		log.Warn(fmt.Sprintf("%v: %s (%v)", types.InvalidRequestFieldError, "tagnumber", err))
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if lastHeardData.LastHeard.IsZero() {
+		log.Warn(fmt.Sprintf("%v '%s': %v", types.InvalidRequestFieldError, "lastHeard", "value is zero"))
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	updateRepo, err := database.NewUpdateRepo()
 	if err != nil {
-		log.Error("No database connection available for updating client last heard time")
+		log.Error(fmt.Sprintf("%v '%s': %v", types.DatabaseConnError, "clientLastHeard", err))
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	if err := updateRepo.UpdateClientLastHeard(ctx, &lastHeardData.Tagnumber, &lastHeardData.LastHeard); err != nil {
-		log.Error("Failed to update client last heard time: " + err.Error())
+		log.Error(fmt.Sprintf("%v '%s': %v", types.FailedToUpdateDatabaseValueError, "lastHeard", err))
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -562,8 +583,13 @@ func UpdateClientBatteryChargePcnt(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if batteryData.Tagnumber == nil || *batteryData.Tagnumber == 0 || batteryData.BatteryChargePcnt == nil {
-		log.Warn("Missing tag number or battery percentage")
+	if err := types.IsTagnumberInt64Valid(batteryData.Tagnumber); err != nil {
+		log.Warn(fmt.Sprintf("%v for '%s': %v", types.InvalidRequestFieldError, "tagnumber", err))
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if batteryData.BatteryChargePcnt == nil {
+		log.Warn(fmt.Sprintf("%v for '%s': %v", types.InvalidRequestFieldError, "batteryChargePcnt", "value is nil or zero"))
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
@@ -574,12 +600,12 @@ func UpdateClientBatteryChargePcnt(w http.ResponseWriter, req *http.Request) {
 	}
 	updateRepo, err := database.NewUpdateRepo()
 	if err != nil {
-		log.Error("No database connection available for updating client battery percentage")
+		log.Error(fmt.Sprintf("%v while updating '%s': %v", types.DatabaseConnError, "clientBatteryChargePcnt", err))
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	if err := updateRepo.UpdateClientBatteryChargePcnt(ctx, batteryData.Tagnumber, batteryData.BatteryChargePcnt); err != nil {
-		log.Error("Failed to update client battery percentage: " + err.Error())
+		log.Error(fmt.Sprintf("%v '%s': %v", types.FailedToUpdateDatabaseValueError, "clientBatteryChargePcnt", err))
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -634,7 +660,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 	curTime := time.Now().UTC()
 	err = database.InsertNewNote(ctx, &curTime, newNote.NoteType, newNote.NoteContent)
 	if err != nil {
-		log.Error("Failed to insert new note: " + err.Error())
+		log.Error(fmt.Sprintf("%v '%s': %v", types.FailedToUpdateDatabaseValueError, "newNote", err))
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -717,7 +743,7 @@ func InsertInventoryUpdate(w http.ResponseWriter, req *http.Request) {
 	// Update db
 	inventoryData := inventoryDomain.ToLocationWriteModel(transactionUUID)
 	if err := database.InsertInventoryUpdate(ctx, transactionUUID, inventoryData); err != nil {
-		log.Error("Failed to update inventory data: " + err.Error())
+		log.Error(fmt.Sprintf("%v '%s': %v", types.FailedToUpdateDatabaseValueError, "inventoryData", err))
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -1400,7 +1426,7 @@ func SetAllJobs(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !types.IsASCIIStringPrintable(*clientJson.JobName) {
+	if !types.IsPrintableASCII([]byte(*clientJson.JobName)) {
 		log.Warn("Non-printable ASCII characters in job name field")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -1451,7 +1477,7 @@ func SetClientJob(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if !types.IsASCIIStringPrintable(*clientJson.JobName) {
+	if !types.IsPrintableASCII([]byte(*clientJson.JobName)) {
 		log.Warn("Non-printable ASCII characters in job name field")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -1585,8 +1611,8 @@ func SetJobQueuedAt(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if reqBody.Tagnumber == nil || *reqBody.Tagnumber == 0 {
-		log.Warn("Request tagnumber is nil")
+	if err := types.IsTagnumberInt64Valid(reqBody.Tagnumber); err != nil {
+		log.Warn(fmt.Sprintf("%v for '%s': %v", types.InvalidRequestFieldError, "tagnumber", err))
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}

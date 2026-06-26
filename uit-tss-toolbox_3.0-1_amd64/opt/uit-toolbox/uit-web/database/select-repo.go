@@ -571,7 +571,7 @@ func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*types.
 
 func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryFormPrefillRow, error) {
 	tagErr := types.IsTagnumberInt64Valid(tag)
-	serialErr := types.IsSerialStringValid(serial)
+	serialErr := types.IsSystemSerialValid(serial)
 
 	if tagErr != nil && serialErr != nil {
 		return nil, fmt.Errorf("%w: both tag and serial are invalid", types.DatabaseRowScanError)
@@ -1218,8 +1218,11 @@ func ModifyClientConfigErrorResults(results []types.InventoryTableRow) ([]types.
 	// Set client configuration errors
 	for i := range results {
 		// If client is missing required info in the DB
-		if results[i].Tagnumber == nil ||
-			results[i].SystemSerial == nil ||
+		tagErr := types.IsTagnumberInt64Valid(results[i].Tagnumber)
+		serialErr := types.IsSystemSerialValid(results[i].SystemSerial)
+
+		if tagErr != nil ||
+			serialErr != nil ||
 			results[i].Location == nil ||
 			results[i].Building == nil ||
 			results[i].Room == nil ||

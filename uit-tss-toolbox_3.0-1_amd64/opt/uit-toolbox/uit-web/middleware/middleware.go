@@ -815,7 +815,7 @@ func TokenAuthMiddleware(next http.Handler) http.Handler {
 			WriteJsonError(w, http.StatusUnauthorized)
 			return
 		}
-		if !types.IsASCIIStringPrintable(req.Header.Get("UIT_Token")) {
+		if !types.IsPrintableASCII([]byte(req.Header.Get("UIT_Token"))) {
 			log.Warn("UIT-Token header contains non-printable or non-ASCII characters")
 			WriteJsonError(w, http.StatusUnauthorized)
 			return

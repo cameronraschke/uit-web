@@ -6,6 +6,7 @@ import (
 
 var (
 	// General errors
+	ContextError           = errors.New("context error")
 	CannotGetAppStateError = errors.New("cannot retrieve app state")
 	NilAppStateError       = errors.New("app state is nil")
 	MissingFieldError      = errors.New("required field is empty/nil")
@@ -31,4 +32,9 @@ var (
 	InvalidEndpointDataError = errors.New("invalid/missing endpoint data")
 	NilEndpointDataError     = errors.New("endpoint data is nil")
 	LiveImageMissingError    = errors.New("live image not found for the given tag")
+
+	// Web request errors
+	InvalidRequestError              = errors.New("invalid request")
+	InvalidRequestFieldError         = errors.New("invalid request field value")
+	FailedToUpdateDatabaseValueError = errors.New("failed to update value in DB")
 )

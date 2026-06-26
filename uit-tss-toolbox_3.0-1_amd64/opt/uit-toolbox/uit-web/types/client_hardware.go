@@ -85,8 +85,8 @@ func (m *MemoryDataUpdateRequest) ToDTO() (*MemoryDataUpdateDTO, error) {
 	if m == nil {
 		return nil, fmt.Errorf("memory data request is nil")
 	}
-	if m.Tagnumber == nil || *m.Tagnumber == 0 {
-		return nil, fmt.Errorf("tag number is required")
+	if err := IsTagnumberInt64Valid(m.Tagnumber); err != nil {
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "tagnumber", err)
 	}
 	var usageKB int64
 	if m.TotalUsageKB != nil {
@@ -131,8 +131,8 @@ func (c *CPUDataUpdateRequest) ToDTO() (*CPUDataUpdateDTO, error) {
 	if c == nil {
 		return nil, fmt.Errorf("CPU data request is nil")
 	}
-	if c.Tagnumber == nil || *c.Tagnumber == 0 {
-		return nil, fmt.Errorf("tag number is required")
+	if err := IsTagnumberInt64Valid(c.Tagnumber); err != nil {
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "tagnumber", err)
 	}
 	var usagePercent float64
 	if c.UsagePercent != nil {
@@ -239,12 +239,14 @@ func (b *BatteryDataRequest) ToDTO() (dto *BatteryDataDTO, err error) {
 
 	// tagnumber
 	if err := IsTagnumberInt64Valid(b.Tagnumber); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "tagnumber", err)
 	}
 
 	// systemSerial is optional, but if provided, it must not be empty
-	if b.SystemSerial == nil || strings.TrimSpace(*b.SystemSerial) == "" {
-		return nil, fmt.Errorf("%w: system serial cannot be empty/nil", InvalidFieldError)
+	if b.SystemSerial != nil && len(strings.TrimSpace(*b.SystemSerial)) > 0 {
+		if err := IsSystemSerialValid(b.SystemSerial); err != nil {
+			return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "system_serial", err)
+		}
 	}
 
 	dto = &BatteryDataDTO{

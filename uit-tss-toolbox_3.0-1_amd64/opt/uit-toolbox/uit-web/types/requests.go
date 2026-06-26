@@ -126,34 +126,31 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 		return nil, fmt.Errorf("request cannot be nil")
 	}
 	if request.RequestMetadata == nil {
-		return nil, fmt.Errorf("request_metadata is required")
-	}
-	if request.RequestMetadata.Tagnumber == nil {
-		return nil, fmt.Errorf("tagnumber is required")
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "request_metadata", "request_metadata is required")
 	}
 
 	if request.RequestMetadata.TimeStamp == nil || request.RequestMetadata.TimeStamp.IsZero() {
-		return nil, fmt.Errorf("timestamp is required")
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "timestamp", "timestamp is required")
 	}
 
 	if err := IsTagnumberInt64Valid(request.RequestMetadata.Tagnumber); err != nil {
-		return nil, fmt.Errorf("invalid tagnumber: %w", err)
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "tagnumber", err)
 	}
 
 	if request.RequestMetadata.SystemSerial == nil || strings.TrimSpace(*request.RequestMetadata.SystemSerial) == "" {
-		return nil, fmt.Errorf("system_serial is required")
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "system_serial", "system_serial is required")
 	}
 
 	if request.OSInstalledAt == nil || strings.TrimSpace(*request.OSInstalledAt) == "" {
-		return nil, fmt.Errorf("os_installed_at is required")
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "os_installed_at", "os_installed_at is required")
 	}
 	convertedTime, err := time.Parse(time.RFC3339, strings.TrimSpace(*request.OSInstalledAt))
 	if err != nil {
-		return nil, fmt.Errorf("invalid os_installed_at format: %w", err)
+		return nil, fmt.Errorf("%w for '%s': invalid format: %v", InvalidFieldError, "os_installed_at", err)
 	}
 
 	if request.BIOSReleaseDate == nil || strings.TrimSpace(*request.BIOSReleaseDate) == "" {
-		return nil, fmt.Errorf("bios_release_date is required")
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "bios_release_date", "bios_release_date is required")
 	}
 
 	var convertedBatteryManufactureDate *time.Time
@@ -269,19 +266,16 @@ type ClientInitResponse struct {
 
 func (req *ClientInitRequest) ToDTO() (*ClientInitDTO, error) {
 	if req == nil {
-		return nil, fmt.Errorf("request cannot be nil")
-	}
-	if req.Tagnumber == nil {
-		return nil, fmt.Errorf("tagnumber is required")
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "request", "request cannot be nil")
 	}
 	if err := IsTagnumberInt64Valid(req.Tagnumber); err != nil {
-		return nil, fmt.Errorf("invalid tagnumber: %w", err)
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "tagnumber", err)
 	}
-	if req.SystemSerial == nil || strings.TrimSpace(*req.SystemSerial) == "" {
-		return nil, fmt.Errorf("system serial is required")
+	if err := IsSystemSerialValid(req.SystemSerial); err != nil {
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "system_serial", err)
 	}
 	if req.TransactionUUID == nil || strings.TrimSpace(*req.TransactionUUID) == "" {
-		return nil, fmt.Errorf("transaction UUID is required")
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "transaction_uuid", "transaction UUID is required")
 	}
 
 	return &ClientInitDTO{

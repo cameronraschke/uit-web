@@ -299,8 +299,8 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 					middleware.WriteJsonError(w, http.StatusBadRequest)
 					return
 				}
-				if tagnumber == nil {
-					log.Warn("No tagnumber provided in URL for endpoint that requires client_tag")
+				if err := types.IsTagnumberInt64Valid(tagnumber); err != nil {
+					log.Warn("Invalid tagnumber in URL: " + urlTag + " (" + err.Error() + ")")
 					middleware.WriteJsonError(w, http.StatusBadRequest)
 					return
 				}

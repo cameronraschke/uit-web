@@ -357,8 +357,12 @@ func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inven
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
 		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
 	}
-	if inventoryUpdate == nil || inventoryUpdate.Tagnumber == 0 {
-		return fmt.Errorf("inventoryUpdate is invalid")
+	if inventoryUpdate == nil {
+		return fmt.Errorf("%w: %s (%s)", types.InvalidStructureError, "InventoryLocationWriteModel", "nil")
+	}
+
+	if err := types.IsTagnumberInt64Valid(&inventoryUpdate.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
 
 	dbConn, err := config.GetDatabaseConn()
@@ -696,9 +700,6 @@ func HideClientImageByUUID(ctx context.Context, fileUUID *string) (err error) {
 }
 
 func TogglePinImage(ctx context.Context, tagnumber *int64, fileUUID *string) (err error) {
-	if tagnumber == nil {
-		return fmt.Errorf("%w: %s", types.MissingFieldError, "tagnumber")
-	}
 	if err := types.IsTagnumberInt64Valid(tagnumber); err != nil {
 		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
@@ -840,8 +841,8 @@ func SetClientJob(ctx context.Context, tag int64, clientJob string) (err error) 
 }
 
 func UpsertClientMemoryUsageKB(ctx context.Context, memInfo types.MemoryDataUpdateDTO) (err error) {
-	if memInfo.Tagnumber == 0 {
-		return fmt.Errorf("%w: %w", types.InvalidFieldError, fmt.Errorf("tagnumber is required in memory data"))
+	if err := types.IsTagnumberInt64Valid(&memInfo.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
 	if memInfo.TotalUsageKB <= 0 {
 		return fmt.Errorf("%w: %w", types.InvalidFieldError, fmt.Errorf("total memory usage must be greater than 0"))
@@ -900,8 +901,8 @@ func UpsertClientMemoryUsageKB(ctx context.Context, memInfo types.MemoryDataUpda
 }
 
 func UpsertClientMemoryCapacityKB(ctx context.Context, memInfo types.MemoryDataUpdateDTO) (err error) {
-	if memInfo.Tagnumber == 0 {
-		return fmt.Errorf("%w: %w", types.InvalidFieldError, fmt.Errorf("tagnumber is required in memory data"))
+	if err := types.IsTagnumberInt64Valid(&memInfo.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
 	if memInfo.TotalCapacityKB <= 0 {
 		return fmt.Errorf("%w: %w", types.InvalidFieldError, fmt.Errorf("memory capacity must be greater than 0"))
@@ -964,8 +965,8 @@ func UpsertClientCPUUsage(ctx context.Context, cpuData *types.CPUDataUpdateDTO) 
 		return fmt.Errorf("CPU data is required")
 	}
 
-	if cpuData.Tagnumber == 0 {
-		return fmt.Errorf("%w: %s", types.InvalidFieldError, "tagnumber is missing")
+	if err := types.IsTagnumberInt64Valid(&cpuData.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
 
 	if cpuData.UsagePercent < 0 || cpuData.UsagePercent > 110 {
@@ -1027,9 +1028,11 @@ func UpsertClientCPUMHz(ctx context.Context, cpuData *types.CPUDataUpdateDTO) (e
 	if cpuData == nil {
 		return fmt.Errorf("CPU data is required")
 	}
-	if cpuData.Tagnumber == 0 {
-		return fmt.Errorf("%w: %s", types.InvalidFieldError, "tagnumber is missing")
+
+	if err := types.IsTagnumberInt64Valid(&cpuData.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
+
 	if cpuData.MHz <= 0 {
 		return fmt.Errorf("%w: %s must be greater than 0", types.InvalidFieldError, "CPU MHz")
 	}
@@ -1087,11 +1090,18 @@ func UpsertClientCPUMHz(ctx context.Context, cpuData *types.CPUDataUpdateDTO) (e
 
 func (updateRepo *UpdateRepo) UpdateClientNetworkUsage(ctx context.Context, networkData *types.NetworkData) (err error) {
 	if networkData == nil {
-		return fmt.Errorf("network data is required")
+		return fmt.Errorf("%w: %s", types.InvalidStructureError, "NetworkData is nil")
 	}
-	if networkData.Tagnumber == 0 || networkData.NetworkUsage == nil || networkData.LinkSpeed == nil {
-		return fmt.Errorf("tagnumber, network usage, and link speed are required")
+	if err := types.IsTagnumberInt64Valid(&networkData.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
+	if networkData.NetworkUsage == nil {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "network usage")
+	}
+	if networkData.LinkSpeed == nil {
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "link speed")
+	}
+
 	if ctx.Err() != nil {
 		return fmt.Errorf("context error: %w", ctx.Err())
 	}
@@ -1134,10 +1144,10 @@ func (updateRepo *UpdateRepo) UpdateClientNetworkUsage(ctx context.Context, netw
 
 func UpsertClientCPUTemperature(ctx context.Context, cpuTempData *types.CPUDataUpdateDTO) (err error) {
 	if cpuTempData == nil {
-		return fmt.Errorf("CPU data is required")
+		return fmt.Errorf("%w: %s", types.InvalidStructureError, "CPUData is nil")
 	}
-	if cpuTempData.Tagnumber == 0 {
-		return fmt.Errorf("both tagnumber and temperature are required")
+	if err := types.IsTagnumberInt64Valid(&cpuTempData.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
 	if cpuTempData.MillidegreesC <= 0 {
 		return fmt.Errorf("%w: %s must be greater than 0", types.InvalidFieldError, "CPU temperature")
@@ -1294,13 +1304,13 @@ func (updateRepo *UpdateRepo) UpdateClientAppUptime(ctx context.Context, tag int
 
 func UpsertClientHealthCheck(ctx context.Context, healthCheck *types.ClientHealthCheck) (err error) {
 	if healthCheck == nil {
-		return fmt.Errorf("healthCheck data is required")
+		return fmt.Errorf("%w: %s", types.InvalidStructureError, "healthCheck is nil")
 	}
-	if healthCheck.Tagnumber == 0 {
-		return fmt.Errorf("tagnumber is required in healthCheck data")
+	if err := types.IsTagnumberInt64Valid(&healthCheck.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
 	if healthCheck.TransactionUUID == "" {
-		return fmt.Errorf("transaction UUID is required in healthCheck data")
+		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
 	}
 	if ctx.Err() != nil {
 		return fmt.Errorf("context error: %w", ctx.Err())
@@ -1776,10 +1786,10 @@ func UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHar
 
 func (updateRepo *UpdateRepo) UpdateJobQueuedAt(ctx context.Context, jobQueue *types.JobQueueTableRowView) (err error) {
 	if jobQueue == nil {
-		return fmt.Errorf("required info is nil")
+		return fmt.Errorf("%w: %s", types.InvalidStructureError, "jobQueue is nil")
 	}
-	if jobQueue.Tagnumber == nil || *jobQueue.Tagnumber == 0 {
-		return fmt.Errorf("tagnumber is nil")
+	if err := types.IsTagnumberInt64Valid(jobQueue.Tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
 
 	if ctx.Err() != nil {
@@ -1812,28 +1822,28 @@ func (updateRepo *UpdateRepo) UpdateJobQueuedAt(ctx context.Context, jobQueue *t
 		ptrToNullTime(jobQueue.JobQueuedAt),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
 	if err := VerifyRowsAffected(res, 1); err != nil {
-		return err
+		return fmt.Errorf("%w: %w", types.DatabaseAffectedRowsError, err)
 	}
 
 	return nil
 }
 
 func (updateRepo *UpdateRepo) UpdateClientLastHeard(ctx context.Context, tag *int64, lastHeard *time.Time) (err error) {
-	if tag == nil || *tag == 0 {
-		return fmt.Errorf("tagnumber is required")
+	if err := types.IsTagnumberInt64Valid(tag); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
 	if lastHeard == nil || lastHeard.IsZero() {
-		return fmt.Errorf("last heard time is required")
+		return fmt.Errorf("%w: %s", types.InvalidFieldError, "lastHeard")
 	}
 	if ctx.Err() != nil {
-		return fmt.Errorf("context error: %w", ctx.Err())
+		return fmt.Errorf("%w: %w", types.ContextError, ctx.Err())
 	}
 	tx, err := updateRepo.DB.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("error beginning DB transaction: %w", err)
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
 	defer func() {
 		if err != nil {

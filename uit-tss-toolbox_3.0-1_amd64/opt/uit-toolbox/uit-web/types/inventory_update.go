@@ -103,23 +103,18 @@ func (updateRequest *InventoryUpdateRequest) ToDTO(htmlFormConstraints *HTMLForm
 	}
 
 	// Tagnumber
-	if updateRequest.Tagnumber == nil {
-		return nil, fmt.Errorf("tagnumber is required")
-	}
 	if err := IsTagnumberInt64Valid(updateRequest.Tagnumber); err != nil {
-		return nil, fmt.Errorf("tagnumber is invalid: %v", err)
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "tagnumber", err)
 	}
 
 	// System serial
-	if updateRequest.SystemSerial == nil || strings.TrimSpace(*updateRequest.SystemSerial) == "" {
-		return nil, fmt.Errorf("system_serial is required")
+	if err := IsSystemSerialValid(updateRequest.SystemSerial); err != nil {
+		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "system_serial", err)
 	}
 	if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.SystemSerial)) < htmlFormConstraints.InventoryForm.SystemSerialMinChars || utf8.RuneCountInString(*updateRequest.SystemSerial) > htmlFormConstraints.InventoryForm.SystemSerialMaxChars {
 		return nil, fmt.Errorf("system_serial must be between %d and %d characters", htmlFormConstraints.InventoryForm.SystemSerialMinChars, htmlFormConstraints.InventoryForm.SystemSerialMaxChars)
 	}
-	if !IsASCIIStringPrintable(*updateRequest.SystemSerial) {
-		return nil, fmt.Errorf("non-printable ASCII characters in system serial field")
-	}
+
 
 	// Location
 	if updateRequest.Location == nil || strings.TrimSpace(*updateRequest.Location) == "" {
@@ -180,7 +175,7 @@ func (updateRequest *InventoryUpdateRequest) ToDTO(htmlFormConstraints *HTMLForm
 	if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.Department)) < htmlFormConstraints.InventoryForm.DepartmentMinChars || utf8.RuneCountInString(*updateRequest.Department) > htmlFormConstraints.InventoryForm.DepartmentMaxChars {
 		return nil, fmt.Errorf("department_name must be between %d and %d characters", htmlFormConstraints.InventoryForm.DepartmentMinChars, htmlFormConstraints.InventoryForm.DepartmentMaxChars)
 	}
-	if !IsASCIIStringPrintable(*updateRequest.Department) {
+	if !IsPrintableASCII([]byte(*updateRequest.Department)) {
 		return nil, fmt.Errorf("non-printable ASCII characters in department_name field")
 	}
 
@@ -191,7 +186,7 @@ func (updateRequest *InventoryUpdateRequest) ToDTO(htmlFormConstraints *HTMLForm
 	if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.ADDomain)) < htmlFormConstraints.InventoryForm.DomainMinChars || utf8.RuneCountInString(*updateRequest.ADDomain) > htmlFormConstraints.InventoryForm.DomainMaxChars {
 		return nil, fmt.Errorf("ad_domain must be between %d and %d characters", htmlFormConstraints.InventoryForm.DomainMinChars, htmlFormConstraints.InventoryForm.DomainMaxChars)
 	}
-	if !IsASCIIStringPrintable(*updateRequest.ADDomain) {
+	if !IsPrintableASCII([]byte(*updateRequest.ADDomain)) {
 		return nil, fmt.Errorf("non-printable ASCII characters in domain field")
 	}
 
@@ -244,7 +239,7 @@ func (updateRequest *InventoryUpdateRequest) ToDTO(htmlFormConstraints *HTMLForm
 	if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.ClientStatus)) < htmlFormConstraints.InventoryForm.ClientStatusMinChars || utf8.RuneCountInString(*updateRequest.ClientStatus) > htmlFormConstraints.InventoryForm.ClientStatusMaxChars {
 		return nil, fmt.Errorf("status must be between %d and %d characters", htmlFormConstraints.InventoryForm.ClientStatusMinChars, htmlFormConstraints.InventoryForm.ClientStatusMaxChars)
 	}
-	if !IsASCIIStringPrintable(*updateRequest.ClientStatus) {
+	if !IsPrintableASCII([]byte(*updateRequest.ClientStatus)) {
 		return nil, fmt.Errorf("non-printable ASCII characters in status field")
 	}
 

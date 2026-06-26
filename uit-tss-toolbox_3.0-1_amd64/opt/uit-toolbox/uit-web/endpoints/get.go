@@ -61,8 +61,9 @@ func GetClientIDs(w http.ResponseWriter, req *http.Request) {
 	// Need either tag or serial, tag is preferred if both are provided
 	var tagnumber, tagErr = types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
 	var systemSerial = middleware.GetStrQuery(req.URL.Query(), "system_serial")
+	serialErr := types.IsSystemSerialValid(systemSerial)
 
-	if tagErr != nil && (systemSerial == nil || strings.TrimSpace(*systemSerial) == "") {
+	if tagErr != nil && serialErr != nil {
 		log.Warn("No tagnumber or system_serial provided")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
@@ -1177,7 +1178,7 @@ func GetClientInfo(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetClientInfo"))
 	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
-	if err != nil || tagnumber == nil {
+	if err != nil {
 		log.Warn("Invalid tagnumber provided: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return

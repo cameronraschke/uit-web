@@ -16,6 +16,15 @@ var (
 	USADateRegex = regexp.MustCompile(`^\d{2}/\d{2}/\d{4}$`)
 )
 
+const (
+	minTagnumberValue     = 100000
+	maxTagnumberValue     = 999999
+	minTagnumberLength    = 6
+	maxTagnumberLength    = 6
+	minSystemSerialLength = 1
+	maxSystemSerialLength = 256
+)
+
 func copyTrimmedStringPtr(value *string) *string {
 	if value == nil {
 		return nil
@@ -56,22 +65,27 @@ func copyBoolPtr(value *bool) *bool {
 	return &v
 }
 
-func IsTagnumberInt64Valid(i *int64) error {
-	if i == nil {
-		return fmt.Errorf("tagnumber is nil")
+func IsSystemSerialValid(s *string) error {
+	if s == nil || strings.TrimSpace(*s) == "" {
+		return fmt.Errorf("system serial is empty or nil")
 	}
-	if *i < 100000 || *i > 999999 {
-		return fmt.Errorf("tagnumber is out of valid numeric range")
+	// Check length constraints, max length check does not trim spaces
+	if utf8.RuneCountInString(*s) > maxSystemSerialLength ||
+		utf8.RuneCountInString(strings.TrimSpace(*s)) < minSystemSerialLength {
+		return fmt.Errorf("system serial must be between %d and %d characters", minSystemSerialLength, maxSystemSerialLength)
+	}
+	if !IsPrintableASCII([]byte(*s)) {
+		return fmt.Errorf("non-printable ASCII characters in system serial field")
 	}
 	return nil
 }
 
-func IsSerialStringValid(s *string) error {
-	if s == nil || strings.TrimSpace(*s) == "" {
-		return fmt.Errorf("serial is empty or nil")
+func IsTagnumberInt64Valid(i *int64) error {
+	if i == nil {
+		return fmt.Errorf("tagnumber is nil")
 	}
-	if !IsPrintableASCII([]byte(*s)) {
-		return fmt.Errorf("serial contains non-printable ASCII characters")
+	if *i < minTagnumberValue || *i > maxTagnumberValue {
+		return fmt.Errorf("tagnumber is out of valid numeric range")
 	}
 	return nil
 }
@@ -83,10 +97,35 @@ func IsTagnumberStringValid(str string) error {
 	if !IsNumericAscii([]byte(str)) {
 		return fmt.Errorf("tagnumber contains non-numeric ASCII characters")
 	}
-	if utf8.RuneCountInString(str) != 6 {
-		return fmt.Errorf("tagnumber does not contain exactly 6 characters")
+	if utf8.RuneCountInString(str) > maxTagnumberLength ||
+		utf8.RuneCountInString(strings.TrimSpace(str)) < minTagnumberLength {
+		return fmt.Errorf("tagnumber does not contain exactly %d characters", minTagnumberLength)
+	}
+	parsedInt, err := strconv.ParseInt(str, 10, 64)
+	if err != nil {
+		return fmt.Errorf("tagnumber cannot be parsed as int64: %v", err)
+	}
+	if err := IsTagnumberInt64Valid(&parsedInt); err != nil {
+		return fmt.Errorf("tagnumber is not valid after parsing as int64: %v", err)
 	}
 	return nil
+}
+
+func ConvertAndVerifyTagnumber(tagStr string) (*int64, error) {
+	trimmedTagStr := strings.TrimSpace(tagStr)
+	validStringErr := IsTagnumberStringValid(trimmedTagStr)
+	if validStringErr != nil {
+		return nil, fmt.Errorf("invalid tagnumber string: %v", validStringErr)
+	}
+	tag, err := strconv.ParseInt(trimmedTagStr, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse tagnumber: %v", err)
+	}
+	validInt64Err := IsTagnumberInt64Valid(&tag)
+	if validInt64Err != nil {
+		return nil, fmt.Errorf("invalid tagnumber: %v", validInt64Err)
+	}
+	return &tag, nil
 }
 
 func ValidateIPAddress(ipAddr *netip.Addr) error {
@@ -134,18 +173,6 @@ func IsPrintableASCII(b []byte) bool {
 	return true
 }
 
-func IsASCIIStringPrintable(s string) bool {
-	if !utf8.ValidString(s) {
-		return false
-	}
-	for _, char := range s {
-		if char < 32 || char > 126 {
-			return false
-		}
-	}
-	return true
-}
-
 func IsPrintableUnicodeString(s string) bool {
 	if !utf8.ValidString(s) {
 		return false
@@ -174,9 +201,6 @@ func IsNumericAscii(b []byte) bool {
 	if len(b) == 0 {
 		return false
 	}
-	if !utf8.Valid(b) {
-		return false
-	}
 	for i := range b {
 		char := b[i]
 		if char < '0' || char > '9' {
@@ -196,21 +220,4 @@ func IsSHA256String(shaStr string) error {
 		}
 	}
 	return nil
-}
-
-func ConvertAndVerifyTagnumber(tagStr string) (*int64, error) {
-	trimmedTagStr := strings.TrimSpace(tagStr)
-	validStringErr := IsTagnumberStringValid(trimmedTagStr)
-	if validStringErr != nil {
-		return nil, fmt.Errorf("invalid tagnumber string: %v", validStringErr)
-	}
-	tag, err := strconv.ParseInt(trimmedTagStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("cannot parse tagnumber: %v", err)
-	}
-	validInt64Err := IsTagnumberInt64Valid(&tag)
-	if validInt64Err != nil {
-		return nil, fmt.Errorf("invalid tagnumber: %v", validInt64Err)
-	}
-	return &tag, nil
 }
