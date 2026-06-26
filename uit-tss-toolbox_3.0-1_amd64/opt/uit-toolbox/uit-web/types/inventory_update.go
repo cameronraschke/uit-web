@@ -442,7 +442,7 @@ type AdvSearchOptionBool struct {
 	Not        *bool `json:"not"`
 }
 
-type InventoryFormPrefill struct {
+type InventoryFormPrefillRow struct {
 	Time               *time.Time `json:"time"`
 	Tagnumber          *int64     `json:"tagnumber"`
 	SystemSerial       *string    `json:"system_serial"`

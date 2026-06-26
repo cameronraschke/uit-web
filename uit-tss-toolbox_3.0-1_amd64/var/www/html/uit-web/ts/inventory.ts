@@ -236,7 +236,7 @@ function resetInventorySearchQuery() {
 	history.pushState(null, '', url.toString());
 }
 
-async function getLocationFormData(tag?: number, serial?: string): Promise<InventoryFormPrefill | null> {
+async function getLocationFormData(tag?: number, serial?: string): Promise<InventoryFormPrefillRow | null> {
 	const url = new URL('/api/client/location_form_data', window.location.origin);
 	const tagNum = tag ? tag : clientLookupTagInput.value ? Number(clientLookupTagInput.value) : null;
 	const serialNum = serial ? serial : clientLookupSerial.value ? String(clientLookupSerial.value) : null;
@@ -248,7 +248,7 @@ async function getLocationFormData(tag?: number, serial?: string): Promise<Inven
 	url.searchParams.set('system_serial', serialNum !== null ? serialNum : '');
 
   try {
-    const response: InventoryFormPrefill = await fetchData(url.toString(), false);
+    const response: InventoryFormPrefillRow = await fetchData(url.toString(), false);
     if (!response) {
       throw new Error("Cannot parse json from /api/client/location_form_data");
     }
@@ -970,7 +970,7 @@ if (updateForm) {
 		updateURLFromAdvFilters();
 
 		try {
-			const formObj = {} as InventoryFormPrefill;
+			const formObj = {} as InventoryFormPrefillRow;
 			if (!clientLookupTagInput && !clientLookupSerial) {
 				throw new Error("No tag or serial input fields found in DOM");
 			}

@@ -22,17 +22,14 @@ import (
 )
 
 type Select interface {
-	GetManufacturersAndModels(ctx context.Context) ([]types.AllManufacturersAndModelsRow, error)
 	CheckTwoFactorCode(ctx context.Context, twoFactorCode *string) (string, error)
 	CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error)
 	GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error)
 	GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteResponse, error)
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
-	GetAllJobs(ctx context.Context) ([]types.AllJobsRow, error)
 	GetAllLocations(ctx context.Context) ([]types.AllLocationsRow, error)
 	GetAllDeviceTypes(ctx context.Context) ([]types.AllDeviceTypesRow, error)
 	GetClientHardwareOverview(ctx context.Context, tag int64) ([]types.ClientHardwareView, error)
-	GetJobQueuePosition(ctx context.Context, tag int64) (int64, error)
 	GetJobName(ctx context.Context, tag int64) (string, error)
 	GetFormattedJobName(ctx context.Context, jobName string) (string, error)
 }
@@ -54,6 +51,9 @@ func NewSelectRepo() (Select, error) {
 var _ Select = (*SelectRepo)(nil)
 
 func GetClientUUIDByTag(ctx context.Context, pgxPool *pgxpool.Pool, tagnumber int64) (clientUUID uuid.UUID, err error) {
+	if err := types.IsTagnumberInt64Valid(&tagnumber); err != nil {
+		return uuid.Nil, fmt.Errorf("tagnumber is nil or invalid: %w", err)
+	}
 	if pgxPool == nil {
 		pgxPool, err = config.GetPGXPool()
 		if err != nil {
@@ -79,6 +79,9 @@ func GetClientUUIDByTag(ctx context.Context, pgxPool *pgxpool.Pool, tagnumber in
 }
 
 func GetClientUUIDBySerial(ctx context.Context, pgxPool *pgxpool.Pool, systemSerial string) (clientUUID uuid.UUID, err error) {
+	if strings.TrimSpace(systemSerial) == "" {
+		return uuid.Nil, fmt.Errorf("%w: systemSerial is empty", types.InvalidStructureError)
+	}
 	if pgxPool == nil {
 		pgxPool, err = config.GetPGXPool()
 		if err != nil {
@@ -104,7 +107,7 @@ func GetClientUUIDBySerial(ctx context.Context, pgxPool *pgxpool.Pool, systemSer
 }
 
 func SelectAllIDs(ctx context.Context) ([]types.ClientLookupRow, error) {
-	dbConn, err := config.GetDatabaseConn()
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
@@ -128,9 +131,9 @@ func SelectAllIDs(ctx context.Context) ([]types.ClientLookupRow, error) {
 			ids.system_serial DESC NULLS LAST
 	;`
 
-	rows, err := dbConn.QueryContext(ctx, sqlQuery)
+	rows, err := pgxPool.Query(ctx, sqlQuery)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 	defer rows.Close()
 
@@ -140,18 +143,19 @@ func SelectAllIDs(ctx context.Context) ([]types.ClientLookupRow, error) {
 			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
 		var tag types.ClientLookupRow
-		if err := rows.Scan(
+		scanErr := rows.Scan(
 			&tag.Tagnumber,
 			&tag.SystemSerial,
 			&tag.ClientUUID,
 			&tag.LastInventoryEntry,
-		); err != nil {
-			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
+		)
+		if scanErr != nil {
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, scanErr)
 		}
 		globalLookupRow = append(globalLookupRow, tag)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, rows.Err())
 	}
 	if len(globalLookupRow) == 0 {
 		return nil, nil
@@ -183,11 +187,8 @@ func ClientIDLookup(ctx context.Context, tag *int64, serial *string) (*types.Cli
 	if tagErr != nil && serialErr != nil {
 		return nil, fmt.Errorf("%s", "both tagnumber and system serial are invalid/empty")
 	}
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error: %w", ctx.Err())
-	}
 
-	dbConn, err := config.GetDatabaseConn()
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
@@ -206,22 +207,23 @@ func ClientIDLookup(ctx context.Context, tag *int64, serial *string) (*types.Cli
 	;`, whereClause)
 
 	var clientLookup types.ClientLookupRow
-	row := dbConn.QueryRowContext(ctx, sqlQuery, whereArgs...)
-	if err := row.Scan(
+	row := pgxPool.QueryRow(ctx, sqlQuery, whereArgs...)
+	rowScanErr := row.Scan(
 		&clientLookup.Tagnumber,
 		&clientLookup.SystemSerial,
 		&clientLookup.ClientUUID,
-	); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	)
+	if rowScanErr != nil {
+		if errors.Is(rowScanErr, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("query error: %w", err)
+		return nil, fmt.Errorf("%w: %v", types.DatabaseRowScanError, rowScanErr)
 	}
 	return &clientLookup, nil
 }
 
 func GetAllDepartments(ctx context.Context) ([]types.AllDepartmentsRow, error) {
-	dbConn, err := config.GetDatabaseConn()
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
@@ -251,43 +253,44 @@ func GetAllDepartments(ctx context.Context) ([]types.AllDepartmentsRow, error) {
 			static_department_info.department_sort_order
 	;`
 
-	rows, err := dbConn.QueryContext(ctx, sqlQuery)
+	rows, err := pgxPool.Query(ctx, sqlQuery)
 	if err != nil {
-		return nil, fmt.Errorf("error executing query: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 	defer rows.Close()
 
-	var departments []types.AllDepartmentsRow
+	var allDepartments []types.AllDepartmentsRow
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
-		var dept types.AllDepartmentsRow
-		if err := rows.Scan(
-			&dept.DepartmentName,
-			&dept.DepartmentNameFormatted,
-			&dept.DepartmentSortOrder,
-			&dept.OrganizationName,
-			&dept.OrganizationNameFormatted,
-			&dept.OrganizationSortOrder,
-			&dept.ClientCount,
-		); err != nil {
-			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
+		var deptRow types.AllDepartmentsRow
+		rowScanErr := rows.Scan(
+			&deptRow.DepartmentName,
+			&deptRow.DepartmentNameFormatted,
+			&deptRow.DepartmentSortOrder,
+			&deptRow.OrganizationName,
+			&deptRow.OrganizationNameFormatted,
+			&deptRow.OrganizationSortOrder,
+			&deptRow.ClientCount,
+		)
+		if rowScanErr != nil {
+			return nil, fmt.Errorf("%w: %v", types.DatabaseRowScanError, rowScanErr)
 		}
-		departments = append(departments, dept)
+		allDepartments = append(allDepartments, deptRow)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, rows.Err())
 	}
-	if len(departments) == 0 {
+	if len(allDepartments) == 0 {
 		return nil, nil
 	}
 
-	return departments, nil
+	return allDepartments, nil
 }
 
 func GetAllDomains(ctx context.Context) ([]types.AllDomainsRow, error) {
-	dbConn, err := config.GetDatabaseConn()
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
@@ -308,91 +311,108 @@ func GetAllDomains(ctx context.Context) ([]types.AllDomainsRow, error) {
 			domain_sort_order NULLS LAST
 	;`
 
-	rows, err := dbConn.QueryContext(ctx, sqlQuery)
+	rows, err := pgxPool.Query(ctx, sqlQuery)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 	defer rows.Close()
 
-	var domains []types.AllDomainsRow
+	var allDomains []types.AllDomainsRow
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
-		var domain types.AllDomainsRow
-		if err := rows.Scan(
-			&domain.DomainName,
-			&domain.DomainNameFormatted,
-			&domain.DomainSortOrder,
-			&domain.ClientCount,
-		); err != nil {
-			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
+		var domainRow types.AllDomainsRow
+		rowScanErr := rows.Scan(
+			&domainRow.DomainName,
+			&domainRow.DomainNameFormatted,
+			&domainRow.DomainSortOrder,
+			&domainRow.ClientCount,
+		)
+		if rowScanErr != nil {
+			return nil, fmt.Errorf("%w: %v", types.DatabaseRowScanError, rowScanErr)
 		}
-		domains = append(domains, domain)
+		allDomains = append(allDomains, domainRow)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, rows.Err())
 	}
-	if len(domains) == 0 {
+	if len(allDomains) == 0 {
 		return nil, nil
 	}
 
-	return domains, nil
+	return allDomains, nil
 }
 
-func (repo *SelectRepo) GetManufacturersAndModels(ctx context.Context) ([]types.AllManufacturersAndModelsRow, error) {
-	const sqlQuery = `SELECT system_manufacturer, system_model, COUNT(*) AS "system_model_count"
-		FROM hardware_data 
-		WHERE system_manufacturer IS NOT NULL 
-			AND system_model IS NOT NULL
-		GROUP BY system_manufacturer, system_model 
-		ORDER BY system_manufacturer ASC, system_model ASC;`
-
-	var manufacturersAndModels []types.AllManufacturersAndModelsRow
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
+func SelectAllManufacturersAndModels(ctx context.Context) ([]types.AllManufacturersAndModelsRow, error) {
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
-		return nil, fmt.Errorf("cannot execute query: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	const sqlQuery = `
+		SELECT 
+			system_manufacturer, 
+			system_model, 
+			COUNT(*) AS "system_model_count"
+		FROM hardware_data 
+		WHERE 
+			system_manufacturer IS NOT NULL 
+			AND system_model IS NOT NULL
+		GROUP BY 
+			system_manufacturer, 
+			system_model 
+		ORDER BY 
+			system_manufacturer ASC, 
+			system_model ASC
+	;`
+
+	rows, err := pgxPool.Query(ctx, sqlQuery)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 	defer rows.Close()
 
+	var allManufacturersAndModels []types.AllManufacturersAndModelsRow
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error: %w", ctx.Err())
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
-		var row types.AllManufacturersAndModelsRow
-		if err := rows.Scan(
-			&row.SystemManufacturer,
-			&row.SystemModel,
-			&row.SystemModelCount); err != nil {
-			return nil, fmt.Errorf("error during row scan: %w", err)
+		var manufacturerModelRow types.AllManufacturersAndModelsRow
+		rowScanErr := rows.Scan(
+			&manufacturerModelRow.SystemManufacturer,
+			&manufacturerModelRow.SystemModel,
+			&manufacturerModelRow.SystemModelCount)
+		if rowScanErr != nil {
+			return nil, fmt.Errorf("%w: %v", types.DatabaseRowScanError, rowScanErr)
 		}
-		manufacturersAndModels = append(manufacturersAndModels, row)
+		allManufacturersAndModels = append(allManufacturersAndModels, manufacturerModelRow)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, rows.Err())
 	}
-	if len(manufacturersAndModels) == 0 {
+	if len(allManufacturersAndModels) == 0 {
 		return nil, nil
 	}
 
-	manufacturerCountMap := make(map[string]int64, len(manufacturersAndModels))
-	for _, row := range manufacturersAndModels {
+	manufacturerCountMap := make(map[string]int64, len(allManufacturersAndModels))
+	for _, row := range allManufacturersAndModels {
 		if row.SystemManufacturer == nil || row.SystemModelCount == nil {
 			continue
 		}
 		manufacturerCountMap[*row.SystemManufacturer] += *row.SystemModelCount
 	}
 
-	for i := range manufacturersAndModels {
-		if manufacturersAndModels[i].SystemManufacturer == nil {
-			manufacturersAndModels[i].SystemManufacturerCount = nil
+	for i := range allManufacturersAndModels {
+		if allManufacturersAndModels[i].SystemManufacturer == nil {
+			allManufacturersAndModels[i].SystemManufacturerCount = nil
 			continue
 		}
-		count := manufacturerCountMap[*manufacturersAndModels[i].SystemManufacturer]
-		manufacturersAndModels[i].SystemManufacturerCount = &count
+		count := manufacturerCountMap[*allManufacturersAndModels[i].SystemManufacturer]
+		allManufacturersAndModels[i].SystemManufacturerCount = &count
 	}
 
-	return manufacturersAndModels, nil
+	return allManufacturersAndModels, nil
 }
 
 func (repo *SelectRepo) CheckTwoFactorCode(ctx context.Context, twoFactorCode *string) (string, error) {
@@ -412,7 +432,7 @@ func (repo *SelectRepo) CheckTwoFactorCode(ctx context.Context, twoFactorCode *s
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", nil
 		}
-		return "", fmt.Errorf("error during row scan: %w", err)
+		return "", fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 	}
 
 	return dbCode, nil
@@ -420,11 +440,7 @@ func (repo *SelectRepo) CheckTwoFactorCode(ctx context.Context, twoFactorCode *s
 
 func (repo *SelectRepo) CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error) {
 	if username == nil || password == nil || strings.TrimSpace(*username) == "" || strings.TrimSpace(*password) == "" {
-		return false, nil, fmt.Errorf("username or password is empty")
-	}
-
-	if ctx.Err() != nil {
-		return false, nil, fmt.Errorf("context error: %w", ctx.Err())
+		return false, nil, fmt.Errorf("username or password is empty/nil")
 	}
 
 	const sqlQuery = `SELECT password FROM logins WHERE username = $1 LIMIT 1;`
@@ -433,9 +449,9 @@ func (repo *SelectRepo) CheckAuthCredentials(ctx context.Context, username *stri
 	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullString(username))
 	if err := row.Scan(&dbBcryptHash); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil, fmt.Errorf("no results from db")
+			return false, nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
-		return false, nil, fmt.Errorf("error during row scan: %w", err)
+		return false, nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 	}
 
 	if !dbBcryptHash.Valid || strings.TrimSpace(dbBcryptHash.String) == "" {
@@ -448,10 +464,6 @@ func (repo *SelectRepo) CheckAuthCredentials(ctx context.Context, username *stri
 func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error) {
 	if tag == nil {
 		return nil, fmt.Errorf("tagnumber is nil")
-	}
-
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error: %w", ctx.Err())
 	}
 
 	const sqlQuery = `
@@ -491,18 +503,14 @@ func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.A
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("error during row scan: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 	}
 	return &activeJobs, nil
 }
 
 func SelectIsClientJobAvailable(ctx context.Context, tag *int64) (*bool, error) {
 	if err := types.IsTagnumberInt64Valid(tag); err != nil {
-		return nil, fmt.Errorf("tagnumber is nil or invalid: %w", err)
-	}
-
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error: %w", ctx.Err())
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 	}
 
 	dbConn, err := config.GetDatabaseConn()
@@ -527,18 +535,18 @@ func SelectIsClientJobAvailable(ctx context.Context, tag *int64) (*bool, error) 
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("error during row scan: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 	}
 	return &jobAvailable, nil
 }
 
 func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteResponse, error) {
 	if noteType == nil || strings.TrimSpace(*noteType) == "" {
-		return nil, fmt.Errorf("noteType is nil or empty")
+		return nil, fmt.Errorf("%w: noteType is nil or empty", types.DatabaseRowScanError)
 	}
 
 	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error: %w", ctx.Err())
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, ctx.Err())
 	}
 
 	const sqlQuery = `SELECT time, note_type, note 
@@ -556,27 +564,26 @@ func (repo *SelectRepo) GetNotes(ctx context.Context, noteType *string) (*types.
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("error during row scan: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 	}
 	return &generalNoteRow, nil
 }
 
-func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryFormPrefill, error) {
-	if err := types.IsTagnumberInt64Valid(tag); err != nil && (serial == nil || strings.TrimSpace(*serial) == "") {
-		return nil, fmt.Errorf("either tag or serial must be provided")
+func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*types.InventoryFormPrefillRow, error) {
+	tagErr := types.IsTagnumberInt64Valid(tag)
+	serialErr := types.IsSerialStringValid(serial)
+
+	if tagErr != nil && serialErr != nil {
+		return nil, fmt.Errorf("%w: both tag and serial are invalid", types.DatabaseRowScanError)
 	}
 
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("context error: %w", ctx.Err())
-	}
-
-	dbConn, err := config.GetDatabaseConn()
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
-	const sqlQuery = `WITH files AS
-	(
+	const sqlQuery = `
+	WITH files AS (
 		SELECT client_uuid, COUNT(client_images.client_uuid) AS "file_count" FROM client_images WHERE hidden = FALSE AND client_uuid = (SELECT uuid FROM ids WHERE (tagnumber = $1 OR system_serial = $2))
 		GROUP BY client_uuid
 	),
@@ -670,44 +677,45 @@ func GetLocationFormData(ctx context.Context, tag *int64, serial *string) (*type
 		client_images.client_uuid
 	ORDER BY locations.time DESC NULLS LAST
 	LIMIT 1;`
-	row := dbConn.QueryRowContext(ctx, sqlQuery,
+
+	row := pgxPool.QueryRow(ctx, sqlQuery,
 		ptrToNullInt64(tag),
 		ptrToNullString(serial),
 	)
 
-	inventoryUpdate := new(types.InventoryFormPrefill)
+	inventoryFormPrefillRow := new(types.InventoryFormPrefillRow)
 	if err := row.Scan(
-		&inventoryUpdate.Time,
-		&inventoryUpdate.Tagnumber,
-		&inventoryUpdate.SystemSerial,
-		&inventoryUpdate.Location,
-		&inventoryUpdate.Building,
-		&inventoryUpdate.Room,
-		&inventoryUpdate.SystemManufacturer,
-		&inventoryUpdate.SystemModel,
-		&inventoryUpdate.DeviceType,
-		&inventoryUpdate.Department,
-		&inventoryUpdate.ADDomain,
-		&inventoryUpdate.PropertyCustodian,
-		&inventoryUpdate.AcquiredDate,
-		&inventoryUpdate.RetiredDate,
-		&inventoryUpdate.IsBroken,
-		&inventoryUpdate.DiskRemoved,
-		&inventoryUpdate.LastHardwareCheck,
-		&inventoryUpdate.ClientStatus,
-		&inventoryUpdate.CheckoutDate,
-		&inventoryUpdate.ReturnDate,
-		&inventoryUpdate.CustomerName,
-		&inventoryUpdate.CheckoutBool,
-		&inventoryUpdate.Note,
-		&inventoryUpdate.FileCount,
+		&inventoryFormPrefillRow.Time,
+		&inventoryFormPrefillRow.Tagnumber,
+		&inventoryFormPrefillRow.SystemSerial,
+		&inventoryFormPrefillRow.Location,
+		&inventoryFormPrefillRow.Building,
+		&inventoryFormPrefillRow.Room,
+		&inventoryFormPrefillRow.SystemManufacturer,
+		&inventoryFormPrefillRow.SystemModel,
+		&inventoryFormPrefillRow.DeviceType,
+		&inventoryFormPrefillRow.Department,
+		&inventoryFormPrefillRow.ADDomain,
+		&inventoryFormPrefillRow.PropertyCustodian,
+		&inventoryFormPrefillRow.AcquiredDate,
+		&inventoryFormPrefillRow.RetiredDate,
+		&inventoryFormPrefillRow.IsBroken,
+		&inventoryFormPrefillRow.DiskRemoved,
+		&inventoryFormPrefillRow.LastHardwareCheck,
+		&inventoryFormPrefillRow.ClientStatus,
+		&inventoryFormPrefillRow.CheckoutDate,
+		&inventoryFormPrefillRow.ReturnDate,
+		&inventoryFormPrefillRow.CustomerName,
+		&inventoryFormPrefillRow.CheckoutBool,
+		&inventoryFormPrefillRow.Note,
+		&inventoryFormPrefillRow.FileCount,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 	}
-	return inventoryUpdate, nil
+	return inventoryFormPrefillRow, nil
 }
 
 func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error) {
@@ -728,11 +736,11 @@ func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([
 	hashes := make([][]uint8, 0, 10)
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error: %w", ctx.Err())
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
 		var hash = make([]uint8, maxHashByteLength)
 		if err := rows.Scan(&hash); err != nil {
-			return nil, fmt.Errorf("error during row scan: %w", err)
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
 		if len(hash) > maxHashByteLength {
 			return nil, fmt.Errorf("unexpected hash length: got %d, want less than %d", len(hash), maxHashByteLength)
@@ -740,7 +748,7 @@ func (repo *SelectRepo) GetFileHashesFromTag(ctx context.Context, tag *int64) ([
 		hashes = append(hashes, hash)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
 	}
 	if len(hashes) == 0 {
 		return nil, nil
@@ -753,7 +761,7 @@ func GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types
 		return nil, fmt.Errorf("tagnumber is nil")
 	}
 
-	dbConn, err := config.GetDatabaseConn()
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
@@ -775,15 +783,15 @@ func GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types
 			client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1);`
 
 	imageManifests := make([]types.ImageManifestResponse, 0, 10)
-	rows, err := dbConn.QueryContext(ctx, sqlQuery, tagnumber)
+	rows, err := pgxPool.Query(ctx, sqlQuery, tagnumber)
 	if err != nil {
-		return nil, fmt.Errorf("error during query execution: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error: %w", ctx.Err())
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
 		var imageManifest types.ImageManifestResponse
 		if err := rows.Scan(
@@ -798,12 +806,12 @@ func GetClientImageManifestByTag(ctx context.Context, tagnumber *int64) ([]types
 			&imageManifest.Pinned,
 			&imageManifest.Caption,
 		); err != nil {
-			return nil, fmt.Errorf("error during row scan: %w", err)
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
 		imageManifests = append(imageManifests, imageManifest)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, rows.Err())
 	}
 	if len(imageManifests) == 0 {
 		return nil, nil
@@ -816,7 +824,7 @@ func GetClientImageManifestByFileUUID(ctx context.Context, fileUUID string) (*ty
 		return nil, fmt.Errorf("file UUID is nil")
 	}
 
-	dbConn, err := config.GetDatabaseConn()
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
@@ -838,7 +846,7 @@ func GetClientImageManifestByFileUUID(ctx context.Context, fileUUID string) (*ty
 			uuid = $1;`
 
 	var imageManifest types.ImageManifestResponse
-	row := dbConn.QueryRowContext(ctx, sqlQuery, fileUUID)
+	row := pgxPool.QueryRow(ctx, sqlQuery, fileUUID)
 	if err := row.Scan(
 		&imageManifest.Time,
 		&imageManifest.ClientUUID,
@@ -854,7 +862,7 @@ func GetClientImageManifestByFileUUID(ctx context.Context, fileUUID string) (*ty
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("error during row scan: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 	}
 	return &imageManifest, nil
 }
@@ -1140,10 +1148,9 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 	defer rows.Close()
 
 	for rows.Next() {
-		if err := ctx.Err(); err != nil {
-			return nil, fmt.Errorf("context error: %w", err)
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
-
 		var row types.InventoryTableRow
 		var adminUsers []string
 		if err := rows.Scan(
@@ -1182,7 +1189,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&row.LastUpdated,
 			&row.FileCount,
 		); err != nil {
-			return nil, fmt.Errorf("query error: %w", err)
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
 
 		if adminUsers != nil {
@@ -1191,7 +1198,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 		results = append(results, row)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
 	}
 	if len(results) == 0 {
 		return nil, nil
@@ -1337,7 +1344,7 @@ func ModifyClientConfigErrorResults(results []types.InventoryTableRow) ([]types.
 }
 
 func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error) {
-	dbConn, err := config.GetDatabaseConn()
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
@@ -1578,7 +1585,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		job_queue.last_heard DESC NULLS LAST
 	;`
 
-	rows, err := dbConn.QueryContext(ctx, sqlQuery)
+	rows, err := pgxPool.Query(ctx, sqlQuery)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
@@ -1651,8 +1658,8 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		}
 		jobQueueRows = append(jobQueueRows, row)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, rows.Err())
 	}
 	if len(jobQueueRows) == 0 {
 		return nil, nil
@@ -1660,16 +1667,25 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	return jobQueueRows, nil
 }
 
-func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]types.AllJobsRow, error) {
-	const sqlQuery = `SELECT static_job_names.job_name, 
-		static_job_names.job_name_readable, 
-		static_job_names.job_sort_order, 
-		static_job_names.job_hidden
-	FROM static_job_names
-	ORDER BY static_job_names.job_sort_order ASC;`
+func SelectAllJobs(ctx context.Context) ([]types.AllJobsRow, error) {
+	pgxPool, err := config.GetPGXPool()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	const sqlQuery = `
+		SELECT 
+			job_name, 
+			job_name_readable, 
+			job_sort_order, 
+			job_hidden
+		FROM static_job_names
+		ORDER BY 
+			job_sort_order ASC
+	;`
 
 	var allJobs []types.AllJobsRow
-	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
+	rows, err := pgxPool.Query(ctx, sqlQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error during query execution: %w", err)
 	}
@@ -1677,21 +1693,22 @@ func (repo *SelectRepo) GetAllJobs(ctx context.Context) ([]types.AllJobsRow, err
 
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error: %w", ctx.Err())
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
 		var job types.AllJobsRow
-		if err := rows.Scan(
+		rowScanErr := rows.Scan(
 			&job.JobName,
 			&job.JobNameReadable,
 			&job.JobSortOrder,
 			&job.JobHidden,
-		); err != nil {
-			return nil, fmt.Errorf("error during row scan: %w", err)
+		)
+		if rowScanErr != nil {
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, rowScanErr)
 		}
 		allJobs = append(allJobs, job)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, rows.Err())
 	}
 	if len(allJobs) == 0 {
 		return nil, nil
@@ -1716,13 +1733,13 @@ func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocatio
 	var allLocations []types.AllLocationsRow
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
-		return nil, fmt.Errorf("error during query execution: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error: %w", ctx.Err())
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
 		var location types.AllLocationsRow
 		if err := rows.Scan(
@@ -1730,12 +1747,12 @@ func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocatio
 			&location.Timestamp,
 			&location.LocationCount,
 		); err != nil {
-			return nil, fmt.Errorf("error during row scan: %w", err)
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
 		allLocations = append(allLocations, location)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, rows.Err())
 	}
 	if len(allLocations) == 0 {
 		return nil, nil
@@ -1744,7 +1761,7 @@ func (repo *SelectRepo) GetAllLocations(ctx context.Context) ([]types.AllLocatio
 }
 
 func GetAllStatuses(ctx context.Context) (map[string][]types.AllClientStatuses, error) {
-	dbConn, err := config.GetDatabaseConn()
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
@@ -1769,7 +1786,7 @@ func GetAllStatuses(ctx context.Context) (map[string][]types.AllClientStatuses, 
 			static_client_statuses.sort_order ASC NULLS LAST
 	;`
 
-	rows, err := dbConn.QueryContext(ctx, sqlQuery)
+	rows, err := pgxPool.Query(ctx, sqlQuery)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
@@ -1792,8 +1809,8 @@ func GetAllStatuses(ctx context.Context) (map[string][]types.AllClientStatuses, 
 		}
 		allStatuses = append(allStatuses, status)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, rows.Err())
 	}
 	if len(allStatuses) == 0 {
 		return nil, nil
@@ -1821,14 +1838,14 @@ func (repo *SelectRepo) GetAllDeviceTypes(ctx context.Context) ([]types.AllDevic
 			static_device_types.sort_order;`
 	rows, err := repo.DB.QueryContext(ctx, sqlQuery)
 	if err != nil {
-		return nil, fmt.Errorf("error during query execution: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 	defer rows.Close()
 
 	var allDeviceTypes []types.AllDeviceTypesRow
 	for rows.Next() {
 		if ctx.Err() != nil {
-			return nil, fmt.Errorf("context error: %w", ctx.Err())
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
 		var deviceType types.AllDeviceTypesRow
 		if err := rows.Scan(
@@ -1837,12 +1854,12 @@ func (repo *SelectRepo) GetAllDeviceTypes(ctx context.Context) ([]types.AllDevic
 			&deviceType.DeviceMetaCategory,
 			&deviceType.DeviceTypeCount,
 		); err != nil {
-			return nil, fmt.Errorf("error during row scan: %w", err)
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
 		allDeviceTypes = append(allDeviceTypes, deviceType)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during row iteration: %w", err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
 	}
 	if len(allDeviceTypes) == 0 {
 		return nil, nil
@@ -1909,10 +1926,17 @@ func (repo *SelectRepo) GetClientHardwareOverview(ctx context.Context, tag int64
 	return []types.ClientHardwareView{clientHardwareData}, nil
 }
 
-func (repo *SelectRepo) GetJobQueuePosition(ctx context.Context, tag int64) (int64, error) {
-	if tag == 0 {
-		return 0, fmt.Errorf("tagnumer cannot be nil")
+func SelectJobQueuePosition(ctx context.Context, tag int64) (int64, error) {
+	const queuePositionMaxValue int64 = 1_000_000
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+		return queuePositionMaxValue, err
 	}
+
+	pgxPool, err := config.GetPGXPool()
+	if err != nil {
+		return queuePositionMaxValue, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
 	const sqlQuery = `
 	WITH job_queue_position AS (
 		SELECT 
@@ -1941,15 +1965,18 @@ func (repo *SelectRepo) GetJobQueuePosition(ctx context.Context, tag int64) (int
 	;`
 
 	var queuePosition sql.NullInt64
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, tag)
+	row := pgxPool.QueryRow(ctx, sqlQuery, tag)
 	if err := row.Scan(
 		&queuePosition,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, nil
+			return queuePositionMaxValue, nil
 		} else {
-			return 0, fmt.Errorf("error during row scan: %w", err)
+			return queuePositionMaxValue, fmt.Errorf("error during row scan: %w", err)
 		}
+	}
+	if !queuePosition.Valid || queuePosition.Int64 < 0 || queuePosition.Int64 > queuePositionMaxValue {
+		return queuePositionMaxValue, fmt.Errorf("invalid queue position value: %v", queuePosition.Int64)
 	}
 	return queuePosition.Int64, nil
 }
@@ -2039,28 +2066,29 @@ func GetAllBuildingsAndRooms(ctx context.Context) ([]types.AllBuildingsAndRooms,
 	}
 	defer rows.Close()
 
-	var buildingAndRooms []types.AllBuildingsAndRooms
+	var allBuildingsAndRooms []types.AllBuildingsAndRooms
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
-		var buildingAndRoom types.AllBuildingsAndRooms
-		if err := rows.Scan(
-			&buildingAndRoom.BuildingName,
-			&buildingAndRoom.RoomName,
-			&buildingAndRoom.ClientCount,
-		); err != nil {
-			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
+		var buildingRoomRow types.AllBuildingsAndRooms
+		rowScanErr := rows.Scan(
+			&buildingRoomRow.BuildingName,
+			&buildingRoomRow.RoomName,
+			&buildingRoomRow.ClientCount,
+		)
+		if rowScanErr != nil {
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, rowScanErr)
 		}
-		buildingAndRooms = append(buildingAndRooms, buildingAndRoom)
+		allBuildingsAndRooms = append(allBuildingsAndRooms, buildingRoomRow)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, err)
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, rows.Err())
 	}
-	if len(buildingAndRooms) == 0 {
+	if len(allBuildingsAndRooms) == 0 {
 		return nil, nil
 	}
-	return buildingAndRooms, nil
+	return allBuildingsAndRooms, nil
 }
 
 func SelectCheckoutData(ctx context.Context, tag *int64) (*types.CheckoutLogResponse, error) {
@@ -2086,27 +2114,39 @@ func SelectCheckoutData(ctx context.Context, tag *int64) (*types.CheckoutLogResp
 	LIMIT 1
 	;`
 
-	var checkoutData types.CheckoutLogResponse
-	if err := dbConn.QueryRowContext(ctx, sqlQuery,
+	var checkoutLogRow types.CheckoutLogResponse
+	row := dbConn.QueryRowContext(ctx, sqlQuery,
 		ptrToNullInt64(tag),
-	).Scan(
-		&checkoutData.Tagnumber,
-		&checkoutData.CustomerName,
-		&checkoutData.CheckoutDate,
-		&checkoutData.ReturnDate,
-	); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	)
+	rowScanErr := row.Scan(
+		&checkoutLogRow.Tagnumber,
+		&checkoutLogRow.CustomerName,
+		&checkoutLogRow.CheckoutDate,
+		&checkoutLogRow.ReturnDate,
+	)
+	if rowScanErr != nil {
+		if errors.Is(rowScanErr, sql.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, rowScanErr)
 	}
 
-	return &checkoutData, nil
+	return &checkoutLogRow, nil
 }
 
 func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse, error) {
-	if tag == 0 {
-		return nil, fmt.Errorf("tagnumber cannot be nil")
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+		return nil, fmt.Errorf("%w: %w", types.InvalidFieldError, err)
+	}
+
+	pgxPool, err := config.GetPGXPool()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	clientUUID, err := GetClientUUIDByTag(ctx, pgxPool, tag)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 
 	const sqlCode = `
@@ -2374,18 +2414,6 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		ids.uuid = $1
 	;`
 
-	pgxPool, err := config.GetPGXPool()
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
-	}
-
-	clientUUID, err := GetClientUUIDByTag(ctx, pgxPool, tag)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
-	}
-
-	var adminUsers []string
-	var memorySerialArr []string
 	rows, err := pgxPool.Query(ctx, sqlCode, clientUUID)
 	if err != nil {
 		return nil, fmt.Errorf("Error selecting client UUID: %w: %w", types.DatabaseQueryError, err)
@@ -2393,8 +2421,13 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 	defer rows.Close()
 
 	var clientInfoResult types.ClientInfoResponse
+	var adminUsers []string
+	var memorySerialArr []string
 	for rows.Next() {
-		if err := rows.Scan(
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
+		}
+		rowScanErr := rows.Scan(
 			&clientInfoResult.Tagnumber,
 			&clientInfoResult.SystemSerial,
 			&clientInfoResult.ClientUUID,
@@ -2470,11 +2503,12 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 			&clientInfoResult.MemoryCapacityKB,
 			&clientInfoResult.MemorySpeedMHz,
 			&clientInfoResult.FileCount,
-		); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
+		)
+		if rowScanErr != nil {
+			if errors.Is(rowScanErr, sql.ErrNoRows) {
 				return nil, nil
 			}
-			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
+			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, rowScanErr)
 		}
 	}
 

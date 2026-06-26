@@ -66,6 +66,16 @@ func IsTagnumberInt64Valid(i *int64) error {
 	return nil
 }
 
+func IsSerialStringValid(s *string) error {
+	if s == nil || strings.TrimSpace(*s) == "" {
+		return fmt.Errorf("serial is empty or nil")
+	}
+	if !IsPrintableASCII([]byte(*s)) {
+		return fmt.Errorf("serial contains non-printable ASCII characters")
+	}
+	return nil
+}
+
 func IsTagnumberStringValid(str string) error {
 	if len(str) == 0 || strings.TrimSpace(str) == "" {
 		return fmt.Errorf("tagnumber is empty")
@@ -204,13 +214,3 @@ func ConvertAndVerifyTagnumber(tagStr string) (*int64, error) {
 	}
 	return &tag, nil
 }
-
-
-
-
-
-
-
-
-
-

@@ -827,18 +827,11 @@ func GetClientConfig(w http.ResponseWriter, req *http.Request) {
 
 func GetManufacturersAndModels(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetManufacturersAndModels"))
 
-	db, err := database.NewSelectRepo()
+	manufacturersAndModels, err := database.SelectAllManufacturersAndModels(ctx)
 	if err != nil {
-		log.Warn("Error creating select repository in GetManufacturersAndModels: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	manufacturersAndModels, err := db.GetManufacturersAndModels(ctx)
-	if err != nil {
-		log.Warn("Query error in GetManufacturersAndModels: " + err.Error())
+		log.Warn("Query error in SelectAllManufacturersAndModels: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -873,18 +866,11 @@ func GetDepartments(w http.ResponseWriter, req *http.Request) {
 
 func GetAllJobs(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetAllJobs"))
 
-	db, err := database.NewSelectRepo()
+	allJobs, err := database.SelectAllJobs(ctx)
 	if err != nil {
-		log.Warn("Error creating select repository in GetAllJobs: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	allJobs, err := db.GetAllJobs(ctx)
-	if err != nil {
-		log.Warn("Query error in GetAllJobs: " + err.Error())
+		log.Warn("Query error in SelectAllJobs: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -893,7 +879,7 @@ func GetAllJobs(w http.ResponseWriter, req *http.Request) {
 
 func GetAllLocations(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetAllLocations"))
 
 	db, err := database.NewSelectRepo()
 	if err != nil {
@@ -978,14 +964,8 @@ func FetchClientJobQueuePosition(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
 
-	queuePosition, err := db.GetJobQueuePosition(ctx, *tagnumber)
+	queuePosition, err := database.SelectJobQueuePosition(ctx, *tagnumber)
 	if err != nil {
 		log.Warn("DB error: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
