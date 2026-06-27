@@ -655,8 +655,8 @@ func UpdateClientImages(ctx context.Context, transactionUUID uuid.UUID, manifest
 	return nil
 }
 
-func HideClientImageByUUID(ctx context.Context, fileUUID *string) (err error) {
-	if fileUUID == nil || strings.TrimSpace(*fileUUID) == "" {
+func HideClientImageByUUID(ctx context.Context, fileUUID string) (err error) {
+	if strings.TrimSpace(fileUUID) == "" {
 		return fmt.Errorf("%w: %s", types.MissingFieldError, "file UUID")
 	}
 
@@ -688,7 +688,7 @@ func HideClientImageByUUID(ctx context.Context, fileUUID *string) (err error) {
 	;`
 
 	sqlResult, err := tx.ExecContext(ctx, sqlQuery,
-		ptrToNullString(fileUUID),
+		toNullString(fileUUID),
 	)
 	if err != nil {
 		return err

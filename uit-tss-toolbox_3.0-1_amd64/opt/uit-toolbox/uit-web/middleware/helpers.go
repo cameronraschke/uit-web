@@ -21,16 +21,22 @@ import (
 
 	"uit-toolbox/config"
 	"uit-toolbox/types"
+
+	"github.com/google/uuid"
 )
 
-type ctxClientIPKey struct{}
-type ctxPathRequestKey struct{}
-type ctxQueryRequestKey struct{}
-type ctxFileRequestKey struct{}
-type ctxRequestUUIDKey struct{}
-type ctxRequestEndpointKey struct{}
-type ctxRequestLoggerKey struct{}
-type ctxNonceKey struct{}
+type ctxKey int
+
+const (
+	clientIPKey ctxKey = iota
+	pathRequestKey
+	queryRequestKey
+	fileRequestKey
+	requestUUIDKey
+	requestEndpointKey
+	requestLoggerKey
+	nonceKey
+)
 
 type ReturnedJsonToken struct {
 	Token string  `json:"token"`
@@ -62,15 +68,6 @@ var (
 )
 
 var (
-	clientIPKey        ctxClientIPKey
-	pathRequestKey     ctxPathRequestKey
-	queryRequestKey    ctxQueryRequestKey
-	fileRequestKey     ctxFileRequestKey
-	requestEndpointKey ctxRequestEndpointKey
-	requestUUIDKey     ctxRequestUUIDKey
-	nonceKey           ctxNonceKey
-	loggerKey          ctxRequestLoggerKey
-
 	allowedQueryKeyRegex = regexp.MustCompile(`^[A-Za-z0-9._\-]+$`)
 )
 
@@ -236,9 +233,18 @@ func GetRequestPathFromContext(ctx context.Context) (reqPath string, err error) 
 	return p, nil
 }
 
+func checkQueryKey(queries url.Values, key string) error {
+	if len(queries) == 0 || key == "" {
+		return fmt.Errorf("invalid query key")
+	}
+	if !queries.Has(key) {
+		return fmt.Errorf("query key '%s' not found", key)
+	}
+	return nil
+}
 func GetStrQuery(queries url.Values, key string) *string {
 	trimmedKey := strings.TrimSpace(key)
-	if len(queries) == 0 || trimmedKey == "" {
+	if err := checkQueryKey(queries, trimmedKey); err != nil {
 		return nil
 	}
 	val := strings.TrimSpace(queries.Get(trimmedKey))
@@ -246,6 +252,17 @@ func GetStrQuery(queries url.Values, key string) *string {
 		return nil
 	}
 	return &val
+}
+func GetUUIDFromQuery(queries url.Values, key string) (*uuid.UUID, error) {
+	strVal := GetStrQuery(queries, key)
+	if strVal == nil {
+		return nil, fmt.Errorf("query key '%s' not found or empty", key)
+	}
+	parsedUUID, err := uuid.Parse(*strVal)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse UUID from query key '%s': %w", key, err)
+	}
+	return &parsedUUID, nil
 }
 func GetInt64Query(queries url.Values, key string) *int64 {
 	strVal := GetStrQuery(queries, key)
@@ -302,10 +319,10 @@ func withLogger(ctx context.Context, logger *slog.Logger) (context.Context, erro
 	if logger == nil {
 		return ctx, errors.New("nil logger")
 	}
-	return context.WithValue(ctx, loggerKey, logger), nil
+	return context.WithValue(ctx, requestLoggerKey, logger), nil
 }
 func GetLoggerFromContext(ctx context.Context) *slog.Logger {
-	log, ok := ctx.Value(loggerKey).(*slog.Logger)
+	log, ok := ctx.Value(requestLoggerKey).(*slog.Logger)
 	if !ok {
 		log = config.GetLogger()
 	}
@@ -474,8 +491,8 @@ func validateAndCleanURLPath(rawPath string) (string, error) {
 	}
 
 	// validate each path segment
-	segments := strings.Split(strings.Trim(cleanPath, "/"), "/")
-	for _, segment := range segments {
+	segments := strings.SplitSeq(strings.Trim(cleanPath, "/"), "/")
+	for segment := range segments {
 		if strings.TrimSpace(segment) == "" {
 			continue
 		}
