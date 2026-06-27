@@ -48,10 +48,6 @@ func ValidateAuthFormInputSHA256(username string, password string) error {
 }
 
 func CheckAuthCredentials(ctx context.Context, username string, password string, twoFactorCode string) (bool, error) {
-	username = strings.TrimSpace(username)
-	password = strings.TrimSpace(password)
-	twoFactorCode = strings.TrimSpace(twoFactorCode)
-
 	selectRepo, err := database.NewSelectRepo()
 	if err != nil {
 		return false, fmt.Errorf("cannot create select repo: %w", err)
