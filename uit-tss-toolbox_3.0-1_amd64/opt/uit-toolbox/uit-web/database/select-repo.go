@@ -1499,18 +1499,18 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		END) AS "cpu_temp_warning",
 		job_queue.memory_usage_kb,
 		job_queue.memory_capacity_kb,
-		'0' AS "disk_usage",
+		0::integer AS "disk_usage",
 		job_queue.disk_temp,
 		static_disk_stats.disk_type,
 		latest_historical_disk_data.disk_size_kb,
-		'80' AS "max_disk_temp",
+		80::integer AS "max_disk_temp",
 		(CASE
 			WHEN job_queue.disk_temp > 80 THEN TRUE
 			ELSE FALSE
 		END) AS "disk_temp_warning",
 		'UP' AS "network_link_status",
 		job_queue.network_speed AS "network_link_speed",
-		'0' AS "network_usage",
+		0::integer AS "network_usage",
 		job_queue.battery_charge_pcnt,
 		job_queue.battery_status,
 		current_battery_health.battery_health_pcnt AS "battery_health_pcnt",
