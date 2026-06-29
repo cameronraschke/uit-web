@@ -2244,7 +2244,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		historical_hardware_data.memory_speed_mhz,
 		(CASE WHEN client_files_cte.file_count IS NOT NULL AND client_files_cte.file_count > 0 THEN client_files_cte.file_count ELSE 0 END) AS "file_count"
 	FROM ids
-		JOIN LATERAL (
+		LEFT JOIN LATERAL (
 			SELECT
 				time,
 				client_uuid,
@@ -2268,7 +2268,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 		LEFT JOIN static_department_info ON locations.department_name = static_department_info.department_name
 		LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
 		LEFT JOIN static_client_statuses ON locations.client_status = static_client_statuses.status_name
-		JOIN LATERAL (
+		LEFT JOIN LATERAL (
 			SELECT
 				client_uuid,
 				device_type,
@@ -2288,7 +2288,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 			ORDER BY time DESC NULLS LAST
 			LIMIT 1
 		) hardware_data ON TRUE
-		JOIN LATERAL (
+		LEFT JOIN LATERAL (
 			SELECT
 				time,
 				client_uuid,
@@ -2300,7 +2300,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 			ORDER BY time DESC NULLS LAST
 			LIMIT 1
 		) historical_hardware_data ON TRUE
-		JOIN LATERAL (
+		LEFT JOIN LATERAL (
 			SELECT
 				time,
 				client_uuid,
@@ -2322,7 +2322,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 			ORDER BY time DESC NULLS LAST
 			LIMIT 1
 		) historical_disk_data ON TRUE
-		JOIN LATERAL (
+		LEFT JOIN LATERAL (
 			SELECT
 				time,
 				client_uuid,
@@ -2333,7 +2333,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 			ORDER BY time DESC NULLS LAST
 			LIMIT 1
 		) historical_firmware_data ON TRUE
-		JOIN LATERAL (
+		LEFT JOIN LATERAL (
 			SELECT
 				time,
 				client_uuid,
@@ -2350,7 +2350,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 			LIMIT 1
 		) historical_battery_data ON TRUE
 		LEFT JOIN static_disk_stats ON historical_disk_data.disk_model = static_disk_stats.disk_model
-		JOIN LATERAL (
+		LEFT JOIN LATERAL (
 			SELECT
 				time,
 				client_uuid,
@@ -2379,7 +2379,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 			ORDER BY time DESC NULLS LAST
 			LIMIT 1
 		) checkout_log ON TRUE
-		JOIN LATERAL (
+		LEFT JOIN LATERAL (
 			SELECT
 				time,
 				client_uuid,
@@ -2406,8 +2406,8 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 			ORDER BY image_version DESC NULLS LAST
 			LIMIT 1
 		) image_version_cte ON TRUE
-		CROSS JOIN client_files_cte
-		JOIN LATERAL (
+		LEFT JOIN client_files_cte ON TRUE
+		LEFT JOIN LATERAL (
 			SELECT 1 AS has_image
 			FROM client_images
 			WHERE client_uuid = ids.uuid
