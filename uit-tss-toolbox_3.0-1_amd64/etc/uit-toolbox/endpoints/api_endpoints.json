@@ -1,4 +1,7 @@
 {
+	"/api/client/init": {
+		"allowed_methods": ["POST"]
+	},
 	"/api/check_auth": {},
 	"/api/server_time": {},
 	"/api/client/lookup_ids": {},
