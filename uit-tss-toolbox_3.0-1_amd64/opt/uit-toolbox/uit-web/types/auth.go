@@ -3,6 +3,7 @@ package types
 import (
 	"net/http"
 	"net/netip"
+	"sync"
 	"time"
 )
 
@@ -24,6 +25,28 @@ type AuthSession struct {
 	BearerCookie  *http.Cookie
 	CSRFToken     CSRFToken
 	CSRFCookie    *http.Cookie
+	Attributes    *Attributes
+}
+
+type Attributes struct {
+	mu         sync.RWMutex
+	attributes map[string]interface{}
+}
+
+func (a *Attributes) GetAuthAttributes(key string) (interface{}, bool) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	value, exists := a.attributes[key]
+	return value, exists
+}
+
+func (a *Attributes) SetAuthAttributes(key string, value interface{}) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.attributes == nil {
+		a.attributes = make(map[string]interface{})
+	}
+	a.attributes[key] = value
 }
 
 type LoginRequest struct {

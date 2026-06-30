@@ -115,7 +115,6 @@ func (updateRequest *InventoryUpdateRequest) ToDTO(htmlFormConstraints *HTMLForm
 		return nil, fmt.Errorf("system_serial must be between %d and %d characters", htmlFormConstraints.InventoryForm.SystemSerialMinChars, htmlFormConstraints.InventoryForm.SystemSerialMaxChars)
 	}
 
-
 	// Location
 	if updateRequest.Location == nil || strings.TrimSpace(*updateRequest.Location) == "" {
 		return nil, fmt.Errorf("location is required")
@@ -370,6 +369,7 @@ func (dto *InventoryUpdateDTO) ToCheckoutWriteModel(transactionUUID uuid.UUID) *
 }
 
 type BulkUpdateRequest struct {
+	SessionID  *string `json:"session_id"`
 	Location   *string `json:"bulk_location"`
 	Tagnumbers []int64 `json:"bulk_tagnumbers"`
 }

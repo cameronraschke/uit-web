@@ -1839,3 +1839,70 @@ func UpdateJobStats(w http.ResponseWriter, req *http.Request) {
 		Status: "success",
 	})
 }
+
+func StoreBulkUpdateData(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "StoreBulkUpdateData"))
+
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		log.Warn("Error reading request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	var reqBody types.BulkUpdateRequest
+	if err := json.Unmarshal(body, &reqBody); err != nil {
+		log.Warn("Error unmarshaling request body: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	if reqBody.SessionID == nil || strings.TrimSpace(*reqBody.SessionID) == "" {
+		log.Warn("Missing session ID in request body")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	authSession, err := config.GetAuthSessionByID(*reqBody.SessionID)
+	if err != nil {
+		log.Error("Failed to get auth session: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	type BulkUpdateAttributes struct {
+		Tagnumbers []int64 `json:"tagnumbers"`
+		Location   *string `json:"location"`
+	}
+
+	newAuthSession := authSession
+	newAuthSession.Attributes.SetAuthAttributes("bulk_update", BulkUpdateAttributes{
+		Tagnumbers: reqBody.Tagnumbers,
+		Location:   reqBody.Location,
+	})
+	if err := config.UpdateAuthSession(*reqBody.SessionID, newAuthSession); err != nil {
+		log.Error("Failed to update auth session: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	// dto, err := reqBody.ToDTO()
+	// if err != nil {
+	// 	log.Warn("Error converting request body to DTO: " + err.Error())
+	// 	middleware.WriteJsonError(w, http.StatusBadRequest)
+	// 	return
+	// }
+
+	// if err := database.StoreBulkUpdateData(req.Context(), dto); err != nil {
+	// 	log.Error("Failed to store bulk update data: " + err.Error())
+	// 	middleware.WriteJsonError(w, http.StatusInternalServerError)
+	// 	return
+	// }
+	middleware.WriteJson(w, http.StatusOK, struct {
+		Status BulkUpdateAttributes `json:"bulk_update_session_data"`
+	}{
+		Status: BulkUpdateAttributes{
+			Tagnumbers: reqBody.Tagnumbers,
+			Location:   reqBody.Location,
+		},
+	})
+}
