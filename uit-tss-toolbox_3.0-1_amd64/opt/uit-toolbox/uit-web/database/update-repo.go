@@ -2545,7 +2545,7 @@ func InitClient(ctx context.Context, dto *types.ClientInitDTO) (clientUUID *stri
 		$2
 	)
 	ON CONFLICT (system_serial) DO NOTHING
-	RETURNING client_uuid;
+	RETURNING uuid;
 	`
 	var idResult sql.NullString
 	err = tx.QueryRowContext(ctx, sqlCode,
