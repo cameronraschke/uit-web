@@ -164,12 +164,32 @@ function renderClientData(data: ClientInfoResponse | null): void {
 
 	// Tag
 	const tagEl = document.createElement('p');
-	tagEl.textContent = `Tag: ${data.Tagnumber ?? 'N/A'}`;
+	tagEl.textContent = `Tag: `;
+	const tagSpan = document.createElement('span');
+	tagSpan.classList.add('copyable-text');
+	tagSpan.textContent = data.Tagnumber?.toString() ?? 'N/A';
+	tagEl.addEventListener('click', () => {
+		if (data.Tagnumber) {
+			navigator.clipboard.writeText(data.Tagnumber.toString());
+			showCopiedTextStyleChange(tagSpan);
+		}
+	});
+	tagEl.appendChild(tagSpan);
 	clientIDsDiv.appendChild(tagEl);
 
 	// System Serial
 	const serialEl = document.createElement('p');
-	serialEl.textContent = `System Serial: ${data.SystemSerial ?? 'N/A'}`;
+	serialEl.textContent = `System Serial: `;
+	const serialSpan = document.createElement('span');
+	serialSpan.classList.add('copyable-text');
+	serialSpan.textContent = data.SystemSerial ?? 'N/A';
+	serialEl.addEventListener('click', () => {
+		if (data.SystemSerial) {
+			navigator.clipboard.writeText(data.SystemSerial);
+			showCopiedTextStyleChange(serialSpan);
+		}
+	});
+	serialEl.appendChild(serialSpan);
 	clientIDsDiv.appendChild(serialEl);
 
 	// Client UUID
@@ -186,6 +206,34 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	});
 	ClientUUIDEl.appendChild(clientUUIDSpan);
 	clientIDsDiv.appendChild(ClientUUIDEl);
+
+	const systemManufacturerEl = document.createElement('p');
+	systemManufacturerEl.textContent = `System Manufacturer: `;
+	const systemManufacturerSpan = document.createElement('span');
+	systemManufacturerSpan.classList.add('copyable-text');
+	systemManufacturerSpan.textContent = data.SystemManufacturer ?? 'N/A';
+	systemManufacturerEl.addEventListener('click', () => {
+		if (data.SystemManufacturer) {
+			navigator.clipboard.writeText(data.SystemManufacturer);
+			showCopiedTextStyleChange(systemManufacturerSpan);
+		}
+	});
+	systemManufacturerEl.appendChild(systemManufacturerSpan);
+	clientIDsDiv.appendChild(systemManufacturerEl);
+
+	const systemModelEl = document.createElement('p');
+	systemModelEl.textContent = `System Model: `;
+	const systemModelSpan = document.createElement('span');
+	systemModelSpan.classList.add('copyable-text');
+	systemModelSpan.textContent = data.SystemModel ?? 'N/A';
+	systemModelEl.addEventListener('click', () => {
+		if (data.SystemModel) {
+			navigator.clipboard.writeText(data.SystemModel);
+			showCopiedTextStyleChange(systemModelSpan);
+		}
+	});
+	systemModelEl.appendChild(systemModelSpan);
+	clientIDsDiv.appendChild(systemModelEl);
 	
 	fragment.appendChild(clientIDsDiv);
 
