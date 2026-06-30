@@ -1127,8 +1127,13 @@ func InitClient(w http.ResponseWriter, req *http.Request) {
 	}
 
 	clientUUID, err := database.InitClient(ctx, dto)
-	if err != nil || clientUUID == nil {
+	if err != nil {
 		log.Warn("Error initializing client: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if clientUUID == nil || strings.TrimSpace(*clientUUID) == "" {
+		log.Warn("No Client UUID returned for serial number: " + *requestData.SystemSerial)
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}

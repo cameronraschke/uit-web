@@ -2553,6 +2553,9 @@ func InitClient(ctx context.Context, dto *types.ClientInitDTO) (clientUUID *stri
 		toNullString(dto.SystemSerial),
 	).Scan(&idResult)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 	if !idResult.Valid {
