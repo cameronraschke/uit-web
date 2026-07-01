@@ -289,20 +289,25 @@ WITH most_recent_firmware_data AS (
 			historical_firmware_data.bios_version IS NOT NULL 
 	) t1 WHERE t1.row_nums = 1
 )
-INSERT INTO static_bios_stats
-	(
-		system_model,
-		bios_version
-	)
-SELECT hardware_data.system_model, max(string_to_array(REGEXP_REPLACE(most_recent_firmware_data.bios_version, '[A-Za-z\-\s]', '', 'g'), '.')::int[])
-FROM ids
-LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
-LEFT JOIN most_recent_firmware_data ON most_recent_firmware_data.client_uuid = hardware_data.client_uuid 
-WHERE 
-	hardware_data.system_model IS NOT NULL
-	AND most_recent_firmware_data.bios_version IS NOT NULL
-GROUP BY hardware_data.system_model
-ORDER BY hardware_data.system_model
+INSERT INTO static_bios_stats (
+	system_model,
+	bios_version
+)
+	SELECT 
+		t1.system_model, 
+		t1.bios_version
+	FROM (
+		SELECT hardware_data.system_model, most_recent_firmware_data.bios_version, row_number() OVER (PARTITION BY hardware_data.system_model ORDER BY string_to_array(REGEXP_REPLACE(most_recent_firmware_data.bios_version, '[A-Za-z\-\s]', '', 'g'), '.')::int[] DESC) AS row_num
+		FROM ids
+		LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
+		LEFT JOIN most_recent_firmware_data ON most_recent_firmware_data.client_uuid = hardware_data.client_uuid 
+		WHERE 
+			hardware_data.system_model IS NOT NULL
+			AND most_recent_firmware_data.bios_version IS NOT NULL
+		GROUP BY hardware_data.system_model, most_recent_firmware_data.bios_version
+		ORDER BY hardware_data.system_model) AS t1
+	WHERE 
+			t1.row_num = 1
 ON CONFLICT (system_model) DO UPDATE SET 
 	bios_version = EXCLUDED.bios_version
 ;

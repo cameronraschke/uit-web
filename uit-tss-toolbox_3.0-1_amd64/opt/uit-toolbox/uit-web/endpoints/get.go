@@ -1126,21 +1126,40 @@ func InitClient(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	clientUUID, err := database.InitClient(ctx, dto)
+	var clientUUIDStr *string
+	var clientUUID uuid.UUID
+	clientUUIDStr, err = database.InitClient(ctx, dto)
 	if err != nil {
 		log.Warn("Error initializing client: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	if clientUUID == nil || strings.TrimSpace(*clientUUID) == "" {
-		log.Warn("No Client UUID returned for serial number: " + *requestData.SystemSerial)
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
+	if clientUUIDStr != nil && strings.TrimSpace(*clientUUIDStr) != "" {
+		log.Warn("New client inserted with serial number: " + *requestData.SystemSerial)
+	} else {
+		pgxPool, err := config.GetPGXPool()
+		if err != nil {
+			log.Warn("Error getting pgx pool: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		clientUUID, err = database.GetClientUUIDBySerial(ctx, pgxPool, *requestData.SystemSerial)
+		if err != nil {
+			log.Warn("Error fetching client UUID by serial number: " + err.Error())
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 	}
+
 	returnedJson := struct {
 		ClientUUID string `json:"client_uuid"`
-	}{
-		ClientUUID: *clientUUID,
+	}{}
+
+	if clientUUIDStr != nil && strings.TrimSpace(*clientUUIDStr) != "" {
+		returnedJson.ClientUUID = *clientUUIDStr
+	}
+	if clientUUID != uuid.Nil {
+		returnedJson.ClientUUID = clientUUID.String()
 	}
 	middleware.WriteJson(w, http.StatusOK, returnedJson)
 }
