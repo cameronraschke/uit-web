@@ -126,10 +126,10 @@ func (r *DiskImageNameRequest) Validate() error {
 
 type DiskImageNameDTO struct {
 	SystemModel string `json:"system_model"`
-	ImageName   string `json:"image_name"`
+	ImageName   string `json:"disk_image_name"`
 }
 
 type DiskImageNameResponse struct {
 	SystemModel *string `json:"system_model"`
-	ImageName   *string `json:"image_name"`
+	ImageName   *string `json:"disk_image_name"`
 }
