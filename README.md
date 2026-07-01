@@ -5,6 +5,8 @@
 > [!IMPORTANT]
 > Unless otherwise noted, a GET request will always return all other variables, regardless of request type. State-chaning requests (POST, DELETE, PUSH, etc.) requests will usually only return an error, unless otherwise noted with "Output POST Variables".
 
+## Ideal 
+
 ## To-do
 - [ ] Implement all WIP endpoints
   - [ ] GET endpoints
