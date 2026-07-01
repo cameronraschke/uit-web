@@ -929,6 +929,11 @@ func UpsertClientMemoryCapacityKB(ctx context.Context, memInfo types.MemoryDataU
 		}
 	}()
 
+	clientUUID, err := lockClientRowByTagnumber(ctx, tx, memInfo.Tagnumber)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+
 	const sqlCode = `
 		INSERT INTO 
 			job_queue (
@@ -938,9 +943,9 @@ func UpsertClientMemoryCapacityKB(ctx context.Context, memInfo types.MemoryDataU
 			) 
 		VALUES 
 			(
-				(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
-				$1, 
-				$2
+				$1,
+				$2, 
+				$3
 			)
 		ON CONFLICT (client_uuid) DO UPDATE SET 
 			tagnumber = EXCLUDED.tagnumber,
@@ -948,6 +953,7 @@ func UpsertClientMemoryCapacityKB(ctx context.Context, memInfo types.MemoryDataU
 	;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+		clientUUID,
 		toNullInt64(memInfo.Tagnumber),
 		toNullInt64(memInfo.TotalCapacityKB),
 	)
