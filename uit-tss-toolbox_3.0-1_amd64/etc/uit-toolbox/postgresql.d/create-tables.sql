@@ -294,7 +294,7 @@ INSERT INTO static_bios_stats
 		system_model,
 		bios_version
 	)
-SELECT hardware_data.system_model, MAX(most_recent_firmware_data.bios_version)
+SELECT hardware_data.system_model, max(string_to_array(REGEXP_REPLACE(most_recent_firmware_data.bios_version, '[A-Za-z\-\s]', '', 'g'), '.')::int[])
 FROM ids
 LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
 LEFT JOIN most_recent_firmware_data ON most_recent_firmware_data.client_uuid = hardware_data.client_uuid 
