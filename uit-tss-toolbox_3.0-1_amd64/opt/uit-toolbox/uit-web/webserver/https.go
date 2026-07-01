@@ -88,6 +88,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("POST /api/client/job_queue/update_job", httpsFullAPIChain.ThenFunc(endpoints.SetClientJob))
 	httpsRouter.Handle("POST /api/client/job_queued_at", httpsFullAPIChain.ThenFunc(endpoints.SetJobQueuedAt))
 	httpsRouter.Handle("POST /api/client/last_heard", httpsFullAPIChain.ThenFunc(endpoints.SetClientLastHeard))
+	httpsRouter.Handle("GET /api/client/job/disk_image/name", httpsFullAPIChain.ThenFunc(endpoints.GetDiskImageNameByModel))
 
 	// Web and auth
 	httpsRouter.Handle("GET /api/check_auth", httpsFullAPIChain.ThenFunc(endpoints.RejectRequest))

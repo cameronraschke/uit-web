@@ -95,5 +95,6 @@
 		"allowed_methods": ["GET", "POST"]
 	},
 	"/api/new_transaction_uuid": {},
-	"/api/client": {}
+	"/api/client": {},
+	"/api/client/job/disk_image/name": {}
 }

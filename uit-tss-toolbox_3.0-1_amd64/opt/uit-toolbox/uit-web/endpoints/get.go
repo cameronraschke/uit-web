@@ -1196,3 +1196,47 @@ func GetClientInfo(w http.ResponseWriter, req *http.Request) {
 	}
 	middleware.WriteJson(w, http.StatusOK, clientInfo)
 }
+
+func GetDiskImageNameByModel(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "GetDiskImageNameByModel"))
+	model := middleware.GetStrQuery(req.URL.Query(), "system_model")
+
+	if model == nil || strings.TrimSpace(*model) == "" {
+		log.Warn("No system model provided in request to GetDiskImageNameByModel")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	diskImageRequest := new(types.DiskImageNameRequest)
+	diskImageRequest.SystemModel = model
+
+	diskImageResponse, err := database.SelectDiskImageByModel(req.Context(), diskImageRequest)
+	if err != nil {
+		log.Warn("Error fetching disk image name by model: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	if diskImageResponse == nil {
+		log.Warn("No disk image name found for model: " + *model)
+		middleware.WriteJsonError(w, http.StatusNotFound)
+		return
+	}
+
+	if diskImageResponse.SystemModel == nil || strings.TrimSpace(*diskImageResponse.SystemModel) == "" {
+		log.Warn("Disk image system model is nil or empty for model: " + *model)
+		middleware.WriteJsonError(w, http.StatusNotFound)
+		return
+	}
+
+	if diskImageResponse.ImageName == nil || strings.TrimSpace(*diskImageResponse.ImageName) == "" {
+		log.Warn("Disk image name is nil or empty for model: " + *model)
+		middleware.WriteJsonError(w, http.StatusNotFound)
+		return
+	}
+
+	returnedJson := new(types.DiskImageNameResponse)
+	returnedJson.SystemModel = diskImageResponse.SystemModel
+	returnedJson.ImageName = diskImageResponse.ImageName
+	middleware.WriteJson(w, http.StatusOK, returnedJson)
+}

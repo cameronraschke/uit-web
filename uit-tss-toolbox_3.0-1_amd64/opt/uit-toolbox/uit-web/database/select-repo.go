@@ -2528,3 +2528,40 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 
 	return &clientInfoResult, nil
 }
+
+func SelectDiskImageByModel(ctx context.Context, r *types.DiskImageNameRequest) (*types.DiskImageNameResponse, error) {
+	if err := r.Validate(); err != nil {
+		return nil, fmt.Errorf("%w: %w", types.InvalidFieldError, err)
+	}
+
+	const sqlCode = `
+		SELECT
+			static_image_names.image_platform_model,
+			static_image_names.image_name
+		FROM
+			static_image_names
+		WHERE 
+			static_image_names.image_name IS NOT NULL
+			AND static_image_names.image_platform_model = $1
+	;`
+
+	pgxPool, err := config.GetPGXPool()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	row := pgxPool.QueryRow(ctx, sqlCode, r.SystemModel)
+	var diskImage types.DiskImageNameResponse
+	rowScanErr := row.Scan(
+		&diskImage.SystemModel,
+		&diskImage.ImageName,
+	)
+	if rowScanErr != nil {
+		if errors.Is(rowScanErr, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, rowScanErr)
+	}
+
+	return &diskImage, nil
+}
