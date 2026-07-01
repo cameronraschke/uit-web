@@ -575,26 +575,6 @@ CREATE TABLE IF NOT EXISTS static_image_names (
 	image_name_readable VARCHAR(36) DEFAULT NULL
 );
 
-INSERT INTO
-    static_image_names (image_name, image_os_author, image_version, image_platform_vendor, image_platform_model, image_name_readable)
-VALUES
-	('TechCommons-HP-LaptopsLZ4', 'Microsoft', 'Windows 11', 'HP', 'HP ProBook 450 G6', 'Windows 11'),
-	('TechCommons-Dell-Desktop-Team-Leads', 'Microsoft', 'Windows 11', 'HP', 'Dell Pro Slim Plus QBS1250', 'Windows 11'),
-	('TechCommons-Dell-Laptops', 'Microsoft', 'Windows 11', 'Dell', 'Latitude 7400', 'Windows 11'),
-	('TechCommons-Dell-Desktops', 'Microsoft', 'Windows 11', 'Dell', 'OptiPlex 7000', 'Windows 11'),
-	('TechCommons-Dell-HelpDesk', 'Microsoft', 'Windows 11', 'Dell', 'Latitude 7420', 'Windows 11'),
-	('SHRL-Dell-Desktops', 'Microsoft', 'Windows 11', 'Dell', NULL, 'Windows 11'),
-	('Ubuntu-Desktop', 'Canonical', '24.04.2 LTS', 'Dell', NULL, 'Ubuntu Desktop'),
-	('CLASSTech-Dell-Desktop', 'Microsoft', 'Windows 11', 'Dell', NULL, 'Windows 11')
-	ON CONFLICT (image_name) DO UPDATE SET
-		image_os_author = EXCLUDED.image_os_author,
-		image_version = EXCLUDED.image_version,
-		image_platform_vendor = EXCLUDED.image_platform_vendor,
-		image_platform_model = EXCLUDED.image_platform_model,
-		image_name_readable = EXCLUDED.image_name_readable
-;
-
-
 CREATE TABLE IF NOT EXISTS notes (
 	id SERIAL PRIMARY KEY,
 	time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
