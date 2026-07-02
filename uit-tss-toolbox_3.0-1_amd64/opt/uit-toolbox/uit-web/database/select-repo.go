@@ -1498,7 +1498,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			ELSE FALSE
 		END) AS "cpu_temp_warning",
 		job_queue.memory_usage_kb,
-		job_queue.memory_capacity_kb,
+		latest_historical_hardware_data.memory_capacity_kb,
 		0::integer AS "disk_usage",
 		job_queue.disk_temp,
 		static_disk_stats.disk_type,
@@ -1522,6 +1522,18 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN job_queue ON ids.uuid = job_queue.client_uuid
 	LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
 	LEFT JOIN locations ON ids.uuid = locations.client_uuid
+	LEFT JOIN LATERAL (
+		SELECT 
+			memory_serial, 
+			memory_capacity_kb, 
+			memory_speed_mhz
+		FROM historical_hardware_data
+		WHERE 
+			client_uuid = ids.uuid
+			AND memory_capacity_kb IS NOT NULL
+		ORDER BY time DESC NULLS LAST
+		LIMIT 1
+	) latest_historical_hardware_data ON TRUE
 	LEFT JOIN LATERAL (
 		SELECT 
 			disk_model, 
