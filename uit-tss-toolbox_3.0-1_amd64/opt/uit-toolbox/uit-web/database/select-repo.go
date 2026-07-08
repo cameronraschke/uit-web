@@ -1961,7 +1961,9 @@ func SelectJobQueuePosition(ctx context.Context, tag int64) (int64, error) {
 		FROM 
 			job_queue 
 		WHERE 
-			job_queued = TRUE OR job_name IS NOT NULL
+			(job_name IS NOT NULL OR job_queued = TRUE)
+			AND last_heard IS NOT NULL
+			AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_heard)) < 20
 	)
 	SELECT job_queue_position FROM (
 		SELECT
