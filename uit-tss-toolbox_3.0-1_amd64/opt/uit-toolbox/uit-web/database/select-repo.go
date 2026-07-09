@@ -1226,13 +1226,17 @@ func ModifyClientConfigErrorResults(results []types.InventoryTableRow) ([]types.
 			results[i].Location == nil ||
 			results[i].Building == nil ||
 			results[i].Room == nil ||
-			results[i].SystemManufacturer == nil ||
-			results[i].SystemModel == nil ||
-			results[i].DeviceType == nil ||
 			results[i].Department == nil ||
 			results[i].Status == nil {
-			missingRequiredInfo := types.MissingRequiredHardwareInfo.ToConfigErrorResponse()
-			results[i].ClientErrors = append(results[i].ClientErrors, missingRequiredInfo)
+			missingRequiredGeneralInfo := types.MissingRequiredGeneralInfo.ToConfigErrorResponse()
+			results[i].ClientErrors = append(results[i].ClientErrors, missingRequiredGeneralInfo)
+		}
+
+		if results[i].SystemManufacturer == nil ||
+			results[i].SystemModel == nil ||
+			results[i].DeviceType == nil {
+			missingRequiredHardwareInfo := types.MissingRequiredHardwareInfo.ToConfigErrorResponse()
+			results[i].ClientErrors = append(results[i].ClientErrors, missingRequiredHardwareInfo)
 		}
 		// // If client is missing images of itself
 		// if results[i].FileCount == nil || (results[i].FileCount != nil && *results[i].FileCount <= 0) {
