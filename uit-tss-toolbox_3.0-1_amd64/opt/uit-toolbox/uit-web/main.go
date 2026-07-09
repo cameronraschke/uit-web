@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"runtime/debug"
@@ -21,6 +19,17 @@ import (
 func main() {
 	fmt.Fprintln(os.Stdout, "Starting UIT Web...")
 
+	// Create root context
+	ctx, stop := signal.NotifyContext(
+		context.Background(),
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGQUIT,
+		syscall.SIGABRT,
+		syscall.SIGTERM,
+	)
+	defer stop()
+
 	startTime := time.Now()
 	fmt.Fprintln(os.Stdout, "Server time: "+startTime.Format("01-02-2006 15:04:05"))
 
@@ -30,7 +39,8 @@ func main() {
 			fmt.Fprintln(os.Stderr, "Panic: "+fmt.Sprint(recoveryErr))
 			fmt.Fprintln(os.Stderr, "Stack:\n"+string(debug.Stack()))
 			time.Sleep(100 * time.Millisecond) // Buffer
-			os.Exit(1)
+			stop()                             // Cancel context to stop all goroutines
+			return
 		}
 	}()
 
@@ -46,12 +56,6 @@ func main() {
 		os.Exit(1)
 	}
 	log = log.With(slog.String("func", "main"))
-
-	go func() {
-		if err := http.ListenAndServe("localhost:6060", nil); err != nil {
-			log.Error("pprof server error: " + err.Error())
-		}
-	}()
 
 	// Get DB credentials
 	dbConnectionInfo, err := config.GetDatabaseCredentials()
@@ -106,17 +110,28 @@ func main() {
 		os.Exit(1)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	var wg sync.WaitGroup
 	errChan := make(chan error, 10) // Buffer in case of multiple errors
+
+	wg.Go(func() {
+		if err := webserver.StartPprofServer(ctx); err != nil {
+			select {
+			case errChan <- err:
+			default:
+				log.Warn("Error channel full, cannot send pprof server error (func main - StartPprofServer)")
+			}
+		}
+	})
 
 	// Start HTTP server
 	log.Info("Starting HTTP server on http://" + httpHost + ":8080")
 	wg.Go(func() {
 		if err := webserver.StartFileServer(ctx, httpHost); err != nil {
-			errChan <- err
+			select {
+			case errChan <- err:
+			default:
+				log.Warn("Error channel full, cannot send HTTP server error (func main - StartFileServer)")
+			}
 		}
 	})
 
@@ -124,7 +139,11 @@ func main() {
 	log.Info("Starting the HTTPS server on https://*:31411")
 	wg.Go(func() {
 		if err := webserver.StartWebServer(ctx); err != nil {
-			errChan <- err
+			select {
+			case errChan <- err:
+			default:
+				log.Warn("Error channel full, cannot send HTTPS server error (func main - StartWebServer)")
+			}
 		}
 	})
 
@@ -145,72 +164,33 @@ func main() {
 		backgroundProcesses(ctx)
 	})
 
-	// Wait for sigterm signal
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(signalChan)
-
 	log.Info("Servers started in: " + time.Since(startTime).String())
 
+	// Wait for shutdown signal or error
 	select {
-	case sig := <-signalChan:
-		log.Info("Shutdown signal received: " + sig.String())
+	case <-ctx.Done():
+		log.Info("Shutdown signal received.")
 	case err := <-errChan:
-		log.Error("Application error, exiting: " + err.Error())
+		log.Error("Error received: " + err.Error())
+		stop() // Cancel context to stop all goroutines
 	}
 
-	cancel() // Cancel context to stop web servers
+	waitCtx, waitCancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer waitCancel()
 
-	// Wait for additional errors
-	go func() {
-		deadline := time.After(1 * time.Second)
-		for {
-			select {
-			case err, ok := <-errChan:
-				if !ok {
-					return // Channel closed, continue
-				}
-				log.Error("Additional error logged while shutting down: " + err.Error())
-			case <-deadline:
-				return // Timeout reached, continue
-			}
-		}
-	}()
-
-	// Wait for web servers to stop with timeout
-	webServerShutdownCTX, webServerCTXCancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer webServerCTXCancel()
-
-	webServerDoneChan := make(chan struct{})
+	wgDone := make(chan struct{})
 	go func() {
 		wg.Wait()
-		close(webServerDoneChan)
+		close(wgDone)
 	}()
 
 	select {
-	case <-webServerDoneChan:
-		log.Info("Web servers gracefully stopped")
-	case <-webServerShutdownCTX.Done():
-		log.Error("Timeout reached, forcing exit of web servers")
-		webServerCTXCancel()
-	}
-
-	// Close database connection with timeout
-	dbCloseCtx, dbCloseCancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer dbCloseCancel()
-
-	dbDoneChan := make(chan struct{})
-	go func() {
-		dbConn.Close()
-		close(dbDoneChan)
-	}()
-
-	select {
-	case <-dbDoneChan:
-		log.Info("Database connection gracefully closed")
-	case <-dbCloseCtx.Done():
-		log.Error("Timeout reached, forcing closure of database connection")
-		dbCloseCancel()
+	case <-wgDone:
+		log.Info("All goroutines stopped gracefully")
+	case <-waitCtx.Done():
+		log.Error("Shutdown timeout reached: " + waitCtx.Err().Error())
+		log.Error("Forcing process exit; goroutines still running")
+		log.Error("Goroutine dump:\n" + string(debug.Stack()))
 	}
 
 	log.Info("UIT Web has been stopped.")

@@ -180,7 +180,7 @@ func StartWebServer(ctx context.Context) error {
 		SessionTicketsDisabled:   false,
 	}
 
-	httpsServer := http.Server{
+	httpsServer := &http.Server{
 		Addr:              ":31411",
 		Handler:           httpsRouter,
 		TLSConfig:         tlsConfig,
@@ -204,25 +204,14 @@ func StartWebServer(ctx context.Context) error {
 		return fmt.Errorf("error getting TLS cert files for HTTPS web server: %w", err)
 	}
 
-	// Start HTTPS server
-	serverErr := make(chan error, 1)
-	go func() {
-		if err := httpsServer.ListenAndServeTLS(webCertFile, webKeyFile); err != nil && err != http.ErrServerClosed {
-			serverErr <- err
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		log.Info("Shutting down HTTPS web server...")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		if err := httpsServer.Shutdown(shutdownCtx); err != nil {
-			return fmt.Errorf("error shutting down HTTPS server: %w", err)
-		}
-		log.Info("HTTPS web server stopped")
-		return nil
-	case err := <-serverErr:
-		return err
-	}
+	return runServerLifecycle(
+		ctx,
+		log,
+		"HTTPS web server",
+		30*time.Second,
+		func() error {
+			return httpsServer.ListenAndServeTLS(webCertFile, webKeyFile)
+		},
+		httpsServer.Shutdown,
+	)
 }

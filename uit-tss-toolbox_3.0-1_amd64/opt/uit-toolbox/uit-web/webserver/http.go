@@ -2,7 +2,6 @@ package webserver
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -54,24 +53,12 @@ func StartFileServer(ctx context.Context, serverHost string) error {
 		},
 	}
 
-	serverErr := make(chan error, 1)
-	go func() {
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			serverErr <- err
-		}
-	}()
-
-	select {
-	case <-ctx.Done():
-		log.Info("HTTP file server shutting down...")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
-		defer cancel()
-		if err := httpServer.Shutdown(shutdownCtx); err != nil {
-			return fmt.Errorf("error shutting down HTTP file server: %w", err)
-		}
-		log.Info("HTTP file server stopped")
-		return nil
-	case err := <-serverErr:
-		return err
-	}
+	return runServerLifecycle(
+		ctx,
+		log,
+		"HTTP file server",
+		1*time.Minute,
+		httpServer.ListenAndServe,
+		httpServer.Shutdown,
+	)
 }
