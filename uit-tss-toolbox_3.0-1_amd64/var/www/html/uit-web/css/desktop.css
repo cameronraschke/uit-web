@@ -867,17 +867,21 @@ div:has(> img.tooltip-image) {
 	text-indent: var(--svg-padding-left);
 	padding-right: 2.3rem;
 	background-repeat: no-repeat;
-	background-size: 1.5rem;
-	background-position: calc(100% - 0.5rem) center;
 	user-select: none;
-	border: 1px dashed rgba(0, 0, 0, 0.4);
-	border-radius: var(--border-radius);
-	padding: 0.5rem;
-	cursor: pointer;
-	user-select: all;
 	white-space: pre;
 	white-space-collapse: collapse;
+	padding: 0.5rem;
 	padding-right: 2rem;
+	background-size: 1.5rem;
+	background-position: calc(100% - 0.5rem) center;
+}
+
+.copyable-text:hover, .copyable-text:focus {
+	border: 1px dashed rgba(0, 0, 0, 0.4);
+	border-radius: var(--border-radius);
+	margin: 0;
+	cursor: pointer;
+	user-select: all;
 	background-image: url(/icons/general/copy.svg);
 }
 

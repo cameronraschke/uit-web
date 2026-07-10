@@ -168,7 +168,7 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	const tagSpan = document.createElement('span');
 	tagSpan.classList.add('copyable-text');
 	tagSpan.textContent = data.Tagnumber?.toString() ?? 'N/A';
-	tagEl.addEventListener('click', () => {
+	tagSpan.addEventListener('click', () => {
 		if (data.Tagnumber) {
 			navigator.clipboard.writeText(data.Tagnumber.toString());
 			showCopiedTextStyleChange(tagSpan);
@@ -183,7 +183,7 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	const serialSpan = document.createElement('span');
 	serialSpan.classList.add('copyable-text');
 	serialSpan.textContent = data.SystemSerial ?? 'N/A';
-	serialEl.addEventListener('click', () => {
+	serialSpan.addEventListener('click', () => {
 		if (data.SystemSerial) {
 			navigator.clipboard.writeText(data.SystemSerial);
 			showCopiedTextStyleChange(serialSpan);
@@ -198,7 +198,7 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	const clientUUIDSpan = document.createElement('span');
 	clientUUIDSpan.classList.add('copyable-text');
 	clientUUIDSpan.textContent = data.ClientUUID ?? 'N/A';
-	ClientUUIDEl.addEventListener('click', () => {
+	clientUUIDSpan.addEventListener('click', () => {
 		if (data.ClientUUID) {
 			navigator.clipboard.writeText(data.ClientUUID);
 			showCopiedTextStyleChange(clientUUIDSpan);
@@ -212,7 +212,7 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	const systemManufacturerSpan = document.createElement('span');
 	systemManufacturerSpan.classList.add('copyable-text');
 	systemManufacturerSpan.textContent = data.SystemManufacturer ?? 'N/A';
-	systemManufacturerEl.addEventListener('click', () => {
+	systemManufacturerSpan.addEventListener('click', () => {
 		if (data.SystemManufacturer) {
 			navigator.clipboard.writeText(data.SystemManufacturer);
 			showCopiedTextStyleChange(systemManufacturerSpan);
@@ -226,7 +226,7 @@ function renderClientData(data: ClientInfoResponse | null): void {
 	const systemModelSpan = document.createElement('span');
 	systemModelSpan.classList.add('copyable-text');
 	systemModelSpan.textContent = data.SystemModel ?? 'N/A';
-	systemModelEl.addEventListener('click', () => {
+	systemModelSpan.addEventListener('click', () => {
 		if (data.SystemModel) {
 			navigator.clipboard.writeText(data.SystemModel);
 			showCopiedTextStyleChange(systemModelSpan);
