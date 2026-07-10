@@ -1470,7 +1470,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			ELSE FALSE
 		END) AS "disk_temp_warning",
 		'UP' AS "network_link_status",
-		live_os_data.network_speed AS "network_link_speed",
+		live_os_data.link_speed AS "network_link_speed",
 		0::integer AS "network_usage",
 		job_queue.battery_charge_pcnt,
 		job_queue.battery_status,
