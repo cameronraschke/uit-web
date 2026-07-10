@@ -1369,6 +1369,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 				ORDER BY job_queue.job_queued_at ASC NULLS LAST
 			) AS queue_order
 		FROM job_queue
+			LEFT JOIN live_os_data ON job_queue.client_uuid = live_os_data.client_uuid
 		WHERE
 			(job_queue.job_queued = TRUE OR job_queue.job_name IS NOT NULL)
 			AND live_os_data.last_heard IS NOT NULL
@@ -1480,8 +1481,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	FROM top_clients
 	INNER JOIN ids ON ids.uuid = top_clients.uuid
 	LEFT JOIN job_queue ON ids.uuid = job_queue.client_uuid
-	LEFT JOIN live_os_data ON ids.uuid = live_os_data.client_uuid
-	LEFT JOIN live_os_data ON ids.uuid = live_os_data.client_uuid
 	LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
 	LEFT JOIN locations ON ids.uuid = locations.client_uuid
 	LEFT JOIN LATERAL (
