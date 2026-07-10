@@ -1640,61 +1640,69 @@ func UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHar
 		return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseAffectedRowsError, historicalDiskDataResult.RowsAffected())
 	}
 
-	const historicalBatteryDataTableInsertSQL = `
-	INSERT INTO historical_battery_data (
-		time,
-		transaction_uuid,
-		updated_from_windows,
-		client_uuid,
-		battery_serial,
-		battery_manufacturer,
-		battery_model,
-		battery_charge_cycles,
-		battery_design_capacity,
-		battery_manufacture_date,
-		battery_current_max_capacity
-	) VALUES (
-		CURRENT_TIMESTAMP,
-		$1,
-		$2,
-		$3,
-		$4,
-		$5,
-		$6,
-		$7,
-		$8,
-		$9,
-		$10
-	) ON CONFLICT (transaction_uuid) DO UPDATE SET
-		time = CURRENT_TIMESTAMP,
-		updated_from_windows = COALESCE(EXCLUDED.updated_from_windows, historical_battery_data.updated_from_windows),
-		client_uuid = COALESCE(EXCLUDED.client_uuid, historical_battery_data.client_uuid),
-		battery_serial = COALESCE(EXCLUDED.battery_serial, historical_battery_data.battery_serial),
-		battery_manufacturer = COALESCE(EXCLUDED.battery_manufacturer, historical_battery_data.battery_manufacturer),
-		battery_model = COALESCE(EXCLUDED.battery_model, historical_battery_data.battery_model),
-		battery_charge_cycles = COALESCE(EXCLUDED.battery_charge_cycles, historical_battery_data.battery_charge_cycles),
-		battery_design_capacity = COALESCE(EXCLUDED.battery_design_capacity, historical_battery_data.battery_design_capacity),
-		battery_manufacture_date = COALESCE(EXCLUDED.battery_manufacture_date, historical_battery_data.battery_manufacture_date),
-		battery_current_max_capacity = COALESCE(EXCLUDED.battery_current_max_capacity, historical_battery_data.battery_current_max_capacity)
-	;`
+	if hardwareData.BatterySerial != nil ||
+		hardwareData.BatteryManufacturer != nil ||
+		hardwareData.BatteryModel != nil ||
+		hardwareData.BatteryChargeCycles != nil ||
+		hardwareData.BatteryDesignCapacity != nil ||
+		hardwareData.BatteryManufactureDate != nil ||
+		hardwareData.BatteryCurrentMaxCapacity != nil {
+		const historicalBatteryDataTableInsertSQL = `
+		INSERT INTO historical_battery_data (
+			time,
+			transaction_uuid,
+			updated_from_windows,
+			client_uuid,
+			battery_serial,
+			battery_manufacturer,
+			battery_model,
+			battery_charge_cycles,
+			battery_design_capacity,
+			battery_manufacture_date,
+			battery_current_max_capacity
+		) VALUES (
+			CURRENT_TIMESTAMP,
+			$1,
+			$2,
+			$3,
+			$4,
+			$5,
+			$6,
+			$7,
+			$8,
+			$9,
+			$10
+		) ON CONFLICT (transaction_uuid) DO UPDATE SET
+			time = CURRENT_TIMESTAMP,
+			updated_from_windows = COALESCE(EXCLUDED.updated_from_windows, historical_battery_data.updated_from_windows),
+			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_battery_data.client_uuid),
+			battery_serial = COALESCE(EXCLUDED.battery_serial, historical_battery_data.battery_serial),
+			battery_manufacturer = COALESCE(EXCLUDED.battery_manufacturer, historical_battery_data.battery_manufacturer),
+			battery_model = COALESCE(EXCLUDED.battery_model, historical_battery_data.battery_model),
+			battery_charge_cycles = COALESCE(EXCLUDED.battery_charge_cycles, historical_battery_data.battery_charge_cycles),
+			battery_design_capacity = COALESCE(EXCLUDED.battery_design_capacity, historical_battery_data.battery_design_capacity),
+			battery_manufacture_date = COALESCE(EXCLUDED.battery_manufacture_date, historical_battery_data.battery_manufacture_date),
+			battery_current_max_capacity = COALESCE(EXCLUDED.battery_current_max_capacity, historical_battery_data.battery_current_max_capacity)
+		;`
 
-	batteryHardwareDataSQLResult, err := tx.Exec(ctx, historicalBatteryDataTableInsertSQL,
-		hardwareData.TransactionUUID,
-		false,
-		clientUUID,
-		ptrToNullString(hardwareData.BatterySerial),
-		ptrToNullString(hardwareData.BatteryManufacturer),
-		ptrToNullString(hardwareData.BatteryModel),
-		ptrToNullInt64(hardwareData.BatteryChargeCycles),
-		ptrToNullFloat64(hardwareData.BatteryDesignCapacity),
-		ptrToNullDate(hardwareData.BatteryManufactureDate),
-		ptrToNullFloat64(hardwareData.BatteryCurrentMaxCapacity),
-	)
-	if err != nil {
-		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
-	}
-	if batteryHardwareDataSQLResult.RowsAffected() != 1 {
-		return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseAffectedRowsError, batteryHardwareDataSQLResult.RowsAffected())
+		batteryHardwareDataSQLResult, err := tx.Exec(ctx, historicalBatteryDataTableInsertSQL,
+			hardwareData.TransactionUUID,
+			false,
+			clientUUID,
+			ptrToNullString(hardwareData.BatterySerial),
+			ptrToNullString(hardwareData.BatteryManufacturer),
+			ptrToNullString(hardwareData.BatteryModel),
+			ptrToNullInt64(hardwareData.BatteryChargeCycles),
+			ptrToNullFloat64(hardwareData.BatteryDesignCapacity),
+			ptrToNullDate(hardwareData.BatteryManufactureDate),
+			ptrToNullFloat64(hardwareData.BatteryCurrentMaxCapacity),
+		)
+		if err != nil {
+			return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+		}
+		if batteryHardwareDataSQLResult.RowsAffected() != 1 {
+			return fmt.Errorf("%w: expected exactly 1 row(s), got %d", types.DatabaseAffectedRowsError, batteryHardwareDataSQLResult.RowsAffected())
+		}
 	}
 
 	const historicalHardwareDataTable = `INSERT INTO historical_hardware_data 
@@ -1702,8 +1710,6 @@ func UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHar
 			time, 
 			transaction_uuid, 
 			client_uuid, 
-			ethernet_mac, 
-			wifi_mac, 
 			memory_serial, 
 			memory_capacity_kb, 
 			memory_speed_mhz 
@@ -1719,8 +1725,6 @@ func UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHar
 		) ON CONFLICT (transaction_uuid) DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
 			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_hardware_data.client_uuid),
-			ethernet_mac = COALESCE(EXCLUDED.ethernet_mac, historical_hardware_data.ethernet_mac),
-			wifi_mac =  COALESCE(EXCLUDED.wifi_mac, historical_hardware_data.wifi_mac),
 			memory_serial = COALESCE(EXCLUDED.memory_serial, historical_hardware_data.memory_serial),
 			memory_capacity_kb = COALESCE(EXCLUDED.memory_capacity_kb, historical_hardware_data.memory_capacity_kb),
 			memory_speed_mhz = COALESCE(EXCLUDED.memory_speed_mhz, historical_hardware_data.memory_speed_mhz)
@@ -1736,8 +1740,6 @@ func UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHar
 	hardwareHistoryResult, err := tx.Exec(ctx, historicalHardwareDataTable,
 		toNullString(hardwareData.TransactionUUID),
 		toNullUUID(clientUUID),
-		ptrToNullString(hardwareData.EthernetMAC),
-		ptrToNullString(hardwareData.WiFiMAC),
 		memorySerialArray,
 		ptrToNullInt64(hardwareData.MemoryCapacityKB),
 		ptrToNullInt64(hardwareData.MemorySpeedMHz),
