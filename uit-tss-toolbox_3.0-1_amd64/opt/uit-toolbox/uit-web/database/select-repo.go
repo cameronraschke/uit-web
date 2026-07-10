@@ -1175,13 +1175,17 @@ func ModifyClientConfigErrorResults(results []types.InventoryTableRow) ([]types.
 
 		if tagErr != nil ||
 			serialErr != nil ||
-			results[i].Location == nil ||
-			results[i].Building == nil ||
+			results[i].Location == nil {
+			missingRequiredGeneralInfo := types.MissingRequiredGeneralInfo.ToConfigErrorResponse()
+			results[i].ClientErrors = append(results[i].ClientErrors, missingRequiredGeneralInfo)
+		}
+
+		if results[i].Building == nil ||
 			results[i].Room == nil ||
 			results[i].Department == nil ||
 			results[i].Status == nil {
-			missingRequiredGeneralInfo := types.MissingRequiredGeneralInfo.ToConfigErrorResponse()
-			results[i].ClientErrors = append(results[i].ClientErrors, missingRequiredGeneralInfo)
+			missingOptionalInfo := types.MissingOptionalInfo.ToConfigErrorResponse()
+			results[i].ClientErrors = append(results[i].ClientErrors, missingOptionalInfo)
 		}
 
 		if results[i].SystemManufacturer == nil ||

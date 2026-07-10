@@ -61,6 +61,7 @@ const (
 	OSOutdated
 	NeedsHardwareCheck
 	NeedsErasing
+	MissingOptionalInfo
 	MissingRequiredGeneralInfo
 	MissingRequiredHardwareInfo
 	MissingRequiredSoftwareInfo
@@ -80,6 +81,7 @@ var ClientConfigurationErrorStrings = map[ClientConfigurationError]string{
 	DiskNotEncrypted:            "Disk is not fully encrypted",
 	NeedsHardwareCheck:          "Needs hardware check",
 	NeedsErasing:                "Needs erasing",
+	MissingOptionalInfo:         "Missing optional information",
 	MissingRequiredGeneralInfo:  "Missing required general information",
 	MissingRequiredHardwareInfo: "Missing required hardware information",
 	MissingRequiredSoftwareInfo: "Missing required OS information",
@@ -119,6 +121,7 @@ var ClientConfigurationErrors = map[ClientConfigurationError]ClientConfigErrorMe
 	DiskNotEncrypted:            {ErrorLevel: Warning.String(), ErrorType: FirmwareIssueType.String(), ErrorMessage: DiskNotEncrypted.String()},
 	NeedsHardwareCheck:          {ErrorLevel: Warning.String(), ErrorType: HardwareIssueType.String(), ErrorMessage: NeedsHardwareCheck.String()},
 	NeedsErasing:                {ErrorLevel: Warning.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: NeedsErasing.String()},
+	MissingOptionalInfo:         {ErrorLevel: Info.String(), ErrorType: OtherIssueType.String(), ErrorMessage: MissingOptionalInfo.String()},
 	MissingRequiredGeneralInfo:  {ErrorLevel: Error.String(), ErrorType: OtherIssueType.String(), ErrorMessage: MissingRequiredGeneralInfo.String()},
 	MissingRequiredHardwareInfo: {ErrorLevel: Error.String(), ErrorType: HardwareIssueType.String(), ErrorMessage: MissingRequiredHardwareInfo.String()},
 	MissingRequiredSoftwareInfo: {ErrorLevel: Error.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: MissingRequiredSoftwareInfo.String()},
