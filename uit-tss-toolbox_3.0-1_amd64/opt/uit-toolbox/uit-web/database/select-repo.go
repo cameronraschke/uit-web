@@ -24,7 +24,6 @@ import (
 type Select interface {
 	CheckTwoFactorCode(ctx context.Context, twoFactorCode *string) (string, error)
 	CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error)
-	GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error)
 	GetNotes(ctx context.Context, noteType *string) (*types.GeneralNoteResponse, error)
 	GetFileHashesFromTag(ctx context.Context, tag *int64) ([][]uint8, error)
 	GetAllLocations(ctx context.Context) ([]types.AllLocationsRow, error)
@@ -459,53 +458,6 @@ func (repo *SelectRepo) CheckAuthCredentials(ctx context.Context, username *stri
 	}
 
 	return true, &dbBcryptHash.String, nil
-}
-
-func (repo *SelectRepo) GetActiveJobs(ctx context.Context, tag *int64) (*types.ActiveJobs, error) {
-	if tag == nil {
-		return nil, fmt.Errorf("tagnumber is nil")
-	}
-
-	const sqlQuery = `
-	WITH job_queue_position AS (
-		SELECT 
-			tagnumber, 
-			ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) AS "position",
-			job_name
-		FROM 
-			job_queue 
-		WHERE 
-			job_queued = TRUE OR job_name IS NOT NULL
-	)
-	SELECT * FROM (SELECT 
-			job_queue.tagnumber, 
-			job_queue.job_queued, 
-			job_queue.job_name, 
-			job_queue.job_active, 
-			DENSE_RANK() OVER (ORDER BY
-			(CASE
-				WHEN job_queue.job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone') THEN COALESCE(job_queue_position.position, 0)
-				ELSE 0
-			END)) - 1 AS "job_queue_position"
-		FROM job_queue
-		LEFT JOIN job_queue_position ON job_queue.tagnumber = job_queue_position.tagnumber) t1
-	WHERE t1.tagnumber = $1;`
-
-	var activeJobs types.ActiveJobs
-	row := repo.DB.QueryRowContext(ctx, sqlQuery, ptrToNullInt64(tag))
-	if err := row.Scan(
-		&activeJobs.Tagnumber,
-		&activeJobs.JobQueued,
-		&activeJobs.JobName,
-		&activeJobs.JobActive,
-		&activeJobs.QueuePosition,
-	); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
-	}
-	return &activeJobs, nil
 }
 
 func SelectIsClientJobAvailable(ctx context.Context, tag *int64) (*bool, error) {

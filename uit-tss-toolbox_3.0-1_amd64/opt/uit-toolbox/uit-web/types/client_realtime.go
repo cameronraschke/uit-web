@@ -4,6 +4,15 @@ import "time"
 
 const MaxLiveImageBytes = 512 << 20 // 512 MB
 
+type JobQueueRealtimeData struct {
+	ClientUUID     string
+	Tagnumber      int64
+	SerialNumber   string
+	LastHeard      *time.Time
+	LastHeardInDB  *bool
+	LiveImageBytes []byte
+}
+
 type JobQueueTableRowView struct {
 	Tagnumber              *int64         `json:"tagnumber"`
 	SystemSerial           *string        `json:"system_serial"`

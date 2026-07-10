@@ -104,7 +104,8 @@ type AppState struct {
 	apiRequestTimeout  atomic.Pointer[time.Duration]
 	fileRequestTimeout atomic.Pointer[time.Duration]
 	webEndpoints       sync.Map
-	LiveImageMap       sync.Map
+	LiveImageMapMutex  sync.Mutex
+	LiveImageMap       map[int64]*types.JobQueueRealtimeData
 	groupPermissions   sync.Map
 	userPermissions    sync.Map
 }
@@ -435,10 +436,20 @@ func InitApp() (*AppState, error) {
 	appState.apiRequestTimeout.Store(&appConfig.APIRequestTimeout)
 	appState.fileRequestTimeout.Store(&appConfig.FileRequestTimeout)
 
-	appState.LiveImageMap.Store(111111, []byte("test"))
+	liveImageMap := make(map[int64]*types.JobQueueRealtimeData)
+	liveImageMap[111111] = &types.JobQueueRealtimeData{
+		ClientUUID:     "111111",
+		Tagnumber:      111111,
+		SerialNumber:   "111111",
+		LastHeard:      nil,
+		LastHeardInDB:  nil,
+		LiveImageBytes: []byte("test"),
+	}
+	appState.LiveImageMapMutex.Lock()
+	appState.LiveImageMap = liveImageMap
+	appState.LiveImageMapMutex.Unlock()
 
 	// Declare endpoints
-
 	if err := SetAppState(appState); err != nil {
 		return nil, errors.New("Could not set app state: " + err.Error())
 	}
@@ -828,30 +839,45 @@ func GetLiveImage(tag int64) ([]byte, error) {
 		return nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
 	}
 	if tag == 0 {
-		return nil, fmt.Errorf("tag is nil")
+		return nil, fmt.Errorf("tag is zero")
 	}
-	val, ok := as.LiveImageMap.Load(tag)
+
+	as.LiveImageMapMutex.Lock()
+	if len(as.LiveImageMap) == 0 {
+		as.LiveImageMapMutex.Unlock()
+		return nil, fmt.Errorf("live image map not initialized")
+	}
+
+	val, ok := as.LiveImageMap[tag]
 	if !ok {
+		as.LiveImageMapMutex.Unlock()
 		return nil, fmt.Errorf("%w: live image not found for tag %d", types.LiveImageMissingError, tag)
 	}
-	liveImage, ok := val.([]byte)
-	if !ok {
-		as.LiveImageMap.Delete(tag)
-		return nil, fmt.Errorf("invalid type, expecting byte array")
+	liveImage := val.LiveImageBytes
+	if liveImage == nil {
+		// still holding the lock
+		delete(as.LiveImageMap, tag)
+		as.LiveImageMapMutex.Unlock()
+		return nil, fmt.Errorf("live image bytes are nil for tag %d", tag)
 	}
 	if len(liveImage) == 0 || len(liveImage) > types.MaxLiveImageBytes {
+		// still holding the lock
+		delete(as.LiveImageMap, tag)
+		as.LiveImageMapMutex.Unlock()
 		return nil, fmt.Errorf("size of live image is out of range: %.2fMB", float64(len(liveImage))/1024/1024)
 	}
 
 	// Copy the bytes
 	imageCopy := make([]byte, len(liveImage))
 	copy(imageCopy, liveImage)
+	// Release the lock after copying the live image bytes in case live image is being updated concurrently
+	as.LiveImageMapMutex.Unlock()
 	return imageCopy, nil
 }
 
 func UpdateLiveImage(tag int64, imageBytes []byte) error {
 	if tag == 0 {
-		return fmt.Errorf("tag is nil")
+		return fmt.Errorf("tag is zero")
 	}
 	if len(imageBytes) == 0 || len(imageBytes) > types.MaxLiveImageBytes {
 		return fmt.Errorf("size of live image is out of range: %.2fMB", float64(len(imageBytes))/1024/1024)
@@ -864,6 +890,11 @@ func UpdateLiveImage(tag int64, imageBytes []byte) error {
 	// Store a copy
 	newImage := make([]byte, len(imageBytes))
 	copy(newImage, imageBytes)
-	as.LiveImageMap.Store(tag, newImage)
+	as.LiveImageMapMutex.Lock()
+	defer as.LiveImageMapMutex.Unlock()
+	as.LiveImageMap[tag] = &types.JobQueueRealtimeData{
+		Tagnumber:      tag,
+		LiveImageBytes: newImage,
+	}
 	return nil
 }

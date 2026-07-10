@@ -7,7 +7,6 @@
 	"/api/client/lookup_ids": {},
 	"/api/overview/all_client_ids": {},
 	"/api/overview/job_queue_table": {},
-	"/api/client/job_queue/queued_job": {},
 	"/api/client/job_queue/job_available": {},
 	"/api/client/location_form_data": {},
 	"/api/overview/note": {

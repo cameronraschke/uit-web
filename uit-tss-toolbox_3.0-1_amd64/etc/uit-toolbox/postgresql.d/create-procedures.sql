@@ -1,4 +1,4 @@
--- SQL user creation
+-- SQL user creation, passwords get updated later, but required for initial user creation
 CREATE OR REPLACE PROCEDURE sqlCreateUsers()
 LANGUAGE SQL
 AS $$

@@ -24,14 +24,6 @@ type AllClientStatuses struct {
 	ClientCount     *int64  `json:"client_count"`
 }
 
-type ActiveJobs struct {
-	Tagnumber     int64  `json:"tagnumber"`
-	JobQueued     *bool  `json:"job_queued"`
-	JobName       string `json:"job_name"`
-	JobActive     *bool  `json:"job_active"`
-	QueuePosition int64  `json:"job_queue_position"`
-}
-
 type ClientBatteryHealth struct {
 	Time                time.Time `json:"time"`
 	Tagnumber           int64     `json:"tagnumber"`

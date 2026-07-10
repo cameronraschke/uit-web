@@ -75,7 +75,6 @@ func StartWebServer(ctx context.Context) error {
 	// Reports
 
 	// Client-specific
-	httpsRouter.Handle("GET /api/client/job_queue/queued_job", httpsFullAPIChain.ThenFunc(endpoints.GetClientQueuedJobs))
 	httpsRouter.Handle("GET /api/client/job_queue/job_available", httpsFullAPIChain.ThenFunc(endpoints.IsClientJobAvailable))
 	httpsRouter.Handle("GET /api/client/hardware", httpsFullAPIChain.ThenFunc(endpoints.FetchClientHardwareData))
 	httpsRouter.Handle("GET /api/checkout", httpsFullAPIChain.ThenFunc(endpoints.FetchCheckoutData))

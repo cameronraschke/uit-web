@@ -1906,3 +1906,4 @@ func StoreBulkUpdateData(w http.ResponseWriter, req *http.Request) {
 		},
 	})
 }
+

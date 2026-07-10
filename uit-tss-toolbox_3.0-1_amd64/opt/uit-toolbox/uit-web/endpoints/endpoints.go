@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"log/slog"
 	mathrand "math/rand"
 	"net/http"
 	"os"
@@ -35,9 +36,6 @@ type ServerTime struct {
 }
 
 func ValidateAuthFormInputSHA256(username string, password string) error {
-	username = strings.TrimSpace(username)
-	password = strings.TrimSpace(password)
-
 	if err := types.IsSHA256String(username); err != nil {
 		return fmt.Errorf("username has invalid SHA256 hash: %w", err)
 	}
@@ -95,23 +93,23 @@ func CheckAuthCredentials(ctx context.Context, username string, password string,
 
 func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "FileServerHandler"))
 	resolvedPath, err := middleware.GetRequestFileFromContext(ctx)
 	if err != nil {
-		log.Warn("Error retrieving requested file from context (FileServerHandler): " + err.Error())
+		log.Warn("error retrieving requested file from context: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 
 	// Previous path and file validation done in middleware
 	if ctx.Err() != nil {
-		log.Warn("Context error (FileServerHandler): " + ctx.Err().Error())
+		log.Warn("context error before opening file '" + resolvedPath + "': " + ctx.Err().Error())
 		middleware.WriteJsonError(w, http.StatusRequestTimeout)
 		return
 	}
 	requestedFile, err := os.Open(resolvedPath)
 	if err != nil {
-		log.Warn("Error opening file (FileServerHandler): '" + resolvedPath + "': " + err.Error())
+		log.Warn("error opening file '" + resolvedPath + "': " + err.Error())
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
@@ -119,7 +117,7 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 
 	metadata, err := requestedFile.Stat()
 	if err != nil {
-		log.Error("Error retrieving file metadata (FileServerHandler): '" + resolvedPath + "': " + err.Error())
+		log.Error("error retrieving file metadata for '" + resolvedPath + "': " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -168,24 +166,18 @@ func FileServerHandler(w http.ResponseWriter, req *http.Request) {
 	// w.Header().Set("Cache-Control", "private, max-age=300")
 
 	if ctx.Err() != nil {
-		log.Warn("Context error while serving file (FileServerHandler): '" + resolvedPath + "': " + ctx.Err().Error())
+		log.Warn("context error while serving file '" + resolvedPath + "': " + ctx.Err().Error())
 		return
 	}
 
 	// Serve the file
 	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), requestedFile)
-	log.Info("Served file '" + resolvedPath + "' (" + fmt.Sprintf("%.2f", float64(metadata.Size())/1024) + " KB)")
+	log.Info("served file '" + resolvedPath + "' (" + fmt.Sprintf("%.2f", float64(metadata.Size())/1024) + " KiB)")
 }
 
 func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	requestIP, err := middleware.GetRequestIPFromContext(ctx)
-	if err != nil {
-		log.Warn("Error retrieving IP address stored in context for WebServerHandler: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "WebServerHandler"))
 	requestedPath, err := middleware.GetRequestPathFromContext(ctx)
 	if err != nil {
 		log.Warn("Error retrieving URL stored in context for WebServerHandler: " + err.Error())
@@ -200,30 +192,30 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Debug("Web request from " + requestIP.String() + " for " + requestedPath)
+	// log.Debug("Web request from " + requestIP.String() + " for " + requestedPath)
 
 	// Get endpoint config
 	endpointConfig, err := config.GetWebEndpointConfig(requestedPath)
 	if err != nil {
-		log.Warn("Cannot get endpoint config for endpoint " + requestedPath + ": " + err.Error() + "")
+		log.Warn("cannot get endpoint config for endpoint '" + requestedPath + "': " + err.Error() + "")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	filePath, err := config.GetWebEndpointFilePath(endpointConfig)
 	if err != nil {
-		log.Warn("Cannot get file path for endpoint " + requestedPath + ": " + err.Error() + "")
+		log.Warn("cannot get file path for endpoint '" + requestedPath + "': " + err.Error() + "")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
 	// Open the file
 	if ctx.Err() != nil {
-		log.Warn("Context error (WebServerHandler): " + ctx.Err().Error())
+		log.Warn("context error before opening file '" + filePath + "' for endpoint '" + requestedPath + "': " + ctx.Err().Error())
 		middleware.WriteJsonError(w, http.StatusRequestTimeout)
 		return
 	}
 	file, err := os.Open(filePath)
 	if err != nil {
-		log.Warn("Cannot open file: " + filePath + ": " + err.Error() + "")
+		log.Warn("cannot open file: '" + filePath + "': " + err.Error() + "")
 		middleware.WriteJsonError(w, http.StatusNotFound)
 		return
 	}
@@ -238,7 +230,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 
 	metadata, err := file.Stat()
 	if err != nil {
-		log.Warn("Cannot stat file: " + filePath + ": " + err.Error() + "")
+		log.Warn("cannot stat file: '" + filePath + "': " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -246,7 +238,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	// Set headers
 	contentType, err := config.GetWebEndpointContentType(endpointConfig)
 	if err != nil {
-		log.Warn("Cannot get content type for endpoint " + requestedPath + ": " + err.Error() + "")
+		log.Warn("cannot get content type for endpoint '" + requestedPath + "': " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -257,14 +249,14 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 
 	if ctx.Err() != nil {
-		log.Warn("Context cancelled while serving path: " + requestedPath + ": " + ctx.Err().Error())
+		log.Warn("context error while serving '" + requestedPath + "': " + ctx.Err().Error())
 		return
 	}
 
 	if filepath.Ext(filePath) == ".html" {
 		parsedHTMLTemplate, err := template.ParseFiles(filePath)
 		if err != nil {
-			log.Warn("Cannot parse template file (" + filePath + "): " + err.Error())
+			log.Warn("error parsing template file '" + filePath + "': " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -279,7 +271,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			if slices.Contains(endpointConfig.Requires, "webmaster_contact") {
 				webmasterName, webmasterEmail, err := config.GetWebmasterContact()
 				if err != nil {
-					log.Error("Cannot get webmaster contact info: " + err.Error() + "")
+					log.Error("error retrieving webmaster contact info: " + err.Error() + "")
 					middleware.WriteJsonError(w, http.StatusInternalServerError)
 					return
 				}
@@ -288,15 +280,10 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 			}
 
 			if slices.Contains(endpointConfig.Requires, "client_tag") {
-				urlTag := req.URL.Query().Get("tagnumber")
-				tagnumber, err := types.ConvertAndVerifyTagnumber(urlTag)
+				tagQueryValue := req.URL.Query().Get("tagnumber")
+				tagnumber, err := types.ConvertAndVerifyTagnumber(tagQueryValue)
 				if err != nil {
-					log.Warn("Invalid tagnumber in URL: " + urlTag + " (" + err.Error() + ")")
-					middleware.WriteJsonError(w, http.StatusBadRequest)
-					return
-				}
-				if err := types.IsTagnumberInt64Valid(tagnumber); err != nil {
-					log.Warn("Invalid tagnumber in URL: " + urlTag + " (" + err.Error() + ")")
+					log.Warn("invalid tagnumber in URL query: '" + tagQueryValue + "', " + err.Error())
 					middleware.WriteJsonError(w, http.StatusBadRequest)
 					return
 				}
@@ -306,7 +293,7 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 
 		// Execute the template
 		if err := parsedHTMLTemplate.Execute(w, httpTemplateResponseData); err != nil {
-			log.Error("Error executing template for " + filePath + ": " + err.Error())
+			log.Error("error executing template file '" + filePath + "': " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
@@ -318,14 +305,12 @@ func WebServerHandler(w http.ResponseWriter, req *http.Request) {
 
 	// Serve the file
 	http.ServeContent(w, req, metadata.Name(), metadata.ModTime(), file)
-
-	log.Debug("Served file: " + requestedPath + " to " + requestIP.String())
 }
 
 func RejectRequest(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx)
 
-	log.Warn("Access denied to forbidden endpoint")
+	log.Warn("access denied to forbidden endpoint")
 	middleware.WriteJsonError(w, http.StatusForbidden)
 }

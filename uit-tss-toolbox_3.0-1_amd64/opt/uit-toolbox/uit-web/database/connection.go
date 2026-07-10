@@ -36,8 +36,8 @@ func NewDBConnection(dbConnection *types.DBConnection) (*sql.DB, error) {
 	}
 
 	// Set defaults for dbConn connection
-	dbConn.SetMaxOpenConns(50)
-	dbConn.SetMaxIdleConns(25)
+	dbConn.SetMaxOpenConns(30)
+	dbConn.SetMaxIdleConns(10)
 	dbConn.SetConnMaxIdleTime(1 * time.Hour)
 	dbConn.SetConnMaxLifetime(24 * time.Hour)
 
@@ -73,9 +73,9 @@ func NewPGXPool(dbConnection *types.DBConnection) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("error parsing pgx pool config: %w", err)
 	}
 
-	poolConfig.MaxConns = 50
-	poolConfig.MinConns = 0
-	poolConfig.MaxConnIdleTime = 1 * time.Hour
+	poolConfig.MaxConns = 30
+	poolConfig.MinConns = 10
+	poolConfig.MaxConnIdleTime = 5 * time.Minute
 	poolConfig.MaxConnLifetime = 24 * time.Hour
 	poolConfig.HealthCheckPeriod = 1 * time.Minute
 

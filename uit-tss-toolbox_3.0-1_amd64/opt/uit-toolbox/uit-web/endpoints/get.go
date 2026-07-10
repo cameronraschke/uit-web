@@ -118,33 +118,6 @@ func GetAllClientIDs(w http.ResponseWriter, req *http.Request) {
 // 	middleware.WriteJson(w, http.StatusOK, biosData)
 // }
 
-func GetClientQueuedJobs(w http.ResponseWriter, req *http.Request) {
-	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
-	if err != nil {
-		log.Warn("Invalid tagnumber provided in GetClientQueuedJobs: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusBadRequest)
-		return
-	}
-
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository in GetClientQueuedJobs: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	activeJobs, err := db.GetActiveJobs(ctx, tagnumber)
-	if err != nil {
-		log.Warn("Query error in GetClientQueuedJobs: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	middleware.WriteJson(w, http.StatusOK, activeJobs)
-}
-
 func IsClientJobAvailable(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "IsClientJobAvailable"))
 	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
