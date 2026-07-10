@@ -1477,7 +1477,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		current_battery_health.battery_health_pcnt AS "battery_health_pcnt",
 		ROUND(current_battery_health.battery_health_pcnt - avg_battery_health.avg_battery_health_pcnt, 2) AS "battery_health_deviation",
 		NULL AS "plugged_in",
-		live_os_data.watts_now AS "power_usage"
+		job_queue.watts_now AS "power_usage"
 	FROM top_clients
 	INNER JOIN ids ON ids.uuid = top_clients.uuid
 	LEFT JOIN job_queue ON ids.uuid = job_queue.client_uuid
