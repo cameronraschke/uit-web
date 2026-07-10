@@ -8,8 +8,10 @@ package database
 // 5. Return any other errors
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"strings"
@@ -2546,4 +2548,98 @@ func SelectDiskImageByModel(ctx context.Context, r *types.DiskImageNameRequest) 
 	}
 
 	return &diskImage, nil
+}
+
+func ConvertClientInfoToCSV(ctx context.Context, tags []int64) (*bytes.Buffer, error) {
+	if len(tags) == 0 {
+		return nil, fmt.Errorf("no tags provided for CSV conversion")
+	}
+
+	var buf bytes.Buffer
+	var dbQueryData []types.ClientInfoResponse
+	buf.Grow(len(dbQueryData) * 200) // Grow by 200 bytes before another allocation
+	for _, tag := range tags {
+		if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+			return nil, fmt.Errorf("%w: %w", types.InvalidFieldError, err)
+		}
+
+		clientInfo, err := SelectClientInfo(ctx, tag)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+		}
+		dbQueryData = append(dbQueryData, *clientInfo)
+	}
+
+	csvWriter := csv.NewWriter(&buf)
+
+	var csvHeader = []string{
+		"Tag",
+		"Serial No.",
+		"Manufacturer",
+		"Model",
+		"Device Type",
+		"Location",
+		"Building",
+		"Room",
+		"Department",
+		"Property Owner",
+		"Disk Removed",
+		"OS Name",
+		"OS Version",
+		"OU Name",
+		"BIOS Version",
+		"TPM Version",
+		"Disk Encrypted",
+		"Secure Boot",
+		"Status",
+		"Broken",
+		"Note",
+		"Last Hardware Check",
+	}
+
+	if err := csvWriter.Write(csvHeader); err != nil {
+		return nil, fmt.Errorf("Error writing CSV header in ConvertInventoryTableDataToCSV: %w", err)
+	}
+	csvWriter.Flush()
+	if err := csvWriter.Error(); err != nil {
+		return nil, fmt.Errorf("Error flushing CSV writer after writing header in ConvertInventoryTableDataToCSV: %w", err)
+	}
+
+	for _, row := range dbQueryData {
+		record := []string{
+			ptrIntToString(row.Tagnumber),
+			ptrStringToString(row.SystemSerial),
+			ptrStringToString(row.SystemManufacturer),
+			ptrStringToString(row.SystemModel),
+			ptrStringToString(row.DeviceType),
+			ptrStringToString(row.Location),
+			ptrStringToString(row.Building),
+			ptrStringToString(row.Room),
+			ptrStringToString(row.DepartmentName),
+			ptrStringToString(row.PropertyCustodian),
+			ptrBoolToString(row.DiskRemoved),
+			ptrStringToString(row.OSName),
+			ptrStringToString(row.OSVersion),
+			ptrStringToString(row.OUName),
+			ptrStringToString(row.BIOSVersion),
+			ptrStringToString(row.TPMVersion),
+			ptrBoolToString(row.IsDiskEncrypted),
+			ptrBoolToString(row.SecureBootEnabled),
+			ptrStringToString(row.ClientStatus),
+			ptrBoolToString(row.IsBroken),
+			ptrStringToString(row.ClientNote),
+			ptrTimeToString(row.LastHardwareCheck),
+		}
+		if err := csvWriter.Write(record); err != nil {
+			return nil, fmt.Errorf("Error writing CSV row in ConvertInventoryTableDataToCSV: %w", err)
+		}
+	}
+
+	// Flush buffered data to the writer
+	csvWriter.Flush()
+	if err := csvWriter.Error(); err != nil {
+		return nil, fmt.Errorf("Error flushing CSV writer in ConvertInventoryTableDataToCSV: %w", err)
+	}
+
+	return &buf, nil
 }

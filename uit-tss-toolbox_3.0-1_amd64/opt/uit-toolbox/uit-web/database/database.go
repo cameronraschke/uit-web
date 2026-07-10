@@ -1,11 +1,9 @@
 package database
 
 import (
-	"bytes"
 	"context"
 	"crypto"
 	"database/sql"
-	"encoding/csv"
 	"encoding/hex"
 	"fmt"
 	"strconv"
@@ -220,75 +218,4 @@ func CreateAdminUser() error {
 		return fmt.Errorf("failed to create admin user: %w", err)
 	}
 	return nil
-}
-
-func ConvertInventoryTableDataToCSV(ctx context.Context, dbQueryData []types.InventoryTableRow) (*bytes.Buffer, error) {
-	if len(dbQueryData) == 0 {
-		return nil, fmt.Errorf("dbQueryData is nil in ConvertInventoryTableDataToCSV")
-	}
-
-	if ctx.Err() != nil {
-		return nil, fmt.Errorf("Context error in ConvertInventoryTableDataToCSV: %w", ctx.Err())
-	}
-
-	var buf bytes.Buffer
-	buf.Grow(len(dbQueryData) * 200) // Grow by 200 bytes before another allocation
-	csvWriter := csv.NewWriter(&buf)
-
-	var csvHeader = []string{
-		"Tagnumber",
-		"System Serial",
-		"Location",
-		"Building",
-		"Room",
-		"Department",
-		"Device Type",
-		"Manufacturer",
-		"Model",
-		"AD Domain",
-		"OS Name",
-		"Status",
-		"Broken",
-		"Note",
-		"Last Updated",
-	}
-
-	if err := csvWriter.Write(csvHeader); err != nil {
-		return nil, fmt.Errorf("Error writing CSV header in ConvertInventoryTableDataToCSV: %w", err)
-	}
-	csvWriter.Flush()
-	if err := csvWriter.Error(); err != nil {
-		return nil, fmt.Errorf("Error flushing CSV writer after writing header in ConvertInventoryTableDataToCSV: %w", err)
-	}
-
-	for _, row := range dbQueryData {
-		record := []string{
-			ptrIntToString(row.Tagnumber),
-			ptrStringToString(row.SystemSerial),
-			ptrStringToString(row.LocationFormatted),
-			ptrStringToString(row.Building),
-			ptrStringToString(row.Room),
-			ptrStringToString(row.DepartmentFormatted),
-			ptrStringToString(row.DeviceTypeFormatted),
-			ptrStringToString(row.SystemManufacturer),
-			ptrStringToString(row.SystemModel),
-			ptrStringToString(row.DomainFormatted),
-			ptrStringToString(row.OsName),
-			ptrStringToString(row.Status),
-			ptrBoolToString(row.IsBroken),
-			ptrStringToString(row.Note),
-			ptrTimeToString(row.LastUpdated),
-		}
-		if err := csvWriter.Write(record); err != nil {
-			return nil, fmt.Errorf("Error writing CSV row in ConvertInventoryTableDataToCSV: %w", err)
-		}
-	}
-
-	// Flush buffered data to the writer
-	csvWriter.Flush()
-	if err := csvWriter.Error(); err != nil {
-		return nil, fmt.Errorf("Error flushing CSV writer in ConvertInventoryTableDataToCSV: %w", err)
-	}
-
-	return &buf, nil
 }

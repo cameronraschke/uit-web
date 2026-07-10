@@ -753,7 +753,13 @@ func GetInventoryTableData(w http.ResponseWriter, req *http.Request) {
 	}
 	if requestQueries.Get("csv") == "true" {
 		log.Debug("CSV file requested in GetInventoryTableData")
-		csvBytes, err := database.ConvertInventoryTableDataToCSV(ctx, inventoryTableData)
+		tagArr := make([]int64, 0, len(inventoryTableData))
+		for _, row := range inventoryTableData {
+			if row.Tagnumber != nil {
+				tagArr = append(tagArr, *row.Tagnumber)
+			}
+		}
+		csvBytes, err := database.ConvertClientInfoToCSV(ctx, tagArr)
 		if err != nil {
 			log.Warn("Error converting inventory table data to CSV in GetInventoryTableData: " + err.Error())
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
