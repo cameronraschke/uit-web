@@ -1481,6 +1481,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	INNER JOIN ids ON ids.uuid = top_clients.uuid
 	LEFT JOIN job_queue ON ids.uuid = job_queue.client_uuid
 	LEFT JOIN live_os_data ON ids.uuid = live_os_data.client_uuid
+	LEFT JOIN live_os_data ON ids.uuid = live_os_data.client_uuid
 	LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
 	LEFT JOIN locations ON ids.uuid = locations.client_uuid
 	LEFT JOIN LATERAL (
