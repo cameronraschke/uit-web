@@ -139,6 +139,12 @@ func toNullDuration(d time.Duration) sql.NullInt64 {
 	return sql.NullInt64{Int64: int64(d), Valid: true}
 }
 
+func ptrSliceToString(slice []string) string {
+	if len(slice) == 0 {
+		return ""
+	}
+	return strings.Join(slice, ", ")
+}
 func ptrIntToString(p *int64) string {
 	if p == nil {
 		return ""
