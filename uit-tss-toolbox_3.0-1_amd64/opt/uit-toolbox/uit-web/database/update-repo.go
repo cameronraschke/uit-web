@@ -1717,11 +1717,9 @@ func UpdateClientHardwareData(ctx context.Context, hardwareData *types.ClientHar
 			CURRENT_TIMESTAMP,
 			$1,
 			$2,
-			$3,
+			$3::TEXT[],
 			$4,
-			$5::TEXT[],
-			$6,
-			$7
+			$5
 		) ON CONFLICT (transaction_uuid) DO UPDATE SET
 			time = CURRENT_TIMESTAMP,
 			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_hardware_data.client_uuid),
