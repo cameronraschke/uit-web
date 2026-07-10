@@ -2604,7 +2604,7 @@ func ConvertClientInfoToCSV(ctx context.Context, tags []int64) (*bytes.Buffer, e
 		"Memory Serial",
 		"Disk Model",
 		"Disk Serial",
-		"Disk Capacity",
+		"Disk Capacity (KB)",
 		"Disk Encrypted",
 		"Status",
 		"Broken",
