@@ -1241,24 +1241,26 @@ func (updateRepo *UpdateRepo) UpdateClientSystemUptime(ctx context.Context, tag 
 		}
 	}()
 
+	clientUUID, err := lockClientRowByTagnumber(ctx, tx, tag)
+	if err != nil {
+		return fmt.Errorf("error locking client row: %w", err)
+	}
+
 	const sqlCode = `
 		INSERT INTO 
 			live_os_data (
 				client_uuid,
-				tagnumber, 
 				system_uptime
 			) VALUES (
-				(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
 				$1, 
 			 	$2
 			)
 		ON CONFLICT (client_uuid) DO UPDATE SET 
-		tagnumber = EXCLUDED.tagnumber,
 		system_uptime = COALESCE(EXCLUDED.system_uptime, live_os_data.system_uptime)
 	;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		toNullInt64(tag),
+		toNullUUID(clientUUID),
 		toNullInt64(systemUptime),
 	)
 	if err != nil {
