@@ -1316,8 +1316,8 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	WITH top_clients AS MATERIALIZED (
     SELECT ids.uuid
     FROM ids
-    LEFT JOIN job_queue ON ids.uuid = job_queue.client_uuid
-    ORDER BY job_queue.last_heard DESC NULLS LAST
+    LEFT JOIN live_os_data ON ids.uuid = live_os_data.client_uuid
+    ORDER BY live_os_data.last_heard DESC NULLS LAST
     LIMIT 50
 	),
 	avg_battery_health AS (
@@ -1371,8 +1371,8 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		FROM job_queue
 		WHERE
 			(job_queue.job_queued = TRUE OR job_queue.job_name IS NOT NULL)
-			AND job_queue.last_heard IS NOT NULL
-			AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.last_heard)) < 10
+			AND live_os_data.last_heard IS NOT NULL
+			AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - live_os_data.last_heard)) < 10
 	),
 	job_queue_positions AS (
 		SELECT
@@ -1405,10 +1405,10 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		FALSE AS "temp_warning",
 		(CASE WHEN static_client_statuses.status_name = 'checked_out' THEN TRUE ELSE FALSE END) AS "checkout_bool",
 		TRUE AS "kernel_updated",
-		job_queue.last_heard,
-		job_queue.system_uptime,
-		job_queue.client_app_uptime,
-		(CASE WHEN EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - job_queue.last_heard)) < 10 THEN TRUE ELSE FALSE END) AS "online",
+		live_os_data.last_heard,
+		live_os_data.system_uptime,
+		live_os_data.client_app_uptime,
+		(CASE WHEN EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - live_os_data.last_heard)) < 10 THEN TRUE ELSE FALSE END) AS "online",
 		job_queue.job_active,
 		job_queue.job_queued,
 		job_queue.job_queued_at,
@@ -1450,14 +1450,14 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			ELSE FALSE
 		END) AS "bios_updated",
 		latest_firmware_data.bios_version,
-		job_queue.cpu_usage,
+		live_os_data.cpu_usage,
 		job_queue.cpu_mhz,
 		job_queue.cpu_temp,
 		(CASE 
 			WHEN job_queue.cpu_temp > 90 THEN TRUE
 			ELSE FALSE
 		END) AS "cpu_temp_warning",
-		job_queue.memory_usage_kb,
+		live_os_data.memory_usage_kb,
 		latest_historical_hardware_data.memory_capacity_kb,
 		0::integer AS "disk_usage",
 		job_queue.disk_temp,
@@ -1469,17 +1469,18 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			ELSE FALSE
 		END) AS "disk_temp_warning",
 		'UP' AS "network_link_status",
-		job_queue.network_speed AS "network_link_speed",
+		live_os_data.network_speed AS "network_link_speed",
 		0::integer AS "network_usage",
 		job_queue.battery_charge_pcnt,
 		job_queue.battery_status,
 		current_battery_health.battery_health_pcnt AS "battery_health_pcnt",
 		ROUND(current_battery_health.battery_health_pcnt - avg_battery_health.avg_battery_health_pcnt, 2) AS "battery_health_deviation",
 		NULL AS "plugged_in",
-		job_queue.watts_now AS "power_usage"
+		live_os_data.watts_now AS "power_usage"
 	FROM top_clients
 	INNER JOIN ids ON ids.uuid = top_clients.uuid
 	LEFT JOIN job_queue ON ids.uuid = job_queue.client_uuid
+	LEFT JOIN live_os_data ON ids.uuid = live_os_data.client_uuid
 	LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
 	LEFT JOIN locations ON ids.uuid = locations.client_uuid
 	LEFT JOIN LATERAL (
@@ -1548,6 +1549,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	) latest_completed_job ON TRUE
 	LEFT JOIN os_info ON ids.uuid = os_info.client_uuid
 	LEFT JOIN static_job_names ON job_queue.job_name = static_job_names.job_name
+	LEFT JOIN live_os_data ON ids.uuid = live_os_data.client_uuid
 	LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
 	LEFT JOIN static_disk_stats ON latest_historical_disk_data.disk_model = static_disk_stats.disk_model
 	LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
@@ -1557,7 +1559,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN static_client_statuses ON static_client_statuses.status_name = locations.client_status
 	LEFT JOIN static_department_info ON static_department_info.department_name = locations.department_name
 	ORDER BY
-		job_queue.last_heard DESC NULLS LAST
+		live_os_data.last_heard DESC NULLS LAST
 	;`
 
 	rows, err := pgxPool.Query(ctx, sqlQuery)
@@ -1912,22 +1914,28 @@ func SelectJobQueuePosition(ctx context.Context, tag int64) (int64, error) {
 		return queuePositionMaxValue, fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
+	clientUUID, err := GetClientUUIDByTag(ctx, pgxPool, tag)
+	if err != nil {
+		return queuePositionMaxValue, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+
 	const sqlQuery = `
 	WITH job_queue_position AS (
 		SELECT 
-			tagnumber, 
-			ROW_NUMBER() OVER (ORDER BY job_queued_at ASC NULLS LAST) AS "position",
-			job_name
+			job_queue.client_uuid, 
+			ROW_NUMBER() OVER (ORDER BY job_queue.job_queued_at ASC NULLS LAST) AS "position",
+			job_queue.job_name
 		FROM 
 			job_queue 
+		LEFT JOIN live_os_data ON job_queue.client_uuid = live_os_data.client_uuid
 		WHERE 
-			(job_name IS NOT NULL OR job_queued = TRUE)
-			AND last_heard IS NOT NULL
-			AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - last_heard)) < 20
+			(job_queue.job_name IS NOT NULL OR job_queue.job_queued = TRUE)
+			AND live_os_data.last_heard IS NOT NULL
+			AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - live_os_data.last_heard)) < 20
 	)
 	SELECT job_queue_position FROM (
 		SELECT
-			job_queue.tagnumber,
+			job_queue.client_uuid,
 			DENSE_RANK() OVER (ORDER BY
 				(CASE
 					WHEN job_queue.job_name IN ('hpEraseAndClone', 'hpCloneOnly', 'generic-erase+clone', 'generic-clone') THEN COALESCE(job_queue_position.position, 0)
@@ -1936,13 +1944,13 @@ func SelectJobQueuePosition(ctx context.Context, tag int64) (int64, error) {
 			FROM 
 				job_queue
 			LEFT JOIN 
-				job_queue_position ON job_queue.tagnumber = job_queue_position.tagnumber
+				job_queue_position ON job_queue.client_uuid = job_queue_position.client_uuid
 	) t1
-	WHERE t1.tagnumber = $1;
+	WHERE t1.client_uuid = $1;
 	;`
 
 	var queuePosition sql.NullInt64
-	row := pgxPool.QueryRow(ctx, sqlQuery, tag)
+	row := pgxPool.QueryRow(ctx, sqlQuery, clientUUID)
 	if err := row.Scan(
 		&queuePosition,
 	); err != nil {

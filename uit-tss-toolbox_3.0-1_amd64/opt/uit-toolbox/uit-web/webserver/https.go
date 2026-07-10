@@ -112,7 +112,7 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("POST /api/client/cpu/usage", httpsFullAPIChain.ThenFunc(endpoints.SetClientCPUUsage))
 	httpsRouter.Handle("POST /api/client/cpu/mhz", httpsFullAPIChain.ThenFunc(endpoints.SetClientCPUMHz))
 	httpsRouter.Handle("POST /api/client/cpu/temp", httpsFullAPIChain.ThenFunc(endpoints.SetClientCPUTemperature))
-	httpsRouter.Handle("POST /api/client/network/usage", httpsFullAPIChain.ThenFunc(endpoints.SetClientNetworkUsage))
+	httpsRouter.Handle("POST /api/client/os/network/usage", httpsFullAPIChain.ThenFunc(endpoints.SetClientNetworkUsage))
 
 	// Inventory
 	httpsRouter.Handle("GET /api/client/lookup_ids", httpsFullAPIChain.ThenFunc(endpoints.GetClientIDs))

@@ -771,14 +771,16 @@ func SetAllOnlineClientJobs(ctx context.Context, clientJob string) (err error) {
 	}()
 
 	const sqlCode = `
-		UPDATE 
-			job_queue 
-		SET 
-			job_name = $1 
-		WHERE 
-			CURRENT_TIMESTAMP - last_heard < INTERVAL '10 SECONDS' 
-			AND job_active = FALSE 
-			AND job_queued = FALSE
+		UPDATE job_queue
+		SET job_name = $1
+		WHERE job_queue.job_active = FALSE
+ 	 		AND job_queue.job_queued = FALSE
+  		AND EXISTS (
+    		SELECT 1 
+				FROM live_os_data
+    		WHERE live_os_data.client_uuid = job_queue.client_uuid
+      		AND CURRENT_TIMESTAMP - live_os_data.last_heard < INTERVAL '10 SECONDS'
+  		)
 	;`
 
 	_, err = tx.ExecContext(ctx, sqlCode,
@@ -869,26 +871,28 @@ func UpsertClientMemoryUsageKB(ctx context.Context, memInfo types.MemoryDataUpda
 		}
 	}()
 
+	clientUUID, err := lockClientRowByTagnumber(ctx, tx, memInfo.Tagnumber)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+
 	const sqlCode = `
 		INSERT INTO 
-			job_queue (
+			live_os_data (
 				client_uuid, 
-				tagnumber,
 				memory_usage_kb
 			) 
 		VALUES 
 			(
-				(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
 				$1, 
 				$2
 			)
 		ON CONFLICT (client_uuid) DO UPDATE SET 
-			tagnumber = EXCLUDED.tagnumber,
 			memory_usage_kb = EXCLUDED.memory_usage_kb
 	;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		toNullInt64(memInfo.Tagnumber),
+		toNullUUID(clientUUID),
 		toNullInt64(memInfo.TotalUsageKB),
 	)
 	if err != nil {
@@ -1000,26 +1004,28 @@ func UpsertClientCPUUsage(ctx context.Context, cpuData *types.CPUDataUpdateDTO) 
 		}
 	}()
 
+	clientUUID, err := lockClientRowByTagnumber(ctx, tx, cpuData.Tagnumber)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+
 	const sqlCode = `
 		INSERT INTO 
-			job_queue (
+			live_os_data (
 				client_uuid,
-				tagnumber, 
 				cpu_usage
 			) 
 		VALUES (
-			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
 			$1, 
 			$2
 		)
 		ON CONFLICT (client_uuid) DO UPDATE SET 
-			tagnumber = EXCLUDED.tagnumber,
 			cpu_usage = EXCLUDED.cpu_usage
 	;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		toNullInt64(cpuData.Tagnumber),
-		cpuData.UsagePercent,
+		toNullUUID(clientUUID),
+		cpuData.UsagePercent, // Usage can be at 0%, so don't set to null if it's 0
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
@@ -1123,19 +1129,27 @@ func (updateRepo *UpdateRepo) UpdateClientNetworkUsage(ctx context.Context, netw
 			err = tx.Commit()
 		}
 	}()
-	const sqlCode = `INSERT INTO job_queue (client_uuid, tagnumber, network_usage, link_speed) VALUES (
-			(SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1),
+
+	clientUUID, err := lockClientRowByTagnumber(ctx, tx, networkData.Tagnumber)
+	if err != nil {
+		return fmt.Errorf("error locking client row: %w", err)
+	}
+	const sqlCode = `
+		INSERT INTO live_os_data (
+			client_uuid, 
+			network_usage, 
+			link_speed
+		) VALUES (
 			$1, 
 			$2,
 			$3
 		)
 		ON CONFLICT (client_uuid) DO UPDATE SET 
-			tagnumber = EXCLUDED.tagnumber,
 			network_usage = EXCLUDED.network_usage,
 			link_speed = EXCLUDED.link_speed;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		toNullInt64(networkData.Tagnumber),
+		toNullUUID(clientUUID),
 		ptrToNullInt64(networkData.NetworkUsage),
 		ptrToNullInt64(networkData.LinkSpeed),
 	)
@@ -1229,7 +1243,7 @@ func (updateRepo *UpdateRepo) UpdateClientSystemUptime(ctx context.Context, tag 
 
 	const sqlCode = `
 		INSERT INTO 
-			job_queue (
+			live_os_data (
 				client_uuid,
 				tagnumber, 
 				system_uptime
@@ -1240,7 +1254,7 @@ func (updateRepo *UpdateRepo) UpdateClientSystemUptime(ctx context.Context, tag 
 			)
 		ON CONFLICT (client_uuid) DO UPDATE SET 
 		tagnumber = EXCLUDED.tagnumber,
-		system_uptime = COALESCE(EXCLUDED.system_uptime, job_queue.system_uptime)
+		system_uptime = COALESCE(EXCLUDED.system_uptime, live_os_data.system_uptime)
 	;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
@@ -1281,7 +1295,7 @@ func (updateRepo *UpdateRepo) UpdateClientAppUptime(ctx context.Context, tag int
 
 	const sqlCode = `
 		INSERT INTO 
-			job_queue (
+			live_os_data (
 				client_uuid,
 				tagnumber, 
 				client_app_uptime
@@ -1292,7 +1306,7 @@ func (updateRepo *UpdateRepo) UpdateClientAppUptime(ctx context.Context, tag int
 			)
 		ON CONFLICT (client_uuid) DO UPDATE SET 
 		tagnumber = EXCLUDED.tagnumber,
-		client_app_uptime = COALESCE(EXCLUDED.client_app_uptime, job_queue.client_app_uptime)
+		client_app_uptime = COALESCE(EXCLUDED.client_app_uptime, live_os_data.client_app_uptime)
 	;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
@@ -1859,15 +1873,20 @@ func (updateRepo *UpdateRepo) UpdateClientLastHeard(ctx context.Context, tag *in
 		}
 	}()
 
+	clientUUID, err := lockClientRowByTagnumber(ctx, tx, *tag)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
+
 	const sqlCode = `
 		UPDATE 
-			job_queue 
+			live_os_data 
 		SET 
-			last_heard = COALESCE($2, CURRENT_TIMESTAMP) 
-		WHERE client_uuid = (SELECT uuid FROM ids WHERE tagnumber = $1 ORDER BY time DESC LIMIT 1);`
+			last_heard = COALESCE($2, last_heard) 
+		WHERE client_uuid = $1;`
 	var sqlResult sql.Result
 	sqlResult, err = tx.ExecContext(ctx, sqlCode,
-		ptrToNullInt64(tag),
+		toNullUUID(clientUUID),
 		ptrToNullTime(lastHeard),
 	)
 	if err != nil {

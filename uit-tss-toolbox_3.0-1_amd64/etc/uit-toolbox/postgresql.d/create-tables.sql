@@ -354,6 +354,47 @@ CREATE TABLE IF NOT EXISTS client_health (
 		ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS live_os_data (
+	client_uuid UUID PRIMARY KEY,
+	system_uptime INT DEFAULT NULL,
+	client_app_uptime INT DEFAULT NULL,
+	last_heard TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+	kernel_updated BOOLEAN DEFAULT NULL,
+	memory_usage_kb BIGINT DEFAULT NULL,
+	cpu_usage DECIMAL(6, 2) DEFAULT NULL,
+	network_usage INT DEFAULT NULL,
+	link_speed INT DEFAULT NULL,
+
+	CONSTRAINT live_os_data_client_uuid_fkey
+		FOREIGN KEY (client_uuid)
+			REFERENCES ids(uuid)
+		ON UPDATE CASCADE
+		ON DELETE SET NULL
+);
+
+-- INSERT INTO live_os_data (
+-- 	client_uuid,
+-- 	system_uptime,
+-- 	client_app_uptime,
+-- 	last_heard,
+-- 	kernel_updated,
+-- 	memory_usage_kb,
+-- 	cpu_usage,
+-- 	network_usage,
+-- 	link_speed
+-- ) SELECT 
+-- 	client_uuid,
+-- 	system_uptime,
+-- 	client_app_uptime,
+-- 	last_heard,
+-- 	kernel_updated,
+-- 	memory_usage_kb,
+-- 	cpu_usage,
+-- 	network_usage,
+-- 	link_speed
+-- 	FROM job_queue
+-- 	ORDER BY last_heard DESC NULLS LAST;
+
 CREATE TABLE IF NOT EXISTS job_queue (
 	client_uuid UUID PRIMARY KEY,
 	tagnumber INTEGER DEFAULT NULL, -- should be unused, need to check
@@ -365,7 +406,6 @@ CREATE TABLE IF NOT EXISTS job_queue (
 	erase_mode VARCHAR(24) DEFAULT NULL,
 	last_job_time TIMESTAMP WITH TIME ZONE DEFAULT NULL,
 	last_heard TIMESTAMP WITH TIME ZONE DEFAULT NULL,
-	present_bool BOOLEAN DEFAULT FALSE,
 	job_status VARCHAR(128) DEFAULT NULL,
 	kernel_updated BOOLEAN DEFAULT NULL,
 	battery_charge_pcnt SMALLINT DEFAULT NULL,

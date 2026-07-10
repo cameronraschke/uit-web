@@ -55,7 +55,7 @@
 	"/api/client/cpu/mhz": {
 		"allowed_methods": ["POST"]
 	},
-	"/api/client/network/usage": {
+	"/api/client/os/network/usage": {
 		"allowed_methods": ["POST"]
 	},
 	"/api/client/uptime": {
@@ -95,5 +95,8 @@
 	},
 	"/api/new_transaction_uuid": {},
 	"/api/client": {},
-	"/api/client/job/disk_image/name": {}
+	"/api/client/job/disk_image/name": {},
+	"/api/client/hardware/network/link_speed": {
+		"allowed_methods": ["GET", "POST"]
+	}
 }
