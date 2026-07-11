@@ -1360,6 +1360,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		INNER JOIN latest_model_per_client ON jobstats.client_uuid = latest_model_per_client.client_uuid
 		WHERE 
 			jobstats.clone_master = TRUE
+			AND jobstats.clone_completed = TRUE
 		GROUP BY 
 			latest_model_per_client.system_model
 	),
