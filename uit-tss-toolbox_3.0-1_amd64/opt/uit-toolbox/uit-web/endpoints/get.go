@@ -138,24 +138,17 @@ func IsClientJobAvailable(w http.ResponseWriter, req *http.Request) {
 
 func GetNotes(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
-	log := middleware.GetLoggerFromContext(ctx)
-	urlQueries := req.URL.Query()
-	noteType := strings.TrimSpace(urlQueries.Get("note_type"))
-	if noteType == "" {
+	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetNotes"))
+	noteType := middleware.GetStrQuery(req.URL.Query(), "note_type")
+	if noteType == nil || strings.TrimSpace(*noteType) == "" {
 		log.Info("No note_type provided, defaulting to 'general'")
-		noteType = "general"
+		defaultNoteType := "general"
+		noteType = &defaultNoteType
 	}
 
-	db, err := database.NewSelectRepo()
+	notesData, err := database.GetNotes(ctx, noteType)
 	if err != nil {
-		log.Warn("Error creating select repository in GetNotes: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	notesData, err := db.GetNotes(ctx, &noteType)
-	if err != nil {
-		log.Warn("Query error in GetNotes: " + err.Error())
+		log.Warn(fmt.Sprintf("%v: %v", types.DatabaseQueryError, err))
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -861,16 +854,9 @@ func GetAllLocations(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetAllLocations"))
 
-	db, err := database.NewSelectRepo()
+	allLocations, err := database.GetAllLocations(ctx)
 	if err != nil {
-		log.Warn("Error creating select repository in GetAllLocations: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	allLocations, err := db.GetAllLocations(ctx)
-	if err != nil {
-		log.Warn("Query error in GetAllLocations: " + err.Error())
+		log.Warn(fmt.Sprintf("%v: %v", types.DatabaseQueryError, err))
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -894,16 +880,9 @@ func GetAllDeviceTypes(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "GetAllDeviceTypes"))
 
-	db, err := database.NewSelectRepo()
+	allDeviceTypes, err := database.GetAllDeviceTypes(ctx)
 	if err != nil {
-		log.Warn("Error creating select repository in GetAllDeviceTypes: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	allDeviceTypes, err := db.GetAllDeviceTypes(ctx)
-	if err != nil {
-		log.Warn("Query error in GetAllDeviceTypes: " + err.Error())
+		log.Warn(fmt.Sprintf("%v: %v", types.DatabaseQueryError, err))
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -915,17 +894,12 @@ func FetchClientHardwareData(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(ctx).With(slog.String("func", "FetchClientHardwareData"))
 	tagnumber, err := types.ConvertAndVerifyTagnumber(req.URL.Query().Get("tagnumber"))
 	if err != nil {
-		log.Warn("Invalid tagnumber provided: " + err.Error())
+		log.Warn(fmt.Sprintf("%v: %v", types.InvalidRequestFieldError, err))
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	clientOverview, err := db.GetClientHardwareOverview(ctx, *tagnumber)
+
+	clientOverview, err := database.GetClientHardwareOverview(ctx, *tagnumber)
 	if err != nil {
 		log.Warn("Query error: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -970,14 +944,8 @@ func FetchClientJobName(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
 
-	jobName, err := db.GetJobName(ctx, *tagnumber)
+	jobName, err := database.GetJobName(ctx, *tagnumber)
 	if err != nil {
 		log.Warn("DB error: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
@@ -985,9 +953,14 @@ func FetchClientJobName(w http.ResponseWriter, req *http.Request) {
 	}
 
 	returnedJson := struct {
-		Position string `json:"job_name"`
+		JobName string `json:"job_name"`
 	}{
-		Position: jobName,
+		JobName: func() string {
+			if jobName == nil {
+				return "" // This is because bash will treat "nil" as a string, can't -z the value accurately
+			}
+			return *jobName
+		}(),
 	}
 	middleware.WriteJson(w, http.StatusOK, returnedJson)
 }
@@ -1007,14 +980,8 @@ func FetchFormattedJobName(w http.ResponseWriter, req *http.Request) {
 			})
 		return
 	}
-	db, err := database.NewSelectRepo()
-	if err != nil {
-		log.Warn("Error creating select repository: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
 
-	jobNameFormatted, err := db.GetFormattedJobName(ctx, jobName)
+	jobNameFormatted, err := database.GetFormattedJobName(ctx, jobName)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			log.Warn("Job name not found")
@@ -1030,7 +997,12 @@ func FetchFormattedJobName(w http.ResponseWriter, req *http.Request) {
 	returnedJson := struct {
 		JobNameFormatted string `json:"job_name_formatted"`
 	}{
-		JobNameFormatted: jobNameFormatted,
+		JobNameFormatted: func() string {
+			if jobNameFormatted == nil {
+				return "" // This is because bash will treat "nil" as a string, can't -z the value accurately
+			}
+			return *jobNameFormatted
+		}(),
 	}
 	middleware.WriteJson(w, http.StatusOK, returnedJson)
 }
