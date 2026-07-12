@@ -25,6 +25,39 @@ const (
 	maxSystemSerialLength = 256
 )
 
+func ValidateASCIIStrLen(s *string, minLen int, maxLen int) error {
+	if err := ValidateStrLen(s, minLen, maxLen); err != nil {
+		return err
+	}
+	if s != nil && !IsPrintableASCII([]byte(*s)) {
+		return fmt.Errorf("string contains non-printable ASCII characters")
+	}
+	return nil
+}
+
+func ValidatePrintableStrLen(s *string, minLen int, maxLen int) error {
+	if err := ValidateStrLen(s, minLen, maxLen); err != nil {
+		return err
+	}
+	if s != nil && !IsPrintableUnicodeString(*s) {
+		return fmt.Errorf("string contains non-printable Unicode characters")
+	}
+	return nil
+}
+
+func ValidateStrLen(s *string, minLen int, maxLen int) error {
+	if s == nil {
+		if minLen == 0 {
+			return nil
+		}
+		return fmt.Errorf("string is nil")
+	}
+	if utf8.RuneCountInString(*s) < minLen || utf8.RuneCountInString(*s) > maxLen {
+		return fmt.Errorf("string length must be between %d and %d characters", minLen, maxLen)
+	}
+	return nil
+}
+
 func copyTrimmedStringPtr(value *string) *string {
 	if value == nil {
 		return nil

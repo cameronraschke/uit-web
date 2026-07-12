@@ -120,9 +120,6 @@ func InitWebEndpoints(as *AppState) error {
 			}
 			if merged.MaxDownloadSize == nil || merged.MaxUploadSize == nil {
 				switch endpointPath {
-				case "/login", "/api/check_auth":
-					merged.MaxUploadSize = new(int64)
-					*merged.MaxUploadSize += as.appConfig.Load().FormConstraints.Load().LoginForm.MaxFormBytes
 				case "/api/overview/note":
 					merged.MaxUploadSize = new(int64)
 					*merged.MaxUploadSize += as.appConfig.Load().FormConstraints.Load().GeneralNote.MaxFormBytes

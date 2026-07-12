@@ -2,6 +2,7 @@ package types
 
 import (
 	"errors"
+	"fmt"
 )
 
 var (
@@ -38,3 +39,11 @@ var (
 	InvalidRequestFieldError         = errors.New("invalid request field value")
 	FailedToUpdateDatabaseValueError = errors.New("failed to update value in DB")
 )
+
+func CreateInvalidFieldErrorStr(fieldName string, err error) string {
+	return CreateInvalidFieldError(fieldName, err).Error()
+}
+
+func CreateInvalidFieldError(fieldName string, err error) error {
+	return fmt.Errorf("%v for '%s': %v", InvalidFieldError, fieldName, err)
+}

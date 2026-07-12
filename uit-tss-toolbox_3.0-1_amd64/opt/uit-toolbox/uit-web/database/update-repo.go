@@ -211,7 +211,7 @@ func InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID,
 		return fmt.Errorf("%w: %s", types.InvalidStructureError, "InventoryCheckoutWriteModel is nil")
 	}
 	if err := types.IsTagnumberInt64Valid(&checkoutData.Tagnumber); err != nil {
-		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
+		return types.CreateInvalidFieldError("tagnumber", err)
 	}
 	// if checkoutData.CheckoutDate == nil &&
 	// 	checkoutData.ReturnDate == nil &&
@@ -283,13 +283,13 @@ func InsertClientCheckoutsUpdate(ctx context.Context, transactionUUID uuid.UUID,
 
 func UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID, hardwareData *types.InventoryHardwareWriteModel) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
-		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
+		return types.CreateInvalidFieldError("transaction_uuid", types.MissingFieldError)
 	}
 	if hardwareData == nil {
 		return fmt.Errorf("%w: %s (%s)", types.InvalidStructureError, "InventoryHardwareWriteModel", "nil")
 	}
 	if err := types.IsTagnumberInt64Valid(&hardwareData.Tagnumber); err != nil {
-		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
+		return types.CreateInvalidFieldError("tagnumber", err)
 	}
 
 	dbConn, err := config.GetDatabaseConn()
@@ -355,7 +355,7 @@ func UpdateInventoryHardwareData(ctx context.Context, transactionUUID uuid.UUID,
 
 func InsertInventoryUpdate(ctx context.Context, transactionUUID uuid.UUID, inventoryUpdate *types.InventoryLocationWriteModel) (err error) {
 	if transactionUUID == uuid.Nil || strings.TrimSpace(transactionUUID.String()) == "" {
-		return fmt.Errorf("%w: %s", types.MissingFieldError, "transaction UUID")
+		return types.CreateInvalidFieldError("transaction_uuid", types.MissingFieldError)
 	}
 	if inventoryUpdate == nil {
 		return fmt.Errorf("%w: %s (%s)", types.InvalidStructureError, "InventoryLocationWriteModel", "nil")

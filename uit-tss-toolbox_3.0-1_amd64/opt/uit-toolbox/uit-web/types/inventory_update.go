@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/google/uuid"
 )
@@ -104,123 +103,66 @@ func (updateRequest *InventoryUpdateRequest) ToDTO(htmlFormConstraints *HTMLForm
 
 	// Tagnumber
 	if err := IsTagnumberInt64Valid(updateRequest.Tagnumber); err != nil {
-		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "tagnumber", err)
+		return nil, CreateInvalidFieldError("tagnumber", err)
 	}
 
 	// System serial
 	if err := IsSystemSerialValid(updateRequest.SystemSerial); err != nil {
-		return nil, fmt.Errorf("%w for '%s': %v", InvalidFieldError, "system_serial", err)
-	}
-	if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.SystemSerial)) < htmlFormConstraints.InventoryForm.SystemSerialMinChars || utf8.RuneCountInString(*updateRequest.SystemSerial) > htmlFormConstraints.InventoryForm.SystemSerialMaxChars {
-		return nil, fmt.Errorf("system_serial must be between %d and %d characters", htmlFormConstraints.InventoryForm.SystemSerialMinChars, htmlFormConstraints.InventoryForm.SystemSerialMaxChars)
+		return nil, CreateInvalidFieldError("system_serial", err)
 	}
 
 	// Location
-	if updateRequest.Location == nil || strings.TrimSpace(*updateRequest.Location) == "" {
-		return nil, fmt.Errorf("location is required")
-	}
-	if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.Location)) < htmlFormConstraints.InventoryForm.LocationMinChars || utf8.RuneCountInString(*updateRequest.Location) > htmlFormConstraints.InventoryForm.LocationMaxChars {
-		return nil, fmt.Errorf("location must be between %d and %d characters", htmlFormConstraints.InventoryForm.LocationMinChars, htmlFormConstraints.InventoryForm.LocationMaxChars)
-	}
-	if !IsPrintableUnicodeString(*updateRequest.Location) {
-		return nil, fmt.Errorf("invalid UTF-8 in location field for inventory update")
+	if err := ValidatePrintableStrLen(updateRequest.Location, 1, 128); err != nil {
+		return nil, CreateInvalidFieldError("location", err)
 	}
 
 	// Building (optional)
-	if updateRequest.Building != nil && strings.TrimSpace(*updateRequest.Building) != "" {
-		if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.Building)) < htmlFormConstraints.InventoryForm.BuildingMinChars || utf8.RuneCountInString(*updateRequest.Building) > htmlFormConstraints.InventoryForm.BuildingMaxChars {
-
-			return nil, fmt.Errorf("building must be between %d and %d characters", htmlFormConstraints.InventoryForm.BuildingMinChars, htmlFormConstraints.InventoryForm.BuildingMaxChars)
-		}
-		if !IsPrintableUnicodeString(*updateRequest.Building) {
-			return nil, fmt.Errorf("invalid UTF-8 in building field")
-		}
+	if err := ValidatePrintableStrLen(updateRequest.Building, 0, 128); err != nil {
+		return nil, CreateInvalidFieldError("building", err)
 	}
 
 	// Room (optional)
-	if updateRequest.Room != nil {
-		if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.Room)) < htmlFormConstraints.InventoryForm.RoomMinChars || utf8.RuneCountInString(*updateRequest.Room) > htmlFormConstraints.InventoryForm.RoomMaxChars {
-			return nil, fmt.Errorf("room must be between %d and %d characters", htmlFormConstraints.InventoryForm.RoomMinChars, htmlFormConstraints.InventoryForm.RoomMaxChars)
-		}
-		if !IsPrintableUnicodeString(*updateRequest.Room) {
-			return nil, fmt.Errorf("invalid UTF-8 in room field for inventory update")
-		}
+	if err := ValidatePrintableStrLen(updateRequest.Room, 0, 128); err != nil {
+		return nil, CreateInvalidFieldError("room", err)
 	}
 
-	// System manufacturer
-	if updateRequest.SystemManufacturer != nil && strings.TrimSpace(*updateRequest.SystemManufacturer) != "" {
-		if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.SystemManufacturer)) < htmlFormConstraints.InventoryForm.ManufacturerMinChars || utf8.RuneCountInString(*updateRequest.SystemManufacturer) > htmlFormConstraints.InventoryForm.ManufacturerMaxChars {
-			return nil, fmt.Errorf("system manufacturer must be between %d and %d characters", htmlFormConstraints.InventoryForm.ManufacturerMinChars, htmlFormConstraints.InventoryForm.ManufacturerMaxChars)
-		}
-		if !IsPrintableUnicodeString(*updateRequest.SystemManufacturer) {
-			return nil, fmt.Errorf("Non-printable Unicode characters in system manufacturer field")
-		}
+	// System manufacturer (optional)
+	if err := ValidatePrintableStrLen(updateRequest.SystemManufacturer, 0, 128); err != nil {
+		return nil, CreateInvalidFieldError("system_manufacturer", err)
 	}
 
-	// System model (optional, min 1 char, max 64 Unicode chars)
-	if updateRequest.SystemModel != nil && strings.TrimSpace(*updateRequest.SystemModel) != "" {
-		if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.SystemModel)) < htmlFormConstraints.InventoryForm.SystemModelMinChars || utf8.RuneCountInString(*updateRequest.SystemModel) > htmlFormConstraints.InventoryForm.SystemModelMaxChars {
-			return nil, fmt.Errorf("system model must be between %d and %d characters", htmlFormConstraints.InventoryForm.SystemModelMinChars, htmlFormConstraints.InventoryForm.SystemModelMaxChars)
-		}
-		if !IsPrintableUnicodeString(*updateRequest.SystemModel) {
-			return nil, fmt.Errorf("Non-printable Unicode characters in system model field")
-		}
+	// System model (optional)
+	if err := ValidateASCIIStrLen(updateRequest.SystemModel, 0, 128); err != nil {
+		return nil, CreateInvalidFieldError("system_model", err)
 	}
 
-	// Department (required, min 1 char, max 64 chars, printable ASCII only)
-	if updateRequest.Department == nil || strings.TrimSpace(*updateRequest.Department) == "" {
-		return nil, fmt.Errorf("department_name is required")
-	}
-	if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.Department)) < htmlFormConstraints.InventoryForm.DepartmentMinChars || utf8.RuneCountInString(*updateRequest.Department) > htmlFormConstraints.InventoryForm.DepartmentMaxChars {
-		return nil, fmt.Errorf("department_name must be between %d and %d characters", htmlFormConstraints.InventoryForm.DepartmentMinChars, htmlFormConstraints.InventoryForm.DepartmentMaxChars)
-	}
-	if !IsPrintableASCII([]byte(*updateRequest.Department)) {
-		return nil, fmt.Errorf("non-printable ASCII characters in department_name field")
+	// Department (required)
+	if err := ValidateASCIIStrLen(updateRequest.Department, 1, 64); err != nil {
+		return nil, CreateInvalidFieldError("department_name", err)
 	}
 
-	// ADDomain (required, min 1 char, max 64 chars)
-	if updateRequest.ADDomain == nil || strings.TrimSpace(*updateRequest.ADDomain) == "" {
-		return nil, fmt.Errorf("ad_domain is required")
-	}
-	if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.ADDomain)) < htmlFormConstraints.InventoryForm.DomainMinChars || utf8.RuneCountInString(*updateRequest.ADDomain) > htmlFormConstraints.InventoryForm.DomainMaxChars {
-		return nil, fmt.Errorf("ad_domain must be between %d and %d characters", htmlFormConstraints.InventoryForm.DomainMinChars, htmlFormConstraints.InventoryForm.DomainMaxChars)
-	}
-	if !IsPrintableASCII([]byte(*updateRequest.ADDomain)) {
-		return nil, fmt.Errorf("non-printable ASCII characters in domain field")
+	// ADDomain (required)
+	if err := ValidateASCIIStrLen(updateRequest.ADDomain, 1, 64); err != nil {
+		return nil, CreateInvalidFieldError("ad_domain", err)
 	}
 
 	// Property custodian (optional, min 1 char, max 64 Unicode chars)
-	if updateRequest.PropertyCustodian != nil && strings.TrimSpace(*updateRequest.PropertyCustodian) != "" {
-		if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.PropertyCustodian)) < htmlFormConstraints.InventoryForm.PropertyCustodianMinChars || utf8.RuneCountInString(*updateRequest.PropertyCustodian) > htmlFormConstraints.InventoryForm.PropertyCustodianMaxChars {
-			return nil, fmt.Errorf("property custodian must be between %d and %d characters", htmlFormConstraints.InventoryForm.PropertyCustodianMinChars, htmlFormConstraints.InventoryForm.PropertyCustodianMaxChars)
-		}
-		if !IsPrintableUnicodeString(*updateRequest.PropertyCustodian) {
-			return nil, fmt.Errorf("non-printable Unicode characters in property custodian field")
-		}
+	if err := ValidatePrintableStrLen(updateRequest.PropertyCustodian, 0, 128); err != nil {
+		return nil, CreateInvalidFieldError("property_custodian", err)
 	}
 
 	// Acquired date, optional, process as UTC
-	if updateRequest.AcquiredDate != nil {
+	if updateRequest.AcquiredDate != nil && !updateRequest.AcquiredDate.IsZero() {
 		if updateRequest.AcquiredDate.After(time.Now().UTC()) {
 			return nil, fmt.Errorf("acquired_date cannot be in the future")
 		}
 	}
 
 	// Retired date, optional, process as UTC
-	if updateRequest.RetiredDate != nil {
+	if updateRequest.RetiredDate != nil && !updateRequest.RetiredDate.IsZero() {
 		if updateRequest.AcquiredDate != nil && updateRequest.RetiredDate.UTC().Before(updateRequest.AcquiredDate.UTC()) {
 			return nil, fmt.Errorf("retired_date cannot be before acquired_date")
 		}
-	}
-
-	// IsBroken (optional, bool)
-	if updateRequest.IsBroken == nil {
-		// return nil, fmt.Errorf("is_broken is required")
-	}
-
-	// Disk removed (optional, bool)
-	if updateRequest.DiskRemoved == nil {
-		// return nil, fmt.Errorf("disk_removed is required")
 	}
 
 	// Last hardware check (optional, process as UTC)
@@ -231,48 +173,19 @@ func (updateRequest *InventoryUpdateRequest) ToDTO(htmlFormConstraints *HTMLForm
 		}
 	}
 
-	// Status (required, min 1, max 24, ASCII printable chars only)
-	if updateRequest.ClientStatus == nil || strings.TrimSpace(*updateRequest.ClientStatus) == "" {
-		return nil, fmt.Errorf("status is required")
-	}
-	if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.ClientStatus)) < htmlFormConstraints.InventoryForm.ClientStatusMinChars || utf8.RuneCountInString(*updateRequest.ClientStatus) > htmlFormConstraints.InventoryForm.ClientStatusMaxChars {
-		return nil, fmt.Errorf("status must be between %d and %d characters", htmlFormConstraints.InventoryForm.ClientStatusMinChars, htmlFormConstraints.InventoryForm.ClientStatusMaxChars)
-	}
-	if !IsPrintableASCII([]byte(*updateRequest.ClientStatus)) {
-		return nil, fmt.Errorf("non-printable ASCII characters in status field")
-	}
-
-	// Checkout bool (optional, bool)
-	if htmlFormConstraints.InventoryForm.CheckoutBoolIsMandatory && updateRequest.CheckoutBool == nil {
-		return nil, fmt.Errorf("checkout_bool is required")
-	}
-	// Checkout date (optional, process as UTC)
-	if htmlFormConstraints.InventoryForm.CheckoutBoolIsMandatory && updateRequest.CheckoutDate == nil {
-		return nil, fmt.Errorf("checkout_date is required when checkout_bool is mandatory")
-	}
-	// Return date (optional, process as UTC)
-	if htmlFormConstraints.InventoryForm.ReturnDateIsMandatory && updateRequest.ReturnDate == nil {
-		return nil, fmt.Errorf("return_date is required")
+	// Client status (required, min 1, max 24, ASCII printable chars only)
+	if err := ValidateASCIIStrLen(updateRequest.ClientStatus, 1, 24); err != nil {
+		return nil, CreateInvalidFieldError("status (client_status)", err)
 	}
 
 	// Customer name (optional, min 1 char, max 64 Unicode chars)
-	if updateRequest.CustomerName != nil && strings.TrimSpace(*updateRequest.CustomerName) != "" {
-		if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.CustomerName)) < 1 || utf8.RuneCountInString(*updateRequest.CustomerName) > 128 {
-			return nil, fmt.Errorf("customer name must be between %d and %d characters", 1, 128)
-		}
-		if !IsPrintableUnicodeString(*updateRequest.CustomerName) {
-			return nil, fmt.Errorf("non-printable Unicode characters in customer name field")
-		}
+	if err := ValidatePrintableStrLen(updateRequest.CustomerName, 0, 128); err != nil {
+		return nil, CreateInvalidFieldError("customer_name", err)
 	}
 
 	// Note (optional)
-	if updateRequest.Note != nil && strings.TrimSpace(*updateRequest.Note) != "" {
-		if utf8.RuneCountInString(strings.TrimSpace(*updateRequest.Note)) < htmlFormConstraints.InventoryForm.ClientNoteMinChars || utf8.RuneCountInString(*updateRequest.Note) > htmlFormConstraints.InventoryForm.ClientNoteMaxChars {
-			return nil, fmt.Errorf("note must be between %d and %d characters", htmlFormConstraints.InventoryForm.ClientNoteMinChars, htmlFormConstraints.InventoryForm.ClientNoteMaxChars)
-		}
-		if !IsPrintableUnicodeString(*updateRequest.Note) {
-			return nil, fmt.Errorf("non-printable Unicode characters in note field")
-		}
+	if err := ValidatePrintableStrLen(updateRequest.Note, 0, 1024); err != nil {
+		return nil, CreateInvalidFieldError("note (client_note)", err)
 	}
 
 	domain := &InventoryUpdateDTO{

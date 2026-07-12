@@ -25,26 +25,26 @@ type AuthSession struct {
 	BearerCookie  *http.Cookie
 	CSRFToken     CSRFToken
 	CSRFCookie    *http.Cookie
-	Attributes    *Attributes
+	Attributes    *SessionAttributes
 }
 
-type Attributes struct {
+type SessionAttributes struct {
 	mu         sync.RWMutex
-	attributes map[string]interface{}
+	attributes map[string]any
 }
 
-func (a *Attributes) GetAuthAttributes(key string) (interface{}, bool) {
+func (a *SessionAttributes) GetAuthAttributes(key string) (any, bool) {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	value, exists := a.attributes[key]
 	return value, exists
 }
 
-func (a *Attributes) SetAuthAttributes(key string, value interface{}) {
+func (a *SessionAttributes) SetAuthAttributes(key string, value any) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.attributes == nil {
-		a.attributes = make(map[string]interface{})
+		a.attributes = make(map[string]any)
 	}
 	a.attributes[key] = value
 }

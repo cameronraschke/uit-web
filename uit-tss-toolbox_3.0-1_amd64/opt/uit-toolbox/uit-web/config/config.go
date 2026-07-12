@@ -204,63 +204,24 @@ func InitConfig() (*AppConfiguration, error) {
 	}
 
 	// Set input constraints
-	loginFormConstraints := &types.LoginFormConstraints{
-		MaxFormBytes:     300,
-		UsernameMinChars: 64,
-		UsernameMaxChars: 64,
-		PasswordMinChars: 64,
-		PasswordMaxChars: 64, // All SHA-256, fixed length
-	}
-
 	generalNoteConstraints := &types.GeneralNoteConstraints{
 		MaxFormBytes:        32768 * 4, // Reasonable Unicode/JSON overhead
-		NoteTypeMinChars:    1,
-		NoteTypeMaxChars:    256,
-		NoteContentMinChars: 0,
-		NoteContentMaxChars: 32768,
 	}
 
 	inventoryFormConstraints := &types.InventoryUpdateFormConstraints{
 		MaxJSONBytes:                 1 << 20,
-		TagnumberMinChars:            6,
-		TagnumberMaxChars:            6,
-		SystemSerialMinChars:         1,
-		SystemSerialMaxChars:         128,
-		LocationMinChars:             1,
-		LocationMaxChars:             128,
-		BuildingMinChars:             1,
-		BuildingMaxChars:             128,
-		RoomMinChars:                 1,
-		RoomMaxChars:                 128,
-		ManufacturerMinChars:         1,
-		ManufacturerMaxChars:         128,
-		SystemModelMinChars:          1,
-		SystemModelMaxChars:          128,
-		DeviceTypeMinChars:           1,
-		DeviceTypeMaxChars:           64,
-		DepartmentMinChars:           1,
-		DepartmentMaxChars:           64,
-		DomainMinChars:               1,
-		DomainMaxChars:               64,
-		PropertyCustodianMinChars:    1,
-		PropertyCustodianMaxChars:    64,
 		AcquiredDateIsMandatory:      false,
 		RetiredDateIsMandatory:       false,
 		IsFunctionalIsMandatory:      false,
 		DiskRemovedIsMandatory:       false,
 		LastHardwareCheckIsMandatory: false,
-		ClientStatusMinChars:         1,
-		ClientStatusMaxChars:         64,
 		CheckoutBoolIsMandatory:      false,
 		CheckoutDateIsMandatory:      false,
 		ReturnDateIsMandatory:        false,
-		ClientNoteMinChars:           0,
-		ClientNoteMaxChars:           512,
 	}
 
 	// Set form constraints
 	formConstraints := &types.HTMLFormConstraints{
-		LoginForm:     loginFormConstraints,
 		GeneralNote:   generalNoteConstraints,
 		InventoryForm: inventoryFormConstraints,
 	}

@@ -39,19 +39,7 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	appState, err := config.GetAppState()
-	if err != nil {
-		log.Warn("Cannot retrieve app state: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	htmlFormConstraints, err := appState.GetFormConstraints()
-	if err != nil {
-		log.Error("Cannot retrieve HTMLFormConstraints: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	req.Body = http.MaxBytesReader(w, req.Body, htmlFormConstraints.LoginForm.MaxFormBytes)
+	req.Body = http.MaxBytesReader(w, req.Body, 300)
 	defer req.Body.Close()
 
 	body, err := io.ReadAll(req.Body)
@@ -627,7 +615,7 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	maxNoteJSONBytes := int64((htmlFormConstraints.GeneralNote.NoteTypeMaxChars+htmlFormConstraints.GeneralNote.NoteContentMaxChars)*4 + 512)
+	maxNoteJSONBytes := int64((htmlFormConstraints.GeneralNote.MaxFormBytes)*4 + 512)
 	req.Body = http.MaxBytesReader(w, req.Body, maxNoteJSONBytes)
 	defer req.Body.Close()
 
@@ -645,13 +633,13 @@ func InsertNewNote(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if utf8.RuneCountInString(strings.TrimSpace(*newNote.NoteType)) <= htmlFormConstraints.GeneralNote.NoteTypeMinChars || utf8.RuneCountInString(*newNote.NoteType) > htmlFormConstraints.GeneralNote.NoteTypeMaxChars {
-		log.Warn("Note type outside of valid length range, not inserting new note")
+	if err := types.ValidatePrintableStrLen(newNote.NoteType, 1, 64); err != nil {
+		log.Warn(types.CreateInvalidFieldErrorStr("note_type", err))
 		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
 	}
-	if utf8.RuneCountInString(strings.TrimSpace(*newNote.NoteContent)) < htmlFormConstraints.GeneralNote.NoteContentMinChars || utf8.RuneCountInString(*newNote.NoteContent) > htmlFormConstraints.GeneralNote.NoteContentMaxChars {
-		log.Warn("Note content outside of valid length range, not inserting new note")
+	if err := types.ValidatePrintableStrLen(newNote.NoteContent, 0, 32768); err != nil {
+		log.Warn(types.CreateInvalidFieldErrorStr("note_content", err))
 		middleware.WriteJsonError(w, http.StatusRequestEntityTooLarge)
 		return
 	}

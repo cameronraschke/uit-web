@@ -24,14 +24,6 @@ type AllClientStatuses struct {
 	ClientCount     *int64  `json:"client_count"`
 }
 
-type ClientBatteryHealth struct {
-	Time                time.Time `json:"time"`
-	Tagnumber           int64     `json:"tagnumber"`
-	JobstatsBattery     string    `json:"jobstatsHealthPcnt"`
-	ClientHealthBattery string    `json:"clientHealthPcnt"`
-	BatteryChargeCycles int64     `json:"chargeCycles"`
-}
-
 type ClientHealthUpdateRequest struct {
 	Tagnumber         int64      `json:"tagnumber"`
 	TransactionUUID   string     `json:"transaction_uuid"`
