@@ -1314,24 +1314,23 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		)
 		GROUP BY system_model
 	),
-	latest_model_per_client AS (
-		SELECT DISTINCT ON (hardware_data.client_uuid)
-			hardware_data.client_uuid, 
-			hardware_data.system_model
-		FROM hardware_data
-		INNER JOIN top_clients ON top_clients.uuid = hardware_data.client_uuid
-		WHERE 
-			hardware_data.system_model IS NOT NULL
-		ORDER BY
-			hardware_data.client_uuid,
-			hardware_data.time DESC NULLS LAST
-	),
 	newest_image AS (
 		SELECT
 			latest_model_per_client.system_model,
 			MAX(jobstats.time) AS time
 		FROM jobstats
-		INNER JOIN latest_model_per_client ON jobstats.client_uuid = latest_model_per_client.client_uuid
+		INNER JOIN (
+			SELECT DISTINCT ON (hardware_data.client_uuid)
+				hardware_data.client_uuid, 
+				hardware_data.system_model
+			FROM ids
+			LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
+			WHERE 
+				hardware_data.system_model IS NOT NULL
+			ORDER BY
+				hardware_data.client_uuid,
+				hardware_data.time DESC NULLS LAST
+		) latest_model_per_client ON jobstats.client_uuid = latest_model_per_client.client_uuid
 		WHERE 
 			jobstats.clone_master = TRUE
 			AND jobstats.clone_completed = TRUE
