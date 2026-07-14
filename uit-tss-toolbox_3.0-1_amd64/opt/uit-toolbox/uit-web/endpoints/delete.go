@@ -192,21 +192,21 @@ func DeleteOSInfoByTagnumber(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	queryTagValPtr := middleware.GetStrQuery(req.URL.Query(), "tag")
+	queryTagValPtr := middleware.GetStrQuery(req.URL.Query(), "tagnumber")
 	if queryTagValPtr == nil || strings.TrimSpace(*queryTagValPtr) == "" {
-		log.Warn("No tag query key provided")
+		log.Warn("No tagnumber query key provided")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	if strings.TrimSpace(*queryTagValPtr) == "" {
-		log.Warn("No tag query key provided")
+		log.Warn("No tagnumber query key provided")
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 	queryTagVal := strings.TrimSpace(*queryTagValPtr)
 	tagnumber, err := strconv.ParseInt(queryTagVal, 10, 64)
 	if err != nil {
-		log.Warn("Invalid tag query parameter: " + err.Error())
+		log.Warn("Invalid tagnumber query parameter: " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
