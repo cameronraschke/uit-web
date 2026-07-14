@@ -954,7 +954,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 				(CASE WHEN jobstats.erase_completed IS TRUE AND jobstats.clone_completed IS DISTINCT FROM TRUE THEN FALSE ELSE TRUE END) AS "os_installed"
 			FROM jobstats
 			LEFT JOIN hardware_data ON jobstats.client_uuid = hardware_data.client_uuid
-			LEFT JOIN static_image_names ON hardware_data.system_model = static_image_names.image_platform_model
+			LEFT JOIN static_image_names ON hardware_data.system_model = static_image_names.system_model
 			WHERE (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
 			GROUP BY jobstats.time, jobstats.client_uuid, static_image_names.image_version, jobstats.erase_completed, jobstats.clone_completed
 			ORDER BY jobstats.client_uuid, jobstats.time DESC NULLS LAST) t1 WHERE t1.row_num = 1
@@ -1314,29 +1314,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		)
 		GROUP BY system_model
 	),
-	newest_image AS (
-		SELECT
-			latest_model_per_client.system_model,
-			MAX(jobstats.time) AS time
-		FROM jobstats
-		INNER JOIN (
-			SELECT DISTINCT ON (hardware_data.client_uuid)
-				hardware_data.client_uuid, 
-				hardware_data.system_model
-			FROM ids
-			LEFT JOIN hardware_data ON ids.uuid = hardware_data.client_uuid
-			WHERE 
-				hardware_data.system_model IS NOT NULL
-			ORDER BY
-				hardware_data.client_uuid,
-				hardware_data.time DESC NULLS LAST
-		) latest_model_per_client ON jobstats.client_uuid = latest_model_per_client.client_uuid
-		WHERE 
-			jobstats.clone_master = TRUE
-			AND jobstats.clone_completed = TRUE
-		GROUP BY 
-			latest_model_per_client.system_model
-	),
 	live_queue AS (
 		SELECT
 			job_queue.client_uuid, 
@@ -1413,7 +1390,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		END) AS "os_installed",
 		COALESCE(os_info.os_name, static_image_names.image_name_readable) AS "os_name",
 		(CASE
-			WHEN latest_completed_job.clone_completed IS NOT NULL AND latest_completed_job.clone_completed = TRUE AND newest_image.time <= latest_completed_job.time THEN TRUE
+			WHEN latest_completed_job.clone_completed IS NOT NULL AND latest_completed_job.clone_completed = TRUE AND static_image_names.last_updated <= latest_completed_job.time THEN TRUE
 			ELSE FALSE
 		END) AS "latest_image_installed",
 		(CASE 
@@ -1529,8 +1506,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN static_bios_stats ON hardware_data.system_model = static_bios_stats.system_model
 	LEFT JOIN static_disk_stats ON latest_historical_disk_data.disk_model = static_disk_stats.disk_model
 	LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
-	LEFT JOIN static_image_names ON static_image_names.image_name = latest_completed_job.clone_image
-	LEFT JOIN newest_image ON newest_image.system_model = hardware_data.system_model
+	LEFT JOIN static_image_names ON static_image_names.image_name = latest_completed_job.clone_image AND static_image_names.system_model = hardware_data.system_model
 	LEFT JOIN job_queue_positions ON job_queue_positions.client_uuid = ids.uuid
 	LEFT JOIN static_client_statuses ON static_client_statuses.status_name = locations.client_status
 	LEFT JOIN static_department_info ON static_department_info.department_name = locations.department_name
@@ -2393,7 +2369,7 @@ func SelectClientInfo(ctx context.Context, tag int64) (*types.ClientInfoResponse
 			SELECT
 				image_version
 			FROM static_image_names
-			WHERE image_platform_model = hardware_data.system_model
+			WHERE system_model = hardware_data.system_model
 			ORDER BY image_version DESC NULLS LAST
 			LIMIT 1
 		) image_version_cte ON TRUE
@@ -2527,13 +2503,13 @@ func SelectDiskImageByModel(ctx context.Context, r *types.DiskImageNameRequest) 
 
 	const sqlCode = `
 		SELECT
-			static_image_names.image_platform_model,
+			static_image_names.system_model,
 			static_image_names.image_name
 		FROM
 			static_image_names
 		WHERE 
 			static_image_names.image_name IS NOT NULL
-			AND static_image_names.image_platform_model = $1
+			AND static_image_names.system_model = $1
 	;`
 
 	pgxPool, err := config.GetPGXPool()
