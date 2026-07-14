@@ -2778,7 +2778,7 @@ func DeleteOSInfoByTagnumber(ctx context.Context, tagnumber int64, serial string
 	WHERE client_uuid = $1;
 	`
 
-	sqlResult, err := tx.Exec(ctx, sqlCode, toNullUUID(clientUUID))
+	sqlResult, err := tx.Exec(ctx, sqlCode, clientUUID)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseDeletionError, err)
 	}
