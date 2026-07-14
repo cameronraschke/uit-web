@@ -172,7 +172,7 @@ async function updateCheckoutStatus() {
 	if (statusesThatIndicateCheckout.includes(clientStatusUpdate.value)) {
 		printCheckoutContainer.style.display = 'inline-block';
 		printCheckoutLink.setAttribute('href', `/checkout-form?tagnumber=${encodeURIComponent(clientLookupTagInput.value)}`);
-		printCheckoutLink.setAttribute('target', '_blank');
+		printCheckoutLink.setAttribute('target', `checkout-form-${encodeURIComponent(clientLookupTagInput.value)}`);
 		printCheckoutLink.textContent = 'Print Checkout Form';
 	} else {
 		printCheckoutContainer.style.display = 'none';
@@ -1114,7 +1114,7 @@ if (clientMoreDetails) {
 			const url = new URL(window.location.origin + '/client');
 			// const url = new URL(window.location.origin + '/client_images');
 			url.searchParams.set('tagnumber', tag);
-			window.open(url, '_blank');
+			window.open(url, `client-${tag}`);
 		}
 	});
 }
@@ -1127,7 +1127,7 @@ if (clientViewPhotosButton) {
 		if (tag) {
 			const url = new URL(window.location.origin + '/client_images');
 			url.searchParams.set('tagnumber', tag);
-			window.open(url, '_blank');
+			window.open(url, `client-${tag}`);
 		}
 	});
 }

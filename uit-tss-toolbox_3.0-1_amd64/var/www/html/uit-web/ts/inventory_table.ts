@@ -309,7 +309,7 @@ async function renderInventoryTable(minimumRowIndex = 0, maximumRowIndex = INVEN
 
 			// variables & dataset values
 			const lastUpdated = inventoryRow.last_updated ? new Date(inventoryRow.last_updated).getTime() : '';
-			const tagnumber = inventoryRow.tagnumber.toString() ?? '';
+			const tagnumberStr = inventoryRow.tagnumber.toString() ?? '';
 			const systemSerial = inventoryRow.system_serial ? inventoryRow.system_serial.trim() : '';
 			const locationFormatted = inventoryRow.location_formatted ?? '';
 			const departmentFormatted = inventoryRow.department_formatted ?? '';
@@ -326,7 +326,7 @@ async function renderInventoryTable(minimumRowIndex = 0, maximumRowIndex = INVEN
 
 
 			tr.dataset.lastUpdated = lastUpdated.toString();
-			tr.dataset.tagnumber = tagnumber;
+			tr.dataset.tagnumber = tagnumberStr;
 			tr.dataset.systemSerial = systemSerial;
 			tr.dataset.locationFormatted = locationFormatted;
 			tr.dataset.note = note;
@@ -347,10 +347,10 @@ async function renderInventoryTable(minimumRowIndex = 0, maximumRowIndex = INVEN
 			const tagContainer = document.createElement('div');
 			const tagAnchor = document.createElement('a');
 			tagAnchor.classList.add('hover-link');
-			const tagURL = new URL(`client?tagnumber=${tagnumber}`, window.location.origin);
+			const tagURL = new URL(`client?tagnumber=${tagnumberStr}`, window.location.origin);
 			tagAnchor.href = tagURL.toString();
-			tagAnchor.target = '_blank';
-			tagAnchor.appendChild(document.createTextNode(tagnumber));
+			tagAnchor.target = `client-${tagnumberStr}`;
+			tagAnchor.appendChild(document.createTextNode(tagnumberStr));
 			tagContainer.appendChild(tagAnchor);
 			idContainer.appendChild(tagContainer);
 

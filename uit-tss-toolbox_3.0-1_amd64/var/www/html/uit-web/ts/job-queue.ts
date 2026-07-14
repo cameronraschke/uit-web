@@ -333,7 +333,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		editClientAnchor.title = `Edit Client ${entry.tagnumber !== null ? entry.tagnumber.toString() : 'N/A'}`;
 		editClientAnchor.textContent = `${entry.tagnumber !== null ? entry.tagnumber.toString() : 'N/A'}`;
 		editClientAnchor.href = tagURL.toString();
-		editClientAnchor.target = '_blank';
+		editClientAnchor.target = 'client-' + (entry.tagnumber !== null ? entry.tagnumber.toString() : '_blank');
 		
 		const editClientSvg = document.createElement('img');
 		editClientSvg.src = '/icons/general/edit_square.svg';
@@ -421,7 +421,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 			liveViewImage.loading = "lazy";
 			const liveViewAnchor = document.createElement('a');
 			liveViewAnchor.href = `/api/client/live_screenshot?tagnumber=${entry.tagnumber}`;
-			liveViewAnchor.target = "_blank";
+			liveViewAnchor.target = 'client-live-view-' + entry.tagnumber;;
 			liveViewAnchor.appendChild(liveViewImage);
 			liveViewScreenshotContainer.appendChild(liveViewAnchor);
 		}
