@@ -98,5 +98,8 @@
 	"/api/client/job/disk_image/name": {},
 	"/api/client/hardware/network/link_speed": {
 		"allowed_methods": ["GET", "POST"]
+	},
+	"/api/client/os/delete_all": {
+		"allowed_methods": ["DELETE"]
 	}
 }

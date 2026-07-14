@@ -2725,7 +2725,7 @@ func UpsertJobStats(ctx context.Context, JobStatsDTO *types.JobStatsDTO) (err er
 	return nil
 }
 
-func DeleteOSInfoByTagnumber(ctx context.Context, tagnumber int64) (err error) {
+func DeleteOSInfoByTagnumber(ctx context.Context, tagnumber int64, serial string) (err error) {
 	if err := types.IsTagnumberInt64Valid(&tagnumber); err != nil {
 		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
@@ -2735,9 +2735,23 @@ func DeleteOSInfoByTagnumber(ctx context.Context, tagnumber int64) (err error) {
 		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
 	}
 
-	clientUUID, err := GetClientUUIDByTag(ctx, pgxPool, tagnumber)
+	var clientUUID uuid.UUID
+
+	clientUUIDFromTag, err := GetClientUUIDByTag(ctx, pgxPool, tagnumber)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+
+	clientUUIDFromSerial, err := GetClientUUIDBySerial(ctx, pgxPool, serial)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+
+	if clientUUIDFromTag != uuid.Nil && clientUUIDFromSerial != uuid.Nil {
+		if clientUUIDFromTag != clientUUIDFromSerial {
+			return fmt.Errorf("%w: %s (%d) and %s (%s) do not match", types.InvalidFieldError, "tagnumber", tagnumber, "serial", serial)
+		}
+		clientUUID = clientUUIDFromTag
 	}
 
 	tx, err := pgxPool.BeginTx(ctx, pgx.TxOptions{})

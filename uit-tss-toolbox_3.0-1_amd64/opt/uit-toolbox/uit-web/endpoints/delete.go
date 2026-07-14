@@ -180,6 +180,18 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 func DeleteOSInfoByTagnumber(w http.ResponseWriter, req *http.Request) {
 	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "DeleteOSInfoByTagnumber"))
 
+	querySerialValPtr := middleware.GetStrQuery(req.URL.Query(), "system_serial")
+	if querySerialValPtr == nil || strings.TrimSpace(*querySerialValPtr) == "" {
+		log.Warn("No system_serial query key provided")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if err := types.IsSystemSerialValid(querySerialValPtr); err != nil {
+		log.Warn("Invalid system_serial query parameter: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
 	queryTagValPtr := middleware.GetStrQuery(req.URL.Query(), "tag")
 	if queryTagValPtr == nil || strings.TrimSpace(*queryTagValPtr) == "" {
 		log.Warn("No tag query key provided")
@@ -205,7 +217,7 @@ func DeleteOSInfoByTagnumber(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := database.DeleteOSInfoByTagnumber(req.Context(), tagnumber); err != nil {
+	if err := database.DeleteOSInfoByTagnumber(req.Context(), tagnumber, *querySerialValPtr); err != nil {
 		log.Error("DB error while deleting OS info for tagnumber '" + strconv.FormatInt(tagnumber, 10) + "': " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
