@@ -349,7 +349,7 @@ async function renderInventoryTable(minimumRowIndex = 0, maximumRowIndex = INVEN
 			tagAnchor.classList.add('hover-link');
 			const tagURL = new URL(`client?tagnumber=${tagnumberStr}`, window.location.origin);
 			tagAnchor.href = tagURL.toString();
-			tagAnchor.target = `_blank`;
+			tagAnchor.target = `_self`;
 			tagAnchor.appendChild(document.createTextNode(tagnumberStr));
 			tagContainer.appendChild(tagAnchor);
 			idContainer.appendChild(tagContainer);

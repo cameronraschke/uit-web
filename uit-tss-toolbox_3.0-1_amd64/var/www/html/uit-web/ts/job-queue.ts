@@ -333,7 +333,7 @@ async function renderJobQueueTable(data: JobQueueTableRowView[]) {
 		editClientAnchor.title = `Edit Client ${entry.tagnumber !== null ? entry.tagnumber.toString() : 'N/A'}`;
 		editClientAnchor.textContent = `${entry.tagnumber !== null ? entry.tagnumber.toString() : 'N/A'}`;
 		editClientAnchor.href = tagURL.toString();
-		editClientAnchor.target = '_blank';
+		editClientAnchor.target = '_self';
 		
 		const editClientSvg = document.createElement('img');
 		editClientSvg.src = '/icons/general/edit_square.svg';
