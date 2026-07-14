@@ -2754,6 +2754,10 @@ func DeleteOSInfoByTagnumber(ctx context.Context, tagnumber int64, serial string
 		clientUUID = clientUUIDFromTag
 	}
 
+	if clientUUID == uuid.Nil {
+		return fmt.Errorf("%w: %s (%d) and %s (%s) do not match any client", types.InvalidFieldError, "tagnumber", tagnumber, "serial", serial)
+	}
+
 	tx, err := pgxPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
