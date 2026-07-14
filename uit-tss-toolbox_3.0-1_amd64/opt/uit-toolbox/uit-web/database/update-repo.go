@@ -2780,6 +2780,9 @@ func DeleteOSInfoByTagnumber(ctx context.Context, tagnumber int64, serial string
 
 	sqlResult, err := tx.Exec(ctx, sqlCode, clientUUID)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("%w: no rows found for client_uuid '%s' in table os_info", types.DatabaseDeletionError, clientUUID)
+		}
 		return fmt.Errorf("%w: %w", types.DatabaseDeletionError, err)
 	}
 

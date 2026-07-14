@@ -218,8 +218,10 @@ func DeleteOSInfoByTagnumber(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if err := database.DeleteOSInfoByTagnumber(req.Context(), tagnumber, *querySerialValPtr); err != nil {
-		log.Error("DB error while deleting OS info for tagnumber '" + strconv.FormatInt(tagnumber, 10) + "': " + err.Error())
+		log.Error("error deleting OS info for tagnumber '" + queryTagVal + "': " + err.Error())
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
+
+	log.Info("successfully deleted OS info for tagnumber '" + queryTagVal + "'")
 }
