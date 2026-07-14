@@ -2613,6 +2613,11 @@ func UpsertJobStats(ctx context.Context, JobStatsDTO *types.JobStatsDTO) (err er
 			err = tx.Commit()
 		}
 	}()
+
+	clientUUID, err := lockClientRowByTagnumber(ctx, tx, JobStatsDTO.Tagnumber)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+	}
 	const sqlCode = `
 	INSERT INTO jobstats (
 		uuid,
@@ -2632,7 +2637,6 @@ func UpsertJobStats(ctx context.Context, JobStatsDTO *types.JobStatsDTO) (err er
 		clone_time
 	) VALUES (
 		$1,
-		(SELECT uuid FROM ids WHERE tagnumber = $2 AND system_serial = $3 ORDER BY time DESC LIMIT 1),
 		$2,
 		$3,
 		$4,
@@ -2645,7 +2649,8 @@ func UpsertJobStats(ctx context.Context, JobStatsDTO *types.JobStatsDTO) (err er
 		$11,
 		$12,
 		$13,
-		$14
+		$14,
+		$15
 	) ON CONFLICT (uuid) DO UPDATE SET
 		client_uuid = EXCLUDED.client_uuid,
 		tagnumber = COALESCE(EXCLUDED.tagnumber, jobstats.tagnumber),
@@ -2665,6 +2670,7 @@ func UpsertJobStats(ctx context.Context, JobStatsDTO *types.JobStatsDTO) (err er
 
 	sqlResult, err := tx.ExecContext(ctx, sqlCode,
 		toNullString(JobStatsDTO.TransactionUUID),
+		toNullUUID(clientUUID),
 		toNullInt64(JobStatsDTO.Tagnumber),
 		toNullString(JobStatsDTO.SystemSerial),
 		toNullTime(JobStatsDTO.JobStartTime),
@@ -2675,7 +2681,7 @@ func UpsertJobStats(ctx context.Context, JobStatsDTO *types.JobStatsDTO) (err er
 		toNullInt64(JobStatsDTO.EraseDiskPcnt),
 		toNullInt64(JobStatsDTO.EraseDuration),
 		ptrToNullBool(JobStatsDTO.CloneCompleted),
-		toNullString(JobStatsDTO.CloneMaster),
+		ptrToNullBool(&JobStatsDTO.CloneMaster),
 		toNullString(JobStatsDTO.CloneImageName),
 		toNullInt64(JobStatsDTO.CloneDuration),
 	)
@@ -2685,5 +2691,36 @@ func UpsertJobStats(ctx context.Context, JobStatsDTO *types.JobStatsDTO) (err er
 	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
 		return err
 	}
+
+	if JobStatsDTO.CloneMaster {
+		const cloneMasterUpdateSQL = `
+		WITH newest_image AS (
+			SELECT clone_image FROM jobstats WHERE clone_master = TRUE AND client_uuid = $1 ORDER BY time DESC LIMIT 1
+		)
+		INSERT INTO static_image_names (
+			image_name,
+			last_updated
+		)
+		SELECT 
+			newest_image.clone_image,
+			CURRENT_TIMESTAMP
+		FROM newest_image
+		ON CONFLICT (image_name) DO UPDATE SET
+			last_updated = CURRENT_TIMESTAMP
+		;`
+
+		_, err = tx.ExecContext(ctx, cloneMasterUpdateSQL, toNullUUID(clientUUID))
+		if err != nil {
+			return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+		}
+
+		if err != nil {
+			return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
+		}
+		if err := VerifyRowsAffected(sqlResult, 1); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -36,7 +37,7 @@ type JobStatsDTO struct {
 	EraseDiskPcnt   int64
 	EraseDuration   int64
 	CloneCompleted  *bool
-	CloneMaster     string
+	CloneMaster     bool
 	CloneImageName  string
 	CloneDuration   int64
 }
@@ -123,7 +124,11 @@ func (req *UpdateJobStatsRequest) ToDTO() (*JobStatsDTO, error) {
 		if strings.TrimSpace(*req.CloneMaster) == "" {
 			return nil, fmt.Errorf("clone master is required")
 		}
-		dto.CloneMaster = *req.CloneMaster
+		isCloneMaster, err := strconv.ParseBool(*req.CloneMaster)
+		if err != nil {
+			return nil, fmt.Errorf("invalid clone master value: %w", err)
+		}
+		dto.CloneMaster = isCloneMaster
 	}
 
 	// clone image name

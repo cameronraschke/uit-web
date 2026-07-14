@@ -1290,11 +1290,11 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 
 	const sqlQuery = `
 	WITH top_clients AS MATERIALIZED (
-    SELECT ids.uuid
-    FROM ids
-    LEFT JOIN live_os_data ON ids.uuid = live_os_data.client_uuid
-    ORDER BY live_os_data.last_heard DESC NULLS LAST
-    LIMIT 50
+		SELECT ids.uuid
+		FROM ids
+		LEFT JOIN live_os_data ON ids.uuid = live_os_data.client_uuid
+		ORDER BY live_os_data.last_heard DESC NULLS LAST
+		LIMIT 50
 	),
 	avg_battery_health AS (
 		SELECT 

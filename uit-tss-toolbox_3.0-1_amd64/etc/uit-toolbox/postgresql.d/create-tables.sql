@@ -600,6 +600,7 @@ CREATE TABLE IF NOT EXISTS static_image_names (
 	image_platform_vendor VARCHAR(24) DEFAULT NULL,
 	image_platform_model VARCHAR(36) DEFAULT NULL,
 	image_name_readable VARCHAR(36) DEFAULT NULL
+	last_updated TIMESTAMP WITH TIME ZONE DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS notes (
