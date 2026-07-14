@@ -1388,9 +1388,13 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			WHEN latest_completed_job.erase_completed IS NOT NULL AND latest_completed_job.erase_completed = TRUE THEN FALSE
 			ELSE TRUE
 		END) AS "os_installed",
-		COALESCE(os_info.os_name, static_image_names.image_name_readable) AS "os_name",
+		(CASE WHEN os_info.time >= latest_completed_job.time THEN os_info.os_name ELSE static_image_names.image_name_readable END) AS "os_name",
 		(CASE
-			WHEN latest_completed_job.clone_completed IS NOT NULL AND latest_completed_job.clone_completed = TRUE AND static_image_names.last_updated <= latest_completed_job.time THEN TRUE
+			WHEN 
+				latest_completed_job.clone_completed IS NOT NULL 
+				AND latest_completed_job.clone_completed = TRUE 
+				AND static_image_names.last_updated <= latest_completed_job.time 
+			THEN TRUE
 			ELSE FALSE
 		END) AS "latest_image_installed",
 		(CASE 
@@ -1495,7 +1499,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		FROM jobstats
 		WHERE 
 			ids.uuid = jobstats.client_uuid
-			AND (jobstats.job_cancelled IS NULL OR jobstats.job_cancelled = FALSE)
+			AND jobstats.job_cancelled IS DISTINCT FROM TRUE
 			AND (jobstats.erase_completed = TRUE OR jobstats.clone_completed = TRUE)
 		ORDER BY jobstats.time DESC NULLS LAST
 		LIMIT 1
