@@ -2724,3 +2724,49 @@ func UpsertJobStats(ctx context.Context, JobStatsDTO *types.JobStatsDTO) (err er
 
 	return nil
 }
+
+func DeleteOSInfoByTagnumber(ctx context.Context, tagnumber int64) (err error) {
+	if err := types.IsTagnumberInt64Valid(&tagnumber); err != nil {
+		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
+	}
+
+	pgxPool, err := config.GetPGXPool()
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+
+	clientUUID, err := GetClientUUIDByTag(ctx, pgxPool, tagnumber)
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
+
+	tx, err := pgxPool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
+	}
+
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback(ctx)
+			return
+		}
+		if commitErr := tx.Commit(ctx); commitErr != nil {
+			err = commitErr
+		}
+	}()
+
+	const sqlCode = `
+	DELETE FROM os_info
+	WHERE client_uuid = $1;
+	`
+
+	sqlResult, err := tx.Exec(ctx, sqlCode, toNullUUID(clientUUID))
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseDeletionError, err)
+	}
+
+	if sqlResult.RowsAffected() != 1 {
+		return fmt.Errorf("%w: %w", types.DatabaseAffectedRowsError, err)
+	}
+	return nil
+}

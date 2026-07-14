@@ -114,6 +114,9 @@ func StartWebServer(ctx context.Context) error {
 	httpsRouter.Handle("POST /api/client/cpu/temp", httpsFullAPIChain.ThenFunc(endpoints.SetClientCPUTemperature))
 	httpsRouter.Handle("POST /api/client/os/network/usage", httpsFullAPIChain.ThenFunc(endpoints.SetClientNetworkUsage))
 
+	// Client OS and software
+	httpsRouter.Handle("DELETE /api/client/os/delete_all", httpsFullAPIChain.ThenFunc(endpoints.DeleteOSInfoByTagnumber))
+
 	// Inventory
 	httpsRouter.Handle("GET /api/client/lookup_ids", httpsFullAPIChain.ThenFunc(endpoints.GetClientIDs))
 	httpsRouter.Handle("GET /api/client/location_form_data", httpsFullAPIChain.ThenFunc(endpoints.GetLocationFormData))

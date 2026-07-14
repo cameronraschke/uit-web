@@ -5,9 +5,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"uit-toolbox/database"
 	"uit-toolbox/middleware"
+	"uit-toolbox/types"
 )
 
 func DeleteImage(w http.ResponseWriter, req *http.Request) {
@@ -173,4 +175,39 @@ func DeleteImage(w http.ResponseWriter, req *http.Request) {
 
 	log.Info("Successfully deleted client image with UUID '" + *fileUUID + "'")
 	middleware.WriteJson(w, http.StatusOK, map[string]string{"message": "Image deleted successfully"})
+}
+
+func DeleteOSInfoByTagnumber(w http.ResponseWriter, req *http.Request) {
+	log := middleware.GetLoggerFromContext(req.Context()).With(slog.String("func", "DeleteOSInfoByTagnumber"))
+
+	queryTagValPtr := middleware.GetStrQuery(req.URL.Query(), "tag")
+	if queryTagValPtr == nil || strings.TrimSpace(*queryTagValPtr) == "" {
+		log.Warn("No tag query key provided")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(*queryTagValPtr) == "" {
+		log.Warn("No tag query key provided")
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+	queryTagVal := strings.TrimSpace(*queryTagValPtr)
+	tagnumber, err := strconv.ParseInt(queryTagVal, 10, 64)
+	if err != nil {
+		log.Warn("Invalid tag query parameter: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	if err := types.IsTagnumberInt64Valid(&tagnumber); err != nil {
+		log.Warn("Invalid tagnumber: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusBadRequest)
+		return
+	}
+
+	if err := database.DeleteOSInfoByTagnumber(req.Context(), tagnumber); err != nil {
+		log.Error("DB error while deleting OS info for tagnumber '" + strconv.FormatInt(tagnumber, 10) + "': " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
 }
