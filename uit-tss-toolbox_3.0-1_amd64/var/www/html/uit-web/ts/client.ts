@@ -149,7 +149,7 @@ function renderClientData(data: ClientInfoResponse | null): void {
 
 	if (data.IsCheckedOut) {
 		const printAnchor = document.createElement('a');
-		printAnchor.target = `print-${data.Tagnumber?.toString() ?? ''}`;
+		printAnchor.target = `_blank`;
 		printAnchor.href = new URL(`checkout-form?tagnumber=${data.Tagnumber?.toString() ?? ''}`, window.location.origin).toString();
 
 		const printButton = document.createElement('button');

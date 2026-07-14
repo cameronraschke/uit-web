@@ -229,7 +229,7 @@ function renderFiles(manifestArr: ImageManifest[], tag: number) {
 			filePreview.alt = `Images for ${tag}`;
 			const imgLink = document.createElement('a');
 			imgLink.href = imgURL.toString();
-			imgLink.target = file.file_uuid ? file.file_uuid : '_self';
+			imgLink.target = '_blank';
 			imgLink.rel = 'noopener noreferrer';
 			imgLink.appendChild(filePreview);
 			filePreviewContainer.appendChild(imgLink);

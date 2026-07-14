@@ -172,7 +172,7 @@ async function updateCheckoutStatus() {
 	if (statusesThatIndicateCheckout.includes(clientStatusUpdate.value)) {
 		printCheckoutContainer.style.display = 'inline-block';
 		printCheckoutLink.setAttribute('href', `/checkout-form?tagnumber=${encodeURIComponent(clientLookupTagInput.value)}`);
-		printCheckoutLink.setAttribute('target', `checkout-form-${encodeURIComponent(clientLookupTagInput.value)}`);
+		printCheckoutLink.setAttribute('target', '_blank');
 		printCheckoutLink.textContent = 'Print Checkout Form';
 	} else {
 		printCheckoutContainer.style.display = 'none';
