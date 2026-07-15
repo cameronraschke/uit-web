@@ -27,21 +27,21 @@ func GetAdminCredentials() (string, string, error) {
 	return adminUsername, adminPasswd, nil
 }
 
-// Auth session management
+// Returns all active auth sessions as a map[string]types.AuthSession
 func GetAuthSessions() map[string]types.AuthSession {
 	appState, err := GetAppState()
 	if err != nil {
 		return nil
 	}
 	authSessionsMap := make(map[string]types.AuthSession)
-	appState.authMap.Range(func(k, v any) bool {
-		key, keyExists := k.(string)
-		value, valueExists := v.(types.AuthSession)
-		if keyExists && valueExists {
-			authSessionsMap[key] = value
+	appState.authMapMutex.RLock()
+	defer appState.authMapMutex.RUnlock()
+	for sessionID, value := range appState.authMap {
+		if sessionID == "" && value != (types.AuthSession{}) {
+			continue
 		}
-		return true
-	})
+		authSessionsMap[sessionID] = value
+	}
 	return authSessionsMap
 }
 
@@ -131,23 +131,42 @@ func CreateAuthSession(requestIP netip.Addr) (*types.AuthSession, error) {
 		},
 	}
 
-	appState.authMap.Store(authSession.SessionID, authSession)
-	appState.authMapEntryCount.Add(1)
+	appState.authMapMutex.Lock()
+	defer appState.authMapMutex.Unlock()
+	appState.authMap[authSession.SessionID] = authSession
 
 	return &authSession, nil
 }
 
-func DeleteAuthSession(sessionID string) {
+func DeleteAuthSessions(sessionIDs []string) []error {
+	log := GetLogger()
 	appState, err := GetAppState()
+
+	errSlice := make([]error, 0, len(sessionIDs))
+
 	if err != nil {
-		return
+		errSlice = append(errSlice, fmt.Errorf("failed to get app state: %w", err))
+		return errSlice
 	}
-	if _, ok := appState.authMap.LoadAndDelete(sessionID); ok {
-		newVal := appState.authMapEntryCount.Add(-1)
-		if newVal < 0 {
-			appState.authMapEntryCount.Store(0)
+
+	stringsToLog := make([]string, 0, len(sessionIDs))
+
+	appState.authMapMutex.Lock()
+	for _, sessionID := range sessionIDs {
+		if _, ok := appState.authMap[sessionID]; ok {
+			delete(appState.authMap, sessionID)
+			sessionCount := len(appState.authMap)
+			stringsToLog = append(stringsToLog, "Deleted auth session with ID: "+sessionID+" (active sessions: "+strconv.Itoa(sessionCount)+")")
+		} else {
+			errSlice = append(errSlice, fmt.Errorf("Attempted to delete non-existent auth session with ID: %s", sessionID))
 		}
 	}
+	appState.authMapMutex.Unlock()
+
+	for _, msg := range stringsToLog {
+		log.Info(msg)
+	}
+	return errSlice
 }
 
 func ClearExpiredAuthSessions() {
@@ -157,22 +176,29 @@ func ClearExpiredAuthSessions() {
 		return
 	}
 	curTime := time.Now()
-	appState.authMap.Range(func(k, v any) bool {
-		sessionID, ok := k.(string)
-		if !ok {
-			return true
+
+	expiredAuthSessions := make([]string, 0, 10)
+	stringsToLog := make([]string, 0, 10)
+
+	appState.authMapMutex.RLock()
+	for sessionID, authSession := range appState.authMap {
+		if authSession.BasicToken.Expiry.Before(curTime) &&
+			authSession.BearerToken.Expiry.Before(curTime) {
+			expiredAuthSessions = append(expiredAuthSessions, sessionID)
+			stringsToLog = append(stringsToLog, "Auth session expired: "+authSession.BasicToken.IP.String()+" (TTL: "+fmt.Sprintf("%.2f", authSession.BearerToken.Expiry.Sub(curTime).Seconds())+")")
 		}
-		authSession, ok := v.(types.AuthSession)
-		if !ok {
-			return true
+	}
+	appState.authMapMutex.RUnlock()
+
+	for _, msg := range stringsToLog {
+		log.Info(msg)
+	}
+
+	if errSlice := DeleteAuthSessions(expiredAuthSessions); len(errSlice) > 0 {
+		for _, err := range errSlice {
+			log.Warn(err.Error())
 		}
-		if authSession.BasicToken.Expiry.Before(curTime) && authSession.BearerToken.Expiry.Before(curTime) {
-			DeleteAuthSession(sessionID)
-			authSessionCount := GetAuthSessionCount()
-			log.Info("Auth session expired: " + authSession.BasicToken.IP.String() + " (TTL: " + fmt.Sprintf("%.2f", authSession.BearerToken.Expiry.Sub(curTime).Seconds()) + ", " + strconv.Itoa(int(authSessionCount)) + " session(s) active)")
-		}
-		return true
-	})
+	}
 }
 
 func GetAuthSessionCount() int64 {
@@ -180,66 +206,47 @@ func GetAuthSessionCount() int64 {
 	if err != nil {
 		return 0
 	}
-	return appState.authMapEntryCount.Load()
-}
-
-func RefreshAndGetAuthSessionCount() int64 {
-	appState, err := GetAppState()
-	if err != nil {
-		return 0
-	}
-	var entries int64
-	appState.authMap.Range(func(_, _ any) bool {
-		entries++
-		return true
-	})
-	appState.authMapEntryCount.Store(entries)
-	return entries
+	appState.authMapMutex.RLock()
+	defer appState.authMapMutex.RUnlock()
+	return int64(len(appState.authMap))
 }
 
 func IsAuthSessionValid(checkedAuthSession *types.AuthSession, requestIP netip.Addr) (bool, error) {
+	curTime := time.Now()
+
 	if checkedAuthSession == nil || checkedAuthSession.SessionID == "" || requestIP == (netip.Addr{}) || !requestIP.IsValid() {
 		return false, fmt.Errorf("auth session and/or request IP is nil or invalid (IsAuthSessionValid)")
 	}
-	appState, err := GetAppState()
+
+	authSession, err := GetAuthSessionByID(checkedAuthSession.SessionID)
 	if err != nil {
-		return false, fmt.Errorf("cannot retrieve app state (IsAuthSessionValid): %w", err)
+		return false, fmt.Errorf("error retrieving auth session by ID: %w", err)
 	}
 
-	value, ok := appState.authMap.Load(checkedAuthSession.SessionID)
-	if !ok {
-		return false, nil
-	}
-
-	existingAuthSession, ok := value.(types.AuthSession)
-	if !ok {
-		return false, fmt.Errorf("invalid auth session type")
-	}
-
-	if existingAuthSession.SessionTTL <= 0 ||
-		existingAuthSession.BasicToken.TTL <= 0 ||
-		existingAuthSession.BearerToken.TTL <= 0 {
-		// existingAuthSession.CSRFToken.TTL <= 0
+	if authSession.SessionTTL <= 0 ||
+		authSession.BasicToken.TTL <= 0 ||
+		authSession.BearerToken.TTL <= 0 {
+		// authSession.CSRFToken.TTL <= 0
 		return false, fmt.Errorf("auth tokens have reached their TTL")
 	}
 
-	if existingAuthSession.SessionID != checkedAuthSession.SessionID ||
-		existingAuthSession.BasicToken.Token != checkedAuthSession.BasicToken.Token ||
-		existingAuthSession.BearerToken.Token != checkedAuthSession.BearerToken.Token {
-		// existingAuthSession.CSRFToken.Token != checkedAuthSession.CSRFToken.Token
+	if authSession.SessionID != checkedAuthSession.SessionID ||
+		authSession.BasicToken.Token != checkedAuthSession.BasicToken.Token ||
+		authSession.BearerToken.Token != checkedAuthSession.BearerToken.Token {
+		// authSession.CSRFToken.Token != checkedAuthSession.CSRFToken.Token
 		return false, fmt.Errorf("request tokens do not match stored session tokens")
 	}
 
-	if existingAuthSession.BasicToken.Expiry.Before(time.Now()) ||
-		existingAuthSession.BearerToken.Expiry.Before(time.Now()) {
-		// existingAuthSession.CSRFToken.Expiry.Before(time.Now())
+	if authSession.BasicToken.Expiry.Before(curTime) ||
+		authSession.BearerToken.Expiry.Before(curTime) {
+		// authSession.CSRFToken.Expiry.Before(curTime)
 		return false, fmt.Errorf("auth tokens have expired")
 	}
 
-	if existingAuthSession.IPAddress != requestIP ||
-		existingAuthSession.BasicToken.IP != requestIP ||
-		existingAuthSession.BearerToken.IP != requestIP {
-		// existingAuthSession.CSRFToken.IP != requestIP
+	if authSession.IPAddress != requestIP ||
+		authSession.BasicToken.IP != requestIP ||
+		authSession.BearerToken.IP != requestIP {
+		// authSession.CSRFToken.IP != requestIP
 		return false, fmt.Errorf("request IP does not match stored token IP")
 	}
 
@@ -251,27 +258,33 @@ func GetAuthSessionByID(sessionID string) (*types.AuthSession, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting app state in GetAuthSessionByID: %w", err)
 	}
-	value, ok := appState.authMap.Load(sessionID)
+
+	appState.authMapMutex.RLock()
+	authSession, ok := appState.authMap[sessionID]
+	appState.authMapMutex.RUnlock()
 	if !ok {
-		return nil, nil
-	}
-	authSession, ok := value.(types.AuthSession)
-	if !ok {
-		return nil, errors.New("invalid auth session type")
+		return nil, fmt.Errorf("auth session not found")
 	}
 	return &authSession, nil
 }
 
-func UpdateAuthSession(sessionID string, authSession *types.AuthSession) error {
+func UpdateAuthSession(sessionID string, newAuthSession *types.AuthSession) error {
 	appState, err := GetAppState()
 	if err != nil {
 		return fmt.Errorf("error getting app state in UpdateAuthSession: %w", err)
 	}
-	_, ok := appState.authMap.Load(sessionID)
-	if !ok {
-		return fmt.Errorf("session ID not found: %s", sessionID)
+
+	if newAuthSession == nil || newAuthSession.SessionID == "" {
+		return fmt.Errorf("new auth session is nil or has empty session ID")
 	}
-	appState.authMap.Store(sessionID, *authSession)
+
+	appState.authMapMutex.Lock()
+	defer appState.authMapMutex.Unlock()
+	if authSession, ok := appState.authMap[sessionID]; !ok || authSession.SessionID == "" {
+		return fmt.Errorf("auth session not found for session ID: %s", sessionID)
+	}
+
+	appState.authMap[sessionID] = *newAuthSession
 	return nil
 }
 

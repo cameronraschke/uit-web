@@ -931,7 +931,7 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 
 		switch requestPath {
 		case "/logout":
-			config.DeleteAuthSession(uitSessionIDCookie.Value)
+			config.DeleteAuthSessions([]string{uitSessionIDCookie.Value})
 			log.Info(fmt.Sprintf("Deleted auth session (%s), Session(s) active: %d", uitSessionIDCookie.Value, config.GetAuthSessionCount()))
 			// Clear cookies
 			http.SetCookie(w, &http.Cookie{
@@ -960,13 +960,17 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			})
 
 			// Redirect to login page
-			log.Info("Auth session deleted: " + reqAddr.String() + ", active session(s): " + strconv.Itoa(int(config.RefreshAndGetAuthSessionCount())))
+			log.Info("Auth session deleted: " + reqAddr.String() + ", active session(s): " + strconv.Itoa(int(config.GetAuthSessionCount())))
 			http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 			return
 		case "/api/check_auth":
 			// Don't extend session TTL for auth check
-			currentSession, err := UpdateAndGetAuthSession(currentSession, false)
-			if err != nil || currentSession == nil {
+			if currentSession == nil {
+				log.Error("Auth session is nil for auth check")
+				http.Redirect(w, req, redirectURL, http.StatusSeeOther)
+				return
+			}
+			if err := config.UpdateAuthSession(uitSessionIDCookie.Value, currentSession); err != nil {
 				log.Error("Error generating auth cookies for response: " + err.Error())
 				http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 				return
@@ -978,17 +982,16 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			WriteJson(w, http.StatusOK, returnedJson)
 			return
 		default:
-			updatedSession, err := UpdateAndGetAuthSession(currentSession, true)
-			if err != nil || updatedSession == nil {
+			if err := config.UpdateAuthSession(uitSessionIDCookie.Value, currentSession); err != nil {
 				log.Error("Error generating auth cookies for response: " + err.Error())
 				http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 				return
 			}
-			// log.Debug("Auth session TTL is low (" + updatedSession.SessionTTL.String() + "), sending tokens to client: " + reqAddr.String())
-			http.SetCookie(w, updatedSession.SessionCookie)
-			http.SetCookie(w, updatedSession.BasicCookie)
-			http.SetCookie(w, updatedSession.BearerCookie)
-			// http.SetCookie(w, updatedSession.CSRFCookie)
+			// log.Debug("Auth session TTL is low (" + currentSession.SessionTTL.String() + "), sending tokens to client: " + reqAddr.String())
+			http.SetCookie(w, currentSession.SessionCookie)
+			http.SetCookie(w, currentSession.BasicCookie)
+			http.SetCookie(w, currentSession.BearerCookie)
+			// http.SetCookie(w, currentSession.CSRFCookie)
 			next.ServeHTTP(w, req)
 			return
 		}

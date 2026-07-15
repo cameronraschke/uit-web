@@ -45,9 +45,14 @@ func startAuthMapCleanup(ctx context.Context, log *slog.Logger, interval time.Du
 		case <-ticker.C:
 			originalSessionCount := config.GetAuthSessionCount()
 			config.ClearExpiredAuthSessions()
-			newSessionCount := config.RefreshAndGetAuthSessionCount()
+			newSessionCount := config.GetAuthSessionCount()
+			sessionDiff := originalSessionCount - newSessionCount
 			if originalSessionCount != newSessionCount {
-				log.Info("(Background) Auth session cleanup done (Sessions: " + fmt.Sprintf("%d", newSessionCount) + ")")
+				if sessionDiff >= 0 {
+					log.Info(fmt.Sprintf("(Background) Auth session cleanup done (Sessions: %d, Expired: %d)", newSessionCount, sessionDiff))
+				} else if sessionDiff < 0 {
+					log.Warn(fmt.Sprintf("(Background) Error during auth cleanup: %d new sessions were added", -sessionDiff))
+				}
 			}
 		}
 	}

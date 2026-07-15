@@ -89,8 +89,8 @@ type AppState struct {
 	appConfig          atomic.Pointer[AppConfiguration]
 	dbConn             atomic.Pointer[sql.DB]
 	pgxPool            atomic.Pointer[pgxpool.Pool]
-	authMap            sync.Map
-	authMapEntryCount  atomic.Int64
+	authMapMutex       sync.RWMutex
+	authMap            map[string]types.AuthSession
 	appLogger          atomic.Pointer[slog.Logger]
 	webServerLimiter   atomic.Pointer[RateLimiter]
 	fileLimiter        atomic.Pointer[RateLimiter]
@@ -104,7 +104,7 @@ type AppState struct {
 	apiRequestTimeout  atomic.Pointer[time.Duration]
 	fileRequestTimeout atomic.Pointer[time.Duration]
 	webEndpoints       sync.Map
-	LiveImageMapMutex  sync.Mutex
+	LiveImageMapMutex  sync.RWMutex
 	LiveImageMap       map[int64]*types.JobQueueRealtimeData
 	groupPermissions   sync.Map
 	userPermissions    sync.Map
@@ -205,7 +205,7 @@ func InitConfig() (*AppConfiguration, error) {
 
 	// Set input constraints
 	generalNoteConstraints := &types.GeneralNoteConstraints{
-		MaxFormBytes:        32768 * 4, // Reasonable Unicode/JSON overhead
+		MaxFormBytes: 32768 * 4, // Reasonable Unicode/JSON overhead
 	}
 
 	inventoryFormConstraints := &types.InventoryUpdateFormConstraints{
