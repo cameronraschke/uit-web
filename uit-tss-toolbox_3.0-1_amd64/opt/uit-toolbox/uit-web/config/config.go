@@ -397,6 +397,10 @@ func InitApp() (*AppState, error) {
 	appState.apiRequestTimeout.Store(&appConfig.APIRequestTimeout)
 	appState.fileRequestTimeout.Store(&appConfig.FileRequestTimeout)
 
+	// Init AuthMap
+	appState.authMap = make(map[string]types.AuthSession)
+
+	// Initialize live image map
 	liveImageMap := make(map[int64]*types.JobQueueRealtimeData)
 	liveImageMap[111111] = &types.JobQueueRealtimeData{
 		ClientUUID:     "111111",
