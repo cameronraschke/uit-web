@@ -23,6 +23,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type onlineClientData struct {
+	ClientUUID uuid.UUID
+	LastHeard  *time.Time
+}
+
 type Select interface {
 	CheckTwoFactorCode(ctx context.Context, twoFactorCode *string) (string, error)
 	CheckAuthCredentials(ctx context.Context, username *string, password *string) (bool, *string, error)
@@ -1293,7 +1298,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		SELECT ids.uuid
 		FROM ids
 		LEFT JOIN live_os_data ON ids.uuid = live_os_data.client_uuid
-		ORDER BY live_os_data.last_heard DESC NULLS LAST
 		LIMIT 50
 	),
 	avg_battery_health AS (
@@ -1325,8 +1329,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			LEFT JOIN live_os_data ON job_queue.client_uuid = live_os_data.client_uuid
 		WHERE
 			(job_queue.job_queued = TRUE OR job_queue.job_name IS NOT NULL)
-			AND live_os_data.last_heard IS NOT NULL
-			AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - live_os_data.last_heard)) < 10
+			AND job_queue.client_UUID IN (ANY($1::uuid[]))
 	),
 	job_queue_positions AS (
 		SELECT
@@ -1347,6 +1350,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		FROM live_queue
 	)
 	SELECT
+		ids.uuid,
 		ids.tagnumber,
 		ids.system_serial,
 		hardware_data.system_manufacturer,
@@ -1359,10 +1363,9 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		FALSE AS "temp_warning",
 		(CASE WHEN static_client_statuses.status_name = 'checked_out' THEN TRUE ELSE FALSE END) AS "checkout_bool",
 		TRUE AS "kernel_updated",
-		live_os_data.last_heard,
 		live_os_data.system_uptime,
 		live_os_data.client_app_uptime,
-		(CASE WHEN EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - live_os_data.last_heard)) < 10 THEN TRUE ELSE FALSE END) AS "online",
+		(ids.uuid = ANY($1::uuid[])) AS "online",
 		job_queue.job_active,
 		job_queue.job_queued,
 		job_queue.job_queued_at,
@@ -1514,23 +1517,50 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN job_queue_positions ON job_queue_positions.client_uuid = ids.uuid
 	LEFT JOIN static_client_statuses ON static_client_statuses.status_name = locations.client_status
 	LEFT JOIN static_department_info ON static_department_info.department_name = locations.department_name
-	ORDER BY
-		live_os_data.last_heard DESC NULLS LAST
 	;`
 
-	rows, err := pgxPool.Query(ctx, sqlQuery)
+	onlineClients := make([]onlineClientData, 0, 50)
+
+	onlineClientTags, err := config.GetAllOnlineClients()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", types.ErrNoOnlineClients, err)
+	}
+
+	onlineClientUUIDs := make([]uuid.UUID, 0, len(onlineClientTags))
+	for _, tag := range onlineClientTags {
+		realtimeData, err := config.GetRealtimeClientData(tag)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %w", types.ErrNoRealtimeClientData, err)
+		}
+		clientUUID := realtimeData.ClientUUID
+		lastHeard := realtimeData.LastHeard
+		onlineClientUUIDs = append(onlineClientUUIDs, clientUUID)
+		onlineClients = append(onlineClients, onlineClientData{
+			ClientUUID: clientUUID,
+			LastHeard:  lastHeard,
+		})
+	}
+	onlineLastHeardByUUID := make(map[uuid.UUID]*time.Time, len(onlineClients))
+	for _, client := range onlineClients {
+		onlineLastHeardByUUID[client.ClientUUID] = client.LastHeard
+	}
+
+	jobQueueRows := make([]types.JobQueueTableRowView, 0, approxClientCount)
+
+	rows, err := pgxPool.Query(ctx, sqlQuery, onlineClientUUIDs)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 	defer rows.Close()
 
-	jobQueueRows := make([]types.JobQueueTableRowView, 0, approxClientCount)
 	for rows.Next() {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("%w: %w", types.DatabaseRowIterationError, ctx.Err())
 		}
 		var row types.JobQueueTableRowView
+		var clientUUID uuid.UUID
 		if err := rows.Scan(
+			&clientUUID,
 			&row.Tagnumber,
 			&row.SystemSerial,
 			&row.SystemManufacturer,
@@ -1543,7 +1573,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			&row.TempWarning,
 			&row.CheckoutBool,
 			&row.KernelUpdated,
-			&row.LastHeard,
 			&row.SystemUptime,
 			&row.AppUptime,
 			&row.Online,
@@ -1589,6 +1618,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		); err != nil {
 			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
+		row.LastHeard = onlineLastHeardByUUID[clientUUID]
 		jobQueueRows = append(jobQueueRows, row)
 	}
 	if rows.Err() != nil {
@@ -1896,6 +1926,32 @@ func SelectJobQueuePosition(ctx context.Context, tag int64) (int64, error) {
 		return queuePositionMaxValue, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 
+	onlineClients := make([]onlineClientData, 0, 50)
+
+	onlineClientTags, err := config.GetAllOnlineClients()
+	if err != nil {
+		return queuePositionMaxValue, fmt.Errorf("%w: %w", types.ErrNoOnlineClients, err)
+	}
+
+	onlineClientUUIDs := make([]uuid.UUID, 0, len(onlineClientTags))
+	for _, tag := range onlineClientTags {
+		realtimeData, err := config.GetRealtimeClientData(tag)
+		if err != nil {
+			return queuePositionMaxValue, fmt.Errorf("%w: %w", types.ErrNoRealtimeClientData, err)
+		}
+		clientUUID := realtimeData.ClientUUID
+		lastHeard := realtimeData.LastHeard
+		onlineClientUUIDs = append(onlineClientUUIDs, clientUUID)
+		onlineClients = append(onlineClients, onlineClientData{
+			ClientUUID: clientUUID,
+			LastHeard:  lastHeard,
+		})
+	}
+	onlineLastHeardByUUID := make(map[uuid.UUID]*time.Time, len(onlineClients))
+	for _, client := range onlineClients {
+		onlineLastHeardByUUID[client.ClientUUID] = client.LastHeard
+	}
+
 	const sqlQuery = `
 	WITH job_queue_position AS (
 		SELECT 
@@ -1907,8 +1963,7 @@ func SelectJobQueuePosition(ctx context.Context, tag int64) (int64, error) {
 		LEFT JOIN live_os_data ON job_queue.client_uuid = live_os_data.client_uuid
 		WHERE 
 			(job_queue.job_name IS NOT NULL OR job_queue.job_queued = TRUE)
-			AND live_os_data.last_heard IS NOT NULL
-			AND EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - live_os_data.last_heard)) < 20
+			AND client_uuid = ANY($1::uuid[])
 	)
 	SELECT job_queue_position FROM (
 		SELECT

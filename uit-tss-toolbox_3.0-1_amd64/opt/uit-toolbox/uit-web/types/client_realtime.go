@@ -1,11 +1,18 @@
 package types
 
-import "time"
+import (
+	"time"
 
-const MaxLiveImageBytes = 512 << 20 // 512 MB
+	"github.com/google/uuid"
+)
+
+const (
+	MaxLiveImageBytes = 512 << 20 // 512 MB
+	LastHeardTimeout  = 10 * time.Second
+)
 
 type JobQueueRealtimeData struct {
-	ClientUUID     string
+	ClientUUID     uuid.UUID
 	Tagnumber      int64
 	SerialNumber   string
 	LastHeard      *time.Time
@@ -14,6 +21,7 @@ type JobQueueRealtimeData struct {
 }
 
 type JobQueueTableRowView struct {
+	ClientUUID             *uuid.UUID     `json:"client_uuid"`
 	Tagnumber              *int64         `json:"tagnumber"`
 	SystemSerial           *string        `json:"system_serial"`
 	SystemManufacturer     *string        `json:"system_manufacturer"`

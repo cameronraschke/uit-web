@@ -532,17 +532,32 @@ func SetClientLastHeard(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	updateRepo, err := database.NewUpdateRepo()
+
+	pgxPool, err := config.GetPGXPool()
 	if err != nil {
-		log.Error(fmt.Sprintf("%v '%s': %v", types.DatabaseConnError, "clientLastHeard", err))
+		log.Error("No database connection available for updating client last heard")
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	if err := updateRepo.UpdateClientLastHeard(ctx, &lastHeardData.Tagnumber, &lastHeardData.LastHeard); err != nil {
+	clientUUID, err := database.GetClientUUIDByTag(req.Context(), pgxPool, lastHeardData.Tagnumber)
+	if err != nil {
+		log.Error(fmt.Sprintf("%v '%s': %v", types.FailedToUpdateDatabaseValueError, "clientUUID", err))
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	lastHeard := lastHeardData.LastHeard.UTC()
+	if err := config.UpdateClientLastHeard(lastHeardData.Tagnumber, &lastHeard); err != nil {
 		log.Error(fmt.Sprintf("%v '%s': %v", types.FailedToUpdateDatabaseValueError, "lastHeard", err))
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
+	if err := config.SetLiveClientUUID(lastHeardData.Tagnumber, clientUUID); err != nil {
+		log.Error(fmt.Sprintf("%v '%s': %v", types.FailedToUpdateDatabaseValueError, "clientUUID", err))
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
 	middleware.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
 }
 
@@ -1651,6 +1666,26 @@ func UploadLiveImage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
+
+	pgxPool, err := config.GetPGXPool()
+	if err != nil {
+		log.Warn("Error getting database connection: " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
+	clientUUID, err := database.GetClientUUIDByTag(req.Context(), pgxPool, *tag)
+	if err != nil {
+		log.Warn("Error retrieving client UUID for tagnumber " + strconv.Itoa(int(*tag)) + ": " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+	if err := config.SetLiveClientUUID(*tag, clientUUID); err != nil {
+		log.Warn("Error setting live client UUID for tagnumber " + strconv.Itoa(int(*tag)) + ": " + err.Error())
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
+	}
+
 	middleware.WriteJson(w, http.StatusOK, struct {
 		Status string `json:"status"`
 	}{

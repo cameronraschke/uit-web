@@ -18,6 +18,8 @@ import (
 	"time"
 	"uit-toolbox/types"
 
+	"github.com/google/uuid"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -86,28 +88,28 @@ type ClientConfig struct {
 }
 
 type AppState struct {
-	appConfig          atomic.Pointer[AppConfiguration]
-	dbConn             atomic.Pointer[sql.DB]
-	pgxPool            atomic.Pointer[pgxpool.Pool]
-	authMapMutex       sync.RWMutex
-	authMap            map[string]types.AuthSession
-	appLogger          atomic.Pointer[slog.Logger]
-	webServerLimiter   atomic.Pointer[RateLimiter]
-	fileLimiter        atomic.Pointer[RateLimiter]
-	apiLimiter         atomic.Pointer[RateLimiter]
-	authLimiter        atomic.Pointer[RateLimiter]
-	banList            atomic.Pointer[BanList]
-	allowedWANIPs      sync.Map
-	allowedLANIPs      sync.Map
-	allAllowedIPs      sync.Map
-	sessionSecret      []byte
-	apiRequestTimeout  atomic.Pointer[time.Duration]
-	fileRequestTimeout atomic.Pointer[time.Duration]
-	webEndpoints       sync.Map
-	LiveImageMapMutex  sync.RWMutex
-	LiveImageMap       map[int64]*types.JobQueueRealtimeData
-	groupPermissions   sync.Map
-	userPermissions    sync.Map
+	appConfig            atomic.Pointer[AppConfiguration]
+	dbConn               atomic.Pointer[sql.DB]
+	pgxPool              atomic.Pointer[pgxpool.Pool]
+	authMapMutex         sync.RWMutex
+	authMap              map[string]types.AuthSession
+	appLogger            atomic.Pointer[slog.Logger]
+	webServerLimiter     atomic.Pointer[RateLimiter]
+	fileLimiter          atomic.Pointer[RateLimiter]
+	apiLimiter           atomic.Pointer[RateLimiter]
+	authLimiter          atomic.Pointer[RateLimiter]
+	banList              atomic.Pointer[BanList]
+	allowedWANIPs        sync.Map
+	allowedLANIPs        sync.Map
+	allAllowedIPs        sync.Map
+	sessionSecret        []byte
+	apiRequestTimeout    atomic.Pointer[time.Duration]
+	fileRequestTimeout   atomic.Pointer[time.Duration]
+	webEndpoints         sync.Map
+	ClientRealtimeDataMu sync.RWMutex
+	ClientRealtimeData   map[int64]types.JobQueueRealtimeData
+	groupPermissions     sync.Map
+	userPermissions      sync.Map
 }
 
 var (
@@ -401,18 +403,10 @@ func InitApp() (*AppState, error) {
 	appState.authMap = make(map[string]types.AuthSession)
 
 	// Initialize live image map
-	liveImageMap := make(map[int64]*types.JobQueueRealtimeData)
-	liveImageMap[111111] = &types.JobQueueRealtimeData{
-		ClientUUID:     "111111",
-		Tagnumber:      111111,
-		SerialNumber:   "111111",
-		LastHeard:      nil,
-		LastHeardInDB:  nil,
-		LiveImageBytes: []byte("test"),
-	}
-	appState.LiveImageMapMutex.Lock()
-	appState.LiveImageMap = liveImageMap
-	appState.LiveImageMapMutex.Unlock()
+	clientRealtimeDataMap := make(map[int64]types.JobQueueRealtimeData)
+	appState.ClientRealtimeDataMu.Lock()
+	appState.ClientRealtimeData = clientRealtimeDataMap
+	appState.ClientRealtimeDataMu.Unlock()
 
 	// Declare endpoints
 	if err := SetAppState(appState); err != nil {
@@ -803,32 +797,36 @@ func GetLiveImage(tag int64) ([]byte, error) {
 	if err != nil || as == nil {
 		return nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
 	}
-	if tag == 0 {
-		return nil, fmt.Errorf("tag is zero")
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+		return nil, types.CreateInvalidFieldError("tagnumber", err)
 	}
 
-	as.LiveImageMapMutex.Lock()
-	if len(as.LiveImageMap) == 0 {
-		as.LiveImageMapMutex.Unlock()
+	as.ClientRealtimeDataMu.RLock()
+	if len(as.ClientRealtimeData) == 0 {
+		as.ClientRealtimeDataMu.RUnlock()
 		return nil, fmt.Errorf("live image map not initialized")
 	}
 
-	val, ok := as.LiveImageMap[tag]
+	val, ok := as.ClientRealtimeData[tag]
 	if !ok {
-		as.LiveImageMapMutex.Unlock()
+		as.ClientRealtimeDataMu.RUnlock()
 		return nil, fmt.Errorf("%w: live image not found for tag %d", types.LiveImageMissingError, tag)
 	}
+
 	liveImage := val.LiveImageBytes
 	if liveImage == nil {
-		// still holding the lock
-		delete(as.LiveImageMap, tag)
-		as.LiveImageMapMutex.Unlock()
+		as.ClientRealtimeDataMu.RUnlock()
+		as.ClientRealtimeDataMu.Lock()
+		delete(as.ClientRealtimeData, tag)
+		as.ClientRealtimeDataMu.Unlock()
 		return nil, fmt.Errorf("live image bytes are nil for tag %d", tag)
+
 	}
 	if len(liveImage) == 0 || len(liveImage) > types.MaxLiveImageBytes {
-		// still holding the lock
-		delete(as.LiveImageMap, tag)
-		as.LiveImageMapMutex.Unlock()
+		as.ClientRealtimeDataMu.RUnlock()
+		as.ClientRealtimeDataMu.Lock()
+		delete(as.ClientRealtimeData, tag)
+		as.ClientRealtimeDataMu.Unlock()
 		return nil, fmt.Errorf("size of live image is out of range: %.2fMB", float64(len(liveImage))/1024/1024)
 	}
 
@@ -836,13 +834,70 @@ func GetLiveImage(tag int64) ([]byte, error) {
 	imageCopy := make([]byte, len(liveImage))
 	copy(imageCopy, liveImage)
 	// Release the lock after copying the live image bytes in case live image is being updated concurrently
-	as.LiveImageMapMutex.Unlock()
+	as.ClientRealtimeDataMu.RUnlock()
 	return imageCopy, nil
 }
 
+func GetRealtimeClientData(tag int64) (*types.JobQueueRealtimeData, error) {
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+		return nil, types.CreateInvalidFieldError("tagnumber", err)
+	}
+
+	as, err := GetAppState()
+	if err != nil || as == nil {
+		return nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	}
+
+	as.ClientRealtimeDataMu.RLock()
+	defer as.ClientRealtimeDataMu.RUnlock()
+	clientData, ok := as.ClientRealtimeData[tag]
+	if !ok {
+		return nil, fmt.Errorf("%w: live client data not found for tag %d", types.MissingFieldError, tag)
+	}
+	return &clientData, nil
+}
+
+func GetLiveClientUUID(tag int64) (uuid.UUID, error) {
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+		return uuid.Nil, types.CreateInvalidFieldError("tagnumber", err)
+	}
+
+	as, err := GetAppState()
+	if err != nil || as == nil {
+		return uuid.Nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	}
+
+	as.ClientRealtimeDataMu.RLock()
+	defer as.ClientRealtimeDataMu.RUnlock()
+	clientData, ok := as.ClientRealtimeData[tag]
+	if !ok {
+		return uuid.Nil, fmt.Errorf("%w: live client UUID not found for tag %d", types.MissingFieldError, tag)
+	}
+	return clientData.ClientUUID, nil
+}
+
+func SetLiveClientUUID(tag int64, uuid uuid.UUID) error {
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+		return types.CreateInvalidFieldError("tagnumber", err)
+	}
+
+	as, err := GetAppState()
+	if err != nil || as == nil {
+		return fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	}
+
+	as.ClientRealtimeDataMu.Lock()
+	defer as.ClientRealtimeDataMu.Unlock()
+	clientData := as.ClientRealtimeData[tag]
+	clientData.Tagnumber = tag
+	clientData.ClientUUID = uuid
+	as.ClientRealtimeData[tag] = clientData
+	return nil
+}
+
 func UpdateLiveImage(tag int64, imageBytes []byte) error {
-	if tag == 0 {
-		return fmt.Errorf("tag is zero")
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+		return types.CreateInvalidFieldError("tagnumber", err)
 	}
 	if len(imageBytes) == 0 || len(imageBytes) > types.MaxLiveImageBytes {
 		return fmt.Errorf("size of live image is out of range: %.2fMB", float64(len(imageBytes))/1024/1024)
@@ -855,11 +910,74 @@ func UpdateLiveImage(tag int64, imageBytes []byte) error {
 	// Store a copy
 	newImage := make([]byte, len(imageBytes))
 	copy(newImage, imageBytes)
-	as.LiveImageMapMutex.Lock()
-	defer as.LiveImageMapMutex.Unlock()
-	as.LiveImageMap[tag] = &types.JobQueueRealtimeData{
-		Tagnumber:      tag,
-		LiveImageBytes: newImage,
+	as.ClientRealtimeDataMu.Lock()
+	defer as.ClientRealtimeDataMu.Unlock()
+	clientData := as.ClientRealtimeData[tag]
+	clientData.Tagnumber = tag
+	clientData.LiveImageBytes = newImage
+	as.ClientRealtimeData[tag] = clientData
+	return nil
+}
+
+func GetClientLastHeard(tag int64) (*time.Time, error) {
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+		return nil, types.CreateInvalidFieldError("tagnumber", err)
 	}
+
+	appState, err := GetAppState()
+	if err != nil || appState == nil {
+		return nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	}
+
+	appState.ClientRealtimeDataMu.RLock()
+	defer appState.ClientRealtimeDataMu.RUnlock()
+
+	val, ok := appState.ClientRealtimeData[tag]
+	if !ok {
+		return nil, fmt.Errorf("%w (%d)", types.ClientLastHeardMissingError, tag)
+	}
+
+	return val.LastHeard, nil
+}
+
+func GetAllOnlineClients() (onlineClientTags []int64, err error) {
+	appState, err := GetAppState()
+	if err != nil || appState == nil {
+		return nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	}
+
+	appState.ClientRealtimeDataMu.RLock()
+	defer appState.ClientRealtimeDataMu.RUnlock()
+
+	for tag := range appState.ClientRealtimeData {
+		if clientData, ok := appState.ClientRealtimeData[tag]; ok && clientData.LastHeard != nil && !clientData.LastHeard.IsZero() {
+			if clientData.LastHeard.Add(types.LastHeardTimeout).After(time.Now()) {
+				onlineClientTags = append(onlineClientTags, tag)
+			}
+		}
+	}
+	return onlineClientTags, nil
+}
+
+func UpdateClientLastHeard(tag int64, lastHeard *time.Time) error {
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+		return types.CreateInvalidFieldError("tagnumber", err)
+	}
+	if lastHeard == nil || lastHeard.IsZero() {
+		return fmt.Errorf("lastHeard is nil")
+	}
+
+	appState, err := GetAppState()
+	if err != nil || appState == nil {
+		return fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	}
+
+	appState.ClientRealtimeDataMu.Lock()
+	defer appState.ClientRealtimeDataMu.Unlock()
+	clientData := appState.ClientRealtimeData[tag]
+	clientData.Tagnumber = tag
+	clientData.LastHeard = lastHeard
+	appState.ClientRealtimeData[tag] = clientData
+
 	return nil
 }

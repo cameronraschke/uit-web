@@ -14,6 +14,10 @@ var (
 	InvalidFieldError      = errors.New("invalid field value")
 	InvalidStructureError  = errors.New("invalid structure")
 
+	// Client errors
+	ClientLastHeardMissingError = errors.New("client last heard not found for the given tag")
+	ErrNoOnlineClients          = errors.New("no online clients were found")
+
 	// JSON parsing errors
 	JSONParseError     = errors.New("error parsing JSON")
 	JSONUnmarshalError = errors.New("error unmarshaling JSON")
@@ -27,8 +31,10 @@ var (
 	DatabaseAffectedRowsError = errors.New("unexpected number of rows affected")
 	DatabaseRowScanError      = errors.New("error scanning DB row")
 	DatabaseRowIterationError = errors.New("error during DB row iteration")
-	DatabaseRowNotFoundError   = errors.New("row not found in DB")
-	DatabaseDeletionError      = errors.New("error deleting row from DB")
+	DatabaseRowNotFoundError  = errors.New("row not found in DB")
+	DatabaseDeletionError     = errors.New("error deleting row from DB")
+	ErrInvalidClientUUID      = errors.New("invalid client UUID")
+	ErrNoRealtimeClientData   = errors.New("no realtime client data found for the given tag")
 
 	// Web endpoint errors
 	EndpointNotFoundError    = errors.New("endpoint not found in config")
