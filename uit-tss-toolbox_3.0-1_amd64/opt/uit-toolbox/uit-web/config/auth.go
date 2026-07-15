@@ -15,6 +15,8 @@ import (
 	"uit-toolbox/types"
 )
 
+var ErrTooManyAuthSessions = errors.New("auth session limit reached")
+
 // Auth for web users
 func GetAdminCredentials() (string, string, error) {
 	appState, err := GetAppState()
@@ -53,6 +55,13 @@ func CreateAuthSession(requestIP netip.Addr) (*types.AuthSession, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting app state in CreateAuthSession: %w", err)
 	}
+
+	appState.authMapMutex.RLock()
+	if len(appState.authMap) >= 1000 {
+		appState.authMapMutex.RUnlock()
+		return nil, ErrTooManyAuthSessions
+	}
+	appState.authMapMutex.RUnlock()
 
 	curTime := time.Now()
 

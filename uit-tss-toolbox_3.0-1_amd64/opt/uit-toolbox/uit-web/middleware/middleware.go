@@ -852,15 +852,19 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 				// Creating the auth session will create a ton of entries in authMap to test,
 				// so this is best left commented out unless testing
 				// Will have to implement a proper non-IP based auth for LAN later
-				_, err := config.CreateAuthSession(reqAddr)
-				if err != nil {
-					log.Error("Error creating auth session for LAN IP: " + err.Error())
-					WriteJsonError(w, http.StatusInternalServerError)
-					return
-				}
-				next.ServeHTTP(w, req)
-				return
-			}
+				// 	_, err := config.CreateAuthSession(reqAddr)
+				// 	if err != nil {
+				// 	if errors.Is(err, config.ErrTooManyAuthSessions) {
+				// 		log.Error("Too many auth sessions: " + err.Error())
+				// 		WriteJsonError(w, http.StatusInternalServerError)
+				// 		return
+				// 	}
+				// 	log.Error("Error creating auth session for LAN IP: " + err.Error())
+				// 	WriteJsonError(w, http.StatusInternalServerError)
+				// 	return
+				// }
+			next.ServeHTTP(w, req)
+			return
 		}
 
 		var redirectURL string
