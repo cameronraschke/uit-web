@@ -1298,6 +1298,9 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		SELECT ids.uuid
 		FROM ids
 		LEFT JOIN live_os_data ON ids.uuid = live_os_data.client_uuid
+		ORDER BY
+			(ids.uuid = ANY($1::uuid[])) DESC,
+			live_os_data.last_heard DESC NULLS LAST
 		LIMIT 50
 	),
 	avg_battery_health AS (
@@ -1619,6 +1622,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
 		row.LastHeard = onlineLastHeardByUUID[clientUUID]
+		row.ClientUUID = &clientUUID
 		jobQueueRows = append(jobQueueRows, row)
 	}
 	if rows.Err() != nil {

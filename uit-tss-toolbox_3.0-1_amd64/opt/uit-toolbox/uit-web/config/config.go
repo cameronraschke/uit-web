@@ -816,17 +816,11 @@ func GetLiveImage(tag int64) ([]byte, error) {
 	liveImage := val.LiveImageBytes
 	if liveImage == nil {
 		as.ClientRealtimeDataMu.RUnlock()
-		as.ClientRealtimeDataMu.Lock()
-		delete(as.ClientRealtimeData, tag)
-		as.ClientRealtimeDataMu.Unlock()
 		return nil, fmt.Errorf("live image bytes are nil for tag %d", tag)
 
 	}
 	if len(liveImage) == 0 || len(liveImage) > types.MaxLiveImageBytes {
 		as.ClientRealtimeDataMu.RUnlock()
-		as.ClientRealtimeDataMu.Lock()
-		delete(as.ClientRealtimeData, tag)
-		as.ClientRealtimeDataMu.Unlock()
 		return nil, fmt.Errorf("size of live image is out of range: %.2fMB", float64(len(liveImage))/1024/1024)
 	}
 
