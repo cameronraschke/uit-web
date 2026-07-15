@@ -1963,7 +1963,7 @@ func SelectJobQueuePosition(ctx context.Context, tag int64) (int64, error) {
 		LEFT JOIN live_os_data ON job_queue.client_uuid = live_os_data.client_uuid
 		WHERE 
 			(job_queue.job_name IS NOT NULL OR job_queue.job_queued = TRUE)
-			AND client_uuid = ANY($1::uuid[])
+			AND job_queue.client_uuid = ANY($1::uuid[])
 	)
 	SELECT job_queue_position FROM (
 		SELECT
