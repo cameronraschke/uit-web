@@ -4,110 +4,102 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sync"
 	"time"
 	"uit-toolbox/config"
+
+	"golang.org/x/sync/errgroup"
 )
 
-func backgroundProcesses(ctx context.Context) {
-	log := config.GetLogger().With(slog.String("func", "backgroundProcesses"))
-	var wg sync.WaitGroup
-	// Start auth map cleanup goroutine
-	wg.Go(func() {
-		startAuthMapCleanup(ctx, log, 20*time.Minute)
-	})
-	// // Start IP blocklist cleanup goroutine
-	// wg.Go(func() {
-	// 	startIPBlocklistCleanup(ctx, log, 5*time.Minute)
-	// })
-	// // Start IP limiter cleanup goroutine
-	// wg.Go(func() {
-	// 	startIPLimiterCleanup(ctx, log, 5*time.Minute)
-	// })
-	// // Start memory monitor goroutine
-	// wg.Go(func() {
-	// 	startMemoryMonitor(ctx, log, 4000*1024*1024, 5*time.Minute, errChan) // 4GB application memory limit
-	// })
-
-	log.Info("Background processes started")
-	wg.Wait() // Wait for all background goroutines to finish
-	log.Info("Background processes stopped")
-}
-
-func startAuthMapCleanup(ctx context.Context, log *slog.Logger, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			log.Info("Auth map cleanup stopping...")
-			return
-		case <-ticker.C:
-			originalSessionCount := config.GetAuthSessionCount()
-			config.ClearExpiredAuthSessions()
-			newSessionCount := config.GetAuthSessionCount()
-			sessionDiff := originalSessionCount - newSessionCount
-			if originalSessionCount != newSessionCount {
-				if sessionDiff >= 0 {
-					log.Info(fmt.Sprintf("(Background) Auth session cleanup done (Sessions: %d, Expired: %d)", newSessionCount, sessionDiff))
-				} else if sessionDiff < 0 {
-					log.Warn(fmt.Sprintf("(Background) Error during auth cleanup: %d new sessions were added", -sessionDiff))
-				}
-			}
-		}
+func sendBackgroundLog(ctx context.Context, logChan chan<- string, msg string) bool {
+	if logChan == nil {
+		return false
+	}
+	select {
+	case <-ctx.Done():
+		return false
+	case logChan <- msg:
+		return true
+	default:
+		return false
 	}
 }
 
-// func startIPBlocklistCleanup(ctx context.Context, log *slog.Logger, interval time.Duration) {
-// 	ticker := time.NewTicker(interval)
-// 	defer ticker.Stop()
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			log.Info("IP blocklist cleanup stopping...")
-// 			return
-// 		case <-ticker.C:
-// 			config.CleanupBlockedIPs()
-// 			log.Info("(Background) IP blocklist cleanup done")
-// 		}
-// 	}
-// }
+func backgroundProcesses(ctx context.Context, errChan chan error) {
+	errGroup, errCtx := errgroup.WithContext(ctx)
 
-// func startIPLimiterCleanup(ctx context.Context, log *slog.Logger, interval time.Duration) {
-// 	ticker := time.NewTicker(interval)
-// 	defer ticker.Stop()
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			log.Info("IP limiter cleanup stopping...")
-// 			return
-// 		case <-ticker.C:
-// 			config.CleanupOldLimiterEntries()
-// 			log.Info("(Background) IP limiter cleanup done")
-// 		}
-// 	}
-// }
+	log := config.GetLogger().With(slog.String("func", "backgroundProcesses"))
+	logChan := make(chan string, 10) // Buffered channel for log messages
 
-// func startMemoryMonitor(ctx context.Context, log *slog.Logger, maxBytes uint64, interval time.Duration, errChan chan error) {
-// 	ticker := time.NewTicker(interval)
-// 	defer ticker.Stop()
+	// Listen for log messages from background processes
+	errGroup.Go(func() error {
+		for {
+			select {
+			case msg, ok := <-logChan:
+				if !ok {
+					log.Info("Background process log channel closed")
+					return nil
+				}
+				log.Info("Log message received from background process: " + msg)
+			case <-errCtx.Done():
+				log.Info("Background process log channel closed due to context cancellation")
+				return nil
+			}
+		}
+	})
 
-// 	var memStats runtime.MemStats
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			log.Info("Memory monitor stopping...")
-// 			return
-// 		case <-ticker.C:
-// 			runtime.ReadMemStats(&memStats)
-// 			if memStats.Alloc > maxBytes {
-// 				select {
-// 				case errChan <- fmt.Errorf("memory usage exceeded: %d bytes > %d bytes", memStats.Alloc, maxBytes):
-// 					return
-// 				default:
-// 					log.Error(fmt.Sprintf("Memory exceeded but cannot send error: %d > %d", memStats.Alloc, maxBytes))
-// 				}
-// 			}
-// 		}
-// 	}
-// }
+	// Listen for errors on errChan
+	errGroup.Go(func() error {
+		select {
+		case err := <-errChan:
+			log.Info(fmt.Sprintf("Background process error, exiting: %v", err))
+			return err
+		case <-errCtx.Done():
+			log.Info("Background processes stopping...")
+			return nil
+		}
+	})
+
+	// Start auth map cleanup goroutine
+	errGroup.Go(func() error {
+		interval := 5 * time.Minute
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-errCtx.Done():
+				if !sendBackgroundLog(errCtx, logChan, "(Background) Auth map cleanup stopping...") {
+					if err := errCtx.Err(); err != nil {
+						return nil // No error on regular shutdown
+					}
+				}
+				return nil
+			case <-ticker.C:
+				logMsg, err := startAuthMapCleanup()
+				if err != nil {
+					log.Error(fmt.Sprintf("Error during auth map cleanup: %v", err))
+				}
+				if !sendBackgroundLog(errCtx, logChan, logMsg) {
+					if err := errCtx.Err(); err != nil {
+						return nil // No error on regular shutdown
+					}
+				}
+			}
+		}
+	})
+
+	log.Info("Background processes started")
+	if err := errGroup.Wait(); err != nil {
+		log.Error(fmt.Sprintf("Background processes exited with error: %v", err))
+	} else {
+		log.Info("Background processes exited without error")
+	}
+}
+
+func startAuthMapCleanup() (logMsg string, err error) {
+	originalSessionCount := config.GetAuthSessionCount()
+	config.ClearExpiredAuthSessions()
+	newSessionCount := config.GetAuthSessionCount()
+	sessionDiff := originalSessionCount - newSessionCount
+	return fmt.Sprintf("(Background) Auth session cleanup done (Sessions: %d, Expired: %d)", newSessionCount, sessionDiff), nil
+}

@@ -161,7 +161,7 @@ func main() {
 			}
 		}()
 		log.Info("Starting background processes...")
-		backgroundProcesses(ctx)
+		backgroundProcesses(ctx, errChan)
 	})
 
 	log.Info("Servers started in: " + time.Since(startTime).String())
