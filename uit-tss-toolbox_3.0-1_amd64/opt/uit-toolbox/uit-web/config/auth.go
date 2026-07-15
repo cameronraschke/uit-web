@@ -154,9 +154,10 @@ func DeleteAuthSessions(sessionIDs []string) []error {
 	appState.authMapMutex.Lock()
 	for _, sessionID := range sessionIDs {
 		if _, ok := appState.authMap[sessionID]; ok {
+			ipAddress := appState.authMap[sessionID].IPAddress.String()
 			delete(appState.authMap, sessionID)
 			sessionCount := len(appState.authMap)
-			stringsToLog = append(stringsToLog, "Deleted auth session with ID: "+sessionID+" (active sessions: "+strconv.Itoa(sessionCount)+")")
+			stringsToLog = append(stringsToLog, "Deleted auth session with ID: "+sessionID+" (IP: "+ipAddress+", active sessions: "+strconv.Itoa(sessionCount)+")")
 		} else {
 			errSlice = append(errSlice, fmt.Errorf("Attempted to delete non-existent auth session with ID: %s", sessionID))
 		}
