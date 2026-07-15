@@ -849,6 +849,15 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 		}
 		for _, allowedIP := range allowedIPs {
 			if allowedIP.Contains(reqAddr) {
+				// Creating the auth session will create a ton of entries in authMap to test,
+				// so this is best left commented out unless testing
+				// Will have to implement a proper non-IP based auth for LAN later
+				_, err := config.CreateAuthSession(reqAddr)
+				if err != nil {
+					log.Error("Error creating auth session for LAN IP: " + err.Error())
+					WriteJsonError(w, http.StatusInternalServerError)
+					return
+				}
 				next.ServeHTTP(w, req)
 				return
 			}
