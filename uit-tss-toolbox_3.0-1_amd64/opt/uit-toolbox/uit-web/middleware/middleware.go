@@ -863,8 +863,9 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 				// 	WriteJsonError(w, http.StatusInternalServerError)
 				// 	return
 				// }
-			next.ServeHTTP(w, req)
-			return
+				next.ServeHTTP(w, req)
+				return
+			}
 		}
 
 		var redirectURL string
