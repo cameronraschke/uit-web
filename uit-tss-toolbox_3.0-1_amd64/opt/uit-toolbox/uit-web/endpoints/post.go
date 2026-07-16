@@ -470,15 +470,13 @@ func SetClientUptime(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var clientAppUptime *time.Duration
+	var clientAppUptime time.Duration
 	if uptimeData.ClientAppUptime != nil {
-		cau := time.Duration(*uptimeData.ClientAppUptime) * time.Second
-		clientAppUptime = &cau
+		clientAppUptime = time.Duration(*uptimeData.ClientAppUptime)
 	}
-	var systemUptime *time.Duration
+	var systemUptime time.Duration
 	if uptimeData.SystemUptime != nil {
-		su := time.Duration(*uptimeData.SystemUptime) * time.Second
-		systemUptime = &su
+		systemUptime = time.Duration(*uptimeData.SystemUptime)
 	}
 	if err := config.UpdateClientAppUptime(uptimeData.Tagnumber, clientAppUptime); err != nil {
 		log.Error(fmt.Sprintf("%v '%s': %v", types.ErrFailedToUpdateRealtimeData, "clientAppUptime", err))
