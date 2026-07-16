@@ -7,16 +7,21 @@ import (
 
 var (
 	// General errors
-	ContextError           = errors.New("context error")
-	CannotGetAppStateError = errors.New("cannot retrieve app state")
-	NilAppStateError       = errors.New("app state is nil")
-	MissingFieldError      = errors.New("required field is empty/nil")
-	InvalidFieldError      = errors.New("invalid field value")
-	InvalidStructureError  = errors.New("invalid structure")
+	ContextError              = errors.New("context error")
+	CannotGetAppStateError    = errors.New("cannot retrieve app state")
+	NilAppStateError          = errors.New("app state is nil")
+	MissingFieldError         = errors.New("required field is empty/nil")
+	InvalidFieldError         = errors.New("invalid field value")
+	InvalidStructureError     = errors.New("invalid structure")
+	ErrFailedToUpdateAppState = errors.New("failed to update app state")
 
 	// Client errors
-	ClientLastHeardMissingError = errors.New("client last heard not found for the given tag")
-	ErrNoOnlineClients          = errors.New("no online clients were found")
+	ErrFailedToUpdateRealtimeData = errors.New("failed to update realtime data")
+	ErrClientUUIDMissingError     = errors.New("client UUID is missing from AppState for the given tag")
+	ErrClientNotFound             = errors.New("client UUID not found")
+	ClientLastHeardMissingError   = errors.New("client last heard not found for the given tag")
+	ErrNoOnlineClients            = errors.New("no online clients were found")
+	ErrNoRealtimeClientData       = errors.New("no realtime client data found for the given tag")
 
 	// JSON parsing errors
 	JSONParseError     = errors.New("error parsing JSON")
@@ -34,7 +39,7 @@ var (
 	DatabaseRowNotFoundError  = errors.New("row not found in DB")
 	DatabaseDeletionError     = errors.New("error deleting row from DB")
 	ErrInvalidClientUUID      = errors.New("invalid client UUID")
-	ErrNoRealtimeClientData   = errors.New("no realtime client data found for the given tag")
+	ErrClientUUIDNotFoundInDB = errors.New("client UUID is not found in the database for the given tag")
 
 	// Web endpoint errors
 	EndpointNotFoundError    = errors.New("endpoint not found in config")

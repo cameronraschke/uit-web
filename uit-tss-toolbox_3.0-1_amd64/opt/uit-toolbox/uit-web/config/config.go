@@ -846,7 +846,7 @@ func GetRealtimeClientData(tag int64) (*types.JobQueueRealtimeData, error) {
 	defer as.ClientRealtimeDataMu.RUnlock()
 	clientData, ok := as.ClientRealtimeData[tag]
 	if !ok {
-		return nil, fmt.Errorf("%w: live client data not found for tag %d", types.MissingFieldError, tag)
+		return nil, fmt.Errorf("%w: live client data not found for tag %d", types.ErrClientNotFound, tag)
 	}
 	return &clientData, nil
 }
@@ -865,7 +865,7 @@ func GetLiveClientUUID(tag int64) (uuid.UUID, error) {
 	defer as.ClientRealtimeDataMu.RUnlock()
 	clientData, ok := as.ClientRealtimeData[tag]
 	if !ok {
-		return uuid.Nil, fmt.Errorf("%w: live client UUID not found for tag %d", types.MissingFieldError, tag)
+		return uuid.Nil, types.ErrClientNotFound
 	}
 	return clientData.ClientUUID, nil
 }

@@ -522,38 +522,57 @@ func SetClientLastHeard(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
+
+	// Check if tagnumber is valid
 	if err := types.IsTagnumberInt64Valid(&lastHeardData.Tagnumber); err != nil {
 		log.Warn(fmt.Sprintf("%v: %s (%v)", types.InvalidRequestFieldError, "tagnumber", err))
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if lastHeardData.LastHeard.IsZero() {
+	// Check if lastHeard is valid
+	if lastHeardData.LastHeard.IsZero() || lastHeardData.LastHeard.Unix() <= 0 {
 		log.Warn(fmt.Sprintf("%v '%s': %v", types.InvalidRequestFieldError, "lastHeard", "value is zero"))
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-
-	pgxPool, err := config.GetPGXPool()
-	if err != nil {
-		log.Error("No database connection available for updating client last heard")
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
+	if lastHeardData.LastHeard.UTC().After(time.Now().UTC().Add(1 * time.Minute)) {
+		log.Warn(fmt.Sprintf("%v '%s': %v", types.InvalidRequestFieldError, "lastHeard", "value is in the future"))
+		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	clientUUID, err := database.GetClientUUIDByTag(req.Context(), pgxPool, lastHeardData.Tagnumber)
+
+	clientUUID, err := config.GetLiveClientUUID(lastHeardData.Tagnumber)
 	if err != nil {
-		log.Error(fmt.Sprintf("%v '%s': %v", types.FailedToUpdateDatabaseValueError, "clientUUID", err))
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
+		log.Info(fmt.Sprintf("%v '%d': %v", types.ErrClientUUIDMissingError, lastHeardData.Tagnumber, err))
+		if !errors.Is(err, types.ErrClientNotFound) {
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if clientUUID == uuid.Nil {
+		pgxPool, err := config.GetPGXPool()
+		if err != nil {
+			log.Error("No database connection available for updating client last heard")
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
+		clientUUID, err = database.GetClientUUIDByTag(ctx, pgxPool, lastHeardData.Tagnumber)
+		if err != nil {
+			log.Error(fmt.Sprintf("%v '%d': %v", types.ErrClientUUIDNotFoundInDB, lastHeardData.Tagnumber, err))
+			middleware.WriteJsonError(w, http.StatusNotFound)
+			return
+		}
+		if err := config.SetLiveClientUUID(lastHeardData.Tagnumber, clientUUID); err != nil {
+			log.Error(fmt.Sprintf("%v '%s': %v", types.ErrFailedToUpdateRealtimeData, "clientUUID", err))
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	lastHeard := lastHeardData.LastHeard.UTC()
 	if err := config.UpdateClientLastHeard(lastHeardData.Tagnumber, &lastHeard); err != nil {
-		log.Error(fmt.Sprintf("%v '%s': %v", types.FailedToUpdateDatabaseValueError, "lastHeard", err))
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	if err := config.SetLiveClientUUID(lastHeardData.Tagnumber, clientUUID); err != nil {
-		log.Error(fmt.Sprintf("%v '%s': %v", types.FailedToUpdateDatabaseValueError, "clientUUID", err))
+		log.Error(fmt.Sprintf("%v '%s': %v", types.ErrFailedToUpdateRealtimeData, "lastHeard", err))
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
@@ -1666,26 +1685,7 @@ func UploadLiveImage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-
-	pgxPool, err := config.GetPGXPool()
-	if err != nil {
-		log.Warn("Error getting database connection: " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
-	clientUUID, err := database.GetClientUUIDByTag(req.Context(), pgxPool, *tag)
-	if err != nil {
-		log.Warn("Error retrieving client UUID for tagnumber " + strconv.Itoa(int(*tag)) + ": " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	if err := config.SetLiveClientUUID(*tag, clientUUID); err != nil {
-		log.Warn("Error setting live client UUID for tagnumber " + strconv.Itoa(int(*tag)) + ": " + err.Error())
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-
+	
 	middleware.WriteJson(w, http.StatusOK, struct {
 		Status string `json:"status"`
 	}{
