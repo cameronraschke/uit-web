@@ -1366,8 +1366,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		FALSE AS "temp_warning",
 		(CASE WHEN static_client_statuses.status_name = 'checked_out' THEN TRUE ELSE FALSE END) AS "checkout_bool",
 		TRUE AS "kernel_updated",
-		live_os_data.system_uptime,
-		live_os_data.client_app_uptime,
 		(ids.uuid = ANY($1::uuid[])) AS "online",
 		job_queue.job_active,
 		job_queue.job_queued,
@@ -1527,11 +1525,13 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		return nil, fmt.Errorf("%w: %w", types.ErrNoOnlineClients, err)
 	}
 
-	onlineClientsMapUUIDAsKey := make(map[uuid.UUID]onlineClientData, len(onlineClientsMap))
+	onlineClientsMapUUIDAsKey := make(map[uuid.UUID]types.JobQueueRealtimeData, len(onlineClientsMap))
 	for _, realtimeData := range onlineClientsMap {
-		onlineClientsMapUUIDAsKey[realtimeData.ClientUUID] = onlineClientData{
-			ClientUUID: realtimeData.ClientUUID,
-			LastHeard:  realtimeData.LastHeard,
+		onlineClientsMapUUIDAsKey[realtimeData.ClientUUID] = types.JobQueueRealtimeData{
+			ClientUUID:   realtimeData.ClientUUID,
+			LastHeard:    realtimeData.LastHeard,
+			SystemUptime: realtimeData.SystemUptime,
+			AppUptime:    realtimeData.AppUptime,
 		}
 	}
 
@@ -1568,8 +1568,6 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 			&row.TempWarning,
 			&row.CheckoutBool,
 			&row.KernelUpdated,
-			&row.SystemUptime,
-			&row.AppUptime,
 			&row.Online,
 			&row.JobActive,
 			&row.JobQueued,
@@ -1615,6 +1613,8 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		}
 		row.LastHeard = onlineClientsMapUUIDAsKey[clientUUID].LastHeard
 		row.ClientUUID = &clientUUID
+		row.SystemUptime = onlineClientsMapUUIDAsKey[clientUUID].SystemUptime
+		row.AppUptime = onlineClientsMapUUIDAsKey[clientUUID].AppUptime
 		jobQueueRows = append(jobQueueRows, row)
 	}
 	if rows.Err() != nil {

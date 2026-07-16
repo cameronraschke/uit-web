@@ -1001,3 +1001,53 @@ func GetAllClientRealtimeData() (clientDataCopy map[int64]types.JobQueueRealtime
 
 	return clientDataCopy, nil
 }
+
+func UpdateClientAppUptime(tag int64, uptime *time.Duration) error {
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+		return types.CreateInvalidFieldError("tagnumber", err)
+	}
+
+	if uptime != nil && *uptime < 0 {
+		return fmt.Errorf("app uptime cannot be negative: %v", *uptime)
+	}
+
+	appState, err := GetAppState()
+	if err != nil || appState == nil {
+		return fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	}
+
+	appState.ClientRealtimeDataMu.Lock()
+	defer appState.ClientRealtimeDataMu.Unlock()
+
+	clientData := appState.ClientRealtimeData[tag]
+	clientData.Tagnumber = tag
+	clientData.AppUptime = uptime
+	appState.ClientRealtimeData[tag] = clientData
+
+	return nil
+}
+
+func UpdateClientSystemUptime(tag int64, uptime *time.Duration) error {
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+		return types.CreateInvalidFieldError("tagnumber", err)
+	}
+
+	if uptime != nil && *uptime < 0 {
+		return fmt.Errorf("system uptime cannot be negative: %v", *uptime)
+	}
+
+	appState, err := GetAppState()
+	if err != nil || appState == nil {
+		return fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	}
+
+	appState.ClientRealtimeDataMu.Lock()
+	defer appState.ClientRealtimeDataMu.Unlock()
+
+	clientData := appState.ClientRealtimeData[tag]
+	clientData.Tagnumber = tag
+	clientData.SystemUptime = uptime
+	appState.ClientRealtimeData[tag] = clientData
+
+	return nil
+}

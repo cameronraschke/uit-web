@@ -469,26 +469,16 @@ func SetClientUptime(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	updateRepo, err := database.NewUpdateRepo()
-	if err != nil {
-		log.Error("No database connection available for updating client uptime")
+
+	if err := config.UpdateClientAppUptime(uptimeData.Tagnumber, uptimeData.ClientAppUptime); err != nil {
+		log.Error(fmt.Sprintf("%v '%s': %v", types.ErrFailedToUpdateRealtimeData, "clientAppUptime", err))
 		middleware.WriteJsonError(w, http.StatusInternalServerError)
 		return
 	}
-	if uptimeData.ClientAppUptime != nil {
-		if err := updateRepo.UpdateClientAppUptime(ctx, uptimeData.Tagnumber, *uptimeData.ClientAppUptime); err != nil {
-			log.Error(fmt.Sprintf("%v '%s': %v", types.FailedToUpdateDatabaseValueError, "clientAppUptime", err))
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
-	}
-
-	if uptimeData.SystemUptime != nil {
-		if err := updateRepo.UpdateClientSystemUptime(ctx, uptimeData.Tagnumber, *uptimeData.SystemUptime); err != nil {
-			log.Error(fmt.Sprintf("%v '%s': %v", types.FailedToUpdateDatabaseValueError, "systemUptime", err))
-			middleware.WriteJsonError(w, http.StatusInternalServerError)
-			return
-		}
+	if err := config.UpdateClientSystemUptime(uptimeData.Tagnumber, uptimeData.SystemUptime); err != nil {
+		log.Error(fmt.Sprintf("%v '%s': %v", types.ErrFailedToUpdateRealtimeData, "systemUptime", err))
+		middleware.WriteJsonError(w, http.StatusInternalServerError)
+		return
 	}
 
 	middleware.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})

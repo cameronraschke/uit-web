@@ -17,6 +17,8 @@ type JobQueueRealtimeData struct {
 	SerialNumber   string
 	LastHeard      *time.Time
 	LastHeardInDB  *bool
+	SystemUptime   *time.Duration
+	AppUptime      *time.Duration
 	LiveImageBytes []byte
 }
 
