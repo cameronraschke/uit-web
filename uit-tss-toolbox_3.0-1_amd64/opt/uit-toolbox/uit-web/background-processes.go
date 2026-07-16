@@ -39,7 +39,7 @@ func backgroundProcesses(ctx context.Context, errChan chan error) {
 					log.Info("Background process log channel closed")
 					return nil
 				}
-				log.Info("Log message received from background process: " + msg)
+				log.Info("(Background): " + msg)
 			case <-errCtx.Done():
 				log.Info("Background process log channel closed due to context cancellation")
 				return nil
@@ -68,7 +68,7 @@ func backgroundProcesses(ctx context.Context, errChan chan error) {
 		for {
 			select {
 			case <-errCtx.Done():
-				if !sendBackgroundLog(errCtx, logChan, "(Background) Auth map cleanup stopping...") {
+				if !sendBackgroundLog(errCtx, logChan, "Auth map cleanup stopping...") {
 					if err := errCtx.Err(); err != nil {
 						return nil // No error on regular shutdown
 					}
@@ -101,5 +101,5 @@ func startAuthMapCleanup() (logMsg string, err error) {
 	config.ClearExpiredAuthSessions()
 	newSessionCount := config.GetAuthSessionCount()
 	sessionDiff := originalSessionCount - newSessionCount
-	return fmt.Sprintf("(Background) Auth session cleanup done (Sessions: %d, Expired: %d)", newSessionCount, sessionDiff), nil
+	return fmt.Sprintf("Auth session cleanup done (Sessions: %d, Expired: %d)", newSessionCount, sessionDiff), nil
 }
