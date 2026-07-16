@@ -26,7 +26,6 @@ type Update interface {
 	UpdateClientAppUptime(ctx context.Context, tag int64, appUptime int64) (err error)
 	UpdateClientSystemUptime(ctx context.Context, tag int64, systemUptime int64) (err error)
 	UpdateJobQueuedAt(ctx context.Context, jobQueue *types.JobQueueTableRowView) (err error)
-	UpdateClientLastHeard(ctx context.Context, tag *int64, lastHeard *time.Time) (err error)
 	UpdateClientBatteryChargePcnt(ctx context.Context, tag *int64, percent *float64) (err error)
 	BulkUpdateClientLocation(ctx context.Context, transactionUUID *string, tag *int64, location *string) (err error)
 }
@@ -51,6 +50,24 @@ func lockClientRowByTagnumber(ctx context.Context, tx *sql.Tx, tagnumber int64) 
 		return uuid.Nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 
+	return clientUUID, nil
+}
+
+func lockClientRowByTagnumberPGX(ctx context.Context, tx pgx.Tx, tag int64) (uuid.UUID, error) {
+	const sqlCode = `
+        SELECT uuid
+        FROM ids
+        WHERE tagnumber = $1
+        FOR UPDATE
+    ;`
+	var clientUUID uuid.UUID
+	err := tx.QueryRow(ctx, sqlCode, tag).Scan(&clientUUID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, fmt.Errorf("%w: no client found for tagnumber '%d'", types.DatabaseQueryError, tag)
+		}
+		return uuid.Nil, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
+	}
 	return clientUUID, nil
 }
 
@@ -1855,8 +1872,8 @@ func (updateRepo *UpdateRepo) UpdateJobQueuedAt(ctx context.Context, jobQueue *t
 	return nil
 }
 
-func (updateRepo *UpdateRepo) UpdateClientLastHeard(ctx context.Context, tag *int64, lastHeard *time.Time) (err error) {
-	if err := types.IsTagnumberInt64Valid(tag); err != nil {
+func UpdateClientLastHeard(ctx context.Context, tag int64, lastHeard *time.Time) (err error) {
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
 		return fmt.Errorf("%w: %s (%w)", types.InvalidFieldError, "tagnumber", err)
 	}
 	if lastHeard == nil || lastHeard.IsZero() {
@@ -1865,19 +1882,27 @@ func (updateRepo *UpdateRepo) UpdateClientLastHeard(ctx context.Context, tag *in
 	if ctx.Err() != nil {
 		return fmt.Errorf("%w: %w", types.ContextError, ctx.Err())
 	}
-	tx, err := updateRepo.DB.BeginTx(ctx, nil)
+
+	pgxPool, err := config.GetPGXPool()
+	if err != nil {
+		return fmt.Errorf("%w: %w", types.DatabaseConnError, err)
+	}
+	tx, err := pgxPool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseTransactionError, err)
 	}
+
 	defer func() {
 		if err != nil {
-			_ = tx.Rollback()
-		} else {
-			err = tx.Commit()
+			_ = tx.Rollback(ctx)
+			return
+		}
+		if commitErr := tx.Commit(ctx); commitErr != nil {
+			err = commitErr
 		}
 	}()
 
-	clientUUID, err := lockClientRowByTagnumber(ctx, tx, *tag)
+	clientUUID, err := GetClientUUIDByTag(ctx, pgxPool, tag)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)
 	}
@@ -1888,16 +1913,16 @@ func (updateRepo *UpdateRepo) UpdateClientLastHeard(ctx context.Context, tag *in
 		SET 
 			last_heard = COALESCE($2, last_heard) 
 		WHERE client_uuid = $1;`
-	var sqlResult sql.Result
-	sqlResult, err = tx.ExecContext(ctx, sqlCode,
+
+	sqlResult, err := tx.Exec(ctx, sqlCode,
 		toNullUUID(clientUUID),
 		ptrToNullTime(lastHeard),
 	)
 	if err != nil {
 		return err
 	}
-	if err := VerifyRowsAffected(sqlResult, 1); err != nil {
-		return err
+	if sqlResult.RowsAffected() != 1 {
+		return types.DatabaseAffectedRowsError
 	}
 	return nil
 }

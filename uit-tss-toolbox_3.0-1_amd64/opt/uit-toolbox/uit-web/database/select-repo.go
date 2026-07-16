@@ -1522,30 +1522,22 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN static_department_info ON static_department_info.department_name = locations.department_name
 	;`
 
-	onlineClients := make([]onlineClientData, 0, 50)
-
-	onlineClientTags, err := config.GetAllOnlineClients()
+	onlineClientsMap, err := config.GetAllOnlineClientsData()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", types.ErrNoOnlineClients, err)
 	}
 
-	onlineClientUUIDs := make([]uuid.UUID, 0, len(onlineClientTags))
-	for _, tag := range onlineClientTags {
-		realtimeData, err := config.GetRealtimeClientData(tag)
-		if err != nil {
-			return nil, fmt.Errorf("%w: %w", types.ErrNoRealtimeClientData, err)
+	onlineClientsMapUUIDAsKey := make(map[uuid.UUID]onlineClientData, len(onlineClientsMap))
+	for _, realtimeData := range onlineClientsMap {
+		onlineClientsMapUUIDAsKey[realtimeData.ClientUUID] = onlineClientData{
+			ClientUUID: realtimeData.ClientUUID,
+			LastHeard:  realtimeData.LastHeard,
 		}
-		clientUUID := realtimeData.ClientUUID
-		lastHeard := realtimeData.LastHeard
-		onlineClientUUIDs = append(onlineClientUUIDs, clientUUID)
-		onlineClients = append(onlineClients, onlineClientData{
-			ClientUUID: clientUUID,
-			LastHeard:  lastHeard,
-		})
 	}
-	onlineLastHeardByUUID := make(map[uuid.UUID]*time.Time, len(onlineClients))
-	for _, client := range onlineClients {
-		onlineLastHeardByUUID[client.ClientUUID] = client.LastHeard
+
+	onlineClientUUIDs := make([]uuid.UUID, 0, len(onlineClientsMap))
+	for _, realtimeData := range onlineClientsMap {
+		onlineClientUUIDs = append(onlineClientUUIDs, realtimeData.ClientUUID)
 	}
 
 	jobQueueRows := make([]types.JobQueueTableRowView, 0, approxClientCount)
@@ -1621,7 +1613,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		); err != nil {
 			return nil, fmt.Errorf("%w: %w", types.DatabaseRowScanError, err)
 		}
-		row.LastHeard = onlineLastHeardByUUID[clientUUID]
+		row.LastHeard = onlineClientsMapUUIDAsKey[clientUUID].LastHeard
 		row.ClientUUID = &clientUUID
 		jobQueueRows = append(jobQueueRows, row)
 	}
@@ -1930,18 +1922,18 @@ func SelectJobQueuePosition(ctx context.Context, tag int64) (int64, error) {
 		return queuePositionMaxValue, fmt.Errorf("%w: %w", types.DatabaseQueryError, err)
 	}
 
-	onlineClientTags, err := config.GetAllOnlineClients()
+	onlineClientData, err := config.GetAllOnlineClientsData()
 	if err != nil {
 		return queuePositionMaxValue, fmt.Errorf("%w: %w", types.ErrNoOnlineClients, err)
 	}
 
-	onlineClientUUIDs := make([]uuid.UUID, 0, len(onlineClientTags))
-	for _, tag := range onlineClientTags {
-		realtimeData, err := config.GetRealtimeClientData(tag)
-		if err != nil {
-			return queuePositionMaxValue, fmt.Errorf("%w: %w", types.ErrNoRealtimeClientData, err)
-		}
+	onlineClientUUIDs := make([]uuid.UUID, 0, len(onlineClientData))
+	for _, realtimeData := range onlineClientData {
 		onlineClientUUIDs = append(onlineClientUUIDs, realtimeData.ClientUUID)
+	}
+
+	if len(onlineClientData) == 0 || len(onlineClientUUIDs) == 0 {
+		return queuePositionMaxValue, nil
 	}
 
 	const sqlQuery = `

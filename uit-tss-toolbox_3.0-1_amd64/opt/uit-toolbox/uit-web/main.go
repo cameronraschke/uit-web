@@ -166,6 +166,22 @@ func main() {
 
 	log.Info("Servers started in: " + time.Since(startTime).String())
 
+	writeLastHeardToDB := func() {
+		uncancelledCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		realtimeDataMap, err := config.GetAllClientRealtimeData()
+		if err != nil {
+			log.Error("Failed to retrieve realtime data on app shutdown: " + err.Error())
+			cancel()
+			return
+		}
+		for tag, realtimeData := range realtimeDataMap {
+			if err := database.UpdateClientLastHeard(uncancelledCtx, tag, realtimeData.LastHeard); err != nil {
+				log.Error(fmt.Sprintf("Failed to write last heard for tag %d on app shutdown: %s", tag, err.Error()))
+			}
+		}
+		cancel()
+	}
+
 	// Wait for shutdown signal or error
 	select {
 	case <-ctx.Done():
@@ -193,5 +209,6 @@ func main() {
 		log.Error("Goroutine dump:\n" + string(debug.Stack()))
 	}
 
+	writeLastHeardToDB()
 	log.Info("UIT Web has been stopped.")
 }

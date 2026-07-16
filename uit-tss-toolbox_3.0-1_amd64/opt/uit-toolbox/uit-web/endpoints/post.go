@@ -541,7 +541,7 @@ func SetClientLastHeard(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	clientUUID, err := config.GetLiveClientUUID(lastHeardData.Tagnumber)
+	clientUUID, err := config.GetRealtimeClientUUID(lastHeardData.Tagnumber)
 	if err != nil {
 		log.Info(fmt.Sprintf("%v '%d': %v", types.ErrClientUUIDMissingError, lastHeardData.Tagnumber, err))
 		if !errors.Is(err, types.ErrClientNotFound) {
@@ -563,7 +563,7 @@ func SetClientLastHeard(w http.ResponseWriter, req *http.Request) {
 			middleware.WriteJsonError(w, http.StatusNotFound)
 			return
 		}
-		if err := config.SetLiveClientUUID(lastHeardData.Tagnumber, clientUUID); err != nil {
+		if err := config.SetRealtimeClientUUID(lastHeardData.Tagnumber, clientUUID); err != nil {
 			log.Error(fmt.Sprintf("%v '%s': %v", types.ErrFailedToUpdateRealtimeData, "clientUUID", err))
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
@@ -1680,12 +1680,12 @@ func UploadLiveImage(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if err := config.UpdateLiveImage(*tag, body); err != nil {
+	if err := config.UpdateLiveImageBytes(*tag, body); err != nil {
 		log.Warn("Error updating live image for " + strconv.Itoa(int(*tag)) + ": " + err.Error())
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	
+
 	middleware.WriteJson(w, http.StatusOK, struct {
 		Status string `json:"status"`
 	}{

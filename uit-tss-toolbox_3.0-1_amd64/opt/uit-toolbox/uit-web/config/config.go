@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net"
 	"net/netip"
 	"os"
@@ -832,64 +833,7 @@ func GetLiveImage(tag int64) ([]byte, error) {
 	return imageCopy, nil
 }
 
-func GetRealtimeClientData(tag int64) (*types.JobQueueRealtimeData, error) {
-	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
-		return nil, types.CreateInvalidFieldError("tagnumber", err)
-	}
-
-	as, err := GetAppState()
-	if err != nil || as == nil {
-		return nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
-	}
-
-	as.ClientRealtimeDataMu.RLock()
-	defer as.ClientRealtimeDataMu.RUnlock()
-	clientData, ok := as.ClientRealtimeData[tag]
-	if !ok {
-		return nil, fmt.Errorf("%w: live client data not found for tag %d", types.ErrClientNotFound, tag)
-	}
-	return &clientData, nil
-}
-
-func GetLiveClientUUID(tag int64) (uuid.UUID, error) {
-	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
-		return uuid.Nil, types.CreateInvalidFieldError("tagnumber", err)
-	}
-
-	as, err := GetAppState()
-	if err != nil || as == nil {
-		return uuid.Nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
-	}
-
-	as.ClientRealtimeDataMu.RLock()
-	defer as.ClientRealtimeDataMu.RUnlock()
-	clientData, ok := as.ClientRealtimeData[tag]
-	if !ok {
-		return uuid.Nil, types.ErrClientNotFound
-	}
-	return clientData.ClientUUID, nil
-}
-
-func SetLiveClientUUID(tag int64, uuid uuid.UUID) error {
-	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
-		return types.CreateInvalidFieldError("tagnumber", err)
-	}
-
-	as, err := GetAppState()
-	if err != nil || as == nil {
-		return fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
-	}
-
-	as.ClientRealtimeDataMu.Lock()
-	defer as.ClientRealtimeDataMu.Unlock()
-	clientData := as.ClientRealtimeData[tag]
-	clientData.Tagnumber = tag
-	clientData.ClientUUID = uuid
-	as.ClientRealtimeData[tag] = clientData
-	return nil
-}
-
-func UpdateLiveImage(tag int64, imageBytes []byte) error {
+func UpdateLiveImageBytes(tag int64, imageBytes []byte) error {
 	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
 		return types.CreateInvalidFieldError("tagnumber", err)
 	}
@@ -913,44 +857,44 @@ func UpdateLiveImage(tag int64, imageBytes []byte) error {
 	return nil
 }
 
-func GetClientLastHeard(tag int64) (*time.Time, error) {
+// Retrieves the clientUUID field from the ClientRealtimeData map for the given tag
+func GetRealtimeClientUUID(tag int64) (uuid.UUID, error) {
 	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
-		return nil, types.CreateInvalidFieldError("tagnumber", err)
+		return uuid.Nil, types.CreateInvalidFieldError("tagnumber", err)
 	}
 
-	appState, err := GetAppState()
-	if err != nil || appState == nil {
-		return nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	as, err := GetAppState()
+	if err != nil || as == nil {
+		return uuid.Nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
 	}
 
-	appState.ClientRealtimeDataMu.RLock()
-	defer appState.ClientRealtimeDataMu.RUnlock()
-
-	val, ok := appState.ClientRealtimeData[tag]
+	as.ClientRealtimeDataMu.RLock()
+	defer as.ClientRealtimeDataMu.RUnlock()
+	clientData, ok := as.ClientRealtimeData[tag]
 	if !ok {
-		return nil, fmt.Errorf("%w (%d)", types.ClientLastHeardMissingError, tag)
+		return uuid.Nil, types.ErrClientNotFound
 	}
-
-	return val.LastHeard, nil
+	return clientData.ClientUUID, nil
 }
 
-func GetAllOnlineClients() (onlineClientTags []int64, err error) {
-	appState, err := GetAppState()
-	if err != nil || appState == nil {
-		return nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+// Updates the clientUUID field in the ClientRealtimeData map for the given tag
+func SetRealtimeClientUUID(tag int64, uuid uuid.UUID) error {
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+		return types.CreateInvalidFieldError("tagnumber", err)
 	}
 
-	appState.ClientRealtimeDataMu.RLock()
-	defer appState.ClientRealtimeDataMu.RUnlock()
-
-	for tag := range appState.ClientRealtimeData {
-		if clientData, ok := appState.ClientRealtimeData[tag]; ok && clientData.LastHeard != nil && !clientData.LastHeard.IsZero() {
-			if clientData.LastHeard.Add(types.LastHeardTimeout).After(time.Now()) {
-				onlineClientTags = append(onlineClientTags, tag)
-			}
-		}
+	as, err := GetAppState()
+	if err != nil || as == nil {
+		return fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
 	}
-	return onlineClientTags, nil
+
+	as.ClientRealtimeDataMu.Lock()
+	defer as.ClientRealtimeDataMu.Unlock()
+	clientData := as.ClientRealtimeData[tag]
+	clientData.Tagnumber = tag
+	clientData.ClientUUID = uuid
+	as.ClientRealtimeData[tag] = clientData
+	return nil
 }
 
 func UpdateClientLastHeard(tag int64, lastHeard *time.Time) error {
@@ -974,4 +918,86 @@ func UpdateClientLastHeard(tag int64, lastHeard *time.Time) error {
 	appState.ClientRealtimeData[tag] = clientData
 
 	return nil
+}
+
+func isClientOnline(clientData types.JobQueueRealtimeData) bool {
+	if clientData.LastHeard == nil || clientData.LastHeard.IsZero() {
+		return false
+	}
+	if clientData.LastHeard.Add(types.LastHeardTimeout).After(time.Now()) {
+		return true
+	}
+	return false
+}
+
+func GetAllOnlineClients() (onlineClientTags []int64, err error) {
+	appState, err := GetAppState()
+	if err != nil || appState == nil {
+		return nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	}
+
+	appState.ClientRealtimeDataMu.RLock()
+	defer appState.ClientRealtimeDataMu.RUnlock()
+
+	for tag := range appState.ClientRealtimeData {
+		if clientData, ok := appState.ClientRealtimeData[tag]; ok {
+			if isClientOnline(clientData) {
+				onlineClientTags = append(onlineClientTags, tag)
+			}
+		}
+	}
+	return onlineClientTags, nil
+}
+
+func GetRealtimeClientData(tag int64) (*types.JobQueueRealtimeData, error) {
+	if err := types.IsTagnumberInt64Valid(&tag); err != nil {
+		return nil, types.CreateInvalidFieldError("tagnumber", err)
+	}
+
+	as, err := GetAppState()
+	if err != nil || as == nil {
+		return nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	}
+
+	as.ClientRealtimeDataMu.RLock()
+	defer as.ClientRealtimeDataMu.RUnlock()
+	clientData, ok := as.ClientRealtimeData[tag]
+	if !ok {
+		return nil, fmt.Errorf("%w: live client data not found for tag %d", types.ErrClientNotFound, tag)
+	}
+	return &clientData, nil
+}
+
+func GetAllOnlineClientsData() (clientDataCopy map[int64]types.JobQueueRealtimeData, err error) {
+	appState, err := GetAppState()
+	if err != nil || appState == nil {
+		return nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	}
+	appState.ClientRealtimeDataMu.RLock()
+	defer appState.ClientRealtimeDataMu.RUnlock()
+
+	// Create a copy of the map to avoid race conditions
+	clientDataCopy = make(map[int64]types.JobQueueRealtimeData, len(appState.ClientRealtimeData))
+	for tag, clientData := range appState.ClientRealtimeData {
+		if isClientOnline(clientData) {
+			clientDataCopy[tag] = clientData
+		}
+	}
+
+	return clientDataCopy, nil
+}
+
+func GetAllClientRealtimeData() (clientDataCopy map[int64]types.JobQueueRealtimeData, err error) {
+	appState, err := GetAppState()
+	if err != nil || appState == nil {
+		return nil, fmt.Errorf("%w: %w", types.CannotGetAppStateError, err)
+	}
+	appState.ClientRealtimeDataMu.RLock()
+	defer appState.ClientRealtimeDataMu.RUnlock()
+
+	// Create a copy of the map to avoid race conditions
+	clientDataCopy = make(map[int64]types.JobQueueRealtimeData, len(appState.ClientRealtimeData))
+	maps.Copy(clientDataCopy, appState.ClientRealtimeData)
+
+	return clientDataCopy, nil
 }
