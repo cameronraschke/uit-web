@@ -470,23 +470,22 @@ func SetClientUptime(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var clientAppUptime time.Duration
 	if uptimeData.ClientAppUptime != nil {
-		clientAppUptime = time.Duration(*uptimeData.ClientAppUptime)
+		clientAppUptime := *uptimeData.ClientAppUptime
+		if err := config.UpdateClientAppUptime(uptimeData.Tagnumber, clientAppUptime); err != nil {
+			log.Error(fmt.Sprintf("%v '%s': %v", types.ErrFailedToUpdateRealtimeData, "clientAppUptime", err))
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 	}
-	var systemUptime time.Duration
+
 	if uptimeData.SystemUptime != nil {
-		systemUptime = time.Duration(*uptimeData.SystemUptime)
-	}
-	if err := config.UpdateClientAppUptime(uptimeData.Tagnumber, clientAppUptime); err != nil {
-		log.Error(fmt.Sprintf("%v '%s': %v", types.ErrFailedToUpdateRealtimeData, "clientAppUptime", err))
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
-	}
-	if err := config.UpdateClientSystemUptime(uptimeData.Tagnumber, systemUptime); err != nil {
-		log.Error(fmt.Sprintf("%v '%s': %v", types.ErrFailedToUpdateRealtimeData, "systemUptime", err))
-		middleware.WriteJsonError(w, http.StatusInternalServerError)
-		return
+		systemUptime := *uptimeData.SystemUptime
+		if err := config.UpdateClientSystemUptime(uptimeData.Tagnumber, systemUptime); err != nil {
+			log.Error(fmt.Sprintf("%v '%s': %v", types.ErrFailedToUpdateRealtimeData, "systemUptime", err))
+			middleware.WriteJsonError(w, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	middleware.WriteJson(w, http.StatusOK, map[string]string{"status": "success"})
