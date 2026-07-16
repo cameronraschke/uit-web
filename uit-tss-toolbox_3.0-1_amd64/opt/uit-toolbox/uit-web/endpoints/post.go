@@ -472,7 +472,8 @@ func SetClientUptime(w http.ResponseWriter, req *http.Request) {
 
 	if uptimeData.ClientAppUptime != nil {
 		clientAppUptime := *uptimeData.ClientAppUptime
-		if err := config.UpdateClientAppUptime(uptimeData.Tagnumber, clientAppUptime); err != nil {
+		clientUptimeSeconds := clientAppUptime.Seconds()
+		if err := config.UpdateClientAppUptime(uptimeData.Tagnumber, clientUptimeSeconds); err != nil {
 			log.Error(fmt.Sprintf("%v '%s': %v", types.ErrFailedToUpdateRealtimeData, "clientAppUptime", err))
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
@@ -481,7 +482,8 @@ func SetClientUptime(w http.ResponseWriter, req *http.Request) {
 
 	if uptimeData.SystemUptime != nil {
 		systemUptime := *uptimeData.SystemUptime
-		if err := config.UpdateClientSystemUptime(uptimeData.Tagnumber, systemUptime); err != nil {
+		systemUptimeSeconds := systemUptime.Seconds()
+		if err := config.UpdateClientSystemUptime(uptimeData.Tagnumber, systemUptimeSeconds); err != nil {
 			log.Error(fmt.Sprintf("%v '%s': %v", types.ErrFailedToUpdateRealtimeData, "systemUptime", err))
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
