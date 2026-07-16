@@ -1613,8 +1613,8 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		}
 		row.LastHeard = onlineClientsMapUUIDAsKey[clientUUID].LastHeard
 		row.ClientUUID = &clientUUID
-		row.SystemUptime = onlineClientsMapUUIDAsKey[clientUUID].SystemUptime
-		row.AppUptime = onlineClientsMapUUIDAsKey[clientUUID].AppUptime
+		row.SystemUptime = time.Duration(onlineClientsMapUUIDAsKey[clientUUID].SystemUptime.Seconds())
+		row.AppUptime = time.Duration(onlineClientsMapUUIDAsKey[clientUUID].AppUptime.Seconds())
 		jobQueueRows = append(jobQueueRows, row)
 	}
 	if rows.Err() != nil {

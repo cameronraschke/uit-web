@@ -11,9 +11,9 @@ type ClientHealth interface {
 }
 
 type ClientUptime struct {
-	Tagnumber       int64          `json:"tagnumber"`
-	ClientAppUptime *time.Duration `json:"client_app_uptime"`
-	SystemUptime    *time.Duration `json:"system_uptime"`
+	Tagnumber       int64           `json:"tagnumber"`
+	ClientAppUptime DurationSeconds `json:"client_app_uptime"`
+	SystemUptime    DurationSeconds `json:"system_uptime"`
 }
 
 type AllClientStatuses struct {

@@ -464,26 +464,24 @@ func SetClientUptime(w http.ResponseWriter, req *http.Request) {
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
-	if uptimeData.ClientAppUptime == nil && uptimeData.SystemUptime == nil {
-		log.Warn(fmt.Sprintf("%v: %s (%v)", types.InvalidRequestFieldError, "uptime data", "both clientAppUptime and systemUptime are nil"))
+	if uptimeData.ClientAppUptime == 0 && uptimeData.SystemUptime == 0 {
+		log.Warn(fmt.Sprintf("%v: %s (%v)", types.InvalidRequestFieldError, "uptime data", "both clientAppUptime and systemUptime have zero values"))
 		middleware.WriteJsonError(w, http.StatusBadRequest)
 		return
 	}
 
-	if uptimeData.ClientAppUptime != nil {
-		clientAppUptime := *uptimeData.ClientAppUptime
-		clientUptimeSeconds := clientAppUptime.Seconds()
-		if err := config.UpdateClientAppUptime(uptimeData.Tagnumber, clientUptimeSeconds); err != nil {
+	if uptimeData.ClientAppUptime != 0 {
+		clientAppUptime := uptimeData.ClientAppUptime.Duration()
+		if err := config.UpdateClientAppUptime(uptimeData.Tagnumber, clientAppUptime); err != nil {
 			log.Error(fmt.Sprintf("%v '%s': %v", types.ErrFailedToUpdateRealtimeData, "clientAppUptime", err))
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return
 		}
 	}
 
-	if uptimeData.SystemUptime != nil {
-		systemUptime := *uptimeData.SystemUptime
-		systemUptimeSeconds := systemUptime.Seconds()
-		if err := config.UpdateClientSystemUptime(uptimeData.Tagnumber, systemUptimeSeconds); err != nil {
+	if uptimeData.SystemUptime != 0 {
+		systemUptime := uptimeData.SystemUptime.Duration()
+		if err := config.UpdateClientSystemUptime(uptimeData.Tagnumber, systemUptime); err != nil {
 			log.Error(fmt.Sprintf("%v '%s': %v", types.ErrFailedToUpdateRealtimeData, "systemUptime", err))
 			middleware.WriteJsonError(w, http.StatusInternalServerError)
 			return

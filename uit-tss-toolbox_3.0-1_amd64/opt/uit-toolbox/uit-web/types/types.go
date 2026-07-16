@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/netip"
 	"regexp"
@@ -24,6 +25,26 @@ const (
 	minSystemSerialLength = 1
 	maxSystemSerialLength = 256
 )
+
+type DurationSeconds time.Duration
+
+func (d *DurationSeconds) UnmarshalJSON(b []byte) error {
+	var seconds float64
+	if err := json.Unmarshal(b, &seconds); err != nil {
+		return err
+	}
+	*d = DurationSeconds(time.Duration(seconds * float64(time.Second)))
+	return nil
+}
+
+func (d DurationSeconds) MarshalJSON() ([]byte, error) {
+	return json.Marshal(time.Duration(d).Seconds())
+}
+
+// Helper to get underlying time.Duration
+func (d DurationSeconds) Duration() time.Duration {
+	return time.Duration(d)
+}
 
 func ValidateASCIIStrLen(s *string, minLen int, maxLen int) error {
 	if err := ValidateStrLen(s, minLen, maxLen); err != nil {
