@@ -1321,21 +1321,22 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		)
 		GROUP BY system_model
 	),
-	job_queue_positions AS (
+	job_queue_positions_cte AS (
 		SELECT
 			job_queue.client_uuid, 
 			job_queue.job_name,
 			ROW_NUMBER() OVER (
 				ORDER BY job_queue.job_queued_at ASC NULLS LAST
-			) AS queue_order
+			) AS "position_in_queue"
 		FROM job_queue
 		WHERE
 			job_queue.job_name IN (
-					'hpEraseAndClone',
-					'hpCloneOnly',
-					'generic-erase+clone',
-					'generic-clone'
+				'hpEraseAndClone',
+				'hpCloneOnly',
+				'generic-erase+clone',
+				'generic-clone'
 			)
+			AND job_queue.job_queued_at IS NOT NULL
 			AND (job_queue.job_queued = TRUE OR job_queue.job_name IS NOT NULL)
 			AND job_queue.client_uuid = ANY($1::uuid[])
 	)
@@ -1357,7 +1358,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		job_queue.job_active,
 		job_queue.job_queued,
 		job_queue.job_queued_at,
-		COALESCE(job_queue_positions.queue_order, 0) AS "job_queue_position",
+		job_queue_positions_cte.position_in_queue AS "job_queue_position",
 		job_queue.job_name,
 		static_job_names.job_name_readable,
 		(CASE
@@ -1502,7 +1503,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 	LEFT JOIN static_disk_stats ON latest_historical_disk_data.disk_model = static_disk_stats.disk_model
 	LEFT JOIN static_ad_domains ON locations.ad_domain = static_ad_domains.domain_name
 	LEFT JOIN static_image_names ON static_image_names.image_name = latest_completed_job.clone_image AND static_image_names.system_model = hardware_data.system_model
-	LEFT JOIN job_queue_positions ON job_queue_positions.client_uuid = ids.uuid
+	LEFT JOIN job_queue_positions_cte ON job_queue_positions_cte.client_uuid = ids.uuid
 	LEFT JOIN static_client_statuses ON static_client_statuses.status_name = locations.client_status
 	LEFT JOIN static_department_info ON static_department_info.department_name = locations.department_name
 	;`
@@ -1924,28 +1925,28 @@ func SelectJobQueuePosition(ctx context.Context, tag int64) (int64, error) {
 	}
 
 	const sqlQuery = `
-	WITH job_queue_positions AS (
-		SELECT
-			job_queue.client_uuid, 
-			job_queue.job_name,
-			ROW_NUMBER() OVER (
-				ORDER BY job_queue.job_queued_at ASC NULLS LAST
-			) AS queue_order
-		FROM job_queue
-		WHERE
-			job_queue.job_name IN (
+		WITH job_queue_positions_cte AS (
+			SELECT
+				job_queue.client_uuid, 
+				job_queue.job_name,
+				ROW_NUMBER() OVER (
+					ORDER BY job_queue.job_queued_at ASC NULLS LAST
+				) AS "position_in_queue"
+			FROM job_queue
+			WHERE
+				job_queue.job_name IN (
 					'hpEraseAndClone',
 					'hpCloneOnly',
 					'generic-erase+clone',
 					'generic-clone'
-			)
-			AND (job_queue.job_queued = TRUE OR job_queue.job_name IS NOT NULL)
-			AND job_queue.client_uuid = ANY($1::uuid[])
-	)
-	SELECT
-		COALESCE(job_queue_positions.queue_order, 0) AS "job_queue_position"
-	FROM job_queue_positions
-	WHERE job_queue_positions.client_uuid = $2;
+				)
+				AND job_queue.job_queued_at IS NOT NULL
+				AND (job_queue.job_queued = TRUE OR job_queue.job_name IS NOT NULL)
+		)
+		SELECT
+			job_queue_positions_cte.position_in_queue AS "job_queue_position"
+		FROM job_queue_positions_cte
+		WHERE job_queue_positions_cte.client_uuid = $2
 	;`
 
 	var queuePosition sql.NullInt64
