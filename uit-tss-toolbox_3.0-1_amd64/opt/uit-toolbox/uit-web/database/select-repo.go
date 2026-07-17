@@ -1942,6 +1942,7 @@ func SelectJobQueuePosition(ctx context.Context, tag int64) (int64, error) {
 				)
 				AND job_queue.job_queued_at IS NOT NULL
 				AND (job_queue.job_queued = TRUE OR job_queue.job_name IS NOT NULL)
+				AND job_queue.client_uuid = ANY($1::uuid[])
 		)
 		SELECT
 			job_queue_positions_cte.position_in_queue AS "job_queue_position"
