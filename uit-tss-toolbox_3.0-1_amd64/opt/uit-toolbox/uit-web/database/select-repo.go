@@ -1967,7 +1967,7 @@ func SelectJobQueuePosition(ctx context.Context, tag int64) (int64, error) {
 		FROM live_queue
 	)
 	SELECT
-		(job_queue_positions.position) AS "job_queue_position"
+		(job_queue_positions.position - 1) AS "job_queue_position"
 	FROM job_queue_positions
 	WHERE job_queue_positions.client_uuid = $2;
 	;`
