@@ -1945,9 +1945,11 @@ func SelectJobQueuePosition(ctx context.Context, tag int64) (int64, error) {
 				AND job_queue.client_uuid = ANY($1::uuid[])
 		)
 		SELECT
-			job_queue_positions_cte.position_in_queue AS "job_queue_position"
-		FROM job_queue_positions_cte
-		WHERE job_queue_positions_cte.client_uuid = $2
+			COALESCE((
+				SELECT job_queue_positions_cte.position_in_queue
+				FROM job_queue_positions_cte
+				WHERE job_queue_positions_cte.client_uuid = $2
+			), 0) AS "job_queue_position"
 	;`
 
 	var queuePosition sql.NullInt64

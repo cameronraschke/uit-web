@@ -8,7 +8,10 @@ import (
 
 const (
 	MaxLiveImageBytes = 512 << 20 // 512 MB
-	LastHeardTimeout  = 10 * time.Second
+	// If LastHeardTimeout is too low, then the job queue
+	// gets messed up because the clients temporarily
+	// stop sending last_heard while they get ready for a job
+	LastHeardTimeout = 20 * time.Second
 )
 
 type JobQueueRealtimeData struct {
