@@ -1321,35 +1321,23 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		)
 		GROUP BY system_model
 	),
-	live_queue AS (
+	job_queue_positions AS (
 		SELECT
 			job_queue.client_uuid, 
-			job_queue.job_name, 
+			job_queue.job_name,
 			ROW_NUMBER() OVER (
 				ORDER BY job_queue.job_queued_at ASC NULLS LAST
 			) AS queue_order
 		FROM job_queue
 		WHERE
-			(job_queue.job_queued = TRUE OR job_queue.job_name IS NOT NULL)
-			AND job_queue.client_uuid = ANY($1::uuid[])
-	),
-	job_queue_positions AS (
-		SELECT
-			live_queue.client_uuid,
-			live_queue.job_name,
-			DENSE_RANK() OVER (
-				ORDER BY
-				CASE
-				WHEN live_queue.job_name IN (
+			job_queue.job_name IN (
 					'hpEraseAndClone',
 					'hpCloneOnly',
 					'generic-erase+clone',
 					'generic-clone'
-				) THEN COALESCE(live_queue.queue_order, 0)
-				ELSE 0
-				END
-			) AS position
-		FROM live_queue
+			)
+			AND (job_queue.job_queued = TRUE OR job_queue.job_name IS NOT NULL)
+			AND job_queue.client_uuid = ANY($1::uuid[])
 	)
 	SELECT
 		ids.uuid,
@@ -1369,7 +1357,7 @@ func GetJobQueueTable(ctx context.Context) ([]types.JobQueueTableRowView, error)
 		job_queue.job_active,
 		job_queue.job_queued,
 		job_queue.job_queued_at,
-		(job_queue_positions.position - 1) AS "job_queue_position",
+		COALESCE(job_queue_positions.queue_order, 0) AS "job_queue_position",
 		job_queue.job_name,
 		static_job_names.job_name_readable,
 		(CASE
@@ -1936,38 +1924,26 @@ func SelectJobQueuePosition(ctx context.Context, tag int64) (int64, error) {
 	}
 
 	const sqlQuery = `
-	WITH live_queue AS (
+	WITH job_queue_positions AS (
 		SELECT
 			job_queue.client_uuid, 
-			job_queue.job_name, 
+			job_queue.job_name,
 			ROW_NUMBER() OVER (
 				ORDER BY job_queue.job_queued_at ASC NULLS LAST
 			) AS queue_order
 		FROM job_queue
 		WHERE
-			(job_queue.job_queued = TRUE OR job_queue.job_name IS NOT NULL)
-			AND job_queue.client_uuid = ANY($1::uuid[])
-	),
-	job_queue_positions AS (
-		SELECT
-			live_queue.client_uuid,
-			live_queue.job_name,
-			DENSE_RANK() OVER (
-				ORDER BY
-				CASE
-				WHEN live_queue.job_name IN (
+			job_queue.job_name IN (
 					'hpEraseAndClone',
 					'hpCloneOnly',
 					'generic-erase+clone',
 					'generic-clone'
-				) THEN COALESCE(live_queue.queue_order, 0)
-				ELSE 0
-				END
-			) AS position
-		FROM live_queue
+			)
+			AND (job_queue.job_queued = TRUE OR job_queue.job_name IS NOT NULL)
+			AND job_queue.client_uuid = ANY($1::uuid[])
 	)
 	SELECT
-		(job_queue_positions.position - 1) AS "job_queue_position"
+		COALESCE(job_queue_positions.queue_order, 0) AS "job_queue_position"
 	FROM job_queue_positions
 	WHERE job_queue_positions.client_uuid = $2;
 	;`
