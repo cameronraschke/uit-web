@@ -800,6 +800,7 @@ CREATE TABLE IF NOT EXISTS historical_firmware_data (
 	bios_version VARCHAR(24) DEFAULT NULL,
 	bios_release_date TIMESTAMP WITH TIME ZONE DEFAULT NULL,
 	bios_firmware VARCHAR(8) DEFAULT NULL,
+	has_2023_ca BOOLEAN DEFAULT NULL,
 	updated_from_windows BOOLEAN DEFAULT FALSE NOT NULL,
 
 	CONSTRAINT historical_firmware_data_client_uuid_fkey

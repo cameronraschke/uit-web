@@ -2534,7 +2534,8 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 				updated_from_windows,
 				client_uuid, 
 				bios_version,
-				bios_release_date
+				bios_release_date,
+				has_2023_ca
 			) 
 		VALUES (
 			CURRENT_TIMESTAMP,
@@ -2542,13 +2543,15 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 			$3,
 			(SELECT uuid FROM ids WHERE tagnumber = $2 ORDER BY time DESC LIMIT 1),
 			$4,
-			$5
+			$5,
+			$6
 		) ON CONFLICT (transaction_uuid) DO UPDATE SET
 		 	time = CURRENT_TIMESTAMP,
 			client_uuid = COALESCE(EXCLUDED.client_uuid, historical_firmware_data.client_uuid),
 			updated_from_windows = EXCLUDED.updated_from_windows,
 			bios_version = COALESCE(EXCLUDED.bios_version, historical_firmware_data.bios_version),
-			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_firmware_data.bios_release_date)
+			bios_release_date = COALESCE(EXCLUDED.bios_release_date, historical_firmware_data.bios_release_date),
+			has_2023_ca = COALESCE(EXCLUDED.has_2023_ca, historical_firmware_data.has_2023_ca)
 	;`
 
 	firmwareSQLResult, err := tx.Exec(ctx, clientFirmwareInsertSQL,
@@ -2557,6 +2560,7 @@ func UpdateFromWindowsJSON(ctx context.Context, windowsUpdateDTO *types.WindowsU
 		ptrToNullBool(windowsUpdateDTO.RequestMetadata.UpdatedFromWindows),
 		ptrToNullString(windowsUpdateDTO.BIOSVersion),
 		ptrToNullTime(windowsUpdateDTO.BIOSReleaseDate),
+		ptrToNullBool(windowsUpdateDTO.Has2023CA),
 	)
 	if err != nil {
 		return fmt.Errorf("%w: %w", types.DatabaseUpdateError, err)

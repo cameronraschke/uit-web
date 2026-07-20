@@ -64,6 +64,7 @@ type WindowsUpdateRequest struct {
 	EthernetMACAddr           *string          `json:"ethernet_mac_addr"`
 	WifiMACAddr               *string          `json:"wifi_mac_addr"`
 	InstalledApps             *string          `json:"installed_apps"`
+	Has2023CA                 *bool            `json:"has_2023_ca"`
 }
 
 type WindowsUpdateDTO struct {
@@ -114,6 +115,7 @@ type WindowsUpdateDTO struct {
 	EthernetMACAddr           *string
 	WifiMACAddr               *string
 	InstalledApps             []string
+	Has2023CA                 *bool
 }
 
 type WindowsUpdateResponse struct {
@@ -241,6 +243,7 @@ func (request *WindowsUpdateRequest) ToDTO() (*WindowsUpdateDTO, error) {
 		EthernetMACAddr:           request.EthernetMACAddr,
 		WifiMACAddr:               request.WifiMACAddr,
 		InstalledApps:             installedAppsArr,
+		Has2023CA:                 request.Has2023CA,
 	}, nil
 }
 
