@@ -67,6 +67,7 @@ const (
 	MissingRequiredSoftwareInfo
 	MissingImages
 	SecureBootNotEnabled
+	Missing2023SecureBootCA
 )
 
 var ClientConfigurationErrorStrings = map[ClientConfigurationError]string{
@@ -87,6 +88,7 @@ var ClientConfigurationErrorStrings = map[ClientConfigurationError]string{
 	MissingRequiredSoftwareInfo: "Missing required OS information",
 	MissingImages:               "Missing images",
 	SecureBootNotEnabled:        "Secure Boot is not enabled",
+	Missing2023SecureBootCA:     "2023 Microsoft Secure Boot CA is missing",
 }
 
 func (s ClientConfigurationError) String() string {
@@ -127,4 +129,5 @@ var ClientConfigurationErrors = map[ClientConfigurationError]ClientConfigErrorMe
 	MissingRequiredSoftwareInfo: {ErrorLevel: Error.String(), ErrorType: SoftwareIssueType.String(), ErrorMessage: MissingRequiredSoftwareInfo.String()},
 	MissingImages:               {ErrorLevel: Info.String(), ErrorType: OtherIssueType.String(), ErrorMessage: MissingImages.String()},
 	SecureBootNotEnabled:        {ErrorLevel: Warning.String(), ErrorType: FirmwareIssueType.String(), ErrorMessage: SecureBootNotEnabled.String()},
+	Missing2023SecureBootCA:     {ErrorLevel: Warning.String(), ErrorType: FirmwareIssueType.String(), ErrorMessage: Missing2023SecureBootCA.String()},
 }

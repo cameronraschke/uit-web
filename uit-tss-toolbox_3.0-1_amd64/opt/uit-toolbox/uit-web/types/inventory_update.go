@@ -310,6 +310,7 @@ type InventoryTableRow struct {
 	LatestOsVersion     *string                            `json:"latest_os_version"`
 	IsDiskEncrypted     *bool                              `json:"windows_bitlocker_enabled"`
 	SecureBootEnabled   *bool                              `json:"secure_boot_enabled"`
+	Has2023SecureBootCA *bool                              `json:"has_2023_secure_boot_ca"`
 	LastHardwareCheck   *time.Time                         `json:"last_hardware_check"`
 	BIOSUpdated         *bool                              `json:"bios_updated"`
 	BIOSVersion         *string                            `json:"bios_version"`

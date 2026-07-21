@@ -996,6 +996,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			os_info.admin_users,
 			os_info.is_disk_encrypted,
 			os_info.secure_boot_enabled,
+			latest_historical_firmware_data.has_2023_ca,
 			client_health.last_hardware_check,
 			(CASE 
 				WHEN latest_historical_firmware_data.bios_version = static_bios_stats.bios_version THEN TRUE
@@ -1053,6 +1054,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			os_info.admin_users,
 			os_info.is_disk_encrypted,
 			os_info.secure_boot_enabled,
+			latest_historical_firmware_data.has_2023_ca,
 			client_health.last_hardware_check,
 			static_bios_stats.bios_version,
 			latest_historical_firmware_data.bios_version,
@@ -1109,6 +1111,7 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 			&adminUsers,
 			&row.IsDiskEncrypted,
 			&row.SecureBootEnabled,
+			&row.Has2023SecureBootCA,
 			&row.LastHardwareCheck,
 			&row.BIOSUpdated,
 			&row.BIOSVersion,
@@ -1214,6 +1217,12 @@ func ModifyClientConfigErrorResults(results []types.InventoryTableRow) ([]types.
 				results[i].ClientErrors = append(results[i].ClientErrors, diskNotRemoved)
 			}
 			continue
+		}
+
+		// Check for Microsoft's 2023 Secure Boot CA
+		if results[i].Has2023SecureBootCA == nil || (results[i].Has2023SecureBootCA != nil && !*results[i].Has2023SecureBootCA) {
+			missing2023SecureBootCA := types.Missing2023SecureBootCA.ToConfigErrorResponse()
+			results[i].ClientErrors = append(results[i].ClientErrors, missing2023SecureBootCA)
 		}
 
 		// If OS is installed
