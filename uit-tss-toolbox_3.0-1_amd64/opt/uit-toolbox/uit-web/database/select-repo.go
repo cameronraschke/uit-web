@@ -941,7 +941,8 @@ func GetInventoryTableData(ctx context.Context, filterOptions *types.InventoryAd
 				SELECT
 					ROW_NUMBER() OVER (PARTITION BY historical_firmware_data.client_uuid ORDER BY historical_firmware_data.time DESC NULLS LAST) AS "row_num",
 					historical_firmware_data.client_uuid, 
-					historical_firmware_data.bios_version
+					historical_firmware_data.bios_version,
+					historical_firmware_data.has_2023_ca
 				FROM 
 					historical_firmware_data
 				WHERE 
