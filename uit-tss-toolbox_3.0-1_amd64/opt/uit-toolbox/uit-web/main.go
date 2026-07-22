@@ -186,8 +186,10 @@ func main() {
 	select {
 	case <-ctx.Done():
 		log.Info("Shutdown signal received.")
+		writeLastHeardToDB()
 	case err := <-errChan:
 		log.Error("Error received: " + err.Error())
+		writeLastHeardToDB()
 		stop() // Cancel context to stop all goroutines
 	}
 
@@ -209,6 +211,5 @@ func main() {
 		log.Error("Goroutine dump:\n" + string(debug.Stack()))
 	}
 
-	writeLastHeardToDB()
 	log.Info("UIT Web has been stopped.")
 }
