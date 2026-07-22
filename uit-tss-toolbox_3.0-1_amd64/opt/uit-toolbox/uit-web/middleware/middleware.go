@@ -976,33 +976,35 @@ func CookieAuthMiddleware(next http.Handler) http.Handler {
 			http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 			return
 		case "/api/check_auth":
-			// Don't extend session TTL for auth check
+			// Don't extend session TTL or expiry for auth check
 			if currentSession == nil {
 				log.Error("Auth session is nil for auth check")
 				http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 				return
 			}
-			if err := config.UpdateAuthSession(uitSessionIDCookie.Value, currentSession); err != nil {
-				log.Error("Error generating auth cookies for response: " + err.Error())
-				http.Redirect(w, req, redirectURL, http.StatusSeeOther)
-				return
-			}
+			remainingTTL := max(time.Until(currentSession.BearerToken.Expiry), 0)
 			var returnedJson = new(types.AuthStatusResponse)
 			returnedJson.Status = "authenticated"
-			returnedJson.ExpiresAt = time.Now().Add(currentSession.SessionTTL)
-			returnedJson.TTL = currentSession.SessionTTL
+			returnedJson.ExpiresAt = currentSession.BearerToken.Expiry
+			returnedJson.TTL = remainingTTL
 			WriteJson(w, http.StatusOK, returnedJson)
 			return
 		default:
-			if err := config.UpdateAuthSession(uitSessionIDCookie.Value, currentSession); err != nil {
+			updatedSession := new(types.AuthSession)
+			if updatedSession, err = currentSession.ExtendSessionTTL(types.AuthSessionTTL); err != nil {
+				log.Error("Error extending auth session TTL: " + err.Error())
+				http.Redirect(w, req, redirectURL, http.StatusSeeOther)
+				return
+			}
+			if err := config.UpdateAuthSession(uitSessionIDCookie.Value, updatedSession); err != nil {
 				log.Error("Error generating auth cookies for response: " + err.Error())
 				http.Redirect(w, req, redirectURL, http.StatusSeeOther)
 				return
 			}
 			// log.Debug("Auth session TTL is low (" + currentSession.SessionTTL.String() + "), sending tokens to client: " + reqAddr.String())
-			http.SetCookie(w, currentSession.SessionCookie)
-			http.SetCookie(w, currentSession.BasicCookie)
-			http.SetCookie(w, currentSession.BearerCookie)
+			http.SetCookie(w, updatedSession.SessionCookie)
+			http.SetCookie(w, updatedSession.BasicCookie)
+			http.SetCookie(w, updatedSession.BearerCookie)
 			// http.SetCookie(w, currentSession.CSRFCookie)
 			next.ServeHTTP(w, req)
 			return

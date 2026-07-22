@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"net/http"
 	"net/netip"
 	"sync"
@@ -26,6 +27,32 @@ type AuthSession struct {
 	CSRFToken     CSRFToken
 	CSRFCookie    *http.Cookie
 	Attributes    *SessionAttributes
+}
+
+func (authSession *AuthSession) ExtendSessionTTL(d time.Duration) (updatedSession *AuthSession, err error) {
+	if authSession == nil {
+		return nil, fmt.Errorf("authSession is nil")
+	}
+
+	newAuthSession := *authSession // Create a copy of the current session
+
+	newAuthSession.SessionTTL = d
+	newAuthSession.SessionCookie.Expires = time.Now().Add(d)
+	newAuthSession.SessionCookie.MaxAge = int(d.Seconds())
+	newAuthSession.BasicToken.Expiry = time.Now().Add(d)
+	newAuthSession.BasicToken.TTL = d
+	newAuthSession.BasicCookie.Expires = time.Now().Add(d)
+	newAuthSession.BasicCookie.MaxAge = int(d.Seconds())
+	newAuthSession.BearerToken.Expiry = time.Now().Add(d)
+	newAuthSession.BearerToken.TTL = d
+	newAuthSession.BearerCookie.Expires = time.Now().Add(d)
+	newAuthSession.BearerCookie.MaxAge = int(d.Seconds())
+	newAuthSession.CSRFToken.Expiry = time.Now().Add(d)
+	newAuthSession.CSRFToken.TTL = d
+	newAuthSession.CSRFCookie.Expires = time.Now().Add(d)
+	newAuthSession.CSRFCookie.MaxAge = int(d.Seconds())
+
+	return &newAuthSession, nil
 }
 
 type SessionAttributes struct {

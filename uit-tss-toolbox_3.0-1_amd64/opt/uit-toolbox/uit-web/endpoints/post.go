@@ -118,8 +118,8 @@ func WebAuthEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	var responseJson = new(types.AuthStatusResponse)
 	responseJson.Status = "authenticated"
-	responseJson.ExpiresAt = time.Now().Add(authSession.SessionTTL)
-	responseJson.TTL = authSession.SessionTTL
+	responseJson.ExpiresAt = time.Now().Add(types.AuthSessionTTL)
+	responseJson.TTL = types.AuthSessionTTL
 
 	middleware.WriteJson(w, http.StatusOK, responseJson)
 }
