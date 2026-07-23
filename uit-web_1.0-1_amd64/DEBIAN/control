@@ -1,0 +1,7 @@
+Package: uit-web
+Version: 1.0-1
+Section: Utilities
+Priority: optional
+Architecture: amd64
+Maintainer: Cameron Raschke <caraschke@uh.edu>
+Description: Frontend for uit-api.
